@@ -91,6 +91,21 @@ int wdth(T number)
 
 
 
+template <typename TAlph>
+inline std::basic_ostream<char> &
+operator<<(std::basic_ostream<char> & out,
+           const Iter<const String<SimpleType<unsigned char,TAlph>,
+                                    seqan::Packed<> >,
+                      seqan::Packed<> > it)
+{
+    out << *it;
+    return out;
+}
+
+
+
+
+
 
 
 int64_t intervalOverlap(uint64_t const s1, uint64_t const e1,

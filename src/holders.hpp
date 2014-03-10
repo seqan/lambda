@@ -129,7 +129,8 @@ struct StatsHolder
 
 
 // base
-template <typename TAlph,
+template <typename TAlph_,
+          typename TRedAlph_,
           typename TScoreScheme,
           BlastFormatOptions::M m,
           BlastFormatOptions::Program p,
@@ -137,16 +138,19 @@ template <typename TAlph,
 class GlobalDataHolderBase
 {
 public:
+    using TAlph         = TAlph_;
+    using TRedAlph      = TRedAlph_;
 //     using TScoreScheme  = TScoreScheme;
     using TFormat       = BlastFormat<m,p,g>;
-    using TSubjSeqs     = TCDStringSet<TAlph>;
-    using TDbIndex      = Index<TSubjSeqs,IndexSa<> >;
+    using TUnredSeqs    = TCDStringSet<TAlph>;
+    using TRedSeqs      = TCDStringSet<TRedAlph>;
+    using TDbIndex      = Index<TRedSeqs,IndexSa<> >;
     using TIds          = StringSet<CharString, Owner<ConcatDirect<>>>;
     using TMasking      = StringSet<String<unsigned>, Owner<ConcatDirect<>>>;
     using TBlastParams  = typename BlastStatisticalParameters<TScoreScheme>::Type;
 
-    TCDStringSet<TAlph>         qrySeqs;
-    TCDStringSet<TAlph>         subjSeqs;
+    TUnredSeqs                  qrySeqs;
+    TUnredSeqs                  subjSeqs;
     TDbIndex                    dbIndex;
     unsigned long long          dbTotalLength;
     unsigned long               dbNumberOfSeqs;
@@ -171,11 +175,10 @@ template <typename TRedAlph_,
           BlastFormatOptions::Program p,
           BlastFormatOptions::Generation g>
 class GlobalDataHolder :
-    public GlobalDataHolderBase<AminoAcid, TScoreScheme, m, p, g>
+    public GlobalDataHolderBase<AminoAcid, TRedAlph_, TScoreScheme, m, p, g>
 {
 public:
-    using TRedAlph = TRedAlph_;
-    TCDStringSet<TRedAlph>     redQrySeqs;
+    TCDStringSet<TRedAlph_>     redQrySeqs;
 };
 
 // unreduced protein
@@ -184,12 +187,11 @@ template <typename TScoreScheme,
           BlastFormatOptions::Program p,
           BlastFormatOptions::Generation g>
 class GlobalDataHolder<AminoAcid, TScoreScheme, m, p, g> :
-    public GlobalDataHolderBase<AminoAcid, TScoreScheme, m, p, g>
+    public GlobalDataHolderBase<AminoAcid, AminoAcid, TScoreScheme, m, p, g>
 {
 public:
-    using TRedAlph = AminoAcid;
-    using Base = GlobalDataHolderBase<TRedAlph, TScoreScheme, m, p, g>;
-    TCDStringSet<TRedAlph> const & redQrySeqs = Base::qrySeqs;
+    using Base = GlobalDataHolderBase<AminoAcid, AminoAcid, TScoreScheme, m, p, g>;
+    TCDStringSet<AminoAcid> const & redQrySeqs = Base::qrySeqs;
 };
 
 // blastN
@@ -198,12 +200,11 @@ template <typename TScoreScheme,
           BlastFormatOptions::Program p,
           BlastFormatOptions::Generation g>
 class GlobalDataHolder<Dna5, TScoreScheme, m, p, g> :
-    public GlobalDataHolderBase<Dna5, TScoreScheme, m, p, g>
+    public GlobalDataHolderBase<Dna5, Dna5, TScoreScheme, m, p, g>
 {
 public:
-    using TRedAlph = Dna5;
-    using Base = GlobalDataHolderBase<TRedAlph, TScoreScheme, m, p, g>;
-    TCDStringSet<TRedAlph> const & redQrySeqs = Base::qrySeqs;
+    using Base = GlobalDataHolderBase<Dna5, Dna5, TScoreScheme, m, p, g>;
+    TCDStringSet<Dna5> const & redQrySeqs = Base::qrySeqs;
 };
 
 
@@ -216,7 +217,7 @@ class LocalDataHolder
 {
 public:
     using TGlobalHolder = TGlobalHolder_;
-    using TRedQrySeq    = String<typename TGlobalHolder::TRedAlph>;
+    using TRedQrySeq    = String<typename TGlobalHolder::TRedAlph, TCDSpec>;
     using TSeeds        = StringSet<typename Infix<TRedQrySeq const>::Type>;
     using TSeedIndex    = Index<TSeeds,IndexSa<>>;
 
@@ -242,7 +243,7 @@ public:
     typedef Align<
                 typename Infix<
                     typename Value<
-                        typename TGlobalHolder::TSubjSeqs>::Type>::Type,
+                        typename TGlobalHolder::TUnredSeqs>::Type>::Type,
                 ArrayGaps> TAlign;
 
     typedef DPContext<typename Value<decltype(gH.scoreScheme)>::Type,

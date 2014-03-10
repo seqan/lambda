@@ -544,6 +544,7 @@ search(TLocalHolder & lH)
 
         LambdaFinder finder;
 
+//         (void*)lH.gH.dbIndex;
         find(finder, lH.gH.dbIndex, lH.seedIndex, lH.options.maxSeedDist, lH);
     }
     else

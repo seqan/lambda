@@ -40,8 +40,11 @@ using namespace seqan;
 // Metafunctions
 // ==========================================================================
 
+using TCDSpec = Packed<>;
+// using TCDSpec = Alloc<>;
+
 template <typename TAlph>
-using TCDStringSet = StringSet<String<TAlph>, Owner<ConcatDirect<> > >;
+using TCDStringSet = StringSet<String<TAlph, TCDSpec>, Owner<ConcatDirect<> > >;
 
 
 template <BlastFormatOptions::Program p>
