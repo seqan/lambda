@@ -103,7 +103,19 @@ operator<<(std::basic_ostream<char> & out,
 }
 
 
+template <typename T1, typename T2>
+uint64_t quickHamming(T1 const & s1, T2 const & s2)
+{
+    SEQAN_ASSERT_EQ(length(s1), length(s2));
 
+    uint64_t ret = 0;
+
+    for (uint64_t i = 0; i < length(s1); ++i)
+        if (s1[i] != s2[i])
+            ++ret;
+
+    return ret;
+}
 
 
 

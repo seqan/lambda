@@ -332,19 +332,19 @@ onFind(LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> & lH,
             Match & m = back(lH.matches);
             auto seedId = getSeqNo(qryOcc);
             m.qryStart = lH.seedRanks[seedId] * lH.options.seedLength;
-            m.qryEnd = m.qryStart + repLength(back(finder.patternStack));
+//             m.qryEnd = m.qryStart + repLength(back(finder.patternStack));
             m.qryId = lH.seedRefs[seedId];
             m.subjId = getSeqNo(subjOcc);
             m.subjStart = getSeqOffset(subjOcc);
-            m.subjEnd = getSeqOffset(subjOcc) + repLength(back(finder.textStack));
+//             m.subjEnd = getSeqOffset(subjOcc) + repLength(back(finder.textStack));
 
 //             for (auto const & mask : lH.segIntervals[m.subjId])
 //             {
             for (unsigned k = 0; k < length(lH.gH.segIntStarts[m.subjId]); ++k)
             {
-                auto const halfSubjL = (m.subjEnd - m.subjStart) / 2;
+                auto const halfSubjL = lH.options.seedLength /  2;
                 // more than half of the seed falls into masked interval
-                if (intervalOverlap(m.subjStart, m.subjEnd,
+                if (intervalOverlap(m.subjStart, m.subjStart + lH.options.seedLength,
                                     lH.gH.segIntStarts[m.subjId][k],
                                     lH.gH.segIntEnds[m.subjId][k])
                      >= halfSubjL)

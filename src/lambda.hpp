@@ -468,6 +468,8 @@ generateSeeds(TLocalHolder & lH)
                         Generous());
             appendValue(lH.seedRefs,  i, Generous());
             appendValue(lH.seedRanks, j, Generous());
+
+//             std::cout << "seed: " << back(lH.seeds) << "\n";
         }
     }
     double finish = sysTime() - start;
@@ -600,6 +602,49 @@ joinAndFilterMatches(TLocalHolder & lH)
         start = sysTime();
     }
 
+//     std::cout << "Matches before DEBUG checks:" << lH.matches.size() << "\n";
+//     // DEBUG
+//     for (auto it = lH.matches.begin(),
+//               itEnd = lH.matches.end(),
+//               itN = std::next(it, 1);
+//          (it != itEnd) && (itN != itEnd);
+//         )
+//     {
+//         itN = std::next(it, 1);
+//         auto const & redQryInfix = infix(lH.gH.redQrySeqs[it->qryId],
+//                                          it->qryStart,
+//                                          it->qryStart+lH.options.seedLength);
+//         auto const & redSubjInfix = infix(value(indexText(lH.gH.dbIndex), it->subjId),
+//                                           it->subjStart,
+//                                           it->subjStart+lH.options.seedLength);
+// 
+//         /*if (((it->qryEnd - it->qryStart) != lH.options.seedLength) ||
+//             ((it->subjEnd - it->subjStart) != lH.options.seedLength))
+//         {
+//             std::cout << "Match with UNLENGTH\n"
+//                       << " qId: " << it->qryId << " sId: " << it->subjId
+//                       << "\n " << redQryInfix
+//                       << "\n " << redSubjInfix
+//                       << "\n\n";
+//             lH.matches.erase(it);
+//         } else */
+//         if (quickHamming(redQryInfix,redSubjInfix) >
+//                    lH.options.maxSeedDist)
+//         {
+//             std::cout << "Match with UNMATCH\n"
+//                       << " qId: " << it->qryId << " sId: " << it->subjId
+//                       << "\n " << redQryInfix
+//                       << "\n " << redSubjInfix
+//                       << "\n\n";
+//             lH.matches.erase(it);
+//         }
+// 
+//         it = itN;
+//     }
+// 
+//     std::cout << "Matches after DEBUG checks:" << lH.matches.size() << "\n";
+
+    
 //     // merge
 //     for (auto it = lH.matches.begin(),
 //               itEnd = lH.matches.end(),
@@ -653,7 +698,7 @@ template <typename TBlastMatch,
           typename TLocalHolder>
 inline int
 computeBlastMatch(TBlastMatch   & bm,
-                  Match         & m,
+                  Match         const & m,
                   TLocalHolder  & lH)
 {
     using TFormat = typename TLocalHolder::TGlobalHolder::TFormat;
@@ -664,9 +709,11 @@ computeBlastMatch(TBlastMatch   & bm,
     auto const & curSubj = value(lH.gH.subjSeqs, m.subjId);
 
     bm.qStart    = m.qryStart;
-    bm.qEnd      = m.qryEnd;
+//     bm.qEnd      = m.qryEnd;
+    bm.qEnd      = m.qryStart + lH.options.seedLength;
     bm.sStart    = m.subjStart;
-    bm.sEnd      = m.subjEnd;
+//     bm.sEnd      = m.subjEnd;
+    bm.sEnd      = m.subjStart + lH.options.seedLength;
 
     SEQAN_ASSERT_LEQ(bm.qStart, bm.qEnd);
     SEQAN_ASSERT_LEQ(bm.sStart, bm.sEnd);
@@ -986,23 +1033,27 @@ computeBlastMatch(TBlastMatch   & bm,
     // make a Match with updated positions
     // blast is 1-indexed, not 0-indexed, and last pos is lsat pos
     // ON the sequence. Seqan end positions are 1 behind this evens out for end
-    m.qryStart  = bm.qStart;
-    m.qryEnd    = bm.qEnd;
-    m.subjStart = bm.sStart;
-    m.subjEnd   = bm.sEnd;
+//     m.qryStart  = bm.qStart;
+//     m.qryEnd    = bm.qEnd;
+//     m.subjStart = bm.sStart;
+//     m.subjEnd   = bm.sEnd;
 
     // UNTRANSLATE and add 1
-    bm.qStart  = getTrueQryStartPos (m, lH.options, TFormat());
-    bm.qEnd    = getTrueQryEndPos   (m, lH.options, TFormat());
-    bm.sStart  = getTrueSubjStartPos(m, lH.options, TFormat());
-    bm.sEnd    = getTrueSubjEndPos  (m, lH.options, TFormat());
+    bm.qStart  = getTrueQryStartPos (m.qryId, bm.qStart, bm.qEnd,
+                                     lH.options, TFormat());
+    bm.qEnd    = getTrueQryEndPos   (m.qryId, bm.qStart, bm.qEnd,
+                                     lH.options, TFormat());
+    bm.sStart  = getTrueSubjStartPos(m.subjId, bm.sStart, bm.sEnd,
+                                     lH.options, TFormat());
+    bm.sEnd    = getTrueSubjEndPos  (m.subjId, bm.sStart, bm.sEnd,
+                                     lH.options, TFormat());
 
-    bm.qFrameShift = getQryFrameShift(m, lH.options, TFormat()) + 1;
-    if (qryIsReverseComplemented(m, lH.options, TFormat()))
+    bm.qFrameShift = getQryFrameShift(m.qryId, lH.options, TFormat()) + 1;
+    if (qryIsReverseComplemented(m.qryId, lH.options, TFormat()))
         bm.qFrameShift = -bm.qFrameShift;
 
-    bm.sFrameShift = getSubjFrameShift(m, lH.options, TFormat()) + 1;
-    if (qryIsReverseComplemented(m, lH.options, TFormat()))
+    bm.sFrameShift = getSubjFrameShift(m.subjId, lH.options, TFormat()) + 1;
+    if (qryIsReverseComplemented(m.subjId, lH.options, TFormat()))
         bm.sFrameShift = -bm.sFrameShift;
 
 //     std::cout << "Successfull Hit hat origSeedLeng: " << seedLeng
@@ -1043,7 +1094,7 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
          it != itEnd;
          ++it, ++itN)
     {
-        auto const trueQryId = getTrueQryId(*it,lH.options, TFormat());
+        auto const trueQryId = getTrueQryId(it->qryId,lH.options, TFormat());
 
         TBlastRecord record(lH.options.dbFile,
                             lH.gH.qryIds[trueQryId]);
@@ -1057,24 +1108,24 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
         // inner loop over matches per record
         for (; it != itEnd; ++it, itN = std::next(it,1))
         {
-            Match ma(*it);
+//             Match ma(*it);
 
             // create blastmatch in list without copy or move
             record.matches.emplace_back(
-                lH.gH.qryIds [getTrueQryId (ma, lH.options, TFormat())],
-                lH.gH.subjIds[getTrueSubjId(ma, lH.options, TFormat())]);
+                lH.gH.qryIds [getTrueQryId(it->qryId, lH.options, TFormat())],
+                lH.gH.subjIds[getTrueSubjId(it->subjId, lH.options, TFormat())]);
 
 
             auto & bm = back(record.matches);
-            int lret = computeBlastMatch(bm, ma, lH);
+            int lret = computeBlastMatch(bm, *it, lH);
 
             switch (lret)
             {
                 case COMPUTERESULT_::SUCCESS:
                     bm.sLength = ((TFormat::p == BlastFormatOptions::TBlastN) ||
                                   (TFormat::p == BlastFormatOptions::TBlastX))
-                                ? length(lH.gH.subjSeqs[ma.subjId]) * 3
-                                : length(lH.gH.subjSeqs[ma.subjId]);
+                                ? length(lH.gH.subjSeqs[it->subjId]) * 3
+                                : length(lH.gH.subjSeqs[it->subjId]);
 //                     lastMatch = ma;
 //                     ++lH.stats.goodMatches;
                     break;
@@ -1100,11 +1151,11 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
                 record.matches.pop_back();
             } else // filter the following matches for duplicate-candidates
             {
-                auto trueSubjId = getTrueSubjId(*it, lH.options, TFormat());
+                auto const trueSubjId = getTrueSubjId(it->subjId, lH.options, TFormat());
                 for (auto it2 = itN;
                      (it2 != itEnd) &&
-                     (trueQryId == getTrueQryId(*it2, lH.options, TFormat())) &&
-                     (trueSubjId == getTrueSubjId(*it2, lH.options, TFormat()));
+                     (trueQryId == getTrueQryId(it2->qryId, lH.options, TFormat())) &&
+                     (trueSubjId == getTrueSubjId(it2->subjId, lH.options, TFormat()));
                      )
                 {
                     auto it2N = std::next(it2, 1);
@@ -1112,7 +1163,7 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
                     auto const & row1 = row(bm.align, 1);
                     if (toSourcePosition(row0,
                                          toViewPosition(row1, it2->subjStart))
-                        == it2->qryStart)
+                        == it2->qryStart) //TODO possibly check frame or other heuristic
                     {
                         ++lH.stats.hitsPutativeDuplicate;
                         lH.matches.erase(it2);
@@ -1126,7 +1177,7 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
 
             // last item or new TrueQryId
             if ((itN == itEnd) ||
-                (trueQryId != getTrueQryId(*itN, lH.options, TFormat())))
+                (trueQryId != getTrueQryId(itN->qryId, lH.options, TFormat())))
                 break;
         }
 

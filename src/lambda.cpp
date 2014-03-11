@@ -27,7 +27,7 @@
 #undef SEQAN_HAS_ZLIB
 
 // DEBUG TODO DEBUG
-#define BLASTX_ONLY
+#define FASTBUILD
 // #define SEQAN_DEBUG_INDEX
 
 
@@ -159,7 +159,7 @@ argConv0(LambdaOptions const & options)
 {
     switch (options.blastProg)
     {
-#ifndef BLASTX_ONLY
+#ifndef FASTBUILD
          case BlastFormatOptions::BlastN :
          {
  //             template <BlastFormatOptions::M m>
@@ -236,6 +236,7 @@ argConv0(LambdaOptions const & options)
 //                                 BlastFormatOptions::Blast>;
             switch (_fileType(options))
             {
+#ifndef FASTBUILD
                 case BlastFormatOptions::Pairwise:
                 {
                     typedef BlastFormat<BlastFormatOptions::Pairwise,
@@ -243,6 +244,7 @@ argConv0(LambdaOptions const & options)
                                         BlastFormatOptions::Blast> TFormat;
                     return argConv1(options, TFormat());
                 } break;
+#endif
                 case BlastFormatOptions::Tabular:
                 {
                     typedef BlastFormat<BlastFormatOptions::Tabular,
@@ -250,6 +252,7 @@ argConv0(LambdaOptions const & options)
                                         BlastFormatOptions::Blast> TFormat;
                     return argConv1(options, TFormat());
                 } break;
+#ifndef FASTBUILD
                 case BlastFormatOptions::TabularWithHeader:
                 {
                     typedef BlastFormat<BlastFormatOptions::TabularWithHeader,
@@ -257,11 +260,12 @@ argConv0(LambdaOptions const & options)
                                         BlastFormatOptions::Blast> TFormat;
                     return argConv1(options, TFormat());
                 } break;
+#endif
                 default:
                     break;
             }
         } break;
-#ifndef BLASTX_ONLY
+#ifndef FASTBUILD
         case BlastFormatOptions::TBlastN :
         {
 //             template <BlastFormatOptions::M m>
@@ -359,18 +363,23 @@ argConv1(LambdaOptions      const & options,
     using TFormat = BlastFormat<m,p,g>;
     switch (options.alphReduction)
     {
+
         case 0:
             return argConv2(options, TFormat(), AminoAcid());
-        case 1:
-            return argConv2(options, TFormat(), AminoAcid10());
         case 2:
             return argConv2(options, TFormat(), ReducedAminoAcid<Murphy10>());
+        case 10:
+            return argConv2(options, TFormat(), ReducedAminoAcid<ClusterReduction<10>>());
+#ifndef FASTBUILD
+        case 1:
+            return argConv2(options, TFormat(), AminoAcid10());
         case 8:
             return argConv2(options, TFormat(), ReducedAminoAcid<ClusterReduction<8>>());
         case 10:
             return argConv2(options, TFormat(), ReducedAminoAcid<ClusterReduction<10>>());
         case 12:
             return argConv2(options, TFormat(), ReducedAminoAcid<ClusterReduction<12>>());
+#endif
         default:
             return -1;
     }
@@ -391,7 +400,7 @@ argConv2(LambdaOptions      const & options,
     using TFormat = BlastFormat<m,p,g>;
     switch (options.scoringMethod)
     {
-#ifndef BLASTX_ONLY
+#ifndef FASTBUILD
         case 0:
             return argConv3(options, TFormat(), TRedAlph(), Score<int, Simple>());
 #endif
@@ -417,18 +426,20 @@ argConv3(LambdaOptions      const & options,
          TScoreScheme       const & /**/)
 {
     using TFormat = BlastFormat<m,p,g>;
-    if (options.gapOpen)
-        return realMain(options,
-                        TFormat(),
-                        TRedAlph(),
-                        TScoreScheme(),
-                        AffineGaps());
-    else
+#ifndef FASTBUILD
+    if (options.gapOpen == 0)
         return realMain(options,
                         TFormat(),
                         TRedAlph(),
                         TScoreScheme(),
                         LinearGaps());
+    else
+#endif
+        return realMain(options,
+                        TFormat(),
+                        TRedAlph(),
+                        TScoreScheme(),
+                        AffineGaps());
 
 }
 
