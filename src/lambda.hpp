@@ -590,6 +590,7 @@ joinAndFilterMatches(TLocalHolder & lH)
 
     double start = sysTime();
 //     std::sort(begin(lH.matches, Standard()), end(lH.matches, Standard()));
+//     std::sort(lH.matches.begin(), lH.matches.end());
     lH.matches.sort();
     double finish = sysTime() - start;
     if (lH.options.verbosity >= 3)
@@ -1087,12 +1088,11 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
 //         std::cout << m.qryId << "\t" << getTrueQryId(m,lH.options, TFormat()) << "\n";
 //     }
 
-    // outer loop over records (all matches of one query)
+    // outer loop over records (a record are all matches of one query)
     for (auto it = lH.matches.begin(),
-              itN = std::next(it, 1),
               itEnd = lH.matches.end();
          it != itEnd;
-         ++it, ++itN)
+         ++it)
     {
         auto const trueQryId = getTrueQryId(it->qryId,lH.options, TFormat());
 
@@ -1106,13 +1106,18 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
                         : length(lH.gH.qrySeqs[trueQryId]);
 
         // inner loop over matches per record
-        for (; it != itEnd; ++it, itN = std::next(it,1))
+        for (;
+             (it != itEnd) && (trueQryId == getTrueQryId(it->qryId, lH.options, TFormat()));
+             ++it)
         {
-//             Match ma(*it);
+            // skip matches marked as putative duplicates
+            if ((it->qryStart == maxValue<decltype(it->qryStart)>()) &&
+                (it->subjStart == maxValue<decltype(it->subjStart)>()))
+                continue;
 
             // create blastmatch in list without copy or move
             record.matches.emplace_back(
-                lH.gH.qryIds [getTrueQryId(it->qryId, lH.options, TFormat())],
+                lH.gH.qryIds [trueQryId],
                 lH.gH.subjIds[getTrueSubjId(it->subjId, lH.options, TFormat())]);
 
 
@@ -1151,34 +1156,33 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
                 record.matches.pop_back();
             } else // filter the following matches for duplicate-candidates
             {
-                auto const trueSubjId = getTrueSubjId(it->subjId, lH.options, TFormat());
-                for (auto it2 = itN;
-                     (it2 != itEnd) &&
-                     (trueQryId == getTrueQryId(it2->qryId, lH.options, TFormat())) &&
-                     (trueSubjId == getTrueSubjId(it2->subjId, lH.options, TFormat()));
-                     )
-                {
-                    auto it2N = std::next(it2, 1);
-                    auto const & row0 = row(bm.align, 0);
-                    auto const & row1 = row(bm.align, 1);
-                    if (toSourcePosition(row0,
-                                         toViewPosition(row1, it2->subjStart))
-                        == it2->qryStart) //TODO possibly check frame or other heuristic
-                    {
-                        ++lH.stats.hitsPutativeDuplicate;
-                        lH.matches.erase(it2);
-                    }
-                    it2 = it2N;
-                }
+//                 auto const trueSubjId = getTrueSubjId(it->subjId, lH.options, TFormat());
+//                 auto it2 = it;
+//                 ++it2;
+//                 for (;
+//                      (it2 != itEnd) &&
+//                      (trueQryId == getTrueQryId(it2->qryId, lH.options, TFormat())) &&
+//                      (trueSubjId == getTrueSubjId(it2->subjId, lH.options, TFormat()));
+//                      ++it2)
+//                 {
+//                     auto const & row0 = row(bm.align, 0);
+//                     auto const & row1 = row(bm.align, 1);
+//                     if (toSourcePosition(row0,
+//                                          toViewPosition(row1, it2->subjStart))
+//                         == it2->qryStart) //TODO possibly check frame or other heuristic
+//                     {
+//                         ++lH.stats.hitsPutativeDuplicate;
+//                         it2->qryStart = maxValue<decltype(it->qryStart)>();
+//                         it2->subjStart = maxValue<decltype(it->subjStart)>();
+//                     }
+//                 }
 
-                // make sure itN points to it's next again
-                itN = std::next(it, 1);
             }
 
-            // last item or new TrueQryId
-            if ((itN == itEnd) ||
-                (trueQryId != getTrueQryId(itN->qryId, lH.options, TFormat())))
-                break;
+//             // last item or new TrueQryId
+//             if ((itN == itEnd) ||
+//                 (trueQryId != getTrueQryId(itN->qryId, lH.options, TFormat())))
+//                 break;
         }
 
         if (length(record.matches) > 0)

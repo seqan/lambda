@@ -41,21 +41,30 @@ using namespace seqan;
 //                  Finder
 //-----------------------------------------------------------------------------
 
+// #pragma pack(push)  /* push current alignment to stack */
+// #pragma pack(1)     /* set alignment to 1 byte boundary */
+
 struct Match
 {
     typedef uint32_t    TQId;
     typedef uint32_t    TSId;// many suffixes in subject-index
     typedef uint16_t    TPos;
     TQId qryId;
+    TSId subjId;
     TPos qryStart;
 //     TPos qryEnd;
-
-    TSId subjId;
     TPos subjStart;
 //     TPos subjEnd;
 
     Match() :
-        qryId(0), qryStart(0), /*qryEnd(0),*/ subjId(0), subjStart(0)/*, subjEnd(0)*/
+        qryId(0), subjId(0), qryStart(0), /*qryEnd(0),*/  subjStart(0)/*, subjEnd(0)*/
+    {
+    }
+
+    Match(TQId const & _qryId, TSId const _subjId,
+          TPos const & _qryStart, TPos const & _subjStart) :
+        qryId(_qryId), subjId(_subjId),
+        qryStart(_qryStart), /*qryEnd(0),*/  subjStart(_subjStart)/*, subjEnd(0)*/
     {
     }
 
@@ -80,6 +89,8 @@ struct Match
               < std::tie(m2.qryId, m2.subjId, m2.qryStart, m2.subjStart/*, m2.qryEnd, m2.subjEnd*/);
     }
 };
+
+// #pragma pack(pop)   /* restore original alignment from stack */
 
 // inline bool
 // overlap(Match const & m1, Match const & m2, unsigned char d = 0)

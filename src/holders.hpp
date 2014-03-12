@@ -235,7 +235,7 @@ public:
     // regarding seeding
     TSeeds              seeds;
     TSeedIndex          seedIndex;
-    std::list<TMatch>   matches;
+    std::forward_list<TMatch>   matches;
     std::vector<typename Match::TQId>   seedRefs;  // mapping seed -> query
     std::vector<uint16_t>               seedRanks; // mapping seed -> relative rank
 
@@ -275,7 +275,7 @@ public:
 //         std::cout << "Thread " << i << " beg: " << indexBeginQry
 //                   << " end: " << indexEndQry << "\n" << std::flush;
         clear(seedIndex);
-        clear(matches);
+        matches.clear();
         clear(seedRefs);
         clear(seedRanks);
         stats.clear();
@@ -319,27 +319,21 @@ onFind(LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> & lH,
     auto const seedNum = length(qryOccs) * length(subjOccs);
 //     reserve(lH.matches, length(lH.matches)+seedNum, Generous());
     lH.stats.hitsAfterSeeding += seedNum;
-    for (unsigned i = 0; i< length(qryOccs); ++i)
+
+    for (auto qIt = begin(qryOccs), qItEnd = end(qryOccs);
+         qIt != qItEnd;
+         ++qIt)
     {
-        for (unsigned j = 0; j< length(subjOccs); ++j)
+        for (auto sIt = begin(subjOccs), sItEnd = end(subjOccs);
+             sIt != sItEnd;
+             ++sIt)
         {
-            auto const & qryOcc  = qryOccs[i];
-            auto const & subjOcc = subjOccs[j];
+            lH.matches.emplace_front(lH.seedRefs[getSeqNo(*qIt)],
+                                      getSeqNo(*sIt),
+                                      lH.seedRanks[getSeqNo(*qIt)] * lH.options.seedLength,
+                                      getSeqOffset(*sIt));
 
-            lH.matches.emplace_back();
-//             resize(lH.matches, length(lH.matches)+1, Generous());
-
-            Match & m = back(lH.matches);
-            auto seedId = getSeqNo(qryOcc);
-            m.qryStart = lH.seedRanks[seedId] * lH.options.seedLength;
-//             m.qryEnd = m.qryStart + repLength(back(finder.patternStack));
-            m.qryId = lH.seedRefs[seedId];
-            m.subjId = getSeqNo(subjOcc);
-            m.subjStart = getSeqOffset(subjOcc);
-//             m.subjEnd = getSeqOffset(subjOcc) + repLength(back(finder.textStack));
-
-//             for (auto const & mask : lH.segIntervals[m.subjId])
-//             {
+            Match const & m = lH.matches.front();
             for (unsigned k = 0; k < length(lH.gH.segIntStarts[m.subjId]); ++k)
             {
                 auto const halfSubjL = lH.options.seedLength /  2;
@@ -349,15 +343,51 @@ onFind(LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> & lH,
                                     lH.gH.segIntEnds[m.subjId][k])
                      >= halfSubjL)
                 {
-                    lH.matches.pop_back();
-//                     resize(lH.matches, length(lH.matches)-1, Generous());
+                    lH.matches.pop_front();
                     ++lH.stats.hitsMasked;
-//                     std::cout << "Dropped seed-hit in masked region.\n" << std::flush;
                     break;
                 }
             }
         }
     }
+
+//     for (unsigned i = 0; i< length(qryOccs); ++i)
+//     {
+//         for (unsigned j = 0; j< length(subjOccs); ++j)
+//         {
+//             auto const & qryOcc  = qryOccs[i];
+//             auto const & subjOcc = subjOccs[j];
+// 
+//             lH.matches.emplace_back();
+// //             resize(lH.matches, length(lH.matches)+1, Generous());
+// 
+//             Match & m = lH.matches.back();
+//             auto seedId = getSeqNo(qryOcc);
+//             m.qryStart = lH.seedRanks[seedId] * lH.options.seedLength;
+// //             m.qryEnd = m.qryStart + repLength(back(finder.patternStack));
+//             m.qryId = lH.seedRefs[seedId];
+//             m.subjId = getSeqNo(subjOcc);
+//             m.subjStart = getSeqOffset(subjOcc);
+// //             m.subjEnd = getSeqOffset(subjOcc) + repLength(back(finder.textStack));
+// 
+// //             for (auto const & mask : lH.segIntervals[m.subjId])
+// //             {
+//             for (unsigned k = 0; k < length(lH.gH.segIntStarts[m.subjId]); ++k)
+//             {
+//                 auto const halfSubjL = lH.options.seedLength /  2;
+//                 // more than half of the seed falls into masked interval
+//                 if (intervalOverlap(m.subjStart, m.subjStart + lH.options.seedLength,
+//                                     lH.gH.segIntStarts[m.subjId][k],
+//                                     lH.gH.segIntEnds[m.subjId][k])
+//                      >= halfSubjL)
+//                 {
+//                     lH.matches.pop_back();
+//                     ++lH.stats.hitsMasked;
+//                     break;
+//                 }
+//             }
+//         }
+//     }
 }
 
 
