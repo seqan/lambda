@@ -590,8 +590,7 @@ joinAndFilterMatches(TLocalHolder & lH)
 
     double start = sysTime();
 //     std::sort(begin(lH.matches, Standard()), end(lH.matches, Standard()));
-    std::sort(lH.matches.begin(), lH.matches.end());
-//     lH.matches.sort();
+    lH.matches.sort();
     double finish = sysTime() - start;
     if (lH.options.verbosity >= 3)
     {
@@ -1077,8 +1076,6 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
                            typename Value<typename TGlobalHolder::TIds>::Type,// const &,
                            typename TLocalHolder::TAlign,
                            unsigned int>;
-    using TQId          = typename Match::TQId;
-    using TPos          = typename Match::TPos;
 
 //     double start = sysTime();
 //     std::cout << "Realigning, extending and dumping matches..." << std::flush;
@@ -1090,13 +1087,14 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
 //         std::cout << m.qryId << "\t" << getTrueQryId(m,lH.options, TFormat()) << "\n";
 //     }
 
-    // outer loop over records (a record are all matches of one query)
-    for (auto it = lH.matches.begin(), itEnd = lH.matches.end();
+    // outer loop over records (all matches of one query)
+    for (auto it = lH.matches.begin(),
+              itN = std::next(it, 1),
+              itEnd = lH.matches.end();
          it != itEnd;
-         ++it)
+         ++it, ++itN)
     {
-//         std::cout << __FILE__ << ": " << __LINE__ << "\n" << std::flush;
-        TQId const trueQryId = getTrueQryId(it->qryId,lH.options, TFormat());
+        auto const trueQryId = getTrueQryId(it->qryId,lH.options, TFormat());
 
         TBlastRecord record(lH.options.dbFile,
                             lH.gH.qryIds[trueQryId]);
@@ -1107,25 +1105,20 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
                         ? length(lH.gH.qrySeqs[trueQryId]) / 3
                         : length(lH.gH.qrySeqs[trueQryId]);
 
-//         std::cout << __FILE__ << ": " << __LINE__ << "\n" << std::flush;
         // inner loop over matches per record
-        for ( ; it != itEnd; ++it)
+        for (; it != itEnd; ++it, itN = std::next(it,1))
         {
-//             std::cout << __FILE__ << ": " << __LINE__ << "\n" << std::flush;
-            // skip matches marked as putative duplicates
-            if ((it->qryStart == maxValue<TPos>()) &&
-                (it->subjStart == maxValue<TPos>()))
-                continue;
-//             std::cout << __FILE__ << ": " << __LINE__ << "\n" << std::flush;
+//             Match ma(*it);
+
             // create blastmatch in list without copy or move
             record.matches.emplace_back(
-                lH.gH.qryIds [trueQryId],
+                lH.gH.qryIds [getTrueQryId(it->qryId, lH.options, TFormat())],
                 lH.gH.subjIds[getTrueSubjId(it->subjId, lH.options, TFormat())]);
-//             std::cout << __FILE__ << ": " << __LINE__ << "\n" << std::flush;
+
 
             auto & bm = back(record.matches);
             int lret = computeBlastMatch(bm, *it, lH);
-//             std::cout << __FILE__ << ": " << __LINE__ << "\n" << std::flush;
+
             switch (lret)
             {
                 case COMPUTERESULT_::SUCCESS:
@@ -1133,6 +1126,8 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
                                   (TFormat::p == BlastFormatOptions::TBlastX))
                                 ? length(lH.gH.subjSeqs[it->subjId]) * 3
                                 : length(lH.gH.subjSeqs[it->subjId]);
+//                     lastMatch = ma;
+//                     ++lH.stats.goodMatches;
                     break;
                 case ALIGNEVAL:
                     ++lH.stats.hitsFailedExtendAlignEValTest;
@@ -1156,53 +1151,46 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
                 record.matches.pop_back();
             } else // filter the following matches for duplicate-candidates
             {
-//                 auto const trueSubjId = getTrueSubjId(it->subjId, lH.options, TFormat());
-//                 auto it2 = it;
-//                 ++it2;
-//                 for (;
-//                      (it2 != itEnd) &&
-//                      (trueQryId == getTrueQryId(it2->qryId, lH.options, TFormat())) &&
-//                      (trueSubjId == getTrueSubjId(it2->subjId, lH.options, TFormat()));
-//                      ++it2)
-//                 {
-//                     auto const & row0 = row(bm.align, 0);
-//                     auto const & row1 = row(bm.align, 1);
-//                     if (toSourcePosition(row0,
-//                                          toViewPosition(row1, it2->subjStart))
-//                         == it2->qryStart) //TODO possibly check frame or other heuristic
-//                     {
-//                         ++lH.stats.hitsPutativeDuplicate;
-//                         it2->qryStart = maxValue<TPos>();
-//                         it2->subjStart = maxValue<TPos>();
-//                     }
-//                 }
+                auto const trueSubjId = getTrueSubjId(it->subjId, lH.options, TFormat());
+                for (auto it2 = itN;
+                     (it2 != itEnd) &&
+                     (trueQryId == getTrueQryId(it2->qryId, lH.options, TFormat())) &&
+                     (trueSubjId == getTrueSubjId(it2->subjId, lH.options, TFormat()));
+                     )
+                {
+                    auto it2N = std::next(it2, 1);
+                    auto const & row0 = row(bm.align, 0);
+                    auto const & row1 = row(bm.align, 1);
+                    if (toSourcePosition(row0,
+                                         toViewPosition(row1, it2->subjStart))
+                        == it2->qryStart) //TODO possibly check frame or other heuristic
+                    {
+                        ++lH.stats.hitsPutativeDuplicate;
+                        lH.matches.erase(it2);
+                    }
+                    it2 = it2N;
+                }
 
+                // make sure itN points to it's next again
+                itN = std::next(it, 1);
             }
 
-            auto itN = std::next(it, 1);
-//             std::cout << "TrueQueryId: " << trueQryId << "\n";
             // last item or new TrueQryId
             if ((itN == itEnd) ||
                 (trueQryId != getTrueQryId(itN->qryId, lH.options, TFormat())))
-            {
-//                 std::cout << __FILE__ << ": " << __LINE__ << "\n" << std::flush;
                 break;
-            }
-//             std::cout << "NextTrueQueryId: " << getTrueQryId(itN->qryId, lH.options, TFormat()) << "\n";
         }
-//         std::cout << __FILE__ << ": " << __LINE__ << "\n" << std::flush;
+
         if (length(record.matches) > 0)
         {
             ++lH.stats.qrysWithHit;
             // sort and remove duplicates -> STL, yeah!
-            auto const before = length(record.matches);
+            auto const before = record.matches.size();
             record.matches.sort();
             record.matches.unique();
-//             std::sort(begin(record.matches), end(record.matches));
-//             std::unique(begin(record.matches), end(record.matches));
-            lH.stats.hitsFinal +=length(record.matches);
-            lH.stats.hitsDuplicate += before - length(record.matches);
-//             std::cout << __FILE__ << ": " << __LINE__ << "\n" << std::flush;
+            lH.stats.hitsFinal += record.matches.size();
+            lH.stats.hitsDuplicate += before - record.matches.size();
+
             int lret = 0;
             #pragma omp critical(filewrite)
             {
@@ -1210,9 +1198,7 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
             }
             if (lret)
                 return lret;
-//             std::cout << __FILE__ << ": " << __LINE__ << "\n" << std::flush;
         }
-//         std::cout << __FILE__ << ": " << __LINE__ << "\n" << std::flush;
 
     }
 

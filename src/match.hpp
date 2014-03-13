@@ -41,53 +41,45 @@ using namespace seqan;
 //                  Finder
 //-----------------------------------------------------------------------------
 
-// #pragma pack(push)  /* push current alignment to stack */
-// #pragma pack(1)     /* set alignment to 1 byte boundary */
-
 struct Match
 {
     typedef uint32_t    TQId;
     typedef uint32_t    TSId;// many suffixes in subject-index
     typedef uint16_t    TPos;
     TQId qryId;
-    TSId subjId;
     TPos qryStart;
 //     TPos qryEnd;
+
+    TSId subjId;
     TPos subjStart;
 //     TPos subjEnd;
 
-    Match() = default;
-//         qryId(0), subjId(0), qryStart(0), /*qryEnd(0),*/  subjStart(0)/*, subjEnd(0)*/
-//     {
-//     }
-
-    constexpr Match(TQId const & _qryId, TSId const _subjId,
-          TPos const & _qryStart, TPos const & _subjStart) :
-        qryId(_qryId), subjId(_subjId),
-        qryStart(_qryStart), /*qryEnd(0),*/  subjStart(_subjStart)/*, subjEnd(0)*/
+    Match() :
+        qryId(0), qryStart(0), /*qryEnd(0),*/ subjId(0), subjStart(0)/*, subjEnd(0)*/
     {
     }
 
-    Match(Match const & m2) = default;
-//     :
-//         qryId(m2.qryId), subjId(m2.subjId),
-//         qryStart(m2.qryStart), subjStart(m2.subjStart)
-//     {
-//     }
+    Match(Match const & m2)
+    {
+        qryId       = m2.qryId;
+        qryStart    = m2.qryStart;
+        /*qryEnd      = m2.qryEnd;*/
+        subjId      = m2.subjId;
+        subjStart   = m2.subjStart;
+        /*subjEnd     = m2.subjEnd;*/
+    }
 
-    bool operator== (Match const & m2) const
+    inline bool operator== (Match const & m2) const
     {
          return std::tie(qryId, subjId, qryStart, subjStart/*, qryEnd, subjEnd*/)
              == std::tie(m2.qryId, m2.subjId, m2.qryStart, m2.subjStart/*, m2.qryEnd, m2.subjEnd*/);
     }
-    bool operator< (Match const & m2) const
+    inline bool operator< (Match const & m2) const
     {
          return std::tie(qryId, subjId, qryStart, subjStart/*, qryEnd, subjEnd*/)
               < std::tie(m2.qryId, m2.subjId, m2.qryStart, m2.subjStart/*, m2.qryEnd, m2.subjEnd*/);
     }
 };
-
-// #pragma pack(pop)   /* restore original alignment from stack */
 
 // inline bool
 // overlap(Match const & m1, Match const & m2, unsigned char d = 0)
