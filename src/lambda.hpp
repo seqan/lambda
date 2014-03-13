@@ -590,8 +590,8 @@ joinAndFilterMatches(TLocalHolder & lH)
 
     double start = sysTime();
 //     std::sort(begin(lH.matches, Standard()), end(lH.matches, Standard()));
-//     std::sort(lH.matches.begin(), lH.matches.end());
-    lH.matches.sort();
+    std::sort(lH.matches.begin(), lH.matches.end());
+//     lH.matches.sort();
     double finish = sysTime() - start;
     if (lH.options.verbosity >= 3)
     {
@@ -1077,6 +1077,8 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
                            typename Value<typename TGlobalHolder::TIds>::Type,// const &,
                            typename TLocalHolder::TAlign,
                            unsigned int>;
+    using TQId          = typename Match::TQId;
+    using TPos          = typename Match::TPos;
 
 //     double start = sysTime();
 //     std::cout << "Realigning, extending and dumping matches..." << std::flush;
@@ -1089,12 +1091,12 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
 //     }
 
     // outer loop over records (a record are all matches of one query)
-    for (auto it = lH.matches.begin(),
-              itEnd = lH.matches.end();
+    for (auto it = lH.matches.begin(), itEnd = lH.matches.end();
          it != itEnd;
          ++it)
     {
-        auto const trueQryId = getTrueQryId(it->qryId,lH.options, TFormat());
+//         std::cout << __FILE__ << ": " << __LINE__ << "\n" << std::flush;
+        TQId const trueQryId = getTrueQryId(it->qryId,lH.options, TFormat());
 
         TBlastRecord record(lH.options.dbFile,
                             lH.gH.qryIds[trueQryId]);
@@ -1105,25 +1107,25 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
                         ? length(lH.gH.qrySeqs[trueQryId]) / 3
                         : length(lH.gH.qrySeqs[trueQryId]);
 
+//         std::cout << __FILE__ << ": " << __LINE__ << "\n" << std::flush;
         // inner loop over matches per record
-        for (;
-             (it != itEnd) && (trueQryId == getTrueQryId(it->qryId, lH.options, TFormat()));
-             ++it)
+        for ( ; it != itEnd; ++it)
         {
+//             std::cout << __FILE__ << ": " << __LINE__ << "\n" << std::flush;
             // skip matches marked as putative duplicates
-            if ((it->qryStart == maxValue<decltype(it->qryStart)>()) &&
-                (it->subjStart == maxValue<decltype(it->subjStart)>()))
+            if ((it->qryStart == maxValue<TPos>()) &&
+                (it->subjStart == maxValue<TPos>()))
                 continue;
-
+//             std::cout << __FILE__ << ": " << __LINE__ << "\n" << std::flush;
             // create blastmatch in list without copy or move
             record.matches.emplace_back(
                 lH.gH.qryIds [trueQryId],
                 lH.gH.subjIds[getTrueSubjId(it->subjId, lH.options, TFormat())]);
-
+//             std::cout << __FILE__ << ": " << __LINE__ << "\n" << std::flush;
 
             auto & bm = back(record.matches);
             int lret = computeBlastMatch(bm, *it, lH);
-
+//             std::cout << __FILE__ << ": " << __LINE__ << "\n" << std::flush;
             switch (lret)
             {
                 case COMPUTERESULT_::SUCCESS:
@@ -1131,8 +1133,6 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
                                   (TFormat::p == BlastFormatOptions::TBlastX))
                                 ? length(lH.gH.subjSeqs[it->subjId]) * 3
                                 : length(lH.gH.subjSeqs[it->subjId]);
-//                     lastMatch = ma;
-//                     ++lH.stats.goodMatches;
                     break;
                 case ALIGNEVAL:
                     ++lH.stats.hitsFailedExtendAlignEValTest;
@@ -1172,29 +1172,37 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
 //                         == it2->qryStart) //TODO possibly check frame or other heuristic
 //                     {
 //                         ++lH.stats.hitsPutativeDuplicate;
-//                         it2->qryStart = maxValue<decltype(it->qryStart)>();
-//                         it2->subjStart = maxValue<decltype(it->subjStart)>();
+//                         it2->qryStart = maxValue<TPos>();
+//                         it2->subjStart = maxValue<TPos>();
 //                     }
 //                 }
 
             }
 
-//             // last item or new TrueQryId
-//             if ((itN == itEnd) ||
-//                 (trueQryId != getTrueQryId(itN->qryId, lH.options, TFormat())))
-//                 break;
+            auto itN = std::next(it, 1);
+//             std::cout << "TrueQueryId: " << trueQryId << "\n";
+            // last item or new TrueQryId
+            if ((itN == itEnd) ||
+                (trueQryId != getTrueQryId(itN->qryId, lH.options, TFormat())))
+            {
+//                 std::cout << __FILE__ << ": " << __LINE__ << "\n" << std::flush;
+                break;
+            }
+//             std::cout << "NextTrueQueryId: " << getTrueQryId(itN->qryId, lH.options, TFormat()) << "\n";
         }
-
+//         std::cout << __FILE__ << ": " << __LINE__ << "\n" << std::flush;
         if (length(record.matches) > 0)
         {
             ++lH.stats.qrysWithHit;
             // sort and remove duplicates -> STL, yeah!
-            auto const before = record.matches.size();
+            auto const before = length(record.matches);
             record.matches.sort();
             record.matches.unique();
-            lH.stats.hitsFinal += record.matches.size();
-            lH.stats.hitsDuplicate += before - record.matches.size();
-
+//             std::sort(begin(record.matches), end(record.matches));
+//             std::unique(begin(record.matches), end(record.matches));
+            lH.stats.hitsFinal +=length(record.matches);
+            lH.stats.hitsDuplicate += before - length(record.matches);
+//             std::cout << __FILE__ << ": " << __LINE__ << "\n" << std::flush;
             int lret = 0;
             #pragma omp critical(filewrite)
             {
@@ -1202,7 +1210,9 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
             }
             if (lret)
                 return lret;
+//             std::cout << __FILE__ << ": " << __LINE__ << "\n" << std::flush;
         }
+//         std::cout << __FILE__ << ": " << __LINE__ << "\n" << std::flush;
 
     }
 

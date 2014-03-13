@@ -235,7 +235,7 @@ public:
     // regarding seeding
     TSeeds              seeds;
     TSeedIndex          seedIndex;
-    std::forward_list<TMatch>   matches;
+    std::vector<TMatch>   matches;
     std::vector<typename Match::TQId>   seedRefs;  // mapping seed -> query
     std::vector<uint16_t>               seedRanks; // mapping seed -> relative rank
 
@@ -318,6 +318,7 @@ onFind(LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> & lH,
 
     auto const seedNum = length(qryOccs) * length(subjOccs);
 //     reserve(lH.matches, length(lH.matches)+seedNum, Generous());
+//     lH.matches.reserve(lH.matches.size() + seedNum);
     lH.stats.hitsAfterSeeding += seedNum;
 
     for (auto qIt = begin(qryOccs), qItEnd = end(qryOccs);
@@ -328,12 +329,12 @@ onFind(LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> & lH,
              sIt != sItEnd;
              ++sIt)
         {
-            lH.matches.emplace_front(lH.seedRefs[getSeqNo(*qIt)],
+            lH.matches.emplace_back(lH.seedRefs[getSeqNo(*qIt)],
                                       getSeqNo(*sIt),
                                       lH.seedRanks[getSeqNo(*qIt)] * lH.options.seedLength,
                                       getSeqOffset(*sIt));
 
-            Match const & m = lH.matches.front();
+            Match const & m = lH.matches.back();
             for (unsigned k = 0; k < length(lH.gH.segIntStarts[m.subjId]); ++k)
             {
                 auto const halfSubjL = lH.options.seedLength /  2;
@@ -343,7 +344,7 @@ onFind(LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> & lH,
                                     lH.gH.segIntEnds[m.subjId][k])
                      >= halfSubjL)
                 {
-                    lH.matches.pop_front();
+                    lH.matches.pop_back();
                     ++lH.stats.hitsMasked;
                     break;
                 }
