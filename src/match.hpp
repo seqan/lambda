@@ -47,27 +47,28 @@ struct Match
     typedef uint32_t    TSId;// many suffixes in subject-index
     typedef uint16_t    TPos;
     TQId qryId;
+    TSId subjId;
     TPos qryStart;
 //     TPos qryEnd;
 
-    TSId subjId;
     TPos subjStart;
 //     TPos subjEnd;
 
-    Match() :
-        qryId(0), qryStart(0), /*qryEnd(0),*/ subjId(0), subjStart(0)/*, subjEnd(0)*/
-    {
-    }
+    Match() = default;
+//     :
+//         qryId(0), qryStart(0), /*qryEnd(0),*/ subjId(0), subjStart(0)/*, subjEnd(0)*/
+//     {
+//     }
 
-    Match(Match const & m2)
-    {
-        qryId       = m2.qryId;
-        qryStart    = m2.qryStart;
-        /*qryEnd      = m2.qryEnd;*/
-        subjId      = m2.subjId;
-        subjStart   = m2.subjStart;
-        /*subjEnd     = m2.subjEnd;*/
-    }
+    Match(Match const & m2) = default;
+//     {
+//         qryId       = m2.qryId;
+//         qryStart    = m2.qryStart;
+//         /*qryEnd      = m2.qryEnd;*/
+//         subjId      = m2.subjId;
+//         subjStart   = m2.subjStart;
+//         /*subjEnd     = m2.subjEnd;*/
+//     }
 
     inline bool operator== (Match const & m2) const
     {

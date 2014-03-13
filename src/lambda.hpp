@@ -1076,6 +1076,7 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
                            typename Value<typename TGlobalHolder::TIds>::Type,// const &,
                            typename TLocalHolder::TAlign,
                            unsigned int>;
+//     using TPos          = typename TMatch::TPos;
 
 //     double start = sysTime();
 //     std::cout << "Realigning, extending and dumping matches..." << std::flush;
