@@ -149,6 +149,13 @@ int main(int argc, char const ** argv)
     if (res != seqan::ArgumentParser::PARSE_OK)
         return res == seqan::ArgumentParser::PARSE_ERROR;
 
+//     std::cout <<   "Match  sizeof : " << sizeof(Match)
+//               << "\n       alignof: " << alignof(Match)
+//               << "\n    is_trivial: " << std::is_trivial<Match>::value
+// //               << "\ntrivially_copy: " << std::is_trivially_copyable<Match>::value
+//               << "\n";
+
+    
     return argConv0(options);
 }
 

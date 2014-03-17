@@ -589,8 +589,9 @@ joinAndFilterMatches(TLocalHolder & lH)
         std::cout << lH.i << ": Sorting matches..." << std::flush;
 
     double start = sysTime();
-//     std::sort(begin(lH.matches, Standard()), end(lH.matches, Standard()));
-    lH.matches.sort();
+//    std::sort(begin(lH.matches, Standard()), end(lH.matches, Standard()));
+   std::sort(lH.matches.begin(), lH.matches.end());
+//     lH.matches.sort();
     double finish = sysTime() - start;
     if (lH.options.verbosity >= 3)
     {
@@ -708,12 +709,6 @@ computeBlastMatch(TBlastMatch   & bm,
     auto const &  curQry = value(lH.gH.qrySeqs, m.qryId);
     auto const & curSubj = value(lH.gH.subjSeqs, m.subjId);
 
-    bm.qStart    = m.qryStart;
-//     bm.qEnd      = m.qryEnd;
-    bm.qEnd      = m.qryStart + lH.options.seedLength;
-    bm.sStart    = m.subjStart;
-//     bm.sEnd      = m.subjEnd;
-    bm.sEnd      = m.subjStart + lH.options.seedLength;
 
     SEQAN_ASSERT_LEQ(bm.qStart, bm.qEnd);
     SEQAN_ASSERT_LEQ(bm.sStart, bm.sEnd);
@@ -1071,12 +1066,16 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
 {
     using TGlobalHolder = typename TLocalHolder::TGlobalHolder;
     using TFormat       = typename TGlobalHolder::TFormat;
+    using TPos          = typename Match::TPos;
     using TBlastRecord  = BlastRecord<CharString const &,
-                           typename Value<typename TGlobalHolder::TIds>::Type const &,
+//                                       CharString const &,
+//                                       CharString const &,
+                           typename Value<typename TGlobalHolder::TIds>::Type,// const &,
                            typename Value<typename TGlobalHolder::TIds>::Type,// const &,
                            typename TLocalHolder::TAlign,
-                           unsigned int>;
-//     using TPos          = typename TMatch::TPos;
+                           TPos>;
+    constexpr TPos TPosMax = std::numeric_limits<TPos>::max();
+
 
 //     double start = sysTime();
 //     std::cout << "Realigning, extending and dumping matches..." << std::flush;
@@ -1093,8 +1092,9 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
               itN = std::next(it, 1),
               itEnd = lH.matches.end();
          it != itEnd;
-         ++it, ++itN)
+         ++it)
     {
+        itN = std::next(it,1);
         auto const trueQryId = getTrueQryId(it->qryId,lH.options, TFormat());
 
         TBlastRecord record(lH.options.dbFile,
@@ -1107,73 +1107,147 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
                         : length(lH.gH.qrySeqs[trueQryId]);
 
         // inner loop over matches per record
-        for (; it != itEnd; ++it, itN = std::next(it,1))
+        for (; it != itEnd; ++it)
         {
-//             Match ma(*it);
-
-            // create blastmatch in list without copy or move
-            record.matches.emplace_back(
-                lH.gH.qryIds [getTrueQryId(it->qryId, lH.options, TFormat())],
-                lH.gH.subjIds[getTrueSubjId(it->subjId, lH.options, TFormat())]);
-
-
-            auto & bm = back(record.matches);
-            int lret = computeBlastMatch(bm, *it, lH);
-
-            switch (lret)
+            auto const trueSubjId = getTrueSubjId(it->subjId,
+                                                  lH.options,
+                                                  TFormat());
+            itN = std::next(it,1);
+//             std::cout << "FOO\n" << std::flush;
+//             std::cout << "QryStart: " << it->qryStart << "\n" << std::flush;
+//             std::cout << "SubjStart: " << it->subjStart << "\n" << std::flush;
+//             std::cout << "BAR\n" << std::flush;
+            if (!((it->qryStart == TPosMax) && (it->subjStart == TPosMax)))
             {
-                case COMPUTERESULT_::SUCCESS:
-                    bm.sLength = ((TFormat::p == BlastFormatOptions::TBlastN) ||
-                                  (TFormat::p == BlastFormatOptions::TBlastX))
-                                ? length(lH.gH.subjSeqs[it->subjId]) * 3
-                                : length(lH.gH.subjSeqs[it->subjId]);
-//                     lastMatch = ma;
-//                     ++lH.stats.goodMatches;
-                    break;
-                case ALIGNEVAL:
-                    ++lH.stats.hitsFailedExtendAlignEValTest;
-                    break;
-                case ALIGNSCORE:
-                    ++lH.stats.hitsFailedExtendAlignScoreTest;
-                    break;
-                case PREALIGNEVAL:
-                    ++lH.stats.hitsFailedSeedAlignEValTest;
-                    break;
-                case PREALIGNSCORE:
-                    ++lH.stats.hitsFailedSeedAlignScoreTest;
-                    break;
-                default:
-                    return lret;
-                    break;
-            }
+//                 std::cout << "BAX\n" << std::flush;
+                // create blastmatch in list without copy or move
+                record.matches.emplace_back(
+                    lH.gH.qryIds [getTrueQryId(it->qryId, lH.options, TFormat())],
+                    lH.gH.subjIds[getTrueSubjId(it->subjId, lH.options, TFormat())]);
 
-            if (lret != 0)// discard match
-            {
-                record.matches.pop_back();
-            } else // filter the following matches for duplicate-candidates
-            {
-                auto const trueSubjId = getTrueSubjId(it->subjId, lH.options, TFormat());
+
+                auto & bm = back(record.matches);
+
+
+                bm.qStart    = it->qryStart;
+                bm.qEnd      = it->qryStart + lH.options.seedLength;
+                bm.sStart    = it->subjStart;
+                bm.sEnd      = it->subjStart + lH.options.seedLength;
+
+                // merge putative siblings into this match
                 for (auto it2 = itN;
                      (it2 != itEnd) &&
-                     (trueQryId == getTrueQryId(it2->qryId, lH.options, TFormat())) &&
-                     (trueSubjId == getTrueSubjId(it2->subjId, lH.options, TFormat()));
-                     )
+                     (trueQryId == getTrueQryId(it2->qryId,
+                                                lH.options,
+                                                TFormat())) &&
+                     (trueSubjId == getTrueSubjId(it2->subjId,
+                                                  lH.options,
+                                                  TFormat()));
+                    ++it2)
                 {
-                    auto it2N = std::next(it2, 1);
-                    auto const & row0 = row(bm.align, 0);
-                    auto const & row1 = row(bm.align, 1);
-                    if (toSourcePosition(row0,
-                                         toViewPosition(row1, it2->subjStart))
-                        == it2->qryStart) //TODO possibly check frame or other heuristic
+                    // same frame
+                    if (qryIsSameFrame(it->qryId, it2->qryId,
+                                        lH.options, TFormat()) &&
+                        subjIsSameFrame(it->subjId, it2->subjId,
+                                        lH.options, TFormat()))
                     {
-                        ++lH.stats.hitsPutativeDuplicate;
-                        lH.matches.erase(it2);
+                        // due to sorting it2->qryStart never <= it->qStart
+                        TPos const qDist = (it2->qryStart >= bm.qEnd)
+                                            ? it2->qryStart - bm.qEnd // upstream
+                                            : 0; // overlap
+
+                        TPos sDist = TPosMax; // subj match region downstream of *it
+                        if (it2->subjStart >= bm.sEnd) // upstream
+                            sDist = it2->subjStart - bm.sEnd;
+                        else if (it2->subjStart >= it->subjStart) // overlap
+                            sDist = 0;
+
+                        if ((qDist == sDist) &&
+                            (qDist <= lH.options.seedGravity))
+                        {
+                            bm.qEnd = std::max(bm.qEnd,
+                                               (TPos)(it2->qryStart
+                                               + lH.options.seedLength));
+                            bm.sEnd = std::max(bm.sEnd,
+                                               (TPos)(it2->subjStart
+                                               + lH.options.seedLength));
+                            ++lH.stats.hitsMerged;
+
+                            it2->qryStart = TPosMax;
+                            it2->subjStart = TPosMax;
+                        }
                     }
-                    it2 = it2N;
                 }
 
-                // make sure itN points to it's next again
-                itN = std::next(it, 1);
+                // do the extension and statistics
+                int lret = computeBlastMatch(bm, *it, lH);
+
+                switch (lret)
+                {
+                    case COMPUTERESULT_::SUCCESS:
+                        bm.sLength = ((TFormat::p == BlastFormatOptions::TBlastN) ||
+                                    (TFormat::p == BlastFormatOptions::TBlastX))
+                                    ? length(lH.gH.subjSeqs[it->subjId]) * 3
+                                    : length(lH.gH.subjSeqs[it->subjId]);
+    //                     lastMatch = ma;
+    //                     ++lH.stats.goodMatches;
+                        break;
+                    case ALIGNEVAL:
+                        ++lH.stats.hitsFailedExtendAlignEValTest;
+                        break;
+                    case ALIGNSCORE:
+                        ++lH.stats.hitsFailedExtendAlignScoreTest;
+                        break;
+                    case PREALIGNEVAL:
+                        ++lH.stats.hitsFailedSeedAlignEValTest;
+                        break;
+                    case PREALIGNSCORE:
+                        ++lH.stats.hitsFailedSeedAlignScoreTest;
+                        break;
+                    default:
+                        return lret;
+                        break;
+                }
+
+                if (lret != 0)// discard match
+                {
+                    record.matches.pop_back();
+                } else
+                {
+                    // filter the following matches for duplicate-candidates
+                    for (auto it2 = itN;
+                         (it2 != itEnd) &&
+                         (trueQryId == getTrueQryId(it2->qryId,
+                                                    lH.options,
+                                                    TFormat())) &&
+                         (trueSubjId == getTrueSubjId(it2->subjId,
+                                                      lH.options,
+                                                      TFormat()));
+                         ++it2)
+                    {
+                        // same frame and same range
+                        if (qryIsSameFrame(it->qryId, it2->qryId,
+                                           lH.options, TFormat()) &&
+                            subjIsSameFrame(it->subjId, it2->subjId,
+                                            lH.options, TFormat()) &&
+                            inRange(it2->qryStart, bm.qStart, bm.qEnd) &&
+                            inRange(it2->subjStart, bm.sStart, bm.sEnd))
+                        {
+                            auto const & row0 = row(bm.align, 0);
+                            auto const & row1 = row(bm.align, 1);
+                            // part of alignment
+                            if (toSourcePosition(row0,
+                                                 toViewPosition(row1,
+                                                                it2->subjStart))
+                                == it2->qryStart)
+                            {
+                                ++lH.stats.hitsPutativeDuplicate;
+                                it2->qryStart = TPosMax;
+                                it2->subjStart = TPosMax;
+                            }
+                        }
+                    }
+                }
             }
 
             // last item or new TrueQryId

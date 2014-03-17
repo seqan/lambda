@@ -28,6 +28,8 @@
 #define SEQAN_LAMBDA_MISC_H_
 
 #include <type_traits>
+#include <forward_list>
+
 
 #include <seqan/basic.h>
 #include <seqan/sequence.h>
@@ -89,6 +91,18 @@ int wdth(T number)
     return digits;
 }
 
+template <typename T>
+inline uint64_t
+length(std::deque<T> const & list)
+{
+    return list.size();
+}
+template <typename T>
+inline uint64_t
+length(std::forward_list<T> const & list)
+{
+    return std::distance(list.begin(), list.end());
+}
 
 
 template <typename TAlph>
@@ -104,7 +118,8 @@ operator<<(std::basic_ostream<char> & out,
 
 
 template <typename T1, typename T2>
-uint64_t quickHamming(T1 const & s1, T2 const & s2)
+inline uint64_t
+quickHamming(T1 const & s1, T2 const & s2)
 {
     SEQAN_ASSERT_EQ(length(s1), length(s2));
 
@@ -117,11 +132,16 @@ uint64_t quickHamming(T1 const & s1, T2 const & s2)
     return ret;
 }
 
+template <typename TPos>
+inline bool
+inRange(TPos const i, TPos const beg, TPos const end)
+{
+    return ((i >= beg) && (i < end));
+}
 
-
-
-int64_t intervalOverlap(uint64_t const s1, uint64_t const e1,
-                        uint64_t const s2, uint64_t const e2)
+inline uint64_t
+intervalOverlap(uint64_t const s1, uint64_t const e1,
+                uint64_t const s2, uint64_t const e2)
 {
     return std::min(e1, e2) - std::max(s1, s2);
 }
@@ -129,11 +149,12 @@ int64_t intervalOverlap(uint64_t const s1, uint64_t const e1,
 
 template <typename TSequence, typename TAlignSpec,
           typename TScoreValue, typename TScoreSpec, typename TAlignContext>
-TScoreValue localAlignment2(Align<TSequence, TAlignSpec> & align,
-                            Score<TScoreValue, TScoreSpec> const & scoringScheme,
-                            int lowerDiag,
-                            int upperDiag,
-                            TAlignContext & alignContext)
+inline TScoreValue
+localAlignment2(Align<TSequence, TAlignSpec> & align,
+                Score<TScoreValue, TScoreSpec> const & scoringScheme,
+                int lowerDiag,
+                int upperDiag,
+                TAlignContext & alignContext)
 {
 //     typedef Align<TSequence, TAlignSpec> TAlign;
 //     typedef typename Size<TAlign>::Type TSize;

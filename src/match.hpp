@@ -27,7 +27,6 @@
 #ifndef SEQAN_LAMBDA_FINDER_H_
 #define SEQAN_LAMBDA_FINDER_H_
 
-
 #include <forward_list>
 #include <vector>
 
@@ -54,13 +53,13 @@ struct Match
     TPos subjStart;
 //     TPos subjEnd;
 
-    Match() = default;
+//     Match()
 //     :
 //         qryId(0), qryStart(0), /*qryEnd(0),*/ subjId(0), subjStart(0)/*, subjEnd(0)*/
 //     {
 //     }
-
-    Match(Match const & m2) = default;
+// 
+//     Match(Match const & m2)
 //     {
 //         qryId       = m2.qryId;
 //         qryStart    = m2.qryStart;

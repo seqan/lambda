@@ -350,9 +350,9 @@ template <typename TId,
           BlastFormatOptions::Program p,
           BlastFormatOptions::Generation g>
 constexpr bool
-subjIsReverseComplemented(TId                   const & subjId,
-                      LambdaOptions const & /**/,
-                      BlastFormat<mf,p,g> const & /*tag*/)
+subjIsReverseComplemented(TId                   const & /**/,
+                          LambdaOptions         const & /**/,
+                          BlastFormat<mf,p,g>   const & /*tag*/)
 {
     return false;
 }
@@ -707,6 +707,50 @@ getTrueSubjEndPos(TId                                       const & subjId,
     return (!subjIsReverseComplemented(subjId, options, TFormat()))
             ? (subjEnd   * 3 + getQryFrameShift(subjId, options, TFormat()))
             : (subjStart * 3 + getQryFrameShift(subjId, options, TFormat()) + 1);
+}
+
+
+// ----------------------------------------------------------------------------
+// getTrueSubjEndPos()
+// ----------------------------------------------------------------------------
+
+template <typename TId,
+          BlastFormatOptions::M mf,
+          BlastFormatOptions::Program p,
+          BlastFormatOptions::Generation g>
+constexpr bool
+qryIsSameFrame(TId                                       const & qryId1,
+               TId                                       const & qryId2,
+               LambdaOptions                             const & options,
+               BlastFormat<mf,p,g>                       const & /*tag*/)
+{
+    typedef BlastFormat<mf,p,g> TFormat;
+    return ((getQryFrameShift(qryId1, options, TFormat()) ==
+             getQryFrameShift(qryId2, options, TFormat())) &&
+            (qryIsReverseComplemented(qryId1, options, TFormat()) ==
+             qryIsReverseComplemented(qryId2, options, TFormat())));
+}
+
+
+// ----------------------------------------------------------------------------
+// getTrueSubjEndPos()
+// ----------------------------------------------------------------------------
+
+template <typename TId,
+          BlastFormatOptions::M mf,
+          BlastFormatOptions::Program p,
+          BlastFormatOptions::Generation g>
+constexpr bool
+subjIsSameFrame(TId                                       const & subjId1,
+                TId                                       const & subjId2,
+                LambdaOptions                             const & options,
+                BlastFormat<mf,p,g>                       const & /*tag*/)
+{
+    typedef BlastFormat<mf,p,g> TFormat;
+    return ((getSubjFrameShift(subjId1, options, TFormat()) ==
+             getSubjFrameShift(subjId2, options, TFormat())) &&
+            (subjIsReverseComplemented(subjId1, options, TFormat()) ==
+             subjIsReverseComplemented(subjId2, options, TFormat())));
 }
 
 
