@@ -139,7 +139,7 @@ inRange(TPos const i, TPos const beg, TPos const end)
     return ((i >= beg) && (i < end));
 }
 
-inline uint64_t
+inline int64_t
 intervalOverlap(uint64_t const s1, uint64_t const e1,
                 uint64_t const s2, uint64_t const e2)
 {

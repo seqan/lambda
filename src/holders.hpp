@@ -242,9 +242,9 @@ public:
 
     // regarding extension
     typedef Align<
-                typename Infix<
-                    typename Value<
-                        typename TGlobalHolder::TUnredSeqs>::Type>::Type,
+        typename Infix<
+            typename Value<
+                typename TGlobalHolder::TUnredSeqs>::Type>::Type,
                 ArrayGaps> TAlign;
 
     typedef DPContext<typename Value<decltype(gH.scoreScheme)>::Type,
@@ -342,7 +342,7 @@ onFind(LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> & lH,
                 auto const halfSubjL = lH.options.seedLength /  2;
                 // more than half of the seed falls into masked interval
                 if (intervalOverlap(m.subjStart,
-                                    Match::TPos(m.subjStart + lH.options.seedLength),
+                                    m.subjStart + lH.options.seedLength,
                                     lH.gH.segIntStarts[m.subjId][k],
                                     lH.gH.segIntEnds[m.subjId][k])
                      >= halfSubjL)

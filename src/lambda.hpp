@@ -394,8 +394,8 @@ prepareScoringMore(GlobalDataHolder<TRedAlph,
                    LambdaOptions                    const & options,
                    std::true_type                   const & /**/)
 {
-    setScoreGapMatch(globalHolder.scoreScheme, options.match);
-    setScoreGapMismatch(globalHolder.scoreScheme, options.misMatch);
+    setScoreMatch(globalHolder.scoreScheme, options.match);
+    setScoreMismatch(globalHolder.scoreScheme, options.misMatch);
 }
 
 template <BlastFormatOptions::M m,
@@ -1296,9 +1296,9 @@ void printStats(StatsHolder const & stats, LambdaOptions const & options)
         #define BLANKS for (int i = 0; i< w; ++i) std::cout << " ";
         std::cout << "\033[1m   HITS                         "; BLANKS; std::cout << "Remaining\033[0m"
                  << "\n   after Seeding               "; BLANKS; std::cout << R << rem;
-        std::cout<< "\n - merged                   " << R << stats.hitsMerged       << RR << (rem-= stats.hitsMerged);
-        std::cout<< "\n - tooShort                 " << R << stats.hitsTooShort     << RR << (rem-= stats.hitsTooShort);
         std::cout<< "\n - masked                   " << R << stats.hitsMasked       << RR << (rem-= stats.hitsMasked);
+        std::cout<< "\n - merged                   " << R << stats.hitsMerged       << RR << (rem-= stats.hitsMerged);
+//         std::cout<< "\n - tooShort                 " << R << stats.hitsTooShort     << RR << (rem-= stats.hitsTooShort);
         std::cout<< "\n - putative duplicates      " << R << stats.hitsPutativeDuplicate   << RR << (rem-= stats.hitsPutativeDuplicate);
         std::cout<< "\n - failed seed align test   " << R << stats.hitsFailedSeedAlignScoreTest  << RR << (rem-= stats.hitsFailedSeedAlignScoreTest);
         std::cout<< "\n - failed extend align test " << R << stats.hitsFailedExtendAlignEValTest << RR << (rem-= stats.hitsFailedExtendAlignEValTest);

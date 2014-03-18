@@ -392,7 +392,7 @@ template <typename TId,
           BlastFormatOptions::Program p,
           BlastFormatOptions::Generation g>
 constexpr unsigned char
-getQryFrameShift(TId const & qryId,
+getQryFrameShift(TId const & /**/,
              LambdaOptions const & /**/,
              BlastFormat<mf,p,g> const & /*tag*/)
 {
@@ -470,9 +470,9 @@ template <typename TId,
           BlastFormatOptions::Program p,
           BlastFormatOptions::Generation g>
 constexpr TPos
-getTrueQryStartPos(TId                                  const & qryId,
+getTrueQryStartPos(TId                                  const & /**/,
                    TPos                                 const & qryStart,
-                   TPos                                 const & qryEnd,
+                   TPos                                 const & /**/,
                    LambdaOptions                        const & /**/,
                    BlastFormat<mf,p,g>                  const & /*tag*/)
 {

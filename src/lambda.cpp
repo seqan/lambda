@@ -28,6 +28,7 @@
 
 // DEBUG TODO DEBUG
 #define FASTBUILD
+
 // #define SEQAN_DEBUG_INDEX
 
 
@@ -155,7 +156,6 @@ int main(int argc, char const ** argv)
 // //               << "\ntrivially_copy: " << std::is_trivially_copyable<Match>::value
 //               << "\n";
 
-    
     return argConv0(options);
 }
 
@@ -382,8 +382,6 @@ argConv1(LambdaOptions      const & options,
             return argConv2(options, TFormat(), AminoAcid10());
         case 8:
             return argConv2(options, TFormat(), ReducedAminoAcid<ClusterReduction<8>>());
-        case 10:
-            return argConv2(options, TFormat(), ReducedAminoAcid<ClusterReduction<10>>());
         case 12:
             return argConv2(options, TFormat(), ReducedAminoAcid<ClusterReduction<12>>());
 #endif
