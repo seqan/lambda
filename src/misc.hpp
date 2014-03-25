@@ -39,7 +39,7 @@
 
 #include <seqan/blast.h>
 
-// #include "options.hpp"
+#include "options.hpp"
 // #include "finder.hpp"
 
 
@@ -321,6 +321,87 @@ _debug_shorten(StringSet<TString, TSpec > & seqs, unsigned const len)
     for (TString const & s : copySeqs)
         appendValue(seqs, s);
 }
+
+// ----------------------------------------------------------------------------
+// print if certain verbosity is set
+// ----------------------------------------------------------------------------
+
+
+template <typename T>
+inline void
+myPrintImpl(LambdaOptions const & /**/,
+            T const & first)
+{
+    std::cout << first;
+}
+
+inline void
+myPrintImpl(LambdaOptions const & options,
+            std::stringstream const & first)
+{
+    std::string str = first.str();
+//     std::cerr << "terminal cols: " << options.terminalCols
+//               << " str.size() " << str.size() << "\n";
+    if (options.isTerminal && (str.size() >= (options.terminalCols -12)))
+        std::cout << str.substr(str.size()-options.terminalCols+12,
+                                options.terminalCols);
+    else
+        std::cout << str;
+}
+
+template <typename T, typename ... Args>
+inline void
+myPrintImpl(LambdaOptions const & options,
+            T const & first,
+            Args const & ... args)
+{
+    std::cout << first;
+    myPrintImpl(options, args...);
+
+}
+
+template <typename ... Args>
+inline void
+myPrintImplThread(LambdaOptions const & options,
+//                   T const & first,
+                  Args const & ... args)
+{
+    #pragma omp critical(stdout)
+    {
+//                 std::cout << "\033[" << omp_get_thread_num() << "B";
+//                 std::cout << "\033E";
+        if (options.isTerminal)
+        {
+            for (unsigned char i=0; i< omp_get_thread_num(); ++i)
+                std::cout << std::endl;
+            std::cout << "\033[K";
+        }
+        std::cout << "Thread " << omp_get_thread_num() << ": ";
+
+        myPrintImpl(options, args...);
+        std::cout << "\n" << std::flush;
+        if (options.isTerminal)
+            std::cout << "\033[" << omp_get_thread_num()+1 << "A";
+    }
+}
+
+template <typename... Args>
+inline void
+myPrint(LambdaOptions const & options, const int verbose, Args const &... args)
+{
+    if (options.verbosity >= verbose)
+    {
+        if (omp_in_parallel())
+            myPrintImplThread(options, args...);
+        else
+            myPrintImpl(options, args...);
+
+    }
+}
+
+
+
+
 
 // ----------------------------------------------------------------------------
 // get plus-minus-range with bounds-checking for unsigned types

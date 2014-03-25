@@ -408,11 +408,13 @@ argConv2(LambdaOptions      const & options,
 #ifndef FASTBUILD
         case 0:
             return argConv3(options, TFormat(), TRedAlph(), Score<int, Simple>());
+        case 50:
+            return argConv3(options, TFormat(), TRedAlph(), Blosum50());
 #endif
         case 62:
             return argConv3(options, TFormat(), TRedAlph(), Blosum62());
-
         default:
+            std::cerr << "Unsupported Scoring Scheme selected.\n";
             break;
     }
 
@@ -474,7 +476,11 @@ realMain(LambdaOptions      const & options,
     TGlobalHolder globalHolder;
     globalHolder.stats.clear();
 
-    int ret = loadDbIndexFromDisk(globalHolder, options);
+    int ret = prepareScoring(globalHolder, options);
+    if (ret)
+        return ret;
+
+    ret = loadDbIndexFromDisk(globalHolder, options);
     if (ret)
         return ret;
 
@@ -487,10 +493,6 @@ realMain(LambdaOptions      const & options,
         return ret;
 
     ret = loadQuery(globalHolder, options);
-    if (ret)
-        return ret;
-
-    ret = prepareScoring(globalHolder, options);
     if (ret)
         return ret;
 
@@ -510,6 +512,19 @@ realMain(LambdaOptions      const & options,
     if (ret)
         return ret;
 
+    myPrint(options, 1,
+            "Searching ",
+            options.queryPart,
+            " blocks of query with ",
+            omp_get_max_threads(),
+            " threads...\n");
+
+    if (isatty(fileno(stdin)))
+    {
+        for (unsigned char i=0; i< omp_get_num_threads()+3; ++i)
+            std::cout << std::endl;
+        std::cout << "\033[" << omp_get_num_threads()+2 << "A";
+    }
 
     // TODO evaluate localHolder outside of loop and firstprivate
     #pragma omp parallel for schedule(dynamic)

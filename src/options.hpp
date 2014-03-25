@@ -28,7 +28,11 @@
 #ifndef SEQAN_LAMBDA_OPTIONS_H_
 #define SEQAN_LAMBDA_OPTIONS_H_
 
+#include <cstdio>
+#include <unistd.h>
+
 #include <seqan/basic.h>
+#include <seqan/translation.h>
 #include <seqan/blast.h>
 #include <seqan/arg_parse.h>
 
@@ -85,12 +89,33 @@ struct SharedOptions
 
     int         alphReduction;
 
+    GeneticCodeEnum geneticCode;
+
     BlastFormatOptions::Program blastProg;
 
+    bool        isTerminal = false;
+    unsigned    terminalCols = 80;
+
     SharedOptions() :
-        verbosity(2),fileFormat(0),alphReduction(0),
+        verbosity(3),fileFormat(0),alphReduction(0),
         blastProg(BlastFormatOptions::BlastX)
-    {}
+    {
+        isTerminal = isatty(fileno(stdout));
+        if (isTerminal)
+        {
+            int cols = 80;
+        #ifdef TIOCGSIZE
+            struct ttysize ts;
+            ioctl(STDIN_FILENO, TIOCGSIZE, &ts);
+            cols = ts.ts_cols;
+        #elif defined(TIOCGWINSZ)
+            struct winsize ts;
+            ioctl(STDIN_FILENO, TIOCGWINSZ, &ts);
+            cols = ts.ws_col;
+        #endif /* TIOCGSIZE */
+            terminalCols = cols;
+        }
+    }
 };
 
 
@@ -127,10 +152,6 @@ struct LambdaOptions : public SharedOptions
     int             xDropOff    = 0;
     int             band        = -1;
     double          eCutOff     = 0;
-
-
-
-
 
     LambdaOptions() :
         SharedOptions()
@@ -217,6 +238,33 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setValidValues(parser, "program", "blastn blastp blastx tblastn tblastx");
     setDefaultValue(parser, "program", "blastx");
 
+    addOption(parser, seqan::ArgParseOption("pf",
+                                            "partition-factor",
+                                            "The query sequences "
+                                            "are partioned into pf * n parts "
+                                            "and searched en bloc, where n is "
+                                            "the number of available threads. "
+                                            "A pf of 1 yields the best speed, "
+                                            "a higher pf results in slight "
+                                            "run-time increases, but "
+                                            "dramatically decreases memory "
+                                            "usage.",
+                                            seqan::ArgParseArgument::INTEGER));
+//     setValidValues(parser, "alph", "0 10");
+    setDefaultValue(parser, "partition-factor", "2");
+
+    addSection(parser, "Translation and Alphabet");
+    addOption(parser, seqan::ArgParseOption("gc",
+                                            "genetic-code",
+                                            "The translation table to use "
+                                            "for nucl -> amino acid translation"
+                                            "(not for BlastN, BlastP). See "
+               "https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi?mode=c"
+                                            " for ids (default is generic)",
+                                            seqan::ArgParseArgument::INTEGER));
+//     setValidValues(parser, "alph", "0 10");
+    setDefaultValue(parser, "genetic-code", "1");
+
     addOption(parser, seqan::ArgParseOption("a",
                                             "alph",
                                             "Alphabet Reduction for AminoAcid "
@@ -226,57 +274,48 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 //     setValidValues(parser, "alph", "0 10");
     setDefaultValue(parser, "alph", "2");
 
-    addOption(parser, seqan::ArgParseOption("qp",
-                                            "querypart",
-                                            "Partition query into N blocks;"
-                                            "defaults to number of CPUs; "
-                                            "increase if you run out of memory "
-                                            "to mulitple of NCPU",
-                                            seqan::ArgParseArgument::INTEGER));
-//     setValidValues(parser, "alph", "0 10");
-    setDefaultValue(parser, "querypart", "0");
 
     addSection(parser, "Seeding / Filtration");
     addOption(parser, seqan::ArgParseOption("su",
-                                            "ungappedseeds",
+                                            "ungapped-seeds",
                                             "Deacitvate EditDistance-Seeding.",
                                             seqan::ArgParseArgument::INTEGER));
-    setDefaultValue(parser, "ungappedseeds", "1");
+    setDefaultValue(parser, "ungapped-seeds", "1");
 
     addOption(parser, seqan::ArgParseOption("sl",
-                                            "seedlength",
+                                            "seed-length",
                                             "Length of the seeds (0 -> choose "
                                             "automatically).",
                                             seqan::ArgParseArgument::INTEGER));
-    setDefaultValue(parser, "seedlength", "0");
+    setDefaultValue(parser, "seed-length", "0");
 
     addOption(parser, seqan::ArgParseOption("sd",
-                                            "seeddelta",
+                                            "seed-delta",
                                             "maximum seed distance.",
                                             seqan::ArgParseArgument::INTEGER));
-    setDefaultValue(parser, "seeddelta", "1");
+    setDefaultValue(parser, "seed-delta", "1");
 
     addOption(parser, seqan::ArgParseOption("sg",
-                                            "seedgravity",
+                                            "seed-gravity",
                                             "Seeds closer than this are joined"
                                             "(-1 -> choose automatically).",
                                             seqan::ArgParseArgument::INTEGER));
-    setDefaultValue(parser, "seedgravity", "-1");
+    setDefaultValue(parser, "seed-gravity", "-1");
 
     addOption(parser, seqan::ArgParseOption("sm",
-                                            "seedminlength",
+                                            "seed-min-length",
                                             "after postproc shorter seeds are "
                                             "discarded"
                                             "(0 -> choose automatically).",
                                             seqan::ArgParseArgument::INTEGER));
-    setDefaultValue(parser, "seedminlength", "0");
+    setDefaultValue(parser, "seed-min-length", "0");
 
     addOption(parser, seqan::ArgParseOption("ss",
-                                            "seedminscore",
+                                            "seed-min-score",
                                             "after postproc worse seeds are "
-                                            "discarded.",
+                                            "discarded [raw score].",
                                             seqan::ArgParseArgument::INTEGER));
-    setDefaultValue(parser, "seedminscore", "32");
+    setDefaultValue(parser, "seed-min-score", "32");
 
 //     addOption(parser, seqan::ArgParseOption("se",
 //                                             "seedminevalue",
@@ -286,23 +325,57 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 //                                             seqan::ArgParseArgument::INTEGER));
 //     setDefaultValue(parser, "seedminevalue", "100000");
 
-        addOption(parser, seqan::ArgParseOption("sb",
-                                            "seedminbits",
-                                            "after postproc worse seeds are "
-                                            "discarded"
-                                            "(-1 -> off).",
-                                            seqan::ArgParseArgument::DOUBLE));
-    setDefaultValue(parser, "seedminbits", "-1");
+//     addOption(parser, seqan::ArgParseOption("sb",
+//                                             "seedminbits",
+//                                             "after postproc worse seeds are "
+//                                             "discarded"
+//                                             "(-1 -> off).",
+//                                             seqan::ArgParseArgument::DOUBLE));
+//     setDefaultValue(parser, "seedminbits", "-1");
+
+    addSection(parser, "Scoring");
+
+    addOption(parser, seqan::ArgParseOption("sc",
+                                            "scoring-scheme",
+                                            "'62' for Blosum62 (default); '50' for "
+                                            "Blosum50; '0' for manual (default "
+                                            "for BlastN)",
+                                            seqan::ArgParseArgument::INTEGER));
+    setDefaultValue(parser, "scoring-scheme", "62");
+
+    addOption(parser, seqan::ArgParseOption("ge",
+                                            "score-gap",
+                                            "Score per gap character.",
+                                            seqan::ArgParseArgument::INTEGER));
+    setDefaultValue(parser, "score-gap", "-1");
+
+    addOption(parser, seqan::ArgParseOption("go",
+                                            "score-gap-open",
+                                            "Additional cost for opening gap.",
+                                            seqan::ArgParseArgument::INTEGER));
+    setDefaultValue(parser, "score-gap-open", "-11");
+
+    addOption(parser, seqan::ArgParseOption("ma",
+                                            "score-match",
+                                            "Match score (manual scoring only)",
+                                            seqan::ArgParseArgument::INTEGER));
+    setDefaultValue(parser, "score-match", "2");
+
+    addOption(parser, seqan::ArgParseOption("mi",
+                                            "score-mismatch",
+                                            "Mismatch score (manual scoring only)",
+                                            seqan::ArgParseArgument::INTEGER));
+    setDefaultValue(parser, "score-mismatch", "-3");
 
     addSection(parser, "Extension");
 
     addOption(parser, seqan::ArgParseOption("x",
-                                            "xdrop",
+                                            "x-drop",
                                             "Stop Banded extension if score "
                                             "x below the maximum seen"
                                             "(-1 means no xdrop).",
                                             seqan::ArgParseArgument::INTEGER));
-    setDefaultValue(parser, "xdrop", "30");
+    setDefaultValue(parser, "x-drop", "30");
 
     addOption(parser, seqan::ArgParseOption("b",
                                             "band",
@@ -315,10 +388,10 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setDefaultValue(parser, "band", "-3");
 
     addOption(parser, seqan::ArgParseOption("e",
-                                            "evalue",
+                                            "e-value",
                                             "Minimum E-Value for Results.",
                                             seqan::ArgParseArgument::DOUBLE));
-    setDefaultValue(parser, "evalue", "0.1");
+    setDefaultValue(parser, "e-value", "0.1");
 
 
     addTextSection(parser, "Environment Variables");
@@ -326,7 +399,8 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
                         "set this to a local directory with lots of "
                         "space. If you can afford it use /dev/shm.");
     addListItem(parser, "\\fBOMP_NUM_THREADS\\fP",
-                        "number of threads to use.");
+                        "number of threads to use, defaults to number of "
+                        "CPUs/-cores");
 
 
     // Parse command line.
@@ -375,46 +449,51 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     //TODO adapt seedlength if alphReduction
 
     int buf = 0;
-    getOptionValue(buf, parser, "seedlength");
+    getOptionValue(buf, parser, "seed-length");
     if (buf != 0) // seed length was specified manually
         options.seedLength = buf;
 
     buf = 0;
-    getOptionValue(buf, parser, "seeddelta");
+    getOptionValue(buf, parser, "seed-delta");
     options.maxSeedDist = buf;
     if (buf == 0)
     {
         options.hammingOnly = true;
     } else
     {
-        getOptionValue(buf, parser, "ungappedseeds");
+        getOptionValue(buf, parser, "ungapped-seeds");
         options.hammingOnly = (buf != 0);
+        if (!options.hammingOnly)
+        {
+            std::cerr << "Edit-Distance seeds not supported in the build.\n";
+            return seqan::ArgumentParser::PARSE_ERROR;
+        }
     }
 
 
-    getOptionValue(buf, parser, "seedgravity");
+    getOptionValue(buf, parser, "seed-gravity");
     if (buf == -1)
         options.seedGravity = options.seedLength;
     else
         options.seedGravity = buf;
 
     unsigned foo = 0;
-    getOptionValue(foo, parser, "seedminlength");
+    getOptionValue(foo, parser, "seed-min-length");
     options.minSeedLength = foo;
     if (options.minSeedLength == 0)
         options.minSeedLength = options.seedLength;
 
-    getOptionValue(foo, parser, "seedminscore");
+    getOptionValue(foo, parser, "seed-min-score");
     options.minSeedScore = foo;
 
 //     getOptionValue(foo, parser, "seedminevalue");
 //     options.minSeedEVal = foo;
 
-    getOptionValue(options.minSeedBitS, parser, "seedminbits");
+//     getOptionValue(options.minSeedBitS, parser, "seedminbits");
 
-    getOptionValue(options.eCutOff, parser, "evalue");
+    getOptionValue(options.eCutOff, parser, "e-value");
 
-    getOptionValue(options.xDropOff, parser, "xdrop");
+    getOptionValue(options.xDropOff, parser, "x-drop");
     if (options.xDropOff < -1)
     {
         std::cerr << "xDropOff must be in [ -1 : MAXINT ]" << std::endl;
@@ -449,11 +528,39 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
             return seqan::ArgumentParser::PARSE_ERROR;
     }
 
-    getOptionValue(foo, parser, "querypart");
-    options.queryPart = foo;
-    if (options.queryPart == 0)
-        options.queryPart = omp_get_max_threads();
+    getOptionValue(foo, parser, "partition-factor");
+    options.queryPart = foo * omp_get_max_threads();
 
+    getOptionValue(options.scoringMethod, parser, "scoring-scheme");
+    switch (options.scoringMethod)
+    {
+        case 0:
+            getOptionValue(options.misMatch, parser, "score-mismatch");
+            getOptionValue(options.match, parser, "score-match");
+            break;
+        case 50: case 62: break;
+        default:
+            std::cerr << "Unsupported Scoring Scheme selected.\n";
+            return seqan::ArgumentParser::PARSE_ERROR;
+    }
+
+    getOptionValue(options.gapExtend, parser, "score-gap");
+    getOptionValue(options.gapOpen, parser, "score-gap-open");
+
+    getOptionValue(foo, parser, "genetic-code");
+    switch (foo)
+    {
+        case 1: case 2: case 3: case 4: case 5: case 6:
+        case 9: case 10: case 11: case 12: case 13: case 14: case 15: case 16:
+        case 21: case 22: case 23: case 24 : case 25:
+            options.geneticCode = static_cast<GeneticCodeEnum>(foo);
+            break;
+        default:
+            std::cerr << "Invalid genetic code. See trans_table vars at "
+                      << "https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi?mode=c"
+                      << std::endl;
+            return seqan::ArgumentParser::PARSE_ERROR;
+    }
     return seqan::ArgumentParser::PARSE_OK;
 }
 
@@ -508,11 +615,24 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
     setValidValues(parser, "program", "blastn blastp blastx tblastn tblastx");
     setDefaultValue(parser, "program", "blastx");
 
+    addSection(parser, "Translation and Alphabet");
+    addOption(parser, seqan::ArgParseOption("gc",
+                                            "genetic-code",
+                                            "The translation table to use "
+                                            "(not for BlastN, BlastP). See "
+               "https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi?mode=c"
+                                            " for ids (default is generic)",
+                                            seqan::ArgParseArgument::INTEGER));
+//     setValidValues(parser, "alph", "0 10");
+    setDefaultValue(parser, "genetic-code", "1");
+
     addOption(parser, seqan::ArgParseOption("a",
                                             "alph",
                                             "Alphabet Reduction for AminoAcid "
-                                            "Alphabet (0 -> off).",
+                                            "Alphabet (0 -> off; 2 -> Murphy10; "
+                                            "8,10,12 -> Lambda*).",
                                             seqan::ArgParseArgument::INTEGER));
+//     setValidValues(parser, "alph", "0 10");
     setDefaultValue(parser, "alph", "2");
 
     addTextSection(parser, "Environment Variables");
@@ -588,6 +708,22 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
 
 
     getOptionValue(options.segFile, parser, "segfile");
+
+    int foo = 0;
+    getOptionValue(foo, parser, "genetic-code");
+    switch (foo)
+    {
+        case 1: case 2: case 3: case 4: case 5: case 6:
+        case 9: case 10: case 11: case 12: case 13: case 14: case 15: case 16:
+        case 21: case 22: case 23: case 24 : case 25:
+            options.geneticCode = static_cast<GeneticCodeEnum>(foo);
+            break;
+        default:
+            std::cerr << "Invalid genetic code. See trans_table vars at "
+                      << "https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi?mode=c"
+                      << std::endl;
+            return seqan::ArgumentParser::PARSE_ERROR;
+    }
 
     return seqan::ArgumentParser::PARSE_OK;
 }

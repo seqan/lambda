@@ -101,7 +101,7 @@ inline int
 loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
                     LambdaOptions const & options)
 {
-    std::cout << "Loading Database Index from disk..." << std::flush;
+    std::cout << "Loading Database Index from disk…" << std::flush;
     double start = sysTime();
     int ret = open(globalHolder.dbIndex, toCString(options.dbFile));
     if (ret != true)
@@ -131,7 +131,7 @@ template <BlastFormatOptions::M m,
           BlastFormatOptions::Generation g,
           typename TRedAlph,
           typename TScoreScheme,
-//           MyEnableIf<typename Not<typename Or<typename IsSameType<TRedAlph,AminoAcid>::Type, typename IsSameType<TRedAlph,Dna5>::Type>::Type>::Type()>...>
+//           MyEnableIf<typename Not<typename Or<typename IsSameType<TRedAlph,AminoAcid>::Type, typename IsSameType<TRedAlph,Dna5>::Type>::Type>::Type()>…>
           MyEnableIf<!std::is_same<TRedAlph,AminoAcid>::value && !std::is_same<TRedAlph,Dna5>::value>...>
 inline int
 loadQueryImpl(GlobalDataHolder<TRedAlph,
@@ -155,11 +155,14 @@ loadQueryImpl(GlobalDataHolder<TRedAlph,
     if (ret)
         return ret;
 
-    std::cout << "translating..." << std::flush;
-    translate(globalHolder.qrySeqs, untranslatedSeqs, SIX_FRAME);
+    std::cout << "translating…" << std::flush;
+    translate(globalHolder.qrySeqs,
+              untranslatedSeqs,
+              SIX_FRAME,
+              options.geneticCode);
 
     // reduce implicitly
-    std::cout << "reducing..." << std::flush;
+    std::cout << "reducing…" << std::flush;
     globalHolder.redQrySeqs.concat = globalHolder.qrySeqs.concat;
     globalHolder.redQrySeqs.limits = globalHolder.qrySeqs.limits;
 
@@ -195,8 +198,11 @@ loadQueryImpl(GlobalDataHolder<TRedAlph,
     if (ret)
         return ret;
 
-    std::cout << "translating..." << std::flush;
-    translate(globalHolder.qrySeqs, untranslatedSeqs, SIX_FRAME);
+    std::cout << "translating…" << std::flush;
+    translate(globalHolder.qrySeqs,
+              untranslatedSeqs,
+              SIX_FRAME,
+              options.geneticCode);
 
     return 0;
 }
@@ -240,7 +246,7 @@ loadQuery(GlobalDataHolder<TRedAlph,
           LambdaOptions                     const & options)
 { 
     double start = sysTime();
-    std::cout << "Loading Query Sequences and Ids..." << std::flush;
+    std::cout << "Loading Query Sequences and Ids…" << std::flush;
     int ret = loadQueryImpl(globalHolder, options);
     if (ret)
         return ret;
@@ -278,7 +284,7 @@ loadSubjects(GlobalDataHolder<TRedAlph,
 //     typedef BlastFormat<m,p,g> TFormat;
 
     double start = sysTime();
-    std::cout << "Loading Subj Sequences..." << std::flush;
+    std::cout << "Loading Subj Sequences…" << std::flush;
 
     CharString _dbSeqs = options.dbFile;
     if (options.alphReduction > 0)
@@ -298,7 +304,7 @@ loadSubjects(GlobalDataHolder<TRedAlph,
 
 
     start = sysTime();
-    std::cout << "Loading Subj Ids..." << std::flush;
+    std::cout << "Loading Subj Ids…" << std::flush;
     _dbSeqs = options.dbFile;
     append(_dbSeqs, ".ids");
     ret = open(globalHolder.subjIds, toCString(_dbSeqs));
@@ -342,7 +348,7 @@ loadSegintervals(GlobalDataHolder<TRedAlph,
 {
 
     double start = sysTime();
-    std::cout << "Loading Database Masking file..." << std::flush;
+    std::cout << "Loading Database Masking file…" << std::flush;
 
     CharString segFileS = options.dbFile;
     append(segFileS, ".binseg_s.concat");
@@ -447,14 +453,19 @@ prepareScoring(GlobalDataHolder<TRedAlph,
 // --------------------------------------------------------------------------
 // Function generateSeeds()
 // --------------------------------------------------------------------------
-
+/*
+#define THREADLINE std::cout << "\0338" << std::endl << "Thread " << lH.i \
+<< std::endl; \
+for (unsigned char i=0; i< lH.i*20; ++i) std::cout << std::endl;*/
 
 template <typename TLocalHolder>
 inline int
 generateSeeds(TLocalHolder & lH)
 {
-    if (lH.options.verbosity >= 3)
-        std::cout << lH.i << ": Generating Seeds..." << std::flush;
+    lH.statusStr << "Generating Seeds…";
+    if (lH.options.isTerminal)
+        myPrint(lH.options, 2, lH.statusStr);
+
     double start = sysTime();
     for (unsigned long i = lH.indexBeginQry; i < lH.indexEndQry; ++i)
     {
@@ -473,12 +484,12 @@ generateSeeds(TLocalHolder & lH)
         }
     }
     double finish = sysTime() - start;
-    if (lH.options.verbosity >= 3)
-    {
-        std::cout << lH.i << ":  done.\n" << std::flush;
-        std::cout << lH.i << ": Runtime: " << finish << "s \n" << std::flush;
-        std::cout << lH.i << ": Number of seeds created: " << length(lH.seeds) << "\n\n";
-    }
+    lH.statusStr << " done. " ;
+    if (lH.options.verbosity > 2)
+        lH.statusStr << finish << "[s]. "
+                     << length(lH.seeds) << " seeds created.";
+
+    myPrint(lH.options, 2, lH.statusStr);
     return 0;
 }
 
@@ -492,8 +503,9 @@ template <typename TLocalHolder>
 inline int
 generateTrieOverSeeds(TLocalHolder & lH)
 {
-    if (lH.options.verbosity >= 3)
-        std::cout << lH.i << ": Generating Query-Index..." << std::flush;
+    lH.statusStr << "Generating Query-Index…";
+    if (lH.options.isTerminal)
+        myPrint(lH.options, 2, lH.statusStr);
 
     double start = sysTime();
     // we only want full length seed sequences in index, build up manually
@@ -512,13 +524,12 @@ generateTrieOverSeeds(TLocalHolder & lH)
     typename Iterator<typename TLocalHolder::TSeedIndex, TopDown<> >::Type it(lH.seedIndex); // instantiate
     double finish = sysTime() - start;
 
-    if (lH.options.verbosity >= 3)
-    {
-        std::cout << lH.i << ":  done.\n" << std::flush;
-        std::cout << lH.i << ": Runtime: " << finish << "s \n" << std::flush;
-        std::cout << lH.i << ": Number of fibres in SeedIndex: " << length(sa) << "\n\n";
+    lH.statusStr << " done. " ;
+    if (lH.options.verbosity > 2)
+        lH.statusStr << finish << "[s]. "
+                     << length(sa) << " fibres in SeedIndex. ";
+    myPrint(lH.options, 2, lH.statusStr);
 
-    }
     return 0;
 }
 
@@ -532,10 +543,10 @@ inline int
 search(TLocalHolder & lH)
 {
     // FIND
-    if (lH.options.verbosity >= 3)
-    {
-        std::cout << lH.i << ": Starting a search..." << std::flush;
-    }
+    lH.statusStr << "Seeding…";
+    if (lH.options.isTerminal)
+        myPrint(lH.options, 2, lH.statusStr);
+
     double start = sysTime();
     if (lH.options.hammingOnly)
     {
@@ -563,11 +574,8 @@ search(TLocalHolder & lH)
 
     double finish = sysTime() - start;
 
-    if (lH.options.verbosity >= 3)
-    {
-        std::cout << lH.i << ":  done.\n" << std::flush;
-        std::cout << lH.i << ": Runtime: " << finish << "s \n\n" << std::flush;
-    }
+    lH.statusStr << " done. " << finish << "[s]. ";
+    myPrint(lH.options, 2, lH.statusStr);
 
     return 0;
 }
@@ -582,26 +590,27 @@ template <typename TLocalHolder>
 inline void
 joinAndFilterMatches(TLocalHolder & lH)
 {
-    auto const originalNum = length(lH.matches);
+//     auto const originalNum = length(lH.matches);
+    lH.statusStr << "Sorting hits…";
+    if (lH.options.isTerminal)
+        myPrint(lH.options, 2, lH.statusStr);
 
     /// sort
-    if (lH.options.verbosity >= 3)
-        std::cout << lH.i << ": Sorting matches..." << std::flush;
 
     double start = sysTime();
 //    std::sort(begin(lH.matches, Standard()), end(lH.matches, Standard()));
    std::sort(lH.matches.begin(), lH.matches.end());
 //     lH.matches.sort();
     double finish = sysTime() - start;
-    if (lH.options.verbosity >= 3)
-    {
-        std::cout << lH.i << ":  done.\n" << std::flush;
-        std::cout << lH.i << ": Runtime: " << finish << "s \n" << std::flush;
+    lH.statusStr << " done. " ;
+    if (lH.options.verbosity > 2)
+        lH.statusStr << finish << "[s]. ";
+    myPrint(lH.options, 2, lH.statusStr);
 
-        // join and remove duplicates, filter too short matches
-        std::cout << lH.i << ": Joining and filtering matches..." << std::flush;
-        start = sysTime();
-    }
+//     // join and remove duplicates, filter too short matches
+//     std::cout <<": Joining and filtering matches…" << std::flush;
+//     start = sysTime();
+
 
 //     std::cout << "Matches before DEBUG checks:" << lH.matches.size() << "\n";
 //     // DEBUG
@@ -683,14 +692,17 @@ joinAndFilterMatches(TLocalHolder & lH)
 //         ++lH.stats.hitsTooShort;
 //     }
 
-    if (lH.options.verbosity >= 3)
-    {
-        finish = sysTime() - start;
-        std::cout << lH.i << ":  done.\n" << std::flush;
-        std::cout << lH.i << ": Runtime: " << finish << "s \n" << std::flush;
-        std::cout << lH.i << ": No of matches before joining and filtering: " << originalNum
-                << ". After: " << length(lH.matches) << "\n\n" << std::flush;
-    }
+//     if (lH.options.verbosity >= 3)
+//     {
+//         finish = sysTime() - start;
+//         THREADLINE
+//         std::cout <<":  done.\n" << std::flush;
+//         THREADLINE
+//         std::cout <<": Runtime: " << finish << "s \n" << std::flush;
+//         THREADLINE
+//         std::cout <<": No of matches before joining and filtering: " << originalNum
+//                 << ". After: " << length(lH.matches) << "\n\n" << std::flush;
+//     }
 
 }
 
@@ -1077,8 +1089,9 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
     constexpr TPos TPosMax = std::numeric_limits<TPos>::max();
 
 
-//     double start = sysTime();
-//     std::cout << "Realigning, extending and dumping matches..." << std::flush;
+    double start = sysTime();
+    lH.statusStr << "Extending and writing hits…";
+    myPrint(lH.options, 2, lH.statusStr);
 
     //DEBUG
 //     std::cout << "Length of matches:   " << length(lH.matches);
@@ -1277,10 +1290,10 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
 
     }
 
-//     std::cout << " done.\n";
-//     double finish = sysTime() - start;
-//     std::cout << "Runtime: " << finish << "s \n\n" << std::flush;
+    double finish = sysTime() - start;
 
+    lH.statusStr << " done. " << finish << "[s]. ";
+    myPrint(lH.options, 2, lH.statusStr);
     return 0;
 }
 
@@ -1288,7 +1301,9 @@ void printStats(StatsHolder const & stats, LambdaOptions const & options)
 {
     if (options.verbosity >= 2)
     {
-
+        if (options.isTerminal)
+            for (unsigned char i=0; i< omp_get_max_threads()+3; ++i)
+                std::cout << std::endl;
         unsigned long rem = stats.hitsAfterSeeding;
         auto const w = wdth(rem);
         #define R  " " << std::setw(w)

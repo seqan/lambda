@@ -258,6 +258,9 @@ public:
     // regarding the gathering of stats
     StatsHolder         stats;
 
+    // progress string
+    std::stringstream         statusStr;
+
     LocalDataHolder(LambdaOptions     const & _options,
                     TGlobalHolder     /*const*/ & _globalHolder) :
         options(_options), gH(_globalHolder)
@@ -280,6 +283,8 @@ public:
         clear(seedRefs);
         clear(seedRanks);
         stats.clear();
+        statusStr.clear();
+        statusStr.precision(2);
     }
 
 };
