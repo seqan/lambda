@@ -405,12 +405,14 @@ argConv2(LambdaOptions      const & options,
     using TFormat = BlastFormat<m,p,g>;
     switch (options.scoringMethod)
     {
-#ifndef FASTBUILD
+// #ifndef FASTBUILD
         case 0:
             return argConv3(options, TFormat(), TRedAlph(), Score<int, Simple>());
-        case 50:
-            return argConv3(options, TFormat(), TRedAlph(), Blosum50());
-#endif
+        case 45:
+            return argConv3(options, TFormat(), TRedAlph(), Blosum45());
+        case 80:
+            return argConv3(options, TFormat(), TRedAlph(), Blosum80());
+// #endif
         case 62:
             return argConv3(options, TFormat(), TRedAlph(), Blosum62());
         default:

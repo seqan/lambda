@@ -89,7 +89,7 @@ struct SharedOptions
 
     int         alphReduction;
 
-    GeneticCodeEnum geneticCode;
+    GeneticCodeSpec geneticCode;
 
     BlastFormatOptions::Program blastProg;
 
@@ -524,7 +524,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         case 0: break;
         break;
         default:
-            std::cerr << "Alphabet Reduction must be one of 8, 10, 12 or off" << std::endl;
+            std::cerr << "Alphabet Reduction must be one of 2, 8, 10, 12 or off" << std::endl;
             return seqan::ArgumentParser::PARSE_ERROR;
     }
 
@@ -538,7 +538,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
             getOptionValue(options.misMatch, parser, "score-mismatch");
             getOptionValue(options.match, parser, "score-match");
             break;
-        case 50: case 62: break;
+        case 45: case 62: case 80: break;
         default:
             std::cerr << "Unsupported Scoring Scheme selected.\n";
             return seqan::ArgumentParser::PARSE_ERROR;
@@ -553,7 +553,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         case 1: case 2: case 3: case 4: case 5: case 6:
         case 9: case 10: case 11: case 12: case 13: case 14: case 15: case 16:
         case 21: case 22: case 23: case 24 : case 25:
-            options.geneticCode = static_cast<GeneticCodeEnum>(foo);
+            options.geneticCode = static_cast<GeneticCodeSpec>(foo);
             break;
         default:
             std::cerr << "Invalid genetic code. See trans_table vars at "
@@ -702,7 +702,7 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
         }
         break;
         default:
-            std::cerr << "Alphabet Reduction must be one of 8, 10, 12 or off" << std::endl;
+            std::cerr << "Alphabet Reduction must be one of 2, 8, 10, 12 or off" << std::endl;
             return seqan::ArgumentParser::PARSE_ERROR;
     }
 
@@ -716,7 +716,7 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
         case 1: case 2: case 3: case 4: case 5: case 6:
         case 9: case 10: case 11: case 12: case 13: case 14: case 15: case 16:
         case 21: case 22: case 23: case 24 : case 25:
-            options.geneticCode = static_cast<GeneticCodeEnum>(foo);
+            options.geneticCode = static_cast<GeneticCodeSpec>(foo);
             break;
         default:
             std::cerr << "Invalid genetic code. See trans_table vars at "
