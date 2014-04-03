@@ -470,12 +470,14 @@ generateSeeds(TLocalHolder & lH)
     for (unsigned long i = lH.indexBeginQry; i < lH.indexEndQry; ++i)
     {
         for (unsigned j = 0;
-             ((j+1) * lH.options.seedLength) <= length(value(lH.gH.redQrySeqs, i));
+             (j* lH.options.seedOffset + lH.options.seedLength)
+                <= length(value(lH.gH.redQrySeqs, i));
              ++j)
         {
             appendValue(lH.seeds, infix(value(lH.gH.redQrySeqs, i),
-                                     j* lH.options.seedLength,
-                                     ((j+1) * lH.options.seedLength)),
+                                     j* lH.options.seedOffset,
+                                     j* lH.options.seedOffset
+                                     + lH.options.seedLength),
                         Generous());
             appendValue(lH.seedRefs,  i, Generous());
             appendValue(lH.seedRanks, j, Generous());
@@ -1164,19 +1166,27 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
                         subjIsSameFrame(it->subjId, it2->subjId,
                                         lH.options, TFormat()))
                     {
-                        // due to sorting it2->qryStart never <= it->qStart
-                        TPos const qDist = (it2->qryStart >= bm.qEnd)
-                                            ? it2->qryStart - bm.qEnd // upstream
-                                            : 0; // overlap
 
-                        TPos sDist = TPosMax; // subj match region downstream of *it
-                        if (it2->subjStart >= bm.sEnd) // upstream
-                            sDist = it2->subjStart - bm.sEnd;
-                        else if (it2->subjStart >= it->subjStart) // overlap
-                            sDist = 0;
+//                         TPos const qDist = (it2->qryStart >= bm.qEnd)
+//                                             ? it2->qryStart - bm.qEnd // upstream
+//                                             : 0; // overlap
+// 
+//                         TPos sDist = TPosMax; // subj match region downstream of *it
+//                         if (it2->subjStart >= bm.sEnd) // upstream
+//                             sDist = it2->subjStart - bm.sEnd;
+//                         else if (it2->subjStart >= it->subjStart) // overlap
+//                             sDist = 0;
+
+                        // due to sorting it2->qryStart never <= it->qStart
+                        // so subject sequences must have same order
+                        if (it2->subjStart < it->subjStart)
+                            continue;
+
+                        long const qDist = it2->qryStart - bm.qEnd;
+                        long const sDist = it2->subjStart - bm.sEnd;
 
                         if ((qDist == sDist) &&
-                            (qDist <= lH.options.seedGravity))
+                            (qDist <= (long)lH.options.seedGravity))
                         {
                             bm.qEnd = std::max(bm.qEnd,
                                                (TPos)(it2->qryStart
@@ -1239,20 +1249,28 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
                          ++it2)
                     {
                         // same frame and same range
-                        if (qryIsSameFrame(it->qryId, it2->qryId,
-                                           lH.options, TFormat()) &&
-                            subjIsSameFrame(it->subjId, it2->subjId,
-                                            lH.options, TFormat()) &&
+                        if ((it->qryId == it2->qryId) &&
+                            (it->subjId == it2->subjId) &&
                             inRange(it2->qryStart, bm.qStart, bm.qEnd) &&
                             inRange(it2->subjStart, bm.sStart, bm.sEnd))
                         {
                             auto const & row0 = row(bm.align, 0);
                             auto const & row1 = row(bm.align, 1);
+//                             if (length(source(row1)) <= it2->subjStart - bm.sStart)
+//                                 std::cerr << "subjStart out of bounds\n"
+//                                           << "subjStart: " << it2->subjStart
+//                                           << " lenrow0: " << length(source(row0))
+//                                           << " lenrow1: " << length(source(row1))
+//                                           << " sStart: " << bm.sStart
+//                                           << " sEnd: " << bm.sEnd
+//                                           << "\n";
+//                             else
                             // part of alignment
                             if (toSourcePosition(row0,
                                                  toViewPosition(row1,
-                                                                it2->subjStart))
-                                == it2->qryStart)
+                                                                it2->subjStart
+                                                                - bm.sStart))
+                                == it2->qryStart - bm.qStart)
                             {
                                 ++lH.stats.hitsPutativeDuplicate;
                                 it2->qryStart = TPosMax;

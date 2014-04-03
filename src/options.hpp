@@ -136,6 +136,7 @@ struct LambdaOptions : public SharedOptions
     bool            hammingOnly = false;
 
     char            seedGravity     = 0;
+    unsigned char   seedOffset      = 0;
     unsigned char   minSeedLength   = 0;
     unsigned char   minSeedScore    = 0;
     unsigned int    minSeedEVal     = 0;
@@ -288,6 +289,13 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
                                             "automatically).",
                                             seqan::ArgParseArgument::INTEGER));
     setDefaultValue(parser, "seed-length", "0");
+
+    addOption(parser, seqan::ArgParseOption("so",
+                                            "seed-offset",
+                                            "Offset for seeding (by default "
+                                            "same as length -> non-overlapping).",
+                                            seqan::ArgParseArgument::INTEGER));
+    setDefaultValue(parser, "seed-offset", "0");
 
     addOption(parser, seqan::ArgParseOption("sd",
                                             "seed-delta",
@@ -452,6 +460,13 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     getOptionValue(buf, parser, "seed-length");
     if (buf != 0) // seed length was specified manually
         options.seedLength = buf;
+
+    buf = 0;
+    getOptionValue(buf, parser, "seed-offset");
+    if (buf != 0) // seed length was specified manually
+        options.seedOffset = buf;
+    else
+        options.seedOffset = options.seedLength;
 
     buf = 0;
     getOptionValue(buf, parser, "seed-delta");
@@ -734,6 +749,7 @@ inline void
 printOptions(LambdaOptions const & options)
 {
     std::cout << "Seed-Length:   " << uint(options.seedLength) << "\n"
+              << "Seed-Offset:   " << uint(options.seedOffset) << "\n"
               << "Seed-Delta:    " << uint(options.maxSeedDist) << "\n"
               << "Hammingonly:   " << uint(options.hammingOnly) << "\n"
               << "SeedGravity:   " << uint(options.seedGravity) << "\n"
@@ -744,7 +760,8 @@ printOptions(LambdaOptions const & options)
               << "xDropOff:      " << options.xDropOff << "\n"
               << "band:          " << options.band << "\n"
               << "eCutOff:       " << options.eCutOff << "\n"
-              << "alphReduction: " << uint(options.alphReduction) << "\n";
+              << "alphReduction: " << uint(options.alphReduction) << "\n"
+              << "queryParts:    " << uint(options.queryPart) << "\n";
 }
 
 
