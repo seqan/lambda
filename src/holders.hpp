@@ -232,7 +232,7 @@ public:
     unsigned long       indexBeginQry;
     unsigned long       indexEndQry;
 
-    // regarding seeding
+    // regarding seedingp
     TSeeds              seeds;
     TSeedIndex          seedIndex;
 //     std::forward_list<TMatch>   matches;
@@ -335,7 +335,7 @@ onFind(LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> & lH,
             auto const seedId = getSeqNo(qryOcc);
             Match m {static_cast<Match::TQId>(lH.seedRefs[seedId]),
                      static_cast<Match::TSId>(getSeqNo(subjOcc)),
-                     static_cast<Match::TPos>(lH.seedRanks[seedId] * lH.options.seedLength),
+                     static_cast<Match::TPos>(lH.seedRanks[seedId] * lH.options.seedOffset),
                      static_cast<Match::TPos>(getSeqOffset(subjOcc))};
 
             bool masked = false;
