@@ -26,7 +26,6 @@
 
 #undef SEQAN_HAS_ZLIB
 
-// DEBUG TODO DEBUG
 #define FASTBUILD
 
 // #define SEQAN_DEBUG_INDEX

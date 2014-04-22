@@ -97,7 +97,7 @@ struct SharedOptions
     unsigned    terminalCols = 80;
 
     SharedOptions() :
-        verbosity(3),fileFormat(0),alphReduction(0),
+        verbosity(2),fileFormat(0),alphReduction(0),
         blastProg(BlastFormatOptions::BlastX)
     {
         isTerminal = isatty(fileno(stdout));
