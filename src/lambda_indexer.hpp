@@ -204,7 +204,7 @@ inline void step01a_preprocessSubj(TNewSubj & newSubj,
                                                 BlastFormatOptions::TBlastN,
                                                 g> const & /*tag*/)
 {
-    translate(newSubj, oldSubj, SIX_FRAME);
+    translate(newSubj, oldSubj, TranslationFrames::SixFrame);
 }
 
 template <typename TNewSubj,
@@ -218,7 +218,7 @@ inline void step01a_preprocessSubj(TNewSubj & newSubj,
                                                 BlastFormatOptions::TBlastX,
                                                 g> const & /*tag*/)
 {
-    translate(newSubj, oldSubj, SIX_FRAME);
+    translate(newSubj, oldSubj, TranslationFrames::SixFrame);
 }
 
 template <BlastFormatOptions::M m,

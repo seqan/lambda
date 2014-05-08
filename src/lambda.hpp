@@ -158,7 +158,7 @@ loadQueryImpl(GlobalDataHolder<TRedAlph,
     std::cout << "translating…" << std::flush;
     translate(globalHolder.qrySeqs,
               untranslatedSeqs,
-              SIX_FRAME,
+              TranslationFrames::SixFrame,
               options.geneticCode);
 
     // reduce implicitly
@@ -201,7 +201,7 @@ loadQueryImpl(GlobalDataHolder<TRedAlph,
     std::cout << "translating…" << std::flush;
     translate(globalHolder.qrySeqs,
               untranslatedSeqs,
-              SIX_FRAME,
+              TranslationFrames::SixFrame,
               options.geneticCode);
 
     return 0;
@@ -813,7 +813,7 @@ computeBlastMatch(TBlastMatch   & bm,
         {
             if (scores[i] == 0)
             {
-                newBeg = i;
+                newBeg = i + 1;
                 break;
             }
         }
