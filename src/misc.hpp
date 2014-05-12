@@ -165,15 +165,22 @@ localAlignment2(Align<TSequence, TAlignSpec> & align,
 
     clear(alignContext.traceSegment);
 
-    TScoreValue score;
+    typedef FreeEndGaps_<True, True, True, True> TFreeEndGaps;
+    typedef AlignConfig2<LocalAlignment_<>,
+                         DPBand_<BandOn>,
+                         TFreeEndGaps,
+                         TracebackOn<TracebackConfig_<CompleteTrace,
+                                                      GapsLeft> > > TAlignConfig;
 
+    TScoreValue score;
+    DPScoutState_<Default> scoutState;
     score = _setUpAndRunAlignment(alignContext.dpContext,
                                   alignContext.traceSegment,
+                                  scoutState,
                                   source(row(align, 0)),
                                   source(row(align, 1)),
                                   scoringScheme,
-                                  lowerDiag, upperDiag,
-                                  SmithWaterman());
+                                  TAlignConfig(lowerDiag, upperDiag));
 
     _adaptTraceSegmentsTo(row(align, 0), row(align, 1), alignContext.traceSegment);
     return score;
