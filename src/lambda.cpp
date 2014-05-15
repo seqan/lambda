@@ -575,15 +575,7 @@ realMain(LambdaOptions      const & options,
     if (ret)
         return ret;
 
-
     printStats(globalHolder.stats, options);
 
     return 0;
-
 }
-
-
-
-
-
-
