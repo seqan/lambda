@@ -544,7 +544,11 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     }
 
     getOptionValue(foo, parser, "partition-factor");
+#ifdef _OPENMP
     options.queryPart = foo * omp_get_max_threads();
+#else
+    options.queryPart = 1;
+#endif
 
     getOptionValue(options.scoringMethod, parser, "scoring-scheme");
     switch (options.scoringMethod)

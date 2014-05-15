@@ -528,7 +528,7 @@ realMain(LambdaOptions      const & options,
     }
 
     // TODO evaluate localHolder outside of loop and firstprivate
-    #pragma omp parallel for schedule(dynamic)
+    SEQAN_OMP_PRAGMA(parallel for schedule(dynamic))
     for (unsigned short t = 0; t < options.queryPart; ++t)
     {
         int res = 0;

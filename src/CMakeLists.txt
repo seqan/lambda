@@ -15,7 +15,7 @@ message (STATUS "Configuring extras/apps/lambda")
 # ----------------------------------------------------------------------------
 
 # Search SeqAn and select dependencies.
-#set (SEQAN_FIND_DEPENDENCIES NONE)
+set (SEQAN_FIND_DEPENDENCIES OpenMP)
 find_package(SeqAn REQUIRED)
 find_package(CXX11 REQUIRED)
 
@@ -36,17 +36,17 @@ add_definitions (${SEQAN_DEFINITIONS})
 
 # Update the list of file names below if you add source files to your application.
 add_executable (lambda lambda.cpp
-			lambda.hpp
-			misc.hpp
-			match.hpp
-			options.hpp
-            alph.hpp
-            holders.hpp
-            trans.hpp)
+                lambda.hpp
+                misc.hpp
+                match.hpp
+                options.hpp
+                alph.hpp
+                holders.hpp
+                trans.hpp)
 add_executable (lambda_indexer lambda_indexer.cpp
-			lambda_indexer.hpp
-			options.hpp
-			misc.hpp)
+                lambda_indexer.hpp
+                options.hpp
+                misc.hpp)
 
 # Add dependencies found by find_package (SeqAn).
 target_link_libraries (lambda ${SEQAN_LIBRARIES})
