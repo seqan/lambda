@@ -427,7 +427,7 @@ template <BlastFormatOptions::M m,
 inline int
 prepareScoring(GlobalDataHolder<TRedAlph,
                                 TScoreScheme,
-                                 m, p, g>         & globalHolder,
+                                 m, p, g>             & globalHolder,
                LambdaOptions                    const & options)
 {
 
