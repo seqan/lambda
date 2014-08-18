@@ -204,9 +204,9 @@ sixFrameTranslate(StringSet<String<AminoAcid>,
 // ----------------------------------------------------------------------------
 
 template <typename TId,
-          BlastFormatOptions::M mf,
-          BlastFormatOptions::Program p,
-          BlastFormatOptions::Generation g>
+          BlastFormatFile mf,
+          BlastFormatProgram p,
+          BlastFormatGeneration g>
 constexpr TId
 getTrueQryId(TId const & qryId,
              LambdaOptions const & /**/,
@@ -216,34 +216,34 @@ getTrueQryId(TId const & qryId,
 }
 
 template <typename TId,
-          BlastFormatOptions::M mf,
-          BlastFormatOptions::Generation g>
+          BlastFormatFile mf,
+          BlastFormatGeneration g>
 constexpr TId
 getTrueQryId(TId const & qryId,
              LambdaOptions const & options,
-             BlastFormat<mf,BlastFormatOptions::BlastN,g> const & /*tag*/)
+             BlastFormat<mf,BlastFormatProgram::BLASTN,g> const & /*tag*/)
 {
     return (options.revComp) ? (qryId / 2) : qryId;
 }
 
 template <typename TId,
-          BlastFormatOptions::M mf,
-          BlastFormatOptions::Generation g>
+          BlastFormatFile mf,
+          BlastFormatGeneration g>
 constexpr TId
 getTrueQryId(TId const & qryId,
              LambdaOptions const & /**/,
-             BlastFormat<mf,BlastFormatOptions::BlastX,g> const & /*tag*/)
+             BlastFormat<mf,BlastFormatProgram::BLASTX,g> const & /*tag*/)
 {
     return qryId / 6;
 }
 
 template <typename TId,
-          BlastFormatOptions::M mf,
-          BlastFormatOptions::Generation g>
+          BlastFormatFile mf,
+          BlastFormatGeneration g>
 constexpr TId
 getTrueQryId(TId const & qryId,
              LambdaOptions const & /**/,
-             BlastFormat<mf,BlastFormatOptions::TBlastX,g> const & /*tag*/)
+             BlastFormat<mf,BlastFormatProgram::TBLASTX,g> const & /*tag*/)
 {
     return qryId / 6;
 }
@@ -253,9 +253,9 @@ getTrueQryId(TId const & qryId,
 // ----------------------------------------------------------------------------
 
 template <typename TId,
-          BlastFormatOptions::M mf,
-          BlastFormatOptions::Program p,
-          BlastFormatOptions::Generation g>
+          BlastFormatFile mf,
+          BlastFormatProgram p,
+          BlastFormatGeneration g>
 constexpr TId
 getTrueSubjId(TId                   const & subjId,
               LambdaOptions         const & /**/,
@@ -265,23 +265,23 @@ getTrueSubjId(TId                   const & subjId,
 }
 
 template <typename TId,
-          BlastFormatOptions::M mf,
-          BlastFormatOptions::Generation g>
+          BlastFormatFile mf,
+          BlastFormatGeneration g>
 constexpr TId
 getTrueSubjId(TId                   const & subjId,
               LambdaOptions                                const & /**/,
-              BlastFormat<mf,BlastFormatOptions::TBlastN,g> const & /*tag*/)
+              BlastFormat<mf,BlastFormatProgram::TBLASTN,g> const & /*tag*/)
 {
     return subjId / 6;
 }
 
 template <typename TId,
-          BlastFormatOptions::M mf,
-          BlastFormatOptions::Generation g>
+          BlastFormatFile mf,
+          BlastFormatGeneration g>
 constexpr TId
 getTrueSubjId(TId                   const & subjId,
               LambdaOptions                                const & /**/,
-              BlastFormat<mf,BlastFormatOptions::TBlastX,g> const & /*tag*/)
+              BlastFormat<mf,BlastFormatProgram::TBLASTX,g> const & /*tag*/)
 {
     return subjId / 6;
 }
@@ -291,9 +291,9 @@ getTrueSubjId(TId                   const & subjId,
 // ----------------------------------------------------------------------------
 
 template <typename TId,
-          BlastFormatOptions::M mf,
-          BlastFormatOptions::Program p,
-          BlastFormatOptions::Generation g>
+          BlastFormatFile mf,
+          BlastFormatProgram p,
+          BlastFormatGeneration g>
 constexpr bool
 qryIsReverseComplemented(TId const & /**/,
                          LambdaOptions         const & /**/,
@@ -303,39 +303,39 @@ qryIsReverseComplemented(TId const & /**/,
 }
 
 template <typename TId,
-          BlastFormatOptions::M mf,
-          BlastFormatOptions::Generation g>
+          BlastFormatFile mf,
+          BlastFormatGeneration g>
 constexpr bool
 qryIsReverseComplemented(TId const & qryId,
                          LambdaOptions         const & options,
                          BlastFormat<mf,
-                                     BlastFormatOptions::BlastN,
+                                     BlastFormatProgram::BLASTN,
                                      g>         const & /*tag*/)
 {
     return (options.revComp) ? (qryId % 2 == 0) : false;
 }
 
 template <typename TId,
-          BlastFormatOptions::M mf,
-          BlastFormatOptions::Generation g>
+          BlastFormatFile mf,
+          BlastFormatGeneration g>
 constexpr bool
 qryIsReverseComplemented(TId const & qryId,
                          LambdaOptions         const & /**/,
                          BlastFormat<mf,
-                                     BlastFormatOptions::BlastX,
+                                     BlastFormatProgram::BLASTX,
                                      g>         const & /*tag*/)
 {
     return (qryId % 6 > 2);
 }
 
 template <typename TId,
-          BlastFormatOptions::M mf,
-          BlastFormatOptions::Generation g>
+          BlastFormatFile mf,
+          BlastFormatGeneration g>
 constexpr bool
 qryIsReverseComplemented(TId const & qryId,
                          LambdaOptions         const & /**/,
                          BlastFormat<mf,
-                                  BlastFormatOptions::TBlastX,
+                                  BlastFormatProgram::TBLASTX,
                                   g>            const & /*tag*/)
 {
     return (qryId % 6 > 2);
@@ -346,9 +346,9 @@ qryIsReverseComplemented(TId const & qryId,
 // ----------------------------------------------------------------------------
 
 template <typename TId,
-          BlastFormatOptions::M mf,
-          BlastFormatOptions::Program p,
-          BlastFormatOptions::Generation g>
+          BlastFormatFile mf,
+          BlastFormatProgram p,
+          BlastFormatGeneration g>
 constexpr bool
 subjIsReverseComplemented(TId                   const & /**/,
                           LambdaOptions         const & /**/,
@@ -358,26 +358,26 @@ subjIsReverseComplemented(TId                   const & /**/,
 }
 
 template <typename TId,
-          BlastFormatOptions::M mf,
-          BlastFormatOptions::Generation g>
+          BlastFormatFile mf,
+          BlastFormatGeneration g>
 constexpr bool
 subjIsReverseComplemented(TId                   const & subjId,
                       LambdaOptions const & /**/,
                       BlastFormat<mf,
-                                  BlastFormatOptions::TBlastN,
+                                  BlastFormatProgram::TBLASTN,
                                   g> const & /*tag*/)
 {
     return (subjId % 6 > 2);
 }
 
 template <typename TId,
-          BlastFormatOptions::M mf,
-          BlastFormatOptions::Generation g>
+          BlastFormatFile mf,
+          BlastFormatGeneration g>
 constexpr bool
 subjIsReverseComplemented(TId                   const & subjId,
                       LambdaOptions const & /**/,
                       BlastFormat<mf,
-                                  BlastFormatOptions::TBlastX,
+                                  BlastFormatProgram::TBLASTX,
                                   g> const & /*tag*/)
 {
     return (subjId % 6 > 2);
@@ -388,9 +388,9 @@ subjIsReverseComplemented(TId                   const & subjId,
 // ----------------------------------------------------------------------------
 
 template <typename TId,
-          BlastFormatOptions::M mf,
-          BlastFormatOptions::Program p,
-          BlastFormatOptions::Generation g>
+          BlastFormatFile mf,
+          BlastFormatProgram p,
+          BlastFormatGeneration g>
 constexpr unsigned char
 getQryFrameShift(TId const & /**/,
              LambdaOptions const & /**/,
@@ -400,23 +400,23 @@ getQryFrameShift(TId const & /**/,
 }
 
 template <typename TId,
-          BlastFormatOptions::M mf,
-          BlastFormatOptions::Generation g>
+          BlastFormatFile mf,
+          BlastFormatGeneration g>
 constexpr unsigned char
 getQryFrameShift(TId const & qryId,
              LambdaOptions const & /**/,
-             BlastFormat<mf,BlastFormatOptions::BlastX,g> const & /*tag*/)
+             BlastFormat<mf,BlastFormatProgram::BLASTX,g> const & /*tag*/)
 {
     return qryId % 3;
 }
 
 template <typename TId,
-          BlastFormatOptions::M mf,
-          BlastFormatOptions::Generation g>
+          BlastFormatFile mf,
+          BlastFormatGeneration g>
 constexpr unsigned char
 getQryFrameShift(TId const & qryId,
              LambdaOptions const & /**/,
-             BlastFormat<mf,BlastFormatOptions::TBlastX,g> const & /*tag*/)
+             BlastFormat<mf,BlastFormatProgram::TBLASTX,g> const & /*tag*/)
 {
     return qryId % 3;
 }
@@ -426,9 +426,9 @@ getQryFrameShift(TId const & qryId,
 // ----------------------------------------------------------------------------
 
 template <typename TId,
-          BlastFormatOptions::M mf,
-          BlastFormatOptions::Program p,
-          BlastFormatOptions::Generation g>
+          BlastFormatFile mf,
+          BlastFormatProgram p,
+          BlastFormatGeneration g>
 constexpr unsigned char
 getSubjFrameShift(TId                   const & /**/,
                   LambdaOptions         const & /**/,
@@ -438,23 +438,23 @@ getSubjFrameShift(TId                   const & /**/,
 }
 
 template <typename TId,
-          BlastFormatOptions::M mf,
-          BlastFormatOptions::Generation g>
+          BlastFormatFile mf,
+          BlastFormatGeneration g>
 constexpr unsigned char
 getSubjFrameShift(TId                                           const & subjId,
                   LambdaOptions                                 const & /**/,
-                  BlastFormat<mf,BlastFormatOptions::TBlastN,g> const & /*tag*/)
+                  BlastFormat<mf,BlastFormatProgram::TBLASTN,g> const & /*tag*/)
 {
     return subjId % 3;
 }
 
 template <typename TId,
-          BlastFormatOptions::M mf,
-          BlastFormatOptions::Generation g>
+          BlastFormatFile mf,
+          BlastFormatGeneration g>
 constexpr unsigned char
 getSubjFrameShift(TId                                           const & subjId,
                   LambdaOptions                                 const & /**/,
-                  BlastFormat<mf,BlastFormatOptions::TBlastX,g> const & /*tag*/)
+                  BlastFormat<mf,BlastFormatProgram::TBLASTX,g> const & /*tag*/)
 {
     return subjId % 3;
 }
@@ -464,260 +464,260 @@ getSubjFrameShift(TId                                           const & subjId,
 // getTrueQryStartPos()
 // ----------------------------------------------------------------------------
 
-template <typename TId,
-          typename TPos,
-          BlastFormatOptions::M mf,
-          BlastFormatOptions::Program p,
-          BlastFormatOptions::Generation g>
-constexpr TPos
-getTrueQryStartPos(TId                                  const & /**/,
-                   TPos                                 const & qryStart,
-                   TPos                                 const & /**/,
-                   LambdaOptions                        const & /**/,
-                   BlastFormat<mf,p,g>                  const & /*tag*/)
-{
-    return qryStart + 1;
-}
-
-template <typename TId,
-          typename TPos,
-          BlastFormatOptions::M mf,
-          BlastFormatOptions::Generation g>
-constexpr TPos
-getTrueQryStartPos(TId                                  const & qryId,
-                   TPos                                 const & qryStart,
-                   TPos                                 const & qryEnd,
-                   LambdaOptions                        const & options,
-                   BlastFormat<mf,BlastFormatOptions::BlastN,g> const & /*tag*/)
-{
-    typedef BlastFormat<mf,BlastFormatOptions::BlastN,g> TFormat;
-    return (qryIsReverseComplemented(qryId, options, TFormat()))
-                ? qryEnd
-                : qryStart + 1;
-}
-
-template <typename TId,
-          typename TPos,
-          BlastFormatOptions::M mf,
-          BlastFormatOptions::Generation g>
-constexpr TPos
-getTrueQryStartPos(TId                                  const & qryId,
-                   TPos                                 const & qryStart,
-                   TPos                                 const & qryEnd,
-                   LambdaOptions                        const & options,
-                   BlastFormat<mf,BlastFormatOptions::BlastX,g> const & /*tag*/)
-{
-    typedef BlastFormat<mf,BlastFormatOptions::BlastX,g> TFormat;
-    return (qryIsReverseComplemented(qryId, options, TFormat()))
-            ? (qryEnd   * 3 + getQryFrameShift(qryId, options, TFormat()))
-            : (qryStart * 3 + getQryFrameShift(qryId, options, TFormat()) + 1);
-}
-
-template <typename TId,
-          typename TPos,
-          BlastFormatOptions::M mf,
-          BlastFormatOptions::Generation g>
-constexpr TPos
-getTrueQryStartPos(TId                                  const & qryId,
-                   TPos                                 const & qryStart,
-                   TPos                                 const & qryEnd,
-                   LambdaOptions                        const & options,
-                   BlastFormat<mf,BlastFormatOptions::TBlastX,g> const & /*tag*/)
-{
-    typedef BlastFormat<mf,BlastFormatOptions::TBlastX,g> TFormat;
-    return (qryIsReverseComplemented(qryId, options, TFormat()))
-            ? (qryEnd   * 3 + getQryFrameShift(qryId, options, TFormat()))
-            : (qryStart * 3 + getQryFrameShift(qryId, options, TFormat()) + 1);
-}
+// template <typename TId,
+//           typename TPos,
+//           BlastFormatFile mf,
+//           BlastFormatProgram p,
+//           BlastFormatGeneration g>
+// constexpr TPos
+// getTrueQryStartPos(TId                                  const & /**/,
+//                    TPos                                 const & qryStart,
+//                    TPos                                 const & /**/,
+//                    LambdaOptions                        const & /**/,
+//                    BlastFormat<mf,p,g>                  const & /*tag*/)
+// {
+//     return qryStart + 1;
+// }
+// 
+// template <typename TId,
+//           typename TPos,
+//           BlastFormatFile mf,
+//           BlastFormatGeneration g>
+// constexpr TPos
+// getTrueQryStartPos(TId                                  const & qryId,
+//                    TPos                                 const & qryStart,
+//                    TPos                                 const & qryEnd,
+//                    LambdaOptions                        const & options,
+//                    BlastFormat<mf,BlastFormatProgram::BLASTN,g> const & /*tag*/)
+// {
+//     typedef BlastFormat<mf,BlastFormatProgram::BLASTN,g> TFormat;
+//     return (qryIsReverseComplemented(qryId, options, TFormat()))
+//                 ? qryEnd
+//                 : qryStart + 1;
+// }
+// 
+// template <typename TId,
+//           typename TPos,
+//           BlastFormatFile mf,
+//           BlastFormatGeneration g>
+// constexpr TPos
+// getTrueQryStartPos(TId                                  const & qryId,
+//                    TPos                                 const & qryStart,
+//                    TPos                                 const & qryEnd,
+//                    LambdaOptions                        const & options,
+//                    BlastFormat<mf,BlastFormatProgram::BLASTX,g> const & /*tag*/)
+// {
+//     typedef BlastFormat<mf,BlastFormatProgram::BLASTX,g> TFormat;
+//     return (qryIsReverseComplemented(qryId, options, TFormat()))
+//             ? (qryEnd   * 3 + getQryFrameShift(qryId, options, TFormat()))
+//             : (qryStart * 3 + getQryFrameShift(qryId, options, TFormat()) + 1);
+// }
+// 
+// template <typename TId,
+//           typename TPos,
+//           BlastFormatFile mf,
+//           BlastFormatGeneration g>
+// constexpr TPos
+// getTrueQryStartPos(TId                                  const & qryId,
+//                    TPos                                 const & qryStart,
+//                    TPos                                 const & qryEnd,
+//                    LambdaOptions                        const & options,
+//                    BlastFormat<mf,BlastFormatProgram::TBLASTX,g> const & /*tag*/)
+// {
+//     typedef BlastFormat<mf,BlastFormatProgram::TBLASTX,g> TFormat;
+//     return (qryIsReverseComplemented(qryId, options, TFormat()))
+//             ? (qryEnd   * 3 + getQryFrameShift(qryId, options, TFormat()))
+//             : (qryStart * 3 + getQryFrameShift(qryId, options, TFormat()) + 1);
+// }
 
 
 // ----------------------------------------------------------------------------
 // getTrueQryEndPos()
 // ----------------------------------------------------------------------------
 
-template <typename TId,
-          typename TPos,
-          BlastFormatOptions::M mf,
-          BlastFormatOptions::Program p,
-          BlastFormatOptions::Generation g>
-constexpr TPos
-getTrueQryEndPos(TId                                  const & /**/,
-                 TPos                                 const & /**/,
-                 TPos                                 const & qryEnd,
-                 LambdaOptions                        const & /**/,
-                 BlastFormat<mf,p,g>                  const & /*tag*/)
-{
-    return qryEnd + 1;
-}
-
-template <typename TId,
-          typename TPos,
-          BlastFormatOptions::M mf,
-          BlastFormatOptions::Generation g>
-constexpr TPos
-getTrueQryEndPos(TId                                  const & qryId,
-                 TPos                                 const & qryStart,
-                 TPos                                 const & qryEnd,
-                 LambdaOptions                        const & options,
-                 BlastFormat<mf,BlastFormatOptions::BlastN,g> const & /*tag*/)
-{
-    typedef BlastFormat<mf,BlastFormatOptions::BlastN,g> TFormat;
-    return (qryIsReverseComplemented(qryId, options, TFormat()))
-                ? qryStart + 1
-                : qryEnd;
-}
-
-template <typename TId,
-          typename TPos,
-          BlastFormatOptions::M mf,
-          BlastFormatOptions::Generation g>
-constexpr TPos
-getTrueQryEndPos(TId                                  const & qryId,
-                 TPos                                 const & qryStart,
-                 TPos                                 const & qryEnd,
-                 LambdaOptions                        const & options,
-                 BlastFormat<mf,BlastFormatOptions::BlastX,g> const & /*tag*/)
-{
-    typedef BlastFormat<mf,BlastFormatOptions::BlastX,g> TFormat;
-    return (!qryIsReverseComplemented(qryId, options, TFormat()))
-            ? (qryEnd   * 3 + getQryFrameShift(qryId, options, TFormat()))
-            : (qryStart * 3 + getQryFrameShift(qryId, options, TFormat()) + 1);
-}
-
-template <typename TId,
-          typename TPos,
-          BlastFormatOptions::M mf,
-          BlastFormatOptions::Generation g>
-constexpr TPos
-getTrueQryEndPos(TId                                  const & qryId,
-                 TPos                                 const & qryStart,
-                 TPos                                 const & qryEnd,
-                 LambdaOptions const & options,
-                 BlastFormat<mf,BlastFormatOptions::TBlastX,g> const & /*tag*/)
-{
-    typedef BlastFormat<mf,BlastFormatOptions::TBlastX,g> TFormat;
-    return (!qryIsReverseComplemented(qryId, options, TFormat()))
-            ? (qryEnd   * 3 + getQryFrameShift(qryId, options, TFormat()))
-            : (qryStart * 3 + getQryFrameShift(qryId, options, TFormat()) + 1);
-}
+// template <typename TId,
+//           typename TPos,
+//           BlastFormatFile mf,
+//           BlastFormatProgram p,
+//           BlastFormatGeneration g>
+// constexpr TPos
+// getTrueQryEndPos(TId                                  const & /**/,
+//                  TPos                                 const & /**/,
+//                  TPos                                 const & qryEnd,
+//                  LambdaOptions                        const & /**/,
+//                  BlastFormat<mf,p,g>                  const & /*tag*/)
+// {
+//     return qryEnd + 1;
+// }
+// 
+// template <typename TId,
+//           typename TPos,
+//           BlastFormatFile mf,
+//           BlastFormatGeneration g>
+// constexpr TPos
+// getTrueQryEndPos(TId                                  const & qryId,
+//                  TPos                                 const & qryStart,
+//                  TPos                                 const & qryEnd,
+//                  LambdaOptions                        const & options,
+//                  BlastFormat<mf,BlastFormatProgram::BLASTN,g> const & /*tag*/)
+// {
+//     typedef BlastFormat<mf,BlastFormatProgram::BLASTN,g> TFormat;
+//     return (qryIsReverseComplemented(qryId, options, TFormat()))
+//                 ? qryStart + 1
+//                 : qryEnd;
+// }
+// 
+// template <typename TId,
+//           typename TPos,
+//           BlastFormatFile mf,
+//           BlastFormatGeneration g>
+// constexpr TPos
+// getTrueQryEndPos(TId                                  const & qryId,
+//                  TPos                                 const & qryStart,
+//                  TPos                                 const & qryEnd,
+//                  LambdaOptions                        const & options,
+//                  BlastFormat<mf,BlastFormatProgram::BLASTX,g> const & /*tag*/)
+// {
+//     typedef BlastFormat<mf,BlastFormatProgram::BLASTX,g> TFormat;
+//     return (!qryIsReverseComplemented(qryId, options, TFormat()))
+//             ? (qryEnd   * 3 + getQryFrameShift(qryId, options, TFormat()))
+//             : (qryStart * 3 + getQryFrameShift(qryId, options, TFormat()) + 1);
+// }
+// 
+// template <typename TId,
+//           typename TPos,
+//           BlastFormatFile mf,
+//           BlastFormatGeneration g>
+// constexpr TPos
+// getTrueQryEndPos(TId                                  const & qryId,
+//                  TPos                                 const & qryStart,
+//                  TPos                                 const & qryEnd,
+//                  LambdaOptions const & options,
+//                  BlastFormat<mf,BlastFormatProgram::TBLASTX,g> const & /*tag*/)
+// {
+//     typedef BlastFormat<mf,BlastFormatProgram::TBLASTX,g> TFormat;
+//     return (!qryIsReverseComplemented(qryId, options, TFormat()))
+//             ? (qryEnd   * 3 + getQryFrameShift(qryId, options, TFormat()))
+//             : (qryStart * 3 + getQryFrameShift(qryId, options, TFormat()) + 1);
+// }
 
 // ----------------------------------------------------------------------------
 // getTrueSubjStartPos()
 // ----------------------------------------------------------------------------
 
-template <typename TId,
-          typename TPos,
-          BlastFormatOptions::M mf,
-          BlastFormatOptions::Program p,
-          BlastFormatOptions::Generation g>
-constexpr TPos
-getTrueSubjStartPos(TId                                       const & /**/,
-                    TPos                                      const & subjStart,
-                    TPos                                      const & /**/,
-                    LambdaOptions const & /**/,
-                    BlastFormat<mf,p,g> const & /*tag*/)
-{
-    return subjStart + 1;
-}
+// template <typename TId,
+//           typename TPos,
+//           BlastFormatFile mf,
+//           BlastFormatProgram p,
+//           BlastFormatGeneration g>
+// constexpr TPos
+// getTrueSubjStartPos(TId                                       const & /**/,
+//                     TPos                                      const & subjStart,
+//                     TPos                                      const & /**/,
+//                     LambdaOptions const & /**/,
+//                     BlastFormat<mf,p,g> const & /*tag*/)
+// {
+//     return subjStart + 1;
+// }
+// 
+// 
+// template <typename TId,
+//           typename TPos,
+//           BlastFormatFile mf,
+//           BlastFormatGeneration g>
+// constexpr TPos
+// getTrueSubjStartPos(TId                                     const & subjId,
+//                     TPos                                    const & subjStart,
+//                     TPos                                    const & subjEnd,
+//                     LambdaOptions                           const & options,
+//                     BlastFormat<mf,BlastFormatProgram::TBLASTN,g> const & /*tag*/)
+// {
+//     typedef BlastFormat<mf,BlastFormatProgram::TBLASTN,g> TFormat;
+//     return (subjIsReverseComplemented(subjId, options, TFormat()))
+//             ? (subjEnd   * 3 + getQryFrameShift(subjId, options, TFormat()))
+//             : (subjStart * 3 + getQryFrameShift(subjId, options, TFormat()) + 1);
+// }
+// 
+// template <typename TId,
+//           typename TPos,
+//           BlastFormatFile mf,
+//           BlastFormatGeneration g>
+// constexpr TPos
+// getTrueSubjStartPos(TId                                     const & subjId,
+//                     TPos                                    const & subjStart,
+//                     TPos                                    const & subjEnd,
+//                     LambdaOptions                           const & options,
+//                     BlastFormat<mf,BlastFormatProgram::TBLASTX,g> const & /*tag*/)
+// {
+//     typedef BlastFormat<mf,BlastFormatProgram::TBLASTX,g> TFormat;
+//     return (subjIsReverseComplemented(subjId, options, TFormat()))
+//             ? (subjEnd   * 3 + getQryFrameShift(subjId, options, TFormat()))
+//             : (subjStart * 3 + getQryFrameShift(subjId, options, TFormat()) + 1);
+// }
+// 
 
+// ----------------------------------------------------------------------------
+// getTrueSubjEndPos()
+// ----------------------------------------------------------------------------
 
-template <typename TId,
-          typename TPos,
-          BlastFormatOptions::M mf,
-          BlastFormatOptions::Generation g>
-constexpr TPos
-getTrueSubjStartPos(TId                                     const & subjId,
-                    TPos                                    const & subjStart,
-                    TPos                                    const & subjEnd,
-                    LambdaOptions                           const & options,
-                    BlastFormat<mf,BlastFormatOptions::TBlastN,g> const & /*tag*/)
-{
-    typedef BlastFormat<mf,BlastFormatOptions::TBlastN,g> TFormat;
-    return (subjIsReverseComplemented(subjId, options, TFormat()))
-            ? (subjEnd   * 3 + getQryFrameShift(subjId, options, TFormat()))
-            : (subjStart * 3 + getQryFrameShift(subjId, options, TFormat()) + 1);
-}
-
-template <typename TId,
-          typename TPos,
-          BlastFormatOptions::M mf,
-          BlastFormatOptions::Generation g>
-constexpr TPos
-getTrueSubjStartPos(TId                                     const & subjId,
-                    TPos                                    const & subjStart,
-                    TPos                                    const & subjEnd,
-                    LambdaOptions                           const & options,
-                    BlastFormat<mf,BlastFormatOptions::TBlastX,g> const & /*tag*/)
-{
-    typedef BlastFormat<mf,BlastFormatOptions::TBlastX,g> TFormat;
-    return (subjIsReverseComplemented(subjId, options, TFormat()))
-            ? (subjEnd   * 3 + getQryFrameShift(subjId, options, TFormat()))
-            : (subjStart * 3 + getQryFrameShift(subjId, options, TFormat()) + 1);
-}
-
+// template <typename TId,
+//           typename TPos,
+//           BlastFormatFile mf,
+//           BlastFormatProgram p,
+//           BlastFormatGeneration g>
+// constexpr TPos
+// getTrueSubjEndPos(TId                                       const & /**/,
+//                   TPos                                      const & /**/,
+//                   TPos                                      const & subjEnd,
+//                   LambdaOptions                             const & /**/,
+//                   BlastFormat<mf,p,g>                       const & /*tag*/)
+// {
+//     return subjEnd;
+// }
+// 
+// template <typename TId,
+//           typename TPos,
+//           BlastFormatFile mf,
+//           BlastFormatGeneration g>
+// constexpr TPos
+// getTrueSubjEndPos(TId                                       const & subjId,
+//                   TPos                                      const & subjStart,
+//                   TPos                                      const & subjEnd,
+//                   LambdaOptions                             const & options,
+//                   BlastFormat<mf,BlastFormatProgram::TBLASTN,g> const & /*tag*/)
+// {
+//     typedef BlastFormat<mf,BlastFormatProgram::TBLASTN,g> TFormat;
+//     return (!subjIsReverseComplemented(subjId, options, TFormat()))
+//             ? (subjEnd   * 3 + getQryFrameShift(subjId, options, TFormat()))
+//             : (subjStart * 3 + getQryFrameShift(subjId, options, TFormat()) + 1);
+// }
+// 
+// template <typename TId,
+//           typename TPos,
+//           BlastFormatFile mf,
+//           BlastFormatGeneration g>
+// constexpr TPos
+// getTrueSubjEndPos(TId                                       const & subjId,
+//                   TPos                                      const & subjStart,
+//                   TPos                                      const & subjEnd,
+//                   LambdaOptions                             const & options,
+//                   BlastFormat<mf,BlastFormatProgram::TBLASTX,g> const & /*tag*/)
+// {
+//     typedef BlastFormat<mf,BlastFormatProgram::TBLASTX,g> TFormat;
+//     return (!subjIsReverseComplemented(subjId, options, TFormat()))
+//             ? (subjEnd   * 3 + getQryFrameShift(subjId, options, TFormat()))
+//             : (subjStart * 3 + getQryFrameShift(subjId, options, TFormat()) + 1);
+// }
+// 
 
 // ----------------------------------------------------------------------------
 // getTrueSubjEndPos()
 // ----------------------------------------------------------------------------
 
 template <typename TId,
-          typename TPos,
-          BlastFormatOptions::M mf,
-          BlastFormatOptions::Program p,
-          BlastFormatOptions::Generation g>
-constexpr TPos
-getTrueSubjEndPos(TId                                       const & /**/,
-                  TPos                                      const & /**/,
-                  TPos                                      const & subjEnd,
-                  LambdaOptions                             const & /**/,
-                  BlastFormat<mf,p,g>                       const & /*tag*/)
-{
-    return subjEnd;
-}
-
-template <typename TId,
-          typename TPos,
-          BlastFormatOptions::M mf,
-          BlastFormatOptions::Generation g>
-constexpr TPos
-getTrueSubjEndPos(TId                                       const & subjId,
-                  TPos                                      const & subjStart,
-                  TPos                                      const & subjEnd,
-                  LambdaOptions                             const & options,
-                  BlastFormat<mf,BlastFormatOptions::TBlastN,g> const & /*tag*/)
-{
-    typedef BlastFormat<mf,BlastFormatOptions::TBlastN,g> TFormat;
-    return (!subjIsReverseComplemented(subjId, options, TFormat()))
-            ? (subjEnd   * 3 + getQryFrameShift(subjId, options, TFormat()))
-            : (subjStart * 3 + getQryFrameShift(subjId, options, TFormat()) + 1);
-}
-
-template <typename TId,
-          typename TPos,
-          BlastFormatOptions::M mf,
-          BlastFormatOptions::Generation g>
-constexpr TPos
-getTrueSubjEndPos(TId                                       const & subjId,
-                  TPos                                      const & subjStart,
-                  TPos                                      const & subjEnd,
-                  LambdaOptions                             const & options,
-                  BlastFormat<mf,BlastFormatOptions::TBlastX,g> const & /*tag*/)
-{
-    typedef BlastFormat<mf,BlastFormatOptions::TBlastX,g> TFormat;
-    return (!subjIsReverseComplemented(subjId, options, TFormat()))
-            ? (subjEnd   * 3 + getQryFrameShift(subjId, options, TFormat()))
-            : (subjStart * 3 + getQryFrameShift(subjId, options, TFormat()) + 1);
-}
-
-
-// ----------------------------------------------------------------------------
-// getTrueSubjEndPos()
-// ----------------------------------------------------------------------------
-
-template <typename TId,
-          BlastFormatOptions::M mf,
-          BlastFormatOptions::Program p,
-          BlastFormatOptions::Generation g>
+          BlastFormatFile mf,
+          BlastFormatProgram p,
+          BlastFormatGeneration g>
 constexpr bool
 qryIsSameFrame(TId                                       const & qryId1,
                TId                                       const & qryId2,
@@ -737,9 +737,9 @@ qryIsSameFrame(TId                                       const & qryId1,
 // ----------------------------------------------------------------------------
 
 template <typename TId,
-          BlastFormatOptions::M mf,
-          BlastFormatOptions::Program p,
-          BlastFormatOptions::Generation g>
+          BlastFormatFile mf,
+          BlastFormatProgram p,
+          BlastFormatGeneration g>
 constexpr bool
 subjIsSameFrame(TId                                       const & subjId1,
                 TId                                       const & subjId2,

@@ -46,9 +46,9 @@
 using namespace seqan;
 
 template <typename TString, typename TSpec,
-          BlastFormatOptions::M m,
-          BlastFormatOptions::Program p,
-          BlastFormatOptions::Generation g>
+          BlastFormatFile m,
+          BlastFormatProgram p,
+          BlastFormatGeneration g>
 inline int
 step03_generateIndexAndDump(StringSet<TString, TSpec> & seqs,
                             LambdaIndexerOptions const & options,
@@ -78,9 +78,9 @@ step03_generateIndexAndDump(StringSet<TString, TSpec> & seqs,
 }
 
 template <typename TAlph, typename TSpec1, typename TSpec2,
-          BlastFormatOptions::M m,
-          BlastFormatOptions::Program p,
-          BlastFormatOptions::Generation g>
+          BlastFormatFile m,
+          BlastFormatProgram p,
+          BlastFormatGeneration g>
 inline int
 step02_reduceAlphabet(StringSet<String<TAlph, TSpec1>, TSpec2> & oldSubj,
                       LambdaIndexerOptions const & options,
@@ -149,13 +149,13 @@ step02_reduceAlphabet(StringSet<String<TAlph, TSpec1>, TSpec2> & oldSubj,
 
 template <typename TNewSubj,
           typename TOldSubj,
-          BlastFormatOptions::M m,
-          BlastFormatOptions::Generation g>
+          BlastFormatFile m,
+          BlastFormatGeneration g>
 inline void step01a_preprocessSubj(TNewSubj & newSubj,
                                    TOldSubj & oldSubj,
                                    LambdaIndexerOptions const & /**/,
                                    BlastFormat<m,
-                                               BlastFormatOptions::BlastN,
+                                               BlastFormatProgram::BLASTN,
                                                g> const & /*tag*/)
 {
     newSubj.concat = oldSubj.concat; //implicit conversion
@@ -164,13 +164,13 @@ inline void step01a_preprocessSubj(TNewSubj & newSubj,
 
 template <typename TNewSubj,
           typename TOldSubj,
-          BlastFormatOptions::M m,
-          BlastFormatOptions::Generation g>
+          BlastFormatFile m,
+          BlastFormatGeneration g>
 inline void step01a_preprocessSubj(TNewSubj & newSubj,
                                     TOldSubj const & oldSubj,
                                     LambdaIndexerOptions const & /**/,
                                     BlastFormat<m,
-                                                BlastFormatOptions::BlastP,
+                                                BlastFormatProgram::BLASTP,
                                                 g> const & /*tag*/)
 {
     newSubj.concat = oldSubj.concat; //implicit conversion
@@ -180,13 +180,13 @@ inline void step01a_preprocessSubj(TNewSubj & newSubj,
 
 template <typename TNewSubj,
           typename TOldSubj,
-          BlastFormatOptions::M m,
-          BlastFormatOptions::Generation g>
+          BlastFormatFile m,
+          BlastFormatGeneration g>
 inline void step01a_preprocessSubj(TNewSubj & newSubj,
                                     TOldSubj const & oldSubj,
                                     LambdaIndexerOptions const & /**/,
                                     BlastFormat<m,
-                                                BlastFormatOptions::BlastX,
+                                                BlastFormatProgram::BLASTX,
                                                 g> const & /*tag*/)
 {
     newSubj.concat = oldSubj.concat; //implicit conversion
@@ -195,13 +195,13 @@ inline void step01a_preprocessSubj(TNewSubj & newSubj,
 
 template <typename TNewSubj,
           typename TOldSubj,
-          BlastFormatOptions::M m,
-          BlastFormatOptions::Generation g>
+          BlastFormatFile m,
+          BlastFormatGeneration g>
 inline void step01a_preprocessSubj(TNewSubj & newSubj,
                                     TOldSubj const & oldSubj,
                                     LambdaIndexerOptions const & /**/,
                                     BlastFormat<m,
-                                                BlastFormatOptions::TBlastN,
+                                                BlastFormatProgram::TBLASTN,
                                                 g> const & /*tag*/)
 {
     translate(newSubj, oldSubj, TranslationFrames::SixFrame);
@@ -209,21 +209,21 @@ inline void step01a_preprocessSubj(TNewSubj & newSubj,
 
 template <typename TNewSubj,
           typename TOldSubj,
-          BlastFormatOptions::M m,
-          BlastFormatOptions::Generation g>
+          BlastFormatFile m,
+          BlastFormatGeneration g>
 inline void step01a_preprocessSubj(TNewSubj & newSubj,
                                     TOldSubj const & oldSubj,
                                     LambdaIndexerOptions const & /**/,
                                     BlastFormat<m,
-                                                BlastFormatOptions::TBlastX,
+                                                BlastFormatProgram::TBLASTX,
                                                 g> const & /*tag*/)
 {
     translate(newSubj, oldSubj, TranslationFrames::SixFrame);
 }
 
-template <BlastFormatOptions::M m,
-          BlastFormatOptions::Program p,
-          BlastFormatOptions::Generation g>
+template <BlastFormatFile m,
+          BlastFormatProgram p,
+          BlastFormatGeneration g>
 inline int
 step01_preprocessSubjSeqs(
                        StringSet<CharString, Owner<ConcatDirect<> > >  & oldSubj,
@@ -273,9 +273,9 @@ step01_preprocessSubjSeqs(
 
 
 
-template <BlastFormatOptions::M m,
-          BlastFormatOptions::Program p,
-          BlastFormatOptions::Generation g>
+template <BlastFormatFile m,
+          BlastFormatProgram p,
+          BlastFormatGeneration g>
 inline int
 step00_loadSubjSequences(LambdaIndexerOptions const & options,
                          BlastFormat<m, p, g> const & /*tag*/)
@@ -438,9 +438,9 @@ step00_loadSubjSequences(LambdaIndexerOptions const & options,
     return step01_preprocessSubjSeqs(seqs, options, TFormat());
 }
 
-template <BlastFormatOptions::M m,
-          BlastFormatOptions::Program p,
-          BlastFormatOptions::Generation g>
+template <BlastFormatFile m,
+          BlastFormatProgram p,
+          BlastFormatGeneration g>
 inline int
 beginPipeline(LambdaIndexerOptions const & options,
               BlastFormat<m, p, g> const & /*tag*/)

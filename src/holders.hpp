@@ -132,9 +132,9 @@ struct StatsHolder
 template <typename TAlph_,
           typename TRedAlph_,
           typename TScoreScheme,
-          BlastFormatOptions::M m,
-          BlastFormatOptions::Program p,
-          BlastFormatOptions::Generation g>
+          BlastFormatFile m,
+          BlastFormatProgram p,
+          BlastFormatGeneration g>
 class GlobalDataHolderBase
 {
 public:
@@ -147,13 +147,14 @@ public:
     using TDbIndex      = Index<TRedSeqs,IndexSa<> >;
     using TIds          = StringSet<CharString, Owner<ConcatDirect<>>>;
     using TMasking      = StringSet<String<unsigned>, Owner<ConcatDirect<>>>;
-    using TBlastParams  = typename BlastStatisticalParameters<TScoreScheme>::Type;
+    using TBlastScoringAdapter = BlastScoringAdapter<TScoreScheme>;
 
     TUnredSeqs                  qrySeqs;
     TUnredSeqs                  subjSeqs;
     TDbIndex                    dbIndex;
-    unsigned long long          dbTotalLength;
-    unsigned long               dbNumberOfSeqs;
+    BlastDbSpecs<>              dbSpecs;
+//     unsigned long long          dbTotalLength;
+//     unsigned long               dbNumberOfSeqs;
 
     TMasking                    segIntStarts;
     TMasking                    segIntEnds;
@@ -162,7 +163,7 @@ public:
     TIds                        subjIds;
 
     TScoreScheme                scoreScheme;
-    TBlastParams                blastParams;
+    TBlastScoringAdapter        blastScoringAdapter;
 
     StatsHolder                 stats;
 };
@@ -171,9 +172,9 @@ public:
 // protein
 template <typename TRedAlph_,
           typename TScoreScheme,
-          BlastFormatOptions::M m,
-          BlastFormatOptions::Program p,
-          BlastFormatOptions::Generation g>
+          BlastFormatFile m,
+          BlastFormatProgram p,
+          BlastFormatGeneration g>
 class GlobalDataHolder :
     public GlobalDataHolderBase<AminoAcid, TRedAlph_, TScoreScheme, m, p, g>
 {
@@ -183,9 +184,9 @@ public:
 
 // unreduced protein
 template <typename TScoreScheme,
-          BlastFormatOptions::M m,
-          BlastFormatOptions::Program p,
-          BlastFormatOptions::Generation g>
+          BlastFormatFile m,
+          BlastFormatProgram p,
+          BlastFormatGeneration g>
 class GlobalDataHolder<AminoAcid, TScoreScheme, m, p, g> :
     public GlobalDataHolderBase<AminoAcid, AminoAcid, TScoreScheme, m, p, g>
 {
@@ -196,9 +197,9 @@ public:
 
 // blastN
 template <typename TScoreScheme,
-          BlastFormatOptions::M m,
-          BlastFormatOptions::Program p,
-          BlastFormatOptions::Generation g>
+          BlastFormatFile m,
+          BlastFormatProgram p,
+          BlastFormatGeneration g>
 class GlobalDataHolder<Dna5, TScoreScheme, m, p, g> :
     public GlobalDataHolderBase<Dna5, Dna5, TScoreScheme, m, p, g>
 {

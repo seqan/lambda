@@ -126,9 +126,9 @@ loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
 
 
 // Generic, with translation and reduction
-template <BlastFormatOptions::M m,
-          BlastFormatOptions::Program p,
-          BlastFormatOptions::Generation g,
+template <BlastFormatFile m,
+          BlastFormatProgram p,
+          BlastFormatGeneration g,
           typename TRedAlph,
           typename TScoreScheme,
 //           MyEnableIf<typename Not<typename Or<typename IsSameType<TRedAlph,AminoAcid>::Type, typename IsSameType<TRedAlph,Dna5>::Type>::Type>::Type()>…>
@@ -158,7 +158,7 @@ loadQueryImpl(GlobalDataHolder<TRedAlph,
     std::cout << "translating…" << std::flush;
     translate(globalHolder.qrySeqs,
               untranslatedSeqs,
-              TranslationFrames::SixFrame,
+              SIX_FRAME,
               options.geneticCode);
 
     // reduce implicitly
@@ -170,9 +170,9 @@ loadQueryImpl(GlobalDataHolder<TRedAlph,
 }
 
 // only translation
-template <BlastFormatOptions::M m,
-          BlastFormatOptions::Program p,
-          BlastFormatOptions::Generation g,
+template <BlastFormatFile m,
+          BlastFormatProgram p,
+          BlastFormatGeneration g,
           typename TRedAlph,
           typename TScoreScheme,
           MyEnableIf<std::is_same<TRedAlph,AminoAcid>::value>... >
@@ -201,16 +201,16 @@ loadQueryImpl(GlobalDataHolder<TRedAlph,
     std::cout << "translating…" << std::flush;
     translate(globalHolder.qrySeqs,
               untranslatedSeqs,
-              TranslationFrames::SixFrame,
+              SIX_FRAME,
               options.geneticCode);
 
     return 0;
 }
 
 // none
-template <BlastFormatOptions::M m,
-          BlastFormatOptions::Program p,
-          BlastFormatOptions::Generation g,
+template <BlastFormatFile m,
+          BlastFormatProgram p,
+          BlastFormatGeneration g,
           typename TRedAlph,
           typename TScoreScheme,
           MyEnableIf<std::is_same<TRedAlph,Dna5>::value>...>
@@ -234,9 +234,9 @@ loadQueryImpl(GlobalDataHolder<TRedAlph,
 
 
 
-template <BlastFormatOptions::M m,
-          BlastFormatOptions::Program p,
-          BlastFormatOptions::Generation g,
+template <BlastFormatFile m,
+          BlastFormatProgram p,
+          BlastFormatGeneration g,
           typename TRedAlph,
           typename TScoreScheme>
 inline int
@@ -270,9 +270,9 @@ loadQuery(GlobalDataHolder<TRedAlph,
 // --------------------------------------------------------------------------
 
 
-template <BlastFormatOptions::M m,
-          BlastFormatOptions::Program p,
-          BlastFormatOptions::Generation g,
+template <BlastFormatFile m,
+          BlastFormatProgram p,
+          BlastFormatGeneration g,
           typename TRedAlph,
           typename TScoreScheme>
 inline int
@@ -318,14 +318,15 @@ loadSubjects(GlobalDataHolder<TRedAlph,
     std::cout << "Runtime: " << finish << "s \n\n" << std::flush;
 
 
-    globalHolder.dbTotalLength = ((p == BlastFormatOptions::TBlastN) ||
-                                  (p == BlastFormatOptions::TBlastX))
-                                ? length(concat(globalHolder.subjSeqs)) / 6 * 3
-                                : length(concat(globalHolder.subjSeqs));
-    globalHolder.dbNumberOfSeqs = ((p == BlastFormatOptions::TBlastN) ||
-                                   (p == BlastFormatOptions::TBlastX))
-                                ? length(globalHolder.subjSeqs) / 6
-                                : length(globalHolder.subjSeqs);
+    globalHolder.dbSpecs.dbName = options.dbFile;
+    globalHolder.dbSpecs.dbTotalLength =
+      ((p == BlastFormatProgram::TBLASTN) || (p == BlastFormatProgram::TBLASTX))
+        ? length(concat(globalHolder.subjSeqs)) / 6 * 3
+        : length(concat(globalHolder.subjSeqs));
+    globalHolder.dbSpecs.dbNumberOfSeqs =
+      ((p == BlastFormatProgram::TBLASTN) || (p == BlastFormatProgram::TBLASTX))
+        ? length(globalHolder.subjSeqs) / 6
+        : length(globalHolder.subjSeqs);
 
     return 0;
 }
@@ -335,9 +336,9 @@ loadSubjects(GlobalDataHolder<TRedAlph,
 // --------------------------------------------------------------------------
 
 
-template <BlastFormatOptions::M m,
-          BlastFormatOptions::Program p,
-          BlastFormatOptions::Generation g,
+template <BlastFormatFile m,
+          BlastFormatProgram p,
+          BlastFormatGeneration g,
           typename TRedAlph,
           typename TScoreScheme>
 inline int
@@ -388,9 +389,9 @@ loadSegintervals(GlobalDataHolder<TRedAlph,
 // --------------------------------------------------------------------------
 
 
-template <BlastFormatOptions::M m,
-          BlastFormatOptions::Program p,
-          BlastFormatOptions::Generation g,
+template <BlastFormatFile m,
+          BlastFormatProgram p,
+          BlastFormatGeneration g,
           typename TRedAlph,
           typename TScoreScheme>
 inline void
@@ -404,9 +405,9 @@ prepareScoringMore(GlobalDataHolder<TRedAlph,
     setScoreMismatch(globalHolder.scoreScheme, options.misMatch);
 }
 
-template <BlastFormatOptions::M m,
-          BlastFormatOptions::Program p,
-          BlastFormatOptions::Generation g,
+template <BlastFormatFile m,
+          BlastFormatProgram p,
+          BlastFormatGeneration g,
           typename TRedAlph,
           typename TScoreScheme>
 inline void
@@ -419,26 +420,26 @@ prepareScoringMore(GlobalDataHolder<TRedAlph,
 }
 
 
-template <BlastFormatOptions::M m,
-          BlastFormatOptions::Program p,
-          BlastFormatOptions::Generation g,
+template <BlastFormatFile m,
+          BlastFormatProgram p,
+          BlastFormatGeneration g,
           typename TRedAlph,
           typename TScoreScheme>
 inline int
-prepareScoring(GlobalDataHolder<TRedAlph,
-                                TScoreScheme,
-                                 m, p, g>             & globalHolder,
+prepareScoring(GlobalDataHolder<TRedAlph, TScoreScheme, m, p, g>
+                                                      & globalHolder,
                LambdaOptions                    const & options)
 {
 
-    setScoreGapOpen  (globalHolder.scoreScheme, options.gapOpen + options.gapExtend);
+    setScoreGapOpen  (globalHolder.scoreScheme, options.gapOpen);
     setScoreGapExtend(globalHolder.scoreScheme, options.gapExtend);
+    blastScoringScheme2seqanScoringScheme(globalHolder.scoreScheme);
 
     prepareScoringMore(globalHolder, options,
                        std::is_same<TScoreScheme, Score<int, Simple>>());
 
-    int ret = getScoringParams(globalHolder.blastParams, globalHolder.scoreScheme);
-    if (ret)
+    if (!assignScoreScheme(globalHolder.blastScoringAdapter,
+                      globalHolder.scoreScheme))
     {
         ::std::cerr << "Could not computer Karlin-Altschul-Values for "
                     << "Scoring Scheme. Exiting.\n";
@@ -962,6 +963,7 @@ computeBlastMatch(TBlastMatch   & bm,
                                         lH.gH.scoreScheme);
                 } else
                 {
+                    //TODO add alignContext to other calls
                     scr = extendAlignment(bm.align,
                                         scr,
                                         curQry,
@@ -1016,24 +1018,19 @@ computeBlastMatch(TBlastMatch   & bm,
 
 //     std::cout << "ALIGN BEFORE STATS:\n" << bm.align << "\n";
 
-    calcStatsAndScore(bm.score, bm.aliLength, bm.identities,
-                      bm.positives,bm.mismatches, bm.gaps,
-                      bm.gapOpenings, row0, row1,
-                      lH.gH.scoreScheme);
+    calcStatsAndScore(bm, lH.gH.scoreScheme);
 //     const unsigned long qryLength = length(row0);
-    bm.bitScore = calcBitScore(bm.score, lH.gH.blastParams, lH.gH.scoreScheme);
+    bm.bitScore = calcBitScore(bm.score, lH.gH.blastScoringAdapter);
     // TODO possibly cache the lengthAdjustments
-    const unsigned long long lengthAdj = _lengthAdjustment(lH.gH.dbTotalLength,
-                                                           qryLength,
-                                                           lH.gH.blastParams,
-                                                           lH.gH.scoreScheme);
-    bm.eVal = calcEValue(bm.score,
-                         lH.gH.dbTotalLength - lengthAdj,
+    auto const lengthAdj = _lengthAdjustment(lH.gH.dbSpecs.dbTotalLength,
+                                             qryLength,
+                                             lH.gH.blastScoringAdapter);
+    bm.eValue = calcEValue(bm.score,
+                         lH.gH.dbSpecs.dbTotalLength - lengthAdj,
                          qryLength - lengthAdj,
-                         lH.gH.blastParams,
-                         lH.gH.scoreScheme);
+                         lH.gH.blastScoringAdapter);
 
-    if (bm.eVal > lH.options.eCutOff)
+    if (bm.eValue > lH.options.eCutOff)
     {
 
         return ALIGNEVAL;
@@ -1048,14 +1045,14 @@ computeBlastMatch(TBlastMatch   & bm,
 //     m.subjEnd   = bm.sEnd;
 
     // UNTRANSLATE and add 1
-    bm.qStart  = getTrueQryStartPos (m.qryId, bm.qStart, bm.qEnd,
-                                     lH.options, TFormat());
-    bm.qEnd    = getTrueQryEndPos   (m.qryId, bm.qStart, bm.qEnd,
-                                     lH.options, TFormat());
-    bm.sStart  = getTrueSubjStartPos(m.subjId, bm.sStart, bm.sEnd,
-                                     lH.options, TFormat());
-    bm.sEnd    = getTrueSubjEndPos  (m.subjId, bm.sStart, bm.sEnd,
-                                     lH.options, TFormat());
+//     bm.qStart  = getTrueQryStartPos (m.qryId, bm.qStart, bm.qEnd,
+//                                      lH.options, TFormat());
+//     bm.qEnd    = getTrueQryEndPos   (m.qryId, bm.qStart, bm.qEnd,
+//                                      lH.options, TFormat());
+//     bm.sStart  = getTrueSubjStartPos(m.subjId, bm.sStart, bm.sEnd,
+//                                      lH.options, TFormat());
+//     bm.sEnd    = getTrueSubjEndPos  (m.subjId, bm.sStart, bm.sEnd,
+//                                      lH.options, TFormat());
 
     bm.qFrameShift = getQryFrameShift(m.qryId, lH.options, TFormat()) + 1;
     if (qryIsReverseComplemented(m.qryId, lH.options, TFormat()))
@@ -1081,13 +1078,14 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
     using TGlobalHolder = typename TLocalHolder::TGlobalHolder;
     using TFormat       = typename TGlobalHolder::TFormat;
     using TPos          = typename Match::TPos;
-    using TBlastRecord  = BlastRecord<CharString const &,
+    using TBlastRecord  = BlastRecord<
 //                                       CharString const &,
 //                                       CharString const &,
                            typename Value<typename TGlobalHolder::TIds>::Type,// const &,
                            typename Value<typename TGlobalHolder::TIds>::Type,// const &,
-                           typename TLocalHolder::TAlign,
-                           TPos>;
+                           TPos,
+                           typename TLocalHolder::TAlign>;
+
     constexpr TPos TPosMax = std::numeric_limits<TPos>::max();
 
 
@@ -1112,12 +1110,11 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
         itN = std::next(it,1);
         auto const trueQryId = getTrueQryId(it->qryId,lH.options, TFormat());
 
-        TBlastRecord record(lH.options.dbFile,
-                            lH.gH.qryIds[trueQryId]);
-        record.dbTotalLength  = lH.gH.dbTotalLength;
-        record.dbNumberOfSeqs = lH.gH.dbNumberOfSeqs;
-        record.qLength = ((TFormat::p == BlastFormatOptions::BlastX) ||
-                          (TFormat::p == BlastFormatOptions::TBlastX))
+        TBlastRecord record(lH.gH.qryIds[trueQryId]);
+        using TNoTag = decltype(unTag(TFormat()));
+
+        record.qLength = ((TNoTag::p == BlastFormatProgram::BLASTX) ||
+                          (TNoTag::p == BlastFormatProgram::TBLASTX))
                         ? length(lH.gH.qrySeqs[trueQryId]) / 3
                         : length(lH.gH.qrySeqs[trueQryId]);
 
@@ -1208,8 +1205,8 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
                 switch (lret)
                 {
                     case COMPUTERESULT_::SUCCESS:
-                        bm.sLength = ((TFormat::p == BlastFormatOptions::TBlastN) ||
-                                    (TFormat::p == BlastFormatOptions::TBlastX))
+                        bm.sLength = ((TNoTag::p == BlastFormatProgram::TBLASTN) ||
+                                    (TNoTag::p == BlastFormatProgram::TBLASTX))
                                     ? length(lH.gH.subjSeqs[it->subjId]) * 3
                                     : length(lH.gH.subjSeqs[it->subjId]);
     //                     lastMatch = ma;
@@ -1270,7 +1267,7 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
                                                  toViewPosition(row1,
                                                                 it2->subjStart
                                                                 - bm.sStart))
-                                == it2->qryStart - bm.qStart)
+                                == TPos(it2->qryStart - bm.qStart))
                             {
                                 ++lH.stats.hitsPutativeDuplicate;
                                 it2->qryStart = TPosMax;
@@ -1300,7 +1297,7 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
             int lret = 0;
             #pragma omp critical(filewrite)
             {
-                lret = writeRecord(stream, record, TFormat());
+                lret = writeRecord(stream, record, lH.gH.dbSpecs, TFormat());
             }
             if (lret)
                 return lret;

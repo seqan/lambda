@@ -63,9 +63,9 @@ using namespace seqan;
 // Function main()
 // --------------------------------------------------------------------------
 
-template <BlastFormatOptions::M m,
-          BlastFormatOptions::Program p,
-          BlastFormatOptions::Generation g>
+template <BlastFormatFile m,
+          BlastFormatProgram p,
+          BlastFormatGeneration g>
 int mainComp(LambdaIndexerOptions const & options,
              BlastFormat<m,p,g> const & /*tag*/)
 {
@@ -97,41 +97,41 @@ int main(int argc, char const ** argv)
   // CONVERT Run-time options to compile-time Format-Type
     switch (options.blastProg)
     {
-        case BlastFormatOptions::BlastN :
+        case BlastFormatProgram::BLASTN :
             {
                 typedef BlastFormat<BlastFormatOptions::INVALID_M,
-                                    BlastFormatOptions::BlastN,
+                                    BlastFormatProgram::BLASTN,
                                     BlastFormatOptions::INVALID_Generation> format;
                 return mainComp(options, format());
             }break;
-        case BlastFormatOptions::BlastP :
+        case BlastFormatProgram::BLASTP :
             {
                 typedef BlastFormat<BlastFormatOptions::INVALID_M,
-                                    BlastFormatOptions::BlastP,
+                                    BlastFormatProgram::BLASTP,
                                     BlastFormatOptions::INVALID_Generation> format;
                 return mainComp(options, format());
             }
             break;
-        case BlastFormatOptions::BlastX :
+        case BlastFormatProgram::BLASTX :
             {
                 typedef BlastFormat<BlastFormatOptions::INVALID_M,
-                                    BlastFormatOptions::BlastX,
+                                    BlastFormatProgram::BLASTX,
                                     BlastFormatOptions::INVALID_Generation> format;
                 return mainComp(options, format());
             }
             break;
-        case BlastFormatOptions::TBlastN :
+        case BlastFormatProgram::TBLASTN :
             {
                 typedef BlastFormat<BlastFormatOptions::INVALID_M,
-                                    BlastFormatOptions::TBlastN,
+                                    BlastFormatProgram::TBLASTN,
                                     BlastFormatOptions::INVALID_Generation> format;
                 return mainComp(options, format());
             }
             break;
-        case BlastFormatOptions::TBlastX :
+        case BlastFormatProgram::TBLASTX :
             {
                 typedef BlastFormat<BlastFormatOptions::INVALID_M,
-                                    BlastFormatOptions::TBlastX,
+                                    BlastFormatProgram::TBLASTX,
                                     BlastFormatOptions::INVALID_Generation> format;
                 return mainComp(options, format());
             }

@@ -51,14 +51,14 @@ template <typename TAlph>
 using TCDStringSet = StringSet<String<TAlph, TCDSpec>, Owner<ConcatDirect<> > >;
 
 
-template <BlastFormatOptions::Program p>
+template <BlastFormatProgram p>
 struct UnreducedStringSet
 {
     typedef TCDStringSet<AminoAcid> Type;
 };
 
 template <>
-struct UnreducedStringSet<BlastFormatOptions::BlastN>
+struct UnreducedStringSet<BlastFormatProgram::BLASTN>
 {
     typedef TCDStringSet<Dna5> Type;
 };
@@ -91,14 +91,14 @@ struct SharedOptions
 
     GeneticCodeSpec geneticCode;
 
-    BlastFormatOptions::Program blastProg;
+    BlastFormatProgram blastProg;
 
     bool        isTerminal = false;
     unsigned    terminalCols = 80;
 
     SharedOptions() :
         verbosity(2),fileFormat(0),alphReduction(0),
-        blastProg(BlastFormatOptions::BlastX)
+        blastProg(BlastFormatProgram::BLASTX)
     {
         isTerminal = isatty(fileno(stdout));
         if (isTerminal)
@@ -427,28 +427,28 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     getOptionValue(blastMode, parser, "program");
     if (blastMode == "blastn")
     {
-        options.blastProg   = BlastFormatOptions::BlastN;
+        options.blastProg   = BlastFormatProgram::BLASTN;
         options.seedLength  = 20;
         options.alphReduction = 0;
     }
     else if (blastMode == "blastp")
     {
-        options.blastProg = BlastFormatOptions::BlastP;
+        options.blastProg = BlastFormatProgram::BLASTP;
         options.seedLength  = 10;
     }
     else if (blastMode == "blastx")
     {
-        options.blastProg = BlastFormatOptions::BlastX;
+        options.blastProg = BlastFormatProgram::BLASTX;
         options.seedLength  = 10;
     }
     else if (blastMode == "tblastn")
     {
-        options.blastProg = BlastFormatOptions::TBlastN;
+        options.blastProg = BlastFormatProgram::TBLASTN;
         options.seedLength  = 10;
     }
     else if (blastMode == "tblastx")
     {
-        options.blastProg = BlastFormatOptions::TBlastX;
+        options.blastProg = BlastFormatProgram::TBLASTX;
         options.seedLength  = 10;
     }
     else
@@ -530,7 +530,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     switch (options.alphReduction)
     {
         case 1: case 2: case 8: case 10: case 12:
-        if (options.blastProg == BlastFormatOptions::BlastN)
+        if (options.blastProg == BlastFormatProgram::BLASTN)
         {
             std::cerr << "Alphabet Reduction only makes sense"
                             " for proteins." << std::endl;
@@ -680,28 +680,28 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
     getOptionValue(blastMode, parser, "program");
     if (blastMode == "blastn")
     {
-        options.blastProg   = BlastFormatOptions::BlastN;
+        options.blastProg   = BlastFormatProgram::BLASTN;
         options.alphReduction = 0;
 
     }
     else if (blastMode == "blastp")
     {
-        options.blastProg = BlastFormatOptions::BlastP;
+        options.blastProg = BlastFormatProgram::BLASTP;
 
     }
     else if (blastMode == "blastx")
     {
-        options.blastProg = BlastFormatOptions::BlastX;
+        options.blastProg = BlastFormatProgram::BLASTX;
 
     }
     else if (blastMode == "tblastn")
     {
-        options.blastProg = BlastFormatOptions::TBlastN;
+        options.blastProg = BlastFormatProgram::TBLASTN;
 
     }
     else if (blastMode == "tblastx")
     {
-        options.blastProg = BlastFormatOptions::TBlastX;
+        options.blastProg = BlastFormatProgram::TBLASTX;
 
     }
     else
@@ -713,7 +713,7 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
     switch (options.alphReduction)
     {
         case 0: case 1: case 2: case 8: case 10: case 12:
-        if (options.blastProg == BlastFormatOptions::BlastN)
+        if (options.blastProg == BlastFormatProgram::BLASTN)
         {
             std::cerr << "Alphabet Reduction only makes sense"
                             " for proteins." << std::endl;

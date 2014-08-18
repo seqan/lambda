@@ -408,7 +408,15 @@ myPrint(LambdaOptions const & options, const int verbose, Args const &... args)
 
 
 
+// ----------------------------------------------------------------------------
+// remove tag type
+// ----------------------------------------------------------------------------
 
+template <typename T>
+T unTag(Tag<T> const & /**/)
+{
+    return T();
+}
 
 // ----------------------------------------------------------------------------
 // get plus-minus-range with bounds-checking for unsigned types

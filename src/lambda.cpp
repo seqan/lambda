@@ -64,17 +64,17 @@
 using namespace seqan;
 
 
-inline BlastFormatOptions::M
+inline BlastFormatFile
 _fileType(LambdaOptions const & options)
 {
-    if (hasSuffix(options.output, ".m0"))
-        return BlastFormatOptions::Pairwise;
-    else if (hasSuffix(options.output, ".m8"))
-        return BlastFormatOptions::Tabular;
-    else if (hasSuffix(options.output, ".m9"))
-        return BlastFormatOptions::TabularWithHeader;
+    if (endsWith(options.output, ".m0"))
+        return BlastFormatFile::PAIRWISE;
+    else if (endsWith(options.output, ".m8"))
+        return BlastFormatFile::TABULAR;
+    else if (endsWith(options.output, ".m9"))
+        return BlastFormatFile::TABULAR_WITH_HEADER;
     else
-        return BlastFormatOptions::INVALID_M;
+        return BlastFormatFile::INVALID_File;
 }
 
 
@@ -84,31 +84,31 @@ _fileType(LambdaOptions const & options)
 inline int
 argConv0(LambdaOptions const & options);
 //-
-template <BlastFormatOptions::M m,
-          BlastFormatOptions::Generation g>
+template <BlastFormatFile m,
+          BlastFormatGeneration g>
 inline int
 argConv1(LambdaOptions                               const & options,
-         BlastFormat<m,BlastFormatOptions::BlastN,g> const & /**/);
-template <BlastFormatOptions::M m,
-          BlastFormatOptions::Program p,
-          BlastFormatOptions::Generation g,
-          typename std::enable_if<p != BlastFormatOptions::BlastN, ns_enabler::enabler>::type...>
+         BlastFormat<m,BlastFormatProgram::BLASTN,g> const & /**/);
+template <BlastFormatFile m,
+          BlastFormatProgram p,
+          BlastFormatGeneration g,
+          typename std::enable_if<p != BlastFormatProgram::BLASTN, ns_enabler::enabler>::type...>
 inline int
 argConv1(LambdaOptions      const & options,
          BlastFormat<m,p,g> const & /**/);
 //-
-template <BlastFormatOptions::M m,
-          BlastFormatOptions::Program p,
-          BlastFormatOptions::Generation g,
+template <BlastFormatFile m,
+          BlastFormatProgram p,
+          BlastFormatGeneration g,
           typename TRedAlph>
 inline int
 argConv2(LambdaOptions      const & options,
          BlastFormat<m,p,g> const & /**/,
          TRedAlph           const & /**/);
 //-
-template <BlastFormatOptions::M m,
-          BlastFormatOptions::Program p,
-          BlastFormatOptions::Generation g,
+template <BlastFormatFile m,
+          BlastFormatProgram p,
+          BlastFormatGeneration g,
           typename TRedAlph,
           typename TScoreScheme>
 inline int
@@ -117,9 +117,9 @@ argConv3(LambdaOptions      const & options,
          TRedAlph           const & /**/,
          TScoreScheme       const & /**/);
 //-
-template <BlastFormatOptions::M m,
-          BlastFormatOptions::Program p,
-          BlastFormatOptions::Generation g,
+template <BlastFormatFile m,
+          BlastFormatProgram p,
+          BlastFormatGeneration g,
           typename TRedAlph,
           typename TScoreScheme,
           typename TScoreExtension>
@@ -166,33 +166,33 @@ argConv0(LambdaOptions const & options)
     switch (options.blastProg)
     {
 #ifndef FASTBUILD
-         case BlastFormatOptions::BlastN :
+         case BlastFormatProgram::BLASTN :
          {
- //             template <BlastFormatOptions::M m>
+ //             template <BlastFormatFile m>
  //             using TBF = BlastFormat<m,
- //                                 BlastFormatOptions::BlastN,
- //                                 BlastFormatOptions::Blast>;
+ //                                 BlastFormatProgram::BLASTN,
+ //                                 BlastFormatGeneration::BLAST>;
              switch (_fileType(options))
              {
-                 case BlastFormatOptions::Pairwise:
+                 case BlastFormatFile::PAIRWISE:
                  {
-                     typedef BlastFormat<BlastFormatOptions::Pairwise,
-                                         BlastFormatOptions::BlastN,
-                                         BlastFormatOptions::Blast> TFormat;
+                     typedef BlastFormat<BlastFormatFile::PAIRWISE,
+                                         BlastFormatProgram::BLASTN,
+                                         BlastFormatGeneration::BLAST> TFormat;
                      return argConv1(options, TFormat());
                  } break;
-                 case BlastFormatOptions::Tabular:
+                 case BlastFormatFile::TABULAR:
                  {
-                     typedef BlastFormat<BlastFormatOptions::Tabular,
-                                         BlastFormatOptions::BlastN,
-                                         BlastFormatOptions::Blast> TFormat;
+                     typedef BlastFormat<BlastFormatFile::TABULAR,
+                                         BlastFormatProgram::BLASTN,
+                                         BlastFormatGeneration::BLAST> TFormat;
                      return argConv1(options, TFormat());
                  } break;
-                 case BlastFormatOptions::TabularWithHeader:
+                 case BlastFormatFile::TABULAR_WITH_HEADER:
                  {
-                     typedef BlastFormat<BlastFormatOptions::TabularWithHeader,
-                                         BlastFormatOptions::BlastN,
-                                         BlastFormatOptions::Blast> TFormat;
+                     typedef BlastFormat<BlastFormatFile::TABULAR_WITH_HEADER,
+                                         BlastFormatProgram::BLASTN,
+                                         BlastFormatGeneration::BLAST> TFormat;
                      return argConv1(options, TFormat());
                  } break;
                  default:
@@ -200,33 +200,33 @@ argConv0(LambdaOptions const & options)
              }
          } break;
 
-        case BlastFormatOptions::BlastP :
+        case BlastFormatProgram::BLASTP :
         {
-//             template <BlastFormatOptions::M m>
+//             template <BlastFormatFile m>
 //             using TBF = BlastFormat<m,
-//                                 BlastFormatOptions::BlastP,
-//                                 BlastFormatOptions::Blast>;
+//                                 BlastFormatProgram::BLASTP,
+//                                 BlastFormatGeneration::BLAST>;
             switch (_fileType(options))
             {
-                case BlastFormatOptions::Pairwise:
+                case BlastFormatFile::PAIRWISE:
                 {
-                    typedef BlastFormat<BlastFormatOptions::Pairwise,
-                                        BlastFormatOptions::BlastP,
-                                        BlastFormatOptions::Blast> TFormat;
+                    typedef BlastFormat<BlastFormatFile::PAIRWISE,
+                                        BlastFormatProgram::BLASTP,
+                                        BlastFormatGeneration::BLAST> TFormat;
                     return argConv1(options, TFormat());
                 } break;
-                case BlastFormatOptions::Tabular:
+                case BlastFormatFile::TABULAR:
                 {
-                    typedef BlastFormat<BlastFormatOptions::Tabular,
-                                        BlastFormatOptions::BlastP,
-                                        BlastFormatOptions::Blast> TFormat;
+                    typedef BlastFormat<BlastFormatFile::TABULAR,
+                                        BlastFormatProgram::BLASTP,
+                                        BlastFormatGeneration::BLAST> TFormat;
                     return argConv1(options, TFormat());
                 } break;
-                case BlastFormatOptions::TabularWithHeader:
+                case BlastFormatFile::TABULAR_WITH_HEADER:
                 {
-                    typedef BlastFormat<BlastFormatOptions::TabularWithHeader,
-                                        BlastFormatOptions::BlastP,
-                                        BlastFormatOptions::Blast> TFormat;
+                    typedef BlastFormat<BlastFormatFile::TABULAR_WITH_HEADER,
+                                        BlastFormatProgram::BLASTP,
+                                        BlastFormatGeneration::BLAST> TFormat;
                     return argConv1(options, TFormat());
                 } break;
                 default:
@@ -234,36 +234,36 @@ argConv0(LambdaOptions const & options)
             }
         } break;
 #endif
-        case BlastFormatOptions::BlastX :
+        case BlastFormatProgram::BLASTX :
         {
-//             template <BlastFormatOptions::M m>
+//             template <BlastFormatFile m>
 //             using TBF = BlastFormat<m,
-//                                 BlastFormatOptions::BlastX,
-//                                 BlastFormatOptions::Blast>;
+//                                 BlastFormatProgram::BLASTX,
+//                                 BlastFormatGeneration::BLAST>;
             switch (_fileType(options))
             {
 #ifndef FASTBUILD
-                case BlastFormatOptions::Pairwise:
+                case BlastFormatFile::PAIRWISE:
                 {
-                    typedef BlastFormat<BlastFormatOptions::Pairwise,
-                                        BlastFormatOptions::BlastX,
-                                        BlastFormatOptions::Blast> TFormat;
+                    typedef BlastFormat<BlastFormatFile::PAIRWISE,
+                                        BlastFormatProgram::BLASTX,
+                                        BlastFormatGeneration::BLAST> TFormat;
                     return argConv1(options, TFormat());
                 } break;
 #endif
-                case BlastFormatOptions::Tabular:
+                case BlastFormatFile::TABULAR:
                 {
-                    typedef BlastFormat<BlastFormatOptions::Tabular,
-                                        BlastFormatOptions::BlastX,
-                                        BlastFormatOptions::Blast> TFormat;
+                    typedef BlastFormat<BlastFormatFile::TABULAR,
+                                        BlastFormatProgram::BLASTX,
+                                        BlastFormatGeneration::BLAST> TFormat;
                     return argConv1(options, TFormat());
                 } break;
 #ifndef FASTBUILD
-                case BlastFormatOptions::TabularWithHeader:
+                case BlastFormatFile::TABULAR_WITH_HEADER:
                 {
-                    typedef BlastFormat<BlastFormatOptions::TabularWithHeader,
-                                        BlastFormatOptions::BlastX,
-                                        BlastFormatOptions::Blast> TFormat;
+                    typedef BlastFormat<BlastFormatFile::TABULAR_WITH_HEADER,
+                                        BlastFormatProgram::BLASTX,
+                                        BlastFormatGeneration::BLAST> TFormat;
                     return argConv1(options, TFormat());
                 } break;
 #endif
@@ -272,33 +272,33 @@ argConv0(LambdaOptions const & options)
             }
         } break;
 #ifndef FASTBUILD
-        case BlastFormatOptions::TBlastN :
+        case BlastFormatProgram::TBLASTN :
         {
-//             template <BlastFormatOptions::M m>
+//             template <BlastFormatFile m>
 //             using TBF = BlastFormat<m,
-//                                 BlastFormatOptions::TBlastN,
-//                                 BlastFormatOptions::Blast>;
+//                                 BlastFormatProgram::TBLASTN,
+//                                 BlastFormatGeneration::BLAST>;
             switch (_fileType(options))
             {
-                case BlastFormatOptions::Pairwise:
+                case BlastFormatFile::PAIRWISE:
                 {
-                    typedef BlastFormat<BlastFormatOptions::Pairwise,
-                                        BlastFormatOptions::TBlastN,
-                                        BlastFormatOptions::Blast> TFormat;
+                    typedef BlastFormat<BlastFormatFile::PAIRWISE,
+                                        BlastFormatProgram::TBLASTN,
+                                        BlastFormatGeneration::BLAST> TFormat;
                     return argConv1(options, TFormat());
                 } break;
-                case BlastFormatOptions::Tabular:
+                case BlastFormatFile::TABULAR:
                 {
-                    typedef BlastFormat<BlastFormatOptions::Tabular,
-                                        BlastFormatOptions::TBlastN,
-                                        BlastFormatOptions::Blast> TFormat;
+                    typedef BlastFormat<BlastFormatFile::TABULAR,
+                                        BlastFormatProgram::TBLASTN,
+                                        BlastFormatGeneration::BLAST> TFormat;
                     return argConv1(options, TFormat());
                 } break;
-                case BlastFormatOptions::TabularWithHeader:
+                case BlastFormatFile::TABULAR_WITH_HEADER:
                 {
-                    typedef BlastFormat<BlastFormatOptions::TabularWithHeader,
-                                        BlastFormatOptions::TBlastN,
-                                        BlastFormatOptions::Blast> TFormat;
+                    typedef BlastFormat<BlastFormatFile::TABULAR_WITH_HEADER,
+                                        BlastFormatProgram::TBLASTN,
+                                        BlastFormatGeneration::BLAST> TFormat;
                     return argConv1(options, TFormat());
                 } break;
                 default:
@@ -306,33 +306,33 @@ argConv0(LambdaOptions const & options)
             }
         } break;
 
-        case BlastFormatOptions::TBlastX :
+        case BlastFormatProgram::TBLASTX :
         {
-//             template <BlastFormatOptions::M m>
+//             template <BlastFormatFile m>
 //             using TBF = BlastFormat<m,
-//                                 BlastFormatOptions::TBlastX,
-//                                 BlastFormatOptions::Blast>;
+//                                 BlastFormatProgram::TBLASTX,
+//                                 BlastFormatGeneration::BLAST>;
             switch (_fileType(options))
             {
-                case BlastFormatOptions::Pairwise:
+                case BlastFormatFile::PAIRWISE:
                 {
-                    typedef BlastFormat<BlastFormatOptions::Pairwise,
-                                        BlastFormatOptions::TBlastX,
-                                        BlastFormatOptions::Blast> TFormat;
+                    typedef BlastFormat<BlastFormatFile::PAIRWISE,
+                                        BlastFormatProgram::TBLASTX,
+                                        BlastFormatGeneration::BLAST> TFormat;
                     return argConv1(options, TFormat());
                 } break;
-                case BlastFormatOptions::Tabular:
+                case BlastFormatFile::TABULAR:
                 {
-                    typedef BlastFormat<BlastFormatOptions::Tabular,
-                                        BlastFormatOptions::TBlastX,
-                                        BlastFormatOptions::Blast> TFormat;
+                    typedef BlastFormat<BlastFormatFile::TABULAR,
+                                        BlastFormatProgram::TBLASTX,
+                                        BlastFormatGeneration::BLAST> TFormat;
                     return argConv1(options, TFormat());
                 } break;
-                case BlastFormatOptions::TabularWithHeader:
+                case BlastFormatFile::TABULAR_WITH_HEADER:
                 {
-                    typedef BlastFormat<BlastFormatOptions::TabularWithHeader,
-                                        BlastFormatOptions::TBlastX,
-                                        BlastFormatOptions::Blast> TFormat;
+                    typedef BlastFormat<BlastFormatFile::TABULAR_WITH_HEADER,
+                                        BlastFormatProgram::TBLASTX,
+                                        BlastFormatGeneration::BLAST> TFormat;
                     return argConv1(options, TFormat());
                 } break;
                 default:
@@ -348,20 +348,20 @@ argConv0(LambdaOptions const & options)
 
 /// Alphabet reduction
 
-template <BlastFormatOptions::M m,
-          BlastFormatOptions::Generation g>
+template <BlastFormatFile m,
+          BlastFormatGeneration g>
 inline int
 argConv1(LambdaOptions                               const & options,
-         BlastFormat<m,BlastFormatOptions::BlastN,g> const & /**/)
+         BlastFormat<m,BlastFormatProgram::BLASTN,g> const & /**/)
 {
-    using TFormat = BlastFormat<m,BlastFormatOptions::BlastN,g>;
+    using TFormat = BlastFormat<m,BlastFormatProgram::BLASTN,g>;
     return argConv2(options, TFormat(), Dna5());
 }
 
-template <BlastFormatOptions::M m,
-          BlastFormatOptions::Program p,
-          BlastFormatOptions::Generation g,
-          typename std::enable_if<p != BlastFormatOptions::BlastN, ns_enabler::enabler>::type...>
+template <BlastFormatFile m,
+          BlastFormatProgram p,
+          BlastFormatGeneration g,
+          typename std::enable_if<p != BlastFormatProgram::BLASTN, ns_enabler::enabler>::type...>
 inline int
 argConv1(LambdaOptions      const & options,
          BlastFormat<m,p,g> const & /**/)
@@ -392,9 +392,9 @@ argConv1(LambdaOptions      const & options,
 
 /// scoring scheme
 
-template <BlastFormatOptions::M m,
-          BlastFormatOptions::Program p,
-          BlastFormatOptions::Generation g,
+template <BlastFormatFile m,
+          BlastFormatProgram p,
+          BlastFormatGeneration g,
           typename TRedAlph>
 inline int
 argConv2(LambdaOptions      const & options,
@@ -422,9 +422,9 @@ argConv2(LambdaOptions      const & options,
     return -1;
 }
 
-template <BlastFormatOptions::M m,
-          BlastFormatOptions::Program p,
-          BlastFormatOptions::Generation g,
+template <BlastFormatFile m,
+          BlastFormatProgram p,
+          BlastFormatGeneration g,
           typename TRedAlph,
           typename TScoreScheme>
 inline int
@@ -453,9 +453,9 @@ argConv3(LambdaOptions      const & options,
 
 /// REAL MAIN
 
-template <BlastFormatOptions::M m,
-          BlastFormatOptions::Program p,
-          BlastFormatOptions::Generation g,
+template <BlastFormatFile m,
+          BlastFormatProgram p,
+          BlastFormatGeneration g,
           typename TRedAlph,
           typename TScoreScheme,
           typename TScoreExtension>
@@ -506,9 +506,7 @@ realMain(LambdaOptions      const & options,
     }
 
     ret = writeTop(stream,
-                   options.dbFile,
-                   globalHolder.dbNumberOfSeqs,
-                   globalHolder.dbTotalLength,
+                   globalHolder.dbSpecs,
                    typename TGlobalHolder::TFormat());
     if (ret)
         return ret;
@@ -567,7 +565,8 @@ realMain(LambdaOptions      const & options,
     }
 
     ret = writeBottom(stream,
-                      globalHolder.scoreScheme,
+                      globalHolder.dbSpecs,
+                      globalHolder.blastScoringAdapter,
                       typename TGlobalHolder::TFormat());
 
     stream.close();
