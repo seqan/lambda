@@ -1079,15 +1079,14 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
     using TFormat       = typename TGlobalHolder::TFormat;
     using TPos          = typename Match::TPos;
     using TBlastRecord  = BlastRecord<
-//                                       CharString const &,
-//                                       CharString const &,
                            typename Value<typename TGlobalHolder::TIds>::Type,// const &,
                            typename Value<typename TGlobalHolder::TIds>::Type,// const &,
                            TPos,
                            typename TLocalHolder::TAlign>;
 
     constexpr TPos TPosMax = std::numeric_limits<TPos>::max();
-
+    constexpr uint8_t qFactor = qHasRevComp(TFormat()) ? 3 : 1;
+    constexpr uint8_t sFactor = sHasRevComp(TFormat()) ? 3 : 1;
 
     double start = sysTime();
     lH.statusStr << "Extending and writing hits…";
@@ -1111,12 +1110,9 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
         auto const trueQryId = getTrueQryId(it->qryId,lH.options, TFormat());
 
         TBlastRecord record(lH.gH.qryIds[trueQryId]);
-        using TNoTag = decltype(unTag(TFormat()));
+//         using TNoTag = decltype(unTag(TFormat()));
 
-        record.qLength = ((TNoTag::p == BlastFormatProgram::BLASTX) ||
-                          (TNoTag::p == BlastFormatProgram::TBLASTX))
-                        ? length(lH.gH.qrySeqs[trueQryId]) / 3
-                        : length(lH.gH.qrySeqs[trueQryId]);
+        record.qLength = length(lH.gH.qrySeqs[trueQryId]) * qFactor;
 
         // inner loop over matches per record
         for (; it != itEnd; ++it)
@@ -1137,9 +1133,7 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
                     lH.gH.qryIds [getTrueQryId(it->qryId, lH.options, TFormat())],
                     lH.gH.subjIds[getTrueSubjId(it->subjId, lH.options, TFormat())]);
 
-
                 auto & bm = back(record.matches);
-
 
                 bm.qStart    = it->qryStart;
                 bm.qEnd      = it->qryStart + lH.options.seedLength;
@@ -1205,10 +1199,10 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
                 switch (lret)
                 {
                     case COMPUTERESULT_::SUCCESS:
-                        bm.sLength = ((TNoTag::p == BlastFormatProgram::TBLASTN) ||
-                                    (TNoTag::p == BlastFormatProgram::TBLASTX))
-                                    ? length(lH.gH.subjSeqs[it->subjId]) * 3
-                                    : length(lH.gH.subjSeqs[it->subjId]);
+                        // set remaining unset members of match
+                        bm.sLength = length(lH.gH.subjSeqs[it->subjId]) *
+                                     sFactor;
+                        bm.qLength = record.qLength;
     //                     lastMatch = ma;
     //                     ++lH.stats.goodMatches;
                         break;
