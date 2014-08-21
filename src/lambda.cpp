@@ -242,7 +242,7 @@ argConv0(LambdaOptions const & options)
 //                                 BlastFormatGeneration::BLAST>;
             switch (_fileType(options))
             {
-#ifndef FASTBUILD
+// #ifndef FASTBUILD
                 case BlastFormatFile::PAIRWISE:
                 {
                     typedef BlastFormat<BlastFormatFile::PAIRWISE,
@@ -250,7 +250,7 @@ argConv0(LambdaOptions const & options)
                                         BlastFormatGeneration::BLAST> TFormat;
                     return argConv1(options, TFormat());
                 } break;
-#endif
+// #endif
                 case BlastFormatFile::TABULAR:
                 {
                     typedef BlastFormat<BlastFormatFile::TABULAR,
@@ -258,7 +258,7 @@ argConv0(LambdaOptions const & options)
                                         BlastFormatGeneration::BLAST> TFormat;
                     return argConv1(options, TFormat());
                 } break;
-#ifndef FASTBUILD
+// #ifndef FASTBUILD
                 case BlastFormatFile::TABULAR_WITH_HEADER:
                 {
                     typedef BlastFormat<BlastFormatFile::TABULAR_WITH_HEADER,
@@ -266,7 +266,7 @@ argConv0(LambdaOptions const & options)
                                         BlastFormatGeneration::BLAST> TFormat;
                     return argConv1(options, TFormat());
                 } break;
-#endif
+// #endif
                 default:
                     break;
             }
