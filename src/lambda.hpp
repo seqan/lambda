@@ -86,8 +86,6 @@ struct Comp :
     }
 };
 
-
-
 // ============================================================================
 // Functions
 // ============================================================================
@@ -1112,7 +1110,8 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
         TBlastRecord record(lH.gH.qryIds[trueQryId]);
 //         using TNoTag = decltype(unTag(TFormat()));
 
-        record.qLength = length(lH.gH.qrySeqs[trueQryId]) * qFactor;
+        //TODO need to save and load real original length
+        record.qLength = length(lH.gH.qrySeqs[it->qryId]) * qFactor;
 
         // inner loop over matches per record
         for (; it != itEnd; ++it)
