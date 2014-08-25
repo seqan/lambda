@@ -18,6 +18,7 @@ message (STATUS "Configuring extras/apps/lambda")
 set (SEQAN_FIND_DEPENDENCIES OpenMP)
 find_package(SeqAn REQUIRED)
 find_package(CXX11 REQUIRED)
+find_package(CXX14)
 
 if (NOT CXX11_FOUND)
     message (STATUS "  C++11 not found: Not building lambda.")
@@ -52,7 +53,7 @@ add_executable (lambda_indexer lambda_indexer.cpp
 target_link_libraries (lambda ${SEQAN_LIBRARIES})
 
 # Add CXX flags found by find_package (SeqAn).
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN_CXX_FLAGS} ${CXX11_CXX_FLAGS}")
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN_CXX_FLAGS} ${CXX11_CXX_FLAGS} ${CXX14_CXX_FLAGS} -Wno-vla")
 
 set(BUILD_SHARED_LIBS OFF)
 
