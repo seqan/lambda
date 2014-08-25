@@ -66,8 +66,8 @@ using namespace seqan;
 // ============================================================================
 
 // makes partial function specialization convenient
-template <bool Condition>
-using MyEnableIf = typename std::enable_if<Condition, int>::type;
+template <bool condition>
+using MyEnableIf = typename std::enable_if<condition, int>::type;
 
 
 // ============================================================================
