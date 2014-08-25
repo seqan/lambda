@@ -47,6 +47,7 @@
 // #endif
 
 #define SEQAN_CXX11_STANDARD
+#define _GLIBCXX_USE_C99 1
 
 #include <iostream>
 
@@ -55,6 +56,7 @@
 #include <seqan/arg_parse.h>
 #include <seqan/seq_io.h>
 #include <seqan/reduced_aminoacid.h>
+#include <seqan/misc/misc_terminal.h>
 
 #include "options.hpp"
 #include "match.hpp"
@@ -92,7 +94,7 @@ argConv1(LambdaOptions                               const & options,
 template <BlastFormatFile m,
           BlastFormatProgram p,
           BlastFormatGeneration g,
-          typename std::enable_if<p != BlastFormatProgram::BLASTN, ns_enabler::enabler>::type...>
+          MyEnableIf<p != BlastFormatProgram::BLASTN> = 0>
 inline int
 argConv1(LambdaOptions      const & options,
          BlastFormat<m,p,g> const & /**/);
@@ -361,7 +363,7 @@ argConv1(LambdaOptions                               const & options,
 template <BlastFormatFile m,
           BlastFormatProgram p,
           BlastFormatGeneration g,
-          typename std::enable_if<p != BlastFormatProgram::BLASTN, ns_enabler::enabler>::type...>
+          MyEnableIf<p != BlastFormatProgram::BLASTN> >
 inline int
 argConv1(LambdaOptions      const & options,
          BlastFormat<m,p,g> const & /**/)
@@ -515,14 +517,14 @@ realMain(LambdaOptions      const & options,
             "Searching ",
             options.queryPart,
             " blocks of query with ",
-            omp_get_max_threads(),
+            options.threads,
             " threads...\n");
 
     if (isatty(fileno(stdin)))
     {
-        for (unsigned char i=0; i< omp_get_num_threads()+3; ++i)
+        for (unsigned char i=0; i< options.threads+3; ++i)
             std::cout << std::endl;
-        std::cout << "\033[" << omp_get_num_threads()+2 << "A";
+        std::cout << "\033[" << options.threads+2 << "A";
     }
 
     // TODO evaluate localHolder outside of loop and firstprivate
@@ -557,7 +559,7 @@ realMain(LambdaOptions      const & options,
 
         if (options.verbosity >= 2)
         {
-            #pragma omp critical(statsAdd)
+            SEQAN_OMP_PRAGMA(critical(statsAdd))
             {
                 globalHolder.stats += localHolder.stats;
             }

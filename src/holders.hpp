@@ -35,7 +35,6 @@
 // Forwards
 // ============================================================================
 
-
 // ============================================================================
 // Metafunctions
 // ============================================================================
@@ -48,11 +47,12 @@
 // Tags, Classes, Enums
 // ============================================================================
 
+// ----------------------------------------------------------------------------
+// struct StatsHolder
+// ----------------------------------------------------------------------------
 
 struct StatsHolder
 {
-
-
 // seeding
     unsigned long hitsAfterSeeding;
     unsigned long hitsMerged;
@@ -127,6 +127,9 @@ struct StatsHolder
 };
 
 
+// ----------------------------------------------------------------------------
+// struct GlobalDataHolder  -- one object per program
+// ----------------------------------------------------------------------------
 
 // base
 template <typename TAlph_,
@@ -140,21 +143,24 @@ class GlobalDataHolderBase
 public:
     using TAlph         = TAlph_;
     using TRedAlph      = TRedAlph_;
-//     using TScoreScheme  = TScoreScheme;
     using TFormat       = BlastFormat<m,p,g>;
     using TUnredSeqs    = TCDStringSet<TAlph>;
     using TRedSeqs      = TCDStringSet<TRedAlph>;
     using TDbIndex      = Index<TRedSeqs,IndexSa<> >;
+    using TPositions    = typename StringSetLimits<TUnredSeqs>::Type;
     using TIds          = StringSet<CharString, Owner<ConcatDirect<>>>;
     using TMasking      = StringSet<String<unsigned>, Owner<ConcatDirect<>>>;
     using TBlastScoringAdapter = BlastScoringAdapter<TScoreScheme>;
 
     TUnredSeqs                  qrySeqs;
     TUnredSeqs                  subjSeqs;
+
     TDbIndex                    dbIndex;
     BlastDbSpecs<>              dbSpecs;
-//     unsigned long long          dbTotalLength;
-//     unsigned long               dbNumberOfSeqs;
+
+    // TODO maybe remove these for other specs?
+    TPositions                  untransQrySeqLengths; // used iff qHasFrames(p)
+    TPositions                  untransSubjSeqLengths; // used iff sHasFrames(p)
 
     TMasking                    segIntStarts;
     TMasking                    segIntEnds;
@@ -167,7 +173,6 @@ public:
 
     StatsHolder                 stats;
 };
-
 
 // protein
 template <typename TRedAlph_,
@@ -208,8 +213,9 @@ public:
     TCDStringSet<Dna5> const & redQrySeqs = Base::qrySeqs;
 };
 
-
-// TODO add aliExtContext
+// ----------------------------------------------------------------------------
+// struct LocalDataHolder  -- one object per thread
+// ----------------------------------------------------------------------------
 
 template <typename TMatch,
           typename TGlobalHolder_,

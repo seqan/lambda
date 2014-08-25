@@ -154,9 +154,14 @@ struct LambdaOptions : public SharedOptions
     int             band        = -1;
     double          eCutOff     = 0;
 
+    unsigned        threads     = 1; // not exposed
     LambdaOptions() :
         SharedOptions()
-    {}
+    {
+        #if defined(_OPENMP)
+        threads = omp_get_max_threads();
+        #endif
+    }
 };
 
 struct LambdaIndexerOptions : public SharedOptions

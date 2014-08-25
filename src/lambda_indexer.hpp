@@ -144,101 +144,76 @@ step02_reduceAlphabet(StringSet<String<TAlph, TSpec1>, TSpec2> & oldSubj,
 // Function preprocessSubjSeqs()
 // --------------------------------------------------------------------------
 
-
-
-
+// no frames
 template <typename TNewSubj,
           typename TOldSubj,
           BlastFormatFile m,
-          BlastFormatGeneration g>
+          BlastFormatProgram p,
+          BlastFormatGeneration g,
+          MyEnableIf<!sHasFrames(p)> = 0 >
 inline void step01a_preprocessSubj(TNewSubj & newSubj,
-                                   TOldSubj & oldSubj,
-                                   LambdaIndexerOptions const & /**/,
-                                   BlastFormat<m,
-                                               BlastFormatProgram::BLASTN,
-                                               g> const & /*tag*/)
+                                    TOldSubj const & oldSubj,
+                                    LambdaIndexerOptions const & /**/,
+                                    BlastFormat<m,p,g> const & /*tag*/)
 {
     newSubj.concat = oldSubj.concat; //implicit conversion
     newSubj.limits = oldSubj.limits;
 }
 
+// frames
 template <typename TNewSubj,
           typename TOldSubj,
           BlastFormatFile m,
-          BlastFormatGeneration g>
+          BlastFormatProgram p,
+          BlastFormatGeneration g,
+          MyEnableIf<sHasFrames(p)> = 0 >
 inline void step01a_preprocessSubj(TNewSubj & newSubj,
                                     TOldSubj const & oldSubj,
-                                    LambdaIndexerOptions const & /**/,
-                                    BlastFormat<m,
-                                                BlastFormatProgram::BLASTP,
-                                                g> const & /*tag*/)
+                                    LambdaIndexerOptions const & options,
+                                    BlastFormat<m,p,g> const & /*tag*/)
 {
-    newSubj.concat = oldSubj.concat; //implicit conversion
-    newSubj.limits = oldSubj.limits;
-
-}
-
-template <typename TNewSubj,
-          typename TOldSubj,
-          BlastFormatFile m,
-          BlastFormatGeneration g>
-inline void step01a_preprocessSubj(TNewSubj & newSubj,
-                                    TOldSubj const & oldSubj,
-                                    LambdaIndexerOptions const & /**/,
-                                    BlastFormat<m,
-                                                BlastFormatProgram::BLASTX,
-                                                g> const & /*tag*/)
-{
-    newSubj.concat = oldSubj.concat; //implicit conversion
-    newSubj.limits = oldSubj.limits;
-}
-
-template <typename TNewSubj,
-          typename TOldSubj,
-          BlastFormatFile m,
-          BlastFormatGeneration g>
-inline void step01a_preprocessSubj(TNewSubj & newSubj,
-                                    TOldSubj const & oldSubj,
-                                    LambdaIndexerOptions const & /**/,
-                                    BlastFormat<m,
-                                                BlastFormatProgram::TBLASTN,
-                                                g> const & /*tag*/)
-{
-    translate(newSubj, oldSubj, TranslationFrames::SixFrame);
-}
-
-template <typename TNewSubj,
-          typename TOldSubj,
-          BlastFormatFile m,
-          BlastFormatGeneration g>
-inline void step01a_preprocessSubj(TNewSubj & newSubj,
-                                    TOldSubj const & oldSubj,
-                                    LambdaIndexerOptions const & /**/,
-                                    BlastFormat<m,
-                                                BlastFormatProgram::TBLASTX,
-                                                g> const & /*tag*/)
-{
-    translate(newSubj, oldSubj, TranslationFrames::SixFrame);
+    translate(newSubj,
+              oldSubj,
+              SIX_FRAME,
+              options.geneticCode);
 }
 
 template <BlastFormatFile m,
           BlastFormatProgram p,
           BlastFormatGeneration g>
 inline int
-step01_preprocessSubjSeqs(
-                       StringSet<CharString, Owner<ConcatDirect<> > >  & oldSubj,
-                       LambdaIndexerOptions       const & options,
-                       BlastFormat<m, p, g> const & /*tag*/)
+step01_preprocessSubjSeqs(StringSet<CharString, Owner<ConcatDirect<>>> &
+                          oldSubj,
+                          LambdaIndexerOptions const & options,
+                          BlastFormat<m, p, g> const & /*tag*/)
 {
-    typedef BlastFormat<m,p,g> TFormat;
+    using TFormat   = BlastFormat<m,p,g>;
+    using TNewSubj  = typename UnreducedStringSet<p>::Type;
 
-    typename UnreducedStringSet<p>::Type newSubj;
+    TNewSubj newSubj;
 
     double start = sysTime();
     std::cout << "Preprocessing Subj Sequences..." << std::flush;
 
     // depending on blastProgram
     step01a_preprocessSubj(newSubj, oldSubj, options, TFormat());
+
+    if (sHasFrames(p))
+    {
+        using TOldSubj  = StringSet<CharString, Owner<ConcatDirect<> > >;
+        using TPos = typename Value<
+                     typename StringSetLimits<TOldSubj>::Type>::Type;
+
+        for (TPos i = 0; i < (length(oldSubj.limits) - 1); ++i)
+            oldSubj.limits[i] = oldSubj.limits[i+1] - oldSubj.limits[i];
+        // last entry not overwritten, should be the sum of all lengths
+
+        std::cout << " dumping untranslated subject lengths..." << std::flush;
+        //TODO save to TMPDIR instead
+        CharString _path = options.dbFile;
+        append(_path, ".untranslengths");
+        save(oldSubj.limits, toCString(_path));
+    }
 
     clear(oldSubj);
     std::cout << " done.\n";

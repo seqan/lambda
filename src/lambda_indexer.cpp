@@ -99,40 +99,40 @@ int main(int argc, char const ** argv)
     {
         case BlastFormatProgram::BLASTN :
             {
-                typedef BlastFormat<BlastFormatOptions::INVALID_M,
+                typedef BlastFormat<BlastFormatFile::INVALID_File,
                                     BlastFormatProgram::BLASTN,
-                                    BlastFormatOptions::INVALID_Generation> format;
+                                    BlastFormatGeneration::INVALID_Generation> format;
                 return mainComp(options, format());
             }break;
         case BlastFormatProgram::BLASTP :
             {
-                typedef BlastFormat<BlastFormatOptions::INVALID_M,
+                typedef BlastFormat<BlastFormatFile::INVALID_File,
                                     BlastFormatProgram::BLASTP,
-                                    BlastFormatOptions::INVALID_Generation> format;
+                                    BlastFormatGeneration::INVALID_Generation> format;
                 return mainComp(options, format());
             }
             break;
         case BlastFormatProgram::BLASTX :
             {
-                typedef BlastFormat<BlastFormatOptions::INVALID_M,
+                typedef BlastFormat<BlastFormatFile::INVALID_File,
                                     BlastFormatProgram::BLASTX,
-                                    BlastFormatOptions::INVALID_Generation> format;
+                                    BlastFormatGeneration::INVALID_Generation> format;
                 return mainComp(options, format());
             }
             break;
         case BlastFormatProgram::TBLASTN :
             {
-                typedef BlastFormat<BlastFormatOptions::INVALID_M,
+                typedef BlastFormat<BlastFormatFile::INVALID_File,
                                     BlastFormatProgram::TBLASTN,
-                                    BlastFormatOptions::INVALID_Generation> format;
+                                    BlastFormatGeneration::INVALID_Generation> format;
                 return mainComp(options, format());
             }
             break;
         case BlastFormatProgram::TBLASTX :
             {
-                typedef BlastFormat<BlastFormatOptions::INVALID_M,
+                typedef BlastFormat<BlastFormatFile::INVALID_File,
                                     BlastFormatProgram::TBLASTX,
-                                    BlastFormatOptions::INVALID_Generation> format;
+                                    BlastFormatGeneration::INVALID_Generation> format;
                 return mainComp(options, format());
             }
             break;

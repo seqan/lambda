@@ -129,8 +129,8 @@ template <BlastFormatFile m,
           BlastFormatGeneration g,
           typename TRedAlph,
           typename TScoreScheme,
-//           MyEnableIf<typename Not<typename Or<typename IsSameType<TRedAlph,AminoAcid>::Type, typename IsSameType<TRedAlph,Dna5>::Type>::Type>::Type()>…>
-          MyEnableIf<!std::is_same<TRedAlph,AminoAcid>::value && !std::is_same<TRedAlph,Dna5>::value>...>
+          MyEnableIf<!std::is_same<TRedAlph,AminoAcid>::value &&
+          !std::is_same<TRedAlph,Dna5>::value> = 0>
 inline int
 loadQueryImpl(GlobalDataHolder<TRedAlph,
                                 TScoreScheme,
@@ -159,6 +159,20 @@ loadQueryImpl(GlobalDataHolder<TRedAlph,
               SIX_FRAME,
               options.geneticCode);
 
+    // preserve lengths of untranslated sequences
+    resize(globalHolder.untransQrySeqLengths,
+           length(untranslatedSeqs.limits),
+           Exact());
+    for (uint32_t i = 0;
+         i < (length(globalHolder.untransQrySeqLengths) - 1);
+         ++i)
+    {
+        globalHolder.untransQrySeqLengths[i] =
+            untranslatedSeqs.limits[i + 1] - untranslatedSeqs.limits[i];
+    }
+    // save sum of lengths (both strings have n + 1 elements
+    back(untranslatedSeqs.limits) = length(untranslatedSeqs.concat);
+
     // reduce implicitly
     std::cout << "reducing…" << std::flush;
     globalHolder.redQrySeqs.concat = globalHolder.qrySeqs.concat;
@@ -173,7 +187,7 @@ template <BlastFormatFile m,
           BlastFormatGeneration g,
           typename TRedAlph,
           typename TScoreScheme,
-          MyEnableIf<std::is_same<TRedAlph,AminoAcid>::value>... >
+          MyEnableIf<std::is_same<TRedAlph,AminoAcid>::value> = 0 >
 inline int
 loadQueryImpl(GlobalDataHolder<TRedAlph,
                                 TScoreScheme,
@@ -211,7 +225,7 @@ template <BlastFormatFile m,
           BlastFormatGeneration g,
           typename TRedAlph,
           typename TScoreScheme,
-          MyEnableIf<std::is_same<TRedAlph,Dna5>::value>...>
+          MyEnableIf<std::is_same<TRedAlph,Dna5>::value> = 0>
 inline int
 loadQueryImpl(GlobalDataHolder<TRedAlph,
                                 TScoreScheme,
@@ -242,7 +256,7 @@ loadQuery(GlobalDataHolder<TRedAlph,
                             TScoreScheme,
                             m, p, g>         & globalHolder,
           LambdaOptions                     const & options)
-{ 
+{
     double start = sysTime();
     std::cout << "Loading Query Sequences and Ids…" << std::flush;
     int ret = loadQueryImpl(globalHolder, options);
@@ -315,16 +329,37 @@ loadSubjects(GlobalDataHolder<TRedAlph,
     finish = sysTime() - start;
     std::cout << "Runtime: " << finish << "s \n\n" << std::flush;
 
-
     globalHolder.dbSpecs.dbName = options.dbFile;
-    globalHolder.dbSpecs.dbTotalLength =
-      ((p == BlastFormatProgram::TBLASTN) || (p == BlastFormatProgram::TBLASTX))
-        ? length(concat(globalHolder.subjSeqs)) / 6 * 3
-        : length(concat(globalHolder.subjSeqs));
-    globalHolder.dbSpecs.dbNumberOfSeqs =
-      ((p == BlastFormatProgram::TBLASTN) || (p == BlastFormatProgram::TBLASTX))
-        ? length(globalHolder.subjSeqs) / 6
-        : length(globalHolder.subjSeqs);
+    // if subjects where translated, we don't have the untranslated seqs at all
+    // but we still need the data for statistics and position un-translation
+    if (sHasFrames(p))
+    {
+        start = sysTime();
+        std::cout << "Loading Lengths of untranslated Subj sequences…" << std::flush;
+        _dbSeqs = options.dbFile;
+        append(_dbSeqs, ".untranslengths");
+        ret = open(globalHolder.untransSubjSeqLengths, toCString(_dbSeqs));
+        if (ret != true)
+        {
+            std::cout << " failed.\n" << std::flush;
+            return 1;
+        }
+        std::cout << " done.\n";
+        finish = sysTime() - start;
+        std::cout << "Runtime: " << finish << "s \n\n" << std::flush;
+
+        // last value has sum of lengths
+        globalHolder.dbSpecs.dbTotalLength =
+            back(globalHolder.untransSubjSeqLengths);
+        globalHolder.dbSpecs.dbNumberOfSeqs =
+            length(globalHolder.untransSubjSeqLengths) - 1;
+    } else
+    {
+        globalHolder.dbSpecs.dbTotalLength =
+            length(concat(globalHolder.subjSeqs));
+        globalHolder.dbSpecs.dbNumberOfSeqs =
+            length(globalHolder.subjSeqs);
+    }
 
     return 0;
 }
@@ -1083,8 +1118,8 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
                            typename TLocalHolder::TAlign>;
 
     constexpr TPos TPosMax = std::numeric_limits<TPos>::max();
-    constexpr uint8_t qFactor = qHasRevComp(TFormat()) ? 3 : 1;
-    constexpr uint8_t sFactor = sHasRevComp(TFormat()) ? 3 : 1;
+//     constexpr uint8_t qFactor = qHasRevComp(TFormat()) ? 3 : 1;
+//     constexpr uint8_t sFactor = sHasRevComp(TFormat()) ? 3 : 1;
 
     double start = sysTime();
     lH.statusStr << "Extending and writing hits…";
@@ -1111,7 +1146,9 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
 //         using TNoTag = decltype(unTag(TFormat()));
 
         //TODO need to save and load real original length
-        record.qLength = length(lH.gH.qrySeqs[it->qryId]) * qFactor;
+        record.qLength = qHasFrames(TFormat())
+                            ? lH.gH.untransQrySeqLengths[trueQryId]
+                            : length(lH.gH.qrySeqs[it->qryId]);
 
         // inner loop over matches per record
         for (; it != itEnd; ++it)
@@ -1199,8 +1236,9 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
                 {
                     case COMPUTERESULT_::SUCCESS:
                         // set remaining unset members of match
-                        bm.sLength = length(lH.gH.subjSeqs[it->subjId]) *
-                                     sFactor;
+                        bm.sLength = sHasFrames(TFormat())
+                                    ? lH.gH.untransSubjSeqLengths[trueSubjId]
+                                    : length(lH.gH.subjSeqs[it->subjId]);
                         bm.qLength = record.qLength;
     //                     lastMatch = ma;
     //                     ++lH.stats.goodMatches;
@@ -1288,7 +1326,7 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
             lH.stats.hitsDuplicate += before - record.matches.size();
 
             int lret = 0;
-            #pragma omp critical(filewrite)
+            SEQAN_OMP_PRAGMA(critical(filewrite))
             {
                 lret = writeRecord(stream, record, lH.gH.dbSpecs, TFormat());
             }
@@ -1310,13 +1348,13 @@ void printStats(StatsHolder const & stats, LambdaOptions const & options)
     if (options.verbosity >= 2)
     {
         if (options.isTerminal)
-            for (unsigned char i=0; i< omp_get_max_threads()+3; ++i)
+            for (unsigned char i=0; i< options.threads+3; ++i)
                 std::cout << std::endl;
         unsigned long rem = stats.hitsAfterSeeding;
-        auto const w = wdth(rem);
+        auto const w = _numberOfDigits(rem); // number of digits
         #define R  " " << std::setw(w)
         #define RR " = " << std::setw(w)
-        #define BLANKS for (int i = 0; i< w; ++i) std::cout << " ";
+        #define BLANKS for (unsigned i = 0; i< w; ++i) std::cout << " ";
         std::cout << "\033[1m   HITS                         "; BLANKS; std::cout << "Remaining\033[0m"
                  << "\n   after Seeding               "; BLANKS; std::cout << R << rem;
         std::cout<< "\n - masked                   " << R << stats.hitsMasked       << RR << (rem-= stats.hitsMasked);
@@ -1334,7 +1372,7 @@ void printStats(StatsHolder const & stats, LambdaOptions const & options)
 
     if (options.verbosity >= 1)
     {
-        auto const w = wdth(stats.hitsFinal);
+        auto const w = _numberOfDigits(stats.hitsFinal);
         std::cout << "Number of valid hits:                           "
                   << std::setw(w) << stats.hitsFinal
                   << "\nNumber of Queries with at least one valid hit:  "
