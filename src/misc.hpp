@@ -65,31 +65,14 @@ using namespace seqan;
 // Metafunctions
 // ============================================================================
 
-// makes partial function specialization possible
-
-namespace ns_enabler {
-    enum class enabler {};
-}
-
+// makes partial function specialization convenient
 template <bool Condition>
-using MyEnableIf = typename std::enable_if<Condition, ns_enabler::enabler>::type;
+using MyEnableIf = typename std::enable_if<Condition, int>::type;
 
 
 // ============================================================================
 // Functions for translation and retranslation
 // ============================================================================
-
-template <class T>
-int wdth(T number)
-{
-    int digits = 0;
-    if (number < 0) digits = 1; // remove this line if '-' counts as a digit
-    while (number) {
-        number /= 10;
-        digits++;
-    }
-    return digits;
-}
 
 template <typename T>
 inline uint64_t
@@ -398,9 +381,11 @@ myPrint(LambdaOptions const & options, const int verbose, Args const &... args)
 {
     if (options.verbosity >= verbose)
     {
+        #if defined(_OPENMP)
         if (omp_in_parallel())
             myPrintImplThread(options, args...);
         else
+        #endif
             myPrintImpl(options, args...);
 
     }
@@ -412,11 +397,11 @@ myPrint(LambdaOptions const & options, const int verbose, Args const &... args)
 // remove tag type
 // ----------------------------------------------------------------------------
 
-template <typename T>
-T unTag(Tag<T> const & /**/)
-{
-    return T();
-}
+// template <typename T>
+// T unTag(Tag<T> const & /**/)
+// {
+//     return T();
+// }
 
 // ----------------------------------------------------------------------------
 // get plus-minus-range with bounds-checking for unsigned types
