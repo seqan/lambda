@@ -25,6 +25,10 @@ if (NOT CXX11_FOUND)
     return ()
 endif (NOT CXX11_FOUND)
 
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    set (CXX14_CXX_FLAGS "${CXX14_CXX_FLAGS} -ftemplate-depth-1024")
+endif (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+
 # ----------------------------------------------------------------------------
 # Build Setup
 # ----------------------------------------------------------------------------
@@ -51,6 +55,7 @@ add_executable (lambda_indexer lambda_indexer.cpp
 
 # Add dependencies found by find_package (SeqAn).
 target_link_libraries (lambda ${SEQAN_LIBRARIES})
+target_link_libraries (lambda_indexer ${SEQAN_LIBRARIES})
 
 # Add CXX flags found by find_package (SeqAn).
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN_CXX_FLAGS} ${CXX11_CXX_FLAGS} ${CXX14_CXX_FLAGS} -Wno-vla")
