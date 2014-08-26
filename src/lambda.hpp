@@ -1143,9 +1143,7 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
         auto const trueQryId = getTrueQryId(it->qryId,lH.options, TFormat());
 
         TBlastRecord record(lH.gH.qryIds[trueQryId]);
-//         using TNoTag = decltype(unTag(TFormat()));
 
-        //TODO need to save and load real original length
         record.qLength = qHasFrames(TFormat())
                             ? lH.gH.untransQrySeqLengths[trueQryId]
                             : length(lH.gH.qrySeqs[it->qryId]);
@@ -1279,31 +1277,30 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
                         // same frame and same range
                         if ((it->qryId == it2->qryId) &&
                             (it->subjId == it2->subjId) &&
-                            inRange(it2->qryStart, bm.qStart, bm.qEnd) &&
-                            inRange(it2->subjStart, bm.sStart, bm.sEnd))
+                            (intervalOverlap(it2->qryStart,
+                                             it2->qryStart + lH.options.seedLength,
+                                             bm.qStart,
+                                             bm.qEnd) > 0) &&
+                            (intervalOverlap(it2->subjStart,
+                                             it2->subjStart + lH.options.seedLength,
+                                             bm.sStart,
+                                             bm.sEnd) > 0))
                         {
-                            auto const & row0 = row(bm.align, 0);
-                            auto const & row1 = row(bm.align, 1);
-//                             if (length(source(row1)) <= it2->subjStart - bm.sStart)
-//                                 std::cerr << "subjStart out of bounds\n"
-//                                           << "subjStart: " << it2->subjStart
-//                                           << " lenrow0: " << length(source(row0))
-//                                           << " lenrow1: " << length(source(row1))
-//                                           << " sStart: " << bm.sStart
-//                                           << " sEnd: " << bm.sEnd
-//                                           << "\n";
-//                             else
-                            // part of alignment
-                            if (toSourcePosition(row0,
-                                                 toViewPosition(row1,
-                                                                it2->subjStart
-                                                                - bm.sStart))
-                                == TPos(it2->qryStart - bm.qStart))
-                            {
+                            // deactivated alignment check to get rid of
+                            // duplicates early on
+//                             auto const & row0 = row(bm.align, 0);
+//                             auto const & row1 = row(bm.align, 1);
+//                             // part of alignment
+//                             if (toSourcePosition(row0,
+//                                                  toViewPosition(row1,
+//                                                                 it2->subjStart
+//                                                                 - bm.sStart))
+//                                 == TPos(it2->qryStart - bm.qStart))
+//                             {
                                 ++lH.stats.hitsPutativeDuplicate;
                                 it2->qryStart = TPosMax;
                                 it2->subjStart = TPosMax;
-                            }
+//                             }
                         }
                     }
                 }
