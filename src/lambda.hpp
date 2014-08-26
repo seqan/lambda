@@ -1164,8 +1164,8 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
 //                 std::cout << "BAX\n" << std::flush;
                 // create blastmatch in list without copy or move
                 record.matches.emplace_back(
-                    lH.gH.qryIds [getTrueQryId(it->qryId, lH.options, TFormat())],
-                    lH.gH.subjIds[getTrueSubjId(it->subjId, lH.options, TFormat())]);
+                lH.gH.qryIds [getTrueQryId(it->qryId, lH.options, TFormat())],
+                lH.gH.subjIds[getTrueSubjId(it->subjId, lH.options, TFormat())]);
 
                 auto & bm = back(record.matches);
 
