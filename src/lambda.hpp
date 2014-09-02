@@ -244,8 +244,6 @@ loadQueryImpl(GlobalDataHolder<TRedAlph,
                               Fasta());
 }
 
-
-
 template <BlastFormatFile m,
           BlastFormatProgram p,
           BlastFormatGeneration g,
