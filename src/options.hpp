@@ -35,17 +35,37 @@
 #include <seqan/translation.h>
 #include <seqan/blast.h>
 #include <seqan/arg_parse.h>
+#include <seqan/index.h>
 
 #include <seqan/blast.h>
-
-using namespace seqan;
 
 // ==========================================================================
 // Metafunctions
 // ==========================================================================
 
-// using TCDSpec = Packed<>;
-using TCDSpec = Alloc<>;
+// suffix array overloads
+namespace SEQAN_NAMESPACE_MAIN
+{
+
+template<typename TSpec1, typename TSpec2, typename TSpec3>
+struct SAValue<StringSet<String<ReducedAminoAcid<TSpec1>, TSpec2>, TSpec3> >
+{
+    typedef Pair<uint32_t, uint16_t, Pack> Type;
+};
+
+// Dna Sequences might be longer
+template<typename TSpec1, typename TSpec2>
+struct SAValue<StringSet<String<Dna5, TSpec1>, TSpec2> >
+{
+    typedef Pair<uint32_t, uint32_t, Pack> Type;
+};
+
+}
+
+using namespace seqan;
+
+using TCDSpec = Packed<>;
+//using TCDSpec = Alloc<>;
 
 template <typename TAlph>
 using TCDStringSet = StringSet<String<TAlph, TCDSpec>, Owner<ConcatDirect<> > >;
