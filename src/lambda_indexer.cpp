@@ -63,19 +63,21 @@ using namespace seqan;
 // Function main()
 // --------------------------------------------------------------------------
 
+
 template <BlastFormatFile m,
           BlastFormatProgram p,
           BlastFormatGeneration g>
-int mainComp(LambdaIndexerOptions const & options,
-             BlastFormat<m,p,g> const & /*tag*/)
-{
-    typedef BlastFormat<m,p,g> TFormat;
-    std::cout << "Lambda Indexer\n"
-              << "===============\n\n";
+int mainTyped(LambdaIndexerOptions const & options,
+              BlastFormat<m,p,g> const & /*tag*/);
 
-    return beginPipeline(options, TFormat());
-}
-
+template <BlastFormatFile m,
+          BlastFormatProgram p,
+          BlastFormatGeneration g,
+          typename TRedAlph>
+inline int
+mainAlphed(TRedAlph const & /**/,
+           LambdaOptions const & options,
+           BlastFormat<m,p,g> const & /*tag*/);
 
 // Program entry point.
 
@@ -102,14 +104,14 @@ int main(int argc, char const ** argv)
                 typedef BlastFormat<BlastFormatFile::INVALID_File,
                                     BlastFormatProgram::BLASTN,
                                     BlastFormatGeneration::INVALID_Generation> format;
-                return mainComp(options, format());
+                return mainTyped(options, format());
             }break;
         case BlastFormatProgram::BLASTP :
             {
                 typedef BlastFormat<BlastFormatFile::INVALID_File,
                                     BlastFormatProgram::BLASTP,
                                     BlastFormatGeneration::INVALID_Generation> format;
-                return mainComp(options, format());
+                return mainTyped(options, format());
             }
             break;
         case BlastFormatProgram::BLASTX :
@@ -117,7 +119,7 @@ int main(int argc, char const ** argv)
                 typedef BlastFormat<BlastFormatFile::INVALID_File,
                                     BlastFormatProgram::BLASTX,
                                     BlastFormatGeneration::INVALID_Generation> format;
-                return mainComp(options, format());
+                return mainTyped(options, format());
             }
             break;
         case BlastFormatProgram::TBLASTN :
@@ -125,7 +127,7 @@ int main(int argc, char const ** argv)
                 typedef BlastFormat<BlastFormatFile::INVALID_File,
                                     BlastFormatProgram::TBLASTN,
                                     BlastFormatGeneration::INVALID_Generation> format;
-                return mainComp(options, format());
+                return mainTyped(options, format());
             }
             break;
         case BlastFormatProgram::TBLASTX :
@@ -133,7 +135,7 @@ int main(int argc, char const ** argv)
                 typedef BlastFormat<BlastFormatFile::INVALID_File,
                                     BlastFormatProgram::TBLASTX,
                                     BlastFormatGeneration::INVALID_Generation> format;
-                return mainComp(options, format());
+                return mainTyped(options, format());
             }
             break;
         default:
@@ -141,3 +143,117 @@ int main(int argc, char const ** argv)
     }
     return -1;
 }
+
+
+template <BlastFormatFile m,
+          BlastFormatProgram p,
+          BlastFormatGeneration g>
+int mainTyped(LambdaIndexerOptions const & options,
+              BlastFormat<m,p,g> const & /*tag*/)
+{
+    typedef BlastFormat<m,p,g> TFormat;
+    std::cout << "Lambda Indexer\n"
+              << "===============\n\n";
+
+    switch (options.alphReduction)
+    {
+        case 1:
+        {
+            typedef AminoAcid10 TAA;
+            return mainAlphed(TAA(), options, TFormat());
+        } break;
+        case 2:
+        {
+            typedef ReducedAminoAcid<Murphy10> TAA;
+            return mainAlphed(TAA(), options, TFormat());
+        } break;
+        case 8:
+        {
+            typedef ReducedAminoAcid<ClusterReduction<8>> TAA;
+            return mainAlphed(TAA(), options, TFormat());
+        } break;
+
+        case 10:
+        {
+            typedef ReducedAminoAcid<ClusterReduction<10>> TAA;
+            return mainAlphed(TAA(), options, TFormat());
+        } break;
+
+        case 12:
+        {
+            typedef ReducedAminoAcid<ClusterReduction<12>> TAA;
+            return mainAlphed(TAA(), options, TFormat());
+        } break;
+    }
+    return -1;
+}
+
+
+template <BlastFormatFile m,
+          BlastFormatProgram p,
+          BlastFormatGeneration g,
+          typename TRedAlph>
+inline int
+mainAlphed(TRedAlph const & /**/,
+           LambdaIndexerOptions const & options,
+           BlastFormat<m,p,g> const & /*tag*/)
+{
+    using TFormat   = BlastFormat<BlastFormatFile::INVALID_File,
+                                  p,
+                                  BlastFormatGeneration::INVALID_Generation>;
+
+    using TOrigAlph = typename std::conditional<(p == BlastFormatProgram::BLASTN) ||
+                                       (p == BlastFormatProgram::TBLASTN),
+                                       Dna5,
+                                       AminoAcid>::type;
+    using TTransAlph = typename std::conditional<(p == BlastFormatProgram::BLASTN),
+                                       Dna5,
+                                       AminoAcid>::type;
+    using TOrigSet  = TCDStringSet<TOrigAlph>;
+    using TTransSet = TCDStringSet<TTransAlph>;
+    using TRedSet   = TCDStringSet<TRedAlph>;
+
+    TRedSet reducedSeqs;
+
+    {
+        TTransSet translatedSeqs;
+
+        {
+            TOrigSet originalSeqs;
+            int ret = 0;
+
+            // ids get saved to disk again immediately and are not kept in memory
+            ret = loadSubjSeqsAndIds(originalSeqs, options);
+            if (ret)
+                return ret;
+
+            // preserve lengths of untranslated sequences
+            _saveOriginalSeqLengths(originalSeqs.limits,
+                                    options,
+                                    SHasFrames<TFormat>());
+
+            // convert the seg file to seqan binary format
+            ret = convertMaskingFile(length(originalSeqs), options);
+            if (ret)
+                return ret;
+
+            // translate or swap depending on program
+            translateOrSwap(translatedSeqs, originalSeqs, options);
+        }
+
+        // dump translated and unreduced sequences
+        dumpTranslatedSeqs(translatedSeqs, options);
+
+        // reduce or swap depending on program
+        reduceOrSwap(reducedSeqs, translatedSeqs);
+    }
+
+    // see if final sequence set actually fits into index 
+    if (!checkIndexSize(reducedSeqs))
+        return -17;
+
+    generateIndexAndDump(reducedSeqs, options);
+
+    return 0;
+}
+

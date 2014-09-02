@@ -45,14 +45,342 @@
 
 using namespace seqan;
 
-template <typename TString, typename TSpec,
-          BlastFormatFile m,
-          BlastFormatProgram p,
-          BlastFormatGeneration g>
+
+// --------------------------------------------------------------------------
+// Function loadSubj()
+// --------------------------------------------------------------------------
+
+template <typename TOrigAlph>
 inline int
-step03_generateIndexAndDump(StringSet<TString, TSpec> & seqs,
-                            LambdaIndexerOptions const & options,
-                            BlastFormat<m, p, g> const & /*tag*/)
+loadSubjSeqsAndIds(TCDStringSet<TOrigAlph> & originalSeqs,
+                   LambdaIndexerOptions const & options)
+{
+    int ret = 0;
+    StringSet<CharString, Owner<ConcatDirect<>>> ids;
+
+    double start = sysTime();
+    std::cout << "Loading Subject Sequences and Ids…" << std::flush;
+
+
+    if (options.fileFormat)
+        ret = loadSeqsAndIds(ids,
+                             originalSeqs,
+                             options.dbFile,
+                             Fastq());
+    else
+        ret = loadSeqsAndIds(ids,
+                             originalSeqs,
+                             options.dbFile,
+                             Fasta());
+    if (ret)
+        return ret;
+
+    std::cout << " done.\n";
+    double finish = sysTime() - start;
+    std::cout << "Runtime: " << finish << "s \n" << std::flush;
+
+    unsigned long maxLen = 0ul;
+    for (auto const & s : originalSeqs)
+        if (length(s) > maxLen)
+            maxLen = length(s);
+    std::cout << "Number of sequences read: " << length(originalSeqs)
+            << "\nLongest sequence read: " << maxLen << "\n\n" << std::flush;
+
+    std::cout << "Dumping Subj Ids..." << std::flush;
+
+    //TODO save to TMPDIR instead
+    CharString _path = options.dbFile;
+    append(_path, ".ids");
+    save(ids, toCString(_path));
+
+    std::cout << " done.\n";
+    finish = sysTime() - start;
+    std::cout << "Runtime: " << finish << "s \n\n" << std::flush;
+
+    return 0;
+}
+
+// --------------------------------------------------------------------------
+// Function loadSubj()
+// --------------------------------------------------------------------------
+
+template <typename TLimits>
+inline void
+_saveOriginalSeqLengths(TLimits limits, // we want copy!
+                       LambdaIndexerOptions const & options,
+                       True const & /*SHasFrames*/)
+{
+    for (uint32_t i = 0; i < (length(limits) - 1); ++i)
+        limits[i] = limits[i+1] - limits[i];
+    // last entry not overwritten, should be the sum of all lengths
+
+    std::cout << " dumping untranslated subject lengths..." << std::flush;
+    //TODO save to TMPDIR instead
+    CharString _path = options.dbFile;
+    append(_path, ".untranslengths");
+    save(limits, toCString(_path));
+}
+
+template <typename TLimits>
+inline void
+_saveOriginalSeqLengths(TLimits const &/**/,
+                       LambdaIndexerOptions const & /**/,
+                       False const & /*SHasFrames*/)
+{
+}
+
+// --------------------------------------------------------------------------
+// Function loadSubj()
+// --------------------------------------------------------------------------
+
+template <typename TTransAlph, typename TOrigAlph>
+inline void
+translateOrSwap(TCDStringSet<TTransAlph> & out,
+                TCDStringSet<TOrigAlph> & in,
+                LambdaIndexerOptions const & options)
+{
+    //TODO more output
+    std::cout << "translating…" << std::flush;
+    translate(out,
+              in,
+              SIX_FRAME,
+              options.geneticCode);
+}
+
+template <typename TSameAlph>
+inline void
+translateOrSwap(TCDStringSet<TSameAlph> & out,
+                TCDStringSet<TSameAlph> & in,
+                LambdaIndexerOptions const & /**/)
+{
+    swap(out, in);
+}
+
+// --------------------------------------------------------------------------
+// Function loadSubj()
+// --------------------------------------------------------------------------
+
+template <typename TTransAlph>
+inline void
+_dumpTranslatedSeqs(TCDStringSet<TTransAlph> const & translatedSeqs,
+                    LambdaIndexerOptions const & options)
+{
+    double start = sysTime();
+    std::cout << "Dumping unreduced Subj Sequences..." << std::flush;
+
+    //TODO save to TMPDIR instead
+    CharString _path = options.dbFile;
+    append(_path, ".unredsubj");
+    save(translatedSeqs, toCString(_path));
+
+    std::cout << " done.\n";
+    double finish = sysTime() - start;
+    std::cout << "Runtime: " << finish << "s \n\n" << std::flush;
+}
+
+template <typename TTransAlph>
+inline void
+dumpTranslatedSeqs(TCDStringSet<TTransAlph> const & translatedSeqs,
+                   LambdaIndexerOptions const & options)
+{
+    if (options.alphReduction > 0)
+        _dumpTranslatedSeqs(translatedSeqs, options);
+}
+
+// --------------------------------------------------------------------------
+// Function loadSubj()
+// --------------------------------------------------------------------------
+
+template <typename TTransAlph, typename TRedAlph>
+inline void
+reduceOrSwap(TCDStringSet<TRedAlph> & out,
+             TCDStringSet<TTransAlph> & in)
+{
+    //TODO more output
+    // reduce implicitly
+    std::cout << "reducing…" << std::flush;
+    out.concat = in.concat;
+    out.limits = in.limits;
+}
+
+template <typename TSameAlph>
+inline void
+reduceOrSwap(TCDStringSet<TSameAlph> & out,
+             TCDStringSet<TSameAlph> & in)
+{
+    swap(out, in);
+}
+
+// --------------------------------------------------------------------------
+// Function loadSubj()
+// --------------------------------------------------------------------------
+
+template <typename TRedAlph>
+inline bool
+checkIndexSize(TCDStringSet<TRedAlph> const & seqs)
+{
+    using SAV = typename SAValue<TCDStringSet<TRedAlph>>::Type;
+    uint64_t maxNumSeq = std::numeric_limits<typename Value<SAV, 1>::Type>::max();
+
+    if (length(seqs) >= maxNumSeq)
+    {
+        std::cerr << "Too many sequences to be indexed:\n  "
+                  << length(seqs) << " in file, but only "
+                  << maxNumSeq << " supported by index.\n";
+        return false;
+    }
+
+    uint64_t maxLenSeq = std::numeric_limits<typename Value<SAV, 2>::Type>::max();
+    uint64_t maxLen = 0ul;
+    for (auto const & s : seqs)
+        if (length(s) > maxLen)
+            maxLen = length(s);
+
+    if (maxLen >= maxLenSeq)
+    {
+        std::cerr << "Too long sequences to be indexed:\n  "
+                  << "length" << maxLen << " present in file, but only "
+                  << maxLenSeq << " supported by index.\n";
+        return false;
+    }
+    return true;
+}
+
+// --------------------------------------------------------------------------
+// Function loadSubj()
+// --------------------------------------------------------------------------
+
+inline int
+convertMaskingFile(uint64_t numberOfSeqs,
+                   LambdaIndexerOptions const & options)
+
+{
+    int ret = 0;
+    StringSet<String<unsigned>, Owner<ConcatDirect<>>> segIntStarts;
+    StringSet<String<unsigned>, Owner<ConcatDirect<>>> segIntEnds;
+//     resize(segIntervals, numberOfSeqs, Exact());
+
+    if (options.segFile != "")
+    {
+        std::cout << "Constructing binary seqan masking from seg-file...\n"
+                << std::flush;
+
+        std::ifstream stream;
+        stream.open(toCString(options.segFile));
+        if (!stream.is_open())
+            return -1;
+
+        typedef RecordReader<std::ifstream, SinglePass<> > TReader;
+        TReader reader(stream);
+
+//         StringSet<String<Tuple<unsigned, 2>>> _segIntervals;
+//         auto & _segIntervals = segIntervals;
+//         resize(_segIntervals, numberOfSeqs, Exact());
+        StringSet<String<unsigned>> _segIntStarts;
+        StringSet<String<unsigned>> _segIntEnds;
+        resize(_segIntStarts, numberOfSeqs, Exact());
+        resize(_segIntEnds, numberOfSeqs, Exact());
+        CharString buf;
+//         std::tuple<unsigned, unsigned> tup;
+
+//         auto curSeq = begin(_segIntervals);
+        unsigned curSeq = 0;
+        while ((!atEnd(reader)) && (value(reader) == '>'))
+        {
+//             if (curSeq == end(_segIntervals))
+//                 return -7;
+            if (curSeq == numberOfSeqs)
+                return -7;
+            ret = skipLine(reader);
+            if ((ret) && (ret != EOF_BEFORE_SUCCESS))
+                return ret;
+
+            unsigned curInt = 0;
+            while ((!atEnd(reader)) && (value(reader) != '>'))
+            {
+                resize(_segIntStarts[curSeq], length(_segIntStarts[curSeq])+1);
+                resize(_segIntEnds[curSeq], length(_segIntEnds[curSeq])+1);
+                clear(buf);
+                ret = readDigits(buf, reader);
+                if (ret)
+                    return ret;
+
+//                 std::get<0>(tup) = strtoumax(toCString(buf), 0, 10);
+                _segIntStarts[curSeq][curInt] = strtoumax(toCString(buf), 0, 10);
+                ret = skipNChars(reader, 3);
+                if (ret)
+                    return ret;
+
+                clear(buf);
+                ret = readDigits(buf, reader);
+                if (ret)
+                    return ret;
+
+//                 std::get<1>(tup) = strtoumax(toCString(buf), 0, 10);
+                _segIntEnds[curSeq][curInt] = strtoumax(toCString(buf), 0, 10);
+
+//                 appendValue(*curSeq, tup);
+
+                ret = skipLine(reader);
+                if ((ret) && (ret != EOF_BEFORE_SUCCESS))
+                    return ret;
+                curInt++;
+            }
+            curSeq++;
+        }
+//         if (curSeq != end(_segIntervals))
+//             return -9;
+        if (curSeq != numberOfSeqs)
+            return -9;
+
+        segIntStarts.concat = concat(_segIntStarts);
+        segIntStarts.limits = stringSetLimits(_segIntStarts);
+        segIntEnds.concat = concat(_segIntEnds);
+        segIntEnds.limits = stringSetLimits(_segIntEnds);
+//         segIntEnds = _segIntEnds;
+//         segIntervals = _segIntervals; // non-concatdirect to concatdirect
+
+        stream.close();
+
+    } else
+    {
+        std::cout << "No Seg-File specified, no masking will take place,\n"
+                << std::flush;
+//         resize(segIntervals, numberOfSeqs, Exact());
+        resize(segIntStarts, numberOfSeqs, Exact());
+        resize(segIntEnds, numberOfSeqs, Exact());
+    }
+
+//     for (unsigned u = 0; u < length(segIntStarts); ++u)
+//     {
+//         std::cout << u << ": ";
+//         for (unsigned v = 0; v < length(segIntStarts[u]); ++v)
+//         {
+//             std::cout << '(' << segIntStarts[u][v] << ", " << segIntEnds[u][v] << ")  ";
+//         }
+//         std::cout << '\n';
+//     }
+    std::cout << "Dumping binary seqan mask file...\n"
+                << std::flush;
+    CharString _path = options.dbFile;
+    append(_path, ".binseg_s");
+    save(segIntStarts, toCString(_path));
+    _path = options.dbFile;
+    append(_path, ".binseg_e");
+    save(segIntEnds, toCString(_path));
+    std::cout << "Done.\n\n" << std::flush;
+
+    return 0;
+}
+
+// --------------------------------------------------------------------------
+// Function loadSubj()
+// --------------------------------------------------------------------------
+
+template <typename TString, typename TSpec>
+inline void
+generateIndexAndDump(StringSet<TString, TSpec> & seqs,
+                     LambdaIndexerOptions const & options)
 {
     typedef Index<StringSet<TString, TSpec>, IndexSa<> > TDbIndex;
 
@@ -60,7 +388,8 @@ step03_generateIndexAndDump(StringSet<TString, TSpec> & seqs,
     std::cout << "Generating Index..." << std::flush;
     double s = sysTime();
     TDbIndex dbIndex(seqs);
-    typename Iterator<TDbIndex, TopDown<> >::Type it(dbIndex); // instantiate
+//     typename Iterator<TDbIndex, TopDown<> >::Type it(dbIndex); 
+    indexRequire(dbIndex, FibreSA());// instantiate
     double e = sysTime() - s;
     std::cout << " done.\n" << std::flush;
     std::cout << "Runtime: " << e << "s \n\n" << std::flush;
@@ -73,355 +402,6 @@ step03_generateIndexAndDump(StringSet<TString, TSpec> & seqs,
     e = sysTime() - s;
     std::cout << " done.\n" << std::flush;
     std::cout << "Runtime: " << e << "s \n" << std::flush;
-
-    return 0;
-}
-
-template <typename TAlph, typename TSpec1, typename TSpec2,
-          BlastFormatFile m,
-          BlastFormatProgram p,
-          BlastFormatGeneration g>
-inline int
-step02_reduceAlphabet(StringSet<String<TAlph, TSpec1>, TSpec2> & oldSubj,
-                      LambdaIndexerOptions const & options,
-                      BlastFormat<m, p, g> const & /*tag*/)
-{
-    typedef BlastFormat<m,p,g> TFormat;
-
-    switch (options.alphReduction)
-    {
-        case 1:
-        {
-            typedef AminoAcid10 TAA;
-            StringSet<String<TAA, TSpec1>,Owner<ConcatDirect<>>> newSubj;
-            newSubj.concat = oldSubj.concat; //implicit conversion
-            newSubj.limits = oldSubj.limits;
-            return step03_generateIndexAndDump(newSubj, options, TFormat());
-        } break;
-        case 2:
-        {
-            typedef ReducedAminoAcid<Murphy10> TAA;
-            StringSet<String<TAA, TSpec1>,Owner<ConcatDirect<>>> newSubj;
-            newSubj.concat = oldSubj.concat; //implicit conversion
-            newSubj.limits = oldSubj.limits;
-            return step03_generateIndexAndDump(newSubj, options, TFormat());
-        } break;
-        case 8:
-        {
-            typedef ReducedAminoAcid<ClusterReduction<8>> TAA;
-            StringSet<String<TAA, TSpec1>,Owner<ConcatDirect<>>> newSubj;
-            newSubj.concat = oldSubj.concat; //implicit conversion
-            newSubj.limits = oldSubj.limits;
-            return step03_generateIndexAndDump(newSubj, options, TFormat());
-        } break;
-
-        case 10:
-        {
-            typedef ReducedAminoAcid<ClusterReduction<10>> TAA;
-            StringSet<String<TAA, TSpec1>,Owner<ConcatDirect<>>> newSubj;
-            newSubj.concat = oldSubj.concat; //implicit conversion
-            newSubj.limits = oldSubj.limits;
-            return step03_generateIndexAndDump(newSubj, options, TFormat());
-        } break;
-
-        case 12:
-        {
-            typedef ReducedAminoAcid<ClusterReduction<12>> TAA;
-            StringSet<String<TAA, TSpec1>,Owner<ConcatDirect<>>> newSubj;
-            newSubj.concat = oldSubj.concat; //implicit conversion
-            newSubj.limits = oldSubj.limits;
-            return step03_generateIndexAndDump(newSubj, options, TFormat());
-        } break;
-
-        default:
-            break;
-    }
-
-    return step03_generateIndexAndDump(oldSubj, options, TFormat());
-}
-
-// --------------------------------------------------------------------------
-// Function preprocessSubjSeqs()
-// --------------------------------------------------------------------------
-
-// no frames
-template <typename TNewSubj,
-          typename TOldSubj,
-          BlastFormatFile m,
-          BlastFormatProgram p,
-          BlastFormatGeneration g,
-          MyEnableIf<!sHasFrames(p)> = 0 >
-inline void step01a_preprocessSubj(TNewSubj & newSubj,
-                                    TOldSubj const & oldSubj,
-                                    LambdaIndexerOptions const & /**/,
-                                    BlastFormat<m,p,g> const & /*tag*/)
-{
-    newSubj.concat = oldSubj.concat; //implicit conversion
-    newSubj.limits = oldSubj.limits;
-}
-
-// frames
-template <typename TNewSubj,
-          typename TOldSubj,
-          BlastFormatFile m,
-          BlastFormatProgram p,
-          BlastFormatGeneration g,
-          MyEnableIf<sHasFrames(p)> = 0 >
-inline void step01a_preprocessSubj(TNewSubj & newSubj,
-                                    TOldSubj const & oldSubj,
-                                    LambdaIndexerOptions const & options,
-                                    BlastFormat<m,p,g> const & /*tag*/)
-{
-    translate(newSubj,
-              oldSubj,
-              SIX_FRAME,
-              options.geneticCode);
-}
-
-template <BlastFormatFile m,
-          BlastFormatProgram p,
-          BlastFormatGeneration g>
-inline int
-step01_preprocessSubjSeqs(StringSet<CharString, Owner<ConcatDirect<>>> &
-                          oldSubj,
-                          LambdaIndexerOptions const & options,
-                          BlastFormat<m, p, g> const & /*tag*/)
-{
-    using TFormat   = BlastFormat<m,p,g>;
-    using TNewSubj  = typename UnreducedStringSet<p>::Type;
-
-    TNewSubj newSubj;
-
-    double start = sysTime();
-    std::cout << "Preprocessing Subj Sequences..." << std::flush;
-
-    // depending on blastProgram
-    step01a_preprocessSubj(newSubj, oldSubj, options, TFormat());
-
-    if (sHasFrames(p))
-    {
-        using TOldSubj  = StringSet<CharString, Owner<ConcatDirect<> > >;
-        using TPos = typename Value<
-                     typename StringSetLimits<TOldSubj>::Type>::Type;
-
-        for (TPos i = 0; i < (length(oldSubj.limits) - 1); ++i)
-            oldSubj.limits[i] = oldSubj.limits[i+1] - oldSubj.limits[i];
-        // last entry not overwritten, should be the sum of all lengths
-
-        std::cout << " dumping untranslated subject lengths..." << std::flush;
-        //TODO save to TMPDIR instead
-        CharString _path = options.dbFile;
-        append(_path, ".untranslengths");
-        save(oldSubj.limits, toCString(_path));
-    }
-
-    clear(oldSubj);
-    std::cout << " done.\n";
-    double finish = sysTime() - start;
-    std::cout << "Runtime: " << finish << "s \n" << std::flush;
-    std::cout << "Number of queries after preproc: " << length(newSubj)
-                << "\n\n" << std::flush;
-
-    if (options.alphReduction > 0)
-    {
-        start = sysTime();
-        std::cout << "Dumping unreduced Subj Sequences..." << std::flush;
-
-        //TODO save to TMPDIR instead
-        CharString _path = options.dbFile;
-        append(_path, ".unredsubj");
-        save(newSubj, toCString(_path));
-
-        std::cout << " done.\n";
-        finish = sysTime() - start;
-        std::cout << "Runtime: " << finish << "s \n\n" << std::flush;
-
-        return step02_reduceAlphabet(newSubj, options, TFormat());
-    }
-
-    return step03_generateIndexAndDump(newSubj, options, TFormat());
-}
-
-// --------------------------------------------------------------------------
-// Function loadSubjSequences()
-// --------------------------------------------------------------------------
-
-
-
-template <BlastFormatFile m,
-          BlastFormatProgram p,
-          BlastFormatGeneration g>
-inline int
-step00_loadSubjSequences(LambdaIndexerOptions const & options,
-                         BlastFormat<m, p, g> const & /*tag*/)
-{
-    typedef BlastFormat<m,p,g> TFormat;
-
-    // load sequences as CharString first to be error tolerant
-    StringSet<CharString, Owner<ConcatDirect<> > > seqs;
-    StringSet<CharString, Owner<ConcatDirect<> > > ids;
-    double start = sysTime();
-    std::cout << "Loading Database Sequences..." << std::flush;
-    int ret = 0;
-    if (options.fileFormat == 1)
-        ret = loadSeqsAndIds(ids, seqs, options.dbFile, Fastq());
-    else
-        ret = loadSeqsAndIds(ids, seqs, options.dbFile, Fasta());
-    if (ret)
-        return ret;
-    std::cout << " done.\n";
-    double finish = sysTime() - start;
-    std::cout << "Runtime: " << finish << "s \n" << std::flush;
-
-    unsigned long maxLen = 0ul;
-    for (auto const & s : seqs)
-        if (length(s) > maxLen)
-            maxLen = length(s);
-    std::cout << "Number of sequences read: " << length(seqs)
-              << "\nLongest sequence read: " << maxLen << "\n\n" << std::flush;
-
-    start = sysTime();
-    std::cout << "Dumping Subj Ids..." << std::flush;
-
-    //TODO save to TMPDIR instead
-    CharString _path = options.dbFile;
-    append(_path, ".ids");
-    save(ids, toCString(_path));
-
-    std::cout << " done.\n";
-    finish = sysTime() - start;
-    std::cout << "Runtime: " << finish << "s \n\n" << std::flush;
-
-    // MASKING
-//     String<std::forward_list<std::tuple<unsigned, unsigned>>> segIntervals;
-//     StringSet<String<Tuple<unsigned, 2>>, Owner<ConcatDirect<>>> segIntervals;
-    {
-        StringSet<String<unsigned>, Owner<ConcatDirect<>>> segIntStarts;
-        StringSet<String<unsigned>, Owner<ConcatDirect<>>> segIntEnds;
-    //     resize(segIntervals, length(seqs));
-
-        if (options.segFile != "")
-        {
-            std::cout << "Constructing binary seqan masking from seg-file...\n"
-                    << std::flush;
-
-            std::ifstream stream;
-            stream.open(toCString(options.segFile));
-            if (!stream.is_open())
-                return -1;
-
-            typedef RecordReader<std::ifstream, SinglePass<> > TReader;
-            TReader reader(stream);
-
-    //         StringSet<String<Tuple<unsigned, 2>>> _segIntervals;
-    //         auto & _segIntervals = segIntervals;
-    //         resize(_segIntervals, length(seqs));
-            StringSet<String<unsigned>> _segIntStarts;
-            StringSet<String<unsigned>> _segIntEnds;
-            resize(_segIntStarts, length(seqs));
-            resize(_segIntEnds, length(seqs));
-            CharString buf;
-    //         std::tuple<unsigned, unsigned> tup;
-
-    //         auto curSeq = begin(_segIntervals);
-            unsigned curSeq = 0;
-            while ((!atEnd(reader)) && (value(reader) == '>'))
-            {
-    //             if (curSeq == end(_segIntervals))
-    //                 return -7;
-                if (curSeq == length(seqs))
-                    return -7;
-                ret = skipLine(reader);
-                if ((ret) && (ret != EOF_BEFORE_SUCCESS))
-                    return ret;
-
-                unsigned curInt = 0;
-                while ((!atEnd(reader)) && (value(reader) != '>'))
-                {
-                    resize(_segIntStarts[curSeq], length(_segIntStarts[curSeq])+1);
-                    resize(_segIntEnds[curSeq], length(_segIntEnds[curSeq])+1);
-                    clear(buf);
-                    ret = readDigits(buf, reader);
-                    if (ret)
-                        return ret;
-
-    //                 std::get<0>(tup) = strtoumax(toCString(buf), 0, 10);
-                    _segIntStarts[curSeq][curInt] = strtoumax(toCString(buf), 0, 10);
-                    ret = skipNChars(reader, 3);
-                    if (ret)
-                        return ret;
-
-                    clear(buf);
-                    ret = readDigits(buf, reader);
-                    if (ret)
-                        return ret;
-
-    //                 std::get<1>(tup) = strtoumax(toCString(buf), 0, 10);
-                    _segIntEnds[curSeq][curInt] = strtoumax(toCString(buf), 0, 10);
-
-    //                 appendValue(*curSeq, tup);
-
-                    ret = skipLine(reader);
-                    if ((ret) && (ret != EOF_BEFORE_SUCCESS))
-                        return ret;
-                    curInt++;
-                }
-                curSeq++;
-            }
-    //         if (curSeq != end(_segIntervals))
-    //             return -9;
-            if (curSeq != length(seqs))
-                return -9;
-
-            segIntStarts.concat = concat(_segIntStarts);
-            segIntStarts.limits = stringSetLimits(_segIntStarts);
-            segIntEnds.concat = concat(_segIntEnds);
-            segIntEnds.limits = stringSetLimits(_segIntEnds);
-    //         segIntEnds = _segIntEnds;
-    //         segIntervals = _segIntervals; // non-concatdirect to concatdirect
-
-            stream.close();
-
-        } else
-        {
-            std::cout << "No Seg-File specified, no masking will take place,\n"
-                    << std::flush;
-    //         resize(segIntervals, length(seqs));
-            resize(segIntStarts, length(seqs));
-            resize(segIntEnds, length(seqs));
-        }
-
-    //     for (unsigned u = 0; u < length(segIntStarts); ++u)
-    //     {
-    //         std::cout << u << ": ";
-    //         for (unsigned v = 0; v < length(segIntStarts[u]); ++v)
-    //         {
-    //             std::cout << '(' << segIntStarts[u][v] << ", " << segIntEnds[u][v] << ")  ";
-    //         }
-    //         std::cout << '\n';
-    //     }
-        std::cout << "Dumping binary seqan mask file...\n"
-                    << std::flush;
-        _path = options.dbFile;
-        append(_path, ".binseg_s");
-        save(segIntStarts, toCString(_path));
-        _path = options.dbFile;
-        append(_path, ".binseg_e");
-        save(segIntEnds, toCString(_path));
-        std::cout << "Done.\n\n" << std::flush;
-    }
-    return step01_preprocessSubjSeqs(seqs, options, TFormat());
-}
-
-template <BlastFormatFile m,
-          BlastFormatProgram p,
-          BlastFormatGeneration g>
-inline int
-beginPipeline(LambdaIndexerOptions const & options,
-              BlastFormat<m, p, g> const & /*tag*/)
-{
-    typedef BlastFormat<m,p,g> TFormat;
-    return step00_loadSubjSequences(options, TFormat());
 }
 
 #endif // header guard
