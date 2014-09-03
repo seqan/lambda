@@ -255,11 +255,11 @@ mainAlphed(TRedAlph const & /**/,
     if (options.indexIsFM)
     {
         using TIndexSpec = FMIndex<>;
-        generateIndexAndDump(reducedSeqs, options, TIndexSpec());
+        generateIndexAndDump<TIndexSpec>(reducedSeqs, options);
     } else
     {
         using TIndexSpec = IndexSa<>;
-        generateIndexAndDump(reducedSeqs, options, TIndexSpec());
+        generateIndexAndDump<TIndexSpec>(reducedSeqs, options);
     }
 
     return 0;

@@ -652,12 +652,20 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
                                             "OUT"));
     setValidValues(parser, "output", "sa fm");
 
+    addOption(parser, seqan::ArgParseOption("it",
+                                            "index-type",
+                                            "Type of Index.",
+                                            seqan::ArgParseArgument::STRING,
+                                            "type"));
+    setValidValues(parser, "index-type", "sa fm");
+    setDefaultValue(parser, "index-type", "fm");
+
     addSection(parser, "Program Options");
     addOption(parser, seqan::ArgParseOption("p",
                                             "program",
                                             "Blast Operation Mode.",
                                             seqan::ArgParseArgument::STRING,
-                                            "OUT"));
+                                            "program"));
     setValidValues(parser, "program", "blastn blastp blastx tblastn tblastx");
     setDefaultValue(parser, "program", "blastx");
 
@@ -735,6 +743,14 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
         return seqan::ArgumentParser::PARSE_ERROR;
 
     //verifyFileFormat(); TODO
+
+    CharString indexType;
+    getOptionValue(indexType, parser, "index-type");
+
+    if (indexType == "fm")
+        options.indexIsFM = true;
+    else
+        options.indexIsFM = false;
 
     getOptionValue(options.alphReduction, parser, "alph");
     switch (options.alphReduction)

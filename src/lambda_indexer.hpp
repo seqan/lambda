@@ -377,23 +377,29 @@ convertMaskingFile(uint64_t numberOfSeqs,
 // Function loadSubj()
 // --------------------------------------------------------------------------
 
-template <typename TString, typename TSpec, typename TIndexSpec>
+template <typename TIndexSpec,typename TString, typename TSpec>
 inline void
 generateIndexAndDump(StringSet<TString, TSpec> & seqs,
-                     LambdaIndexerOptions const & options,
-                     TIndexSpec const & /**/)
+                     LambdaIndexerOptions const & options)
 {
+    bool constexpr isFM = std::is_same<TIndexSpec, FMIndex<> >::value;
     using TDBIndex =  Index<StringSet<TString, TSpec>, TIndexSpec >;
-    using TFibre = typename std::conditional<
-                    std::is_same<TIndexSpec, FMIndex<> >::value,
-                    FibreSALF,
-                    FibreSA>::type;
+    using TFibre = typename std::conditional<isFM,
+                                             FibreSALF,
+                                             FibreSA>::type;
     // Generate Index
     std::cout << "Generating Index..." << std::flush;
     double s = sysTime();
+
+    if (isFM)
+        reverse(seqs);
+
     TDBIndex dbIndex(seqs);
-//     typename Iterator<TDbIndex, TopDown<> >::Type it(dbIndex);
     indexRequire(dbIndex, TFibre());// instantiate
+
+//     if (isFM)
+//         reverse(seqs);
+
     double e = sysTime() - s;
     std::cout << " done.\n" << std::flush;
     std::cout << "Runtime: " << e << "s \n\n" << std::flush;

@@ -300,6 +300,13 @@ public:
 
 };
 
+// template <typename TMatch, typename TLocalHolder>
+// inline void
+// _fixPositions(TMatch & m, TLocalHolder const & lH)
+// {
+//     m.subjStart = toSuffixPosition(lH.gH.dbFMIndex, m.subjId, m.subjStart);
+// }
+
 template <typename TMatch,
           typename TGlobalHolder,
           typename TScoreExtension,
@@ -339,7 +346,11 @@ onFind(LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> & lH,
         for (unsigned j = 0; j< length(subjOccs); ++j)
         {
             auto const & qryOcc  = qryOccs[i];
-            auto const & subjOcc = subjOccs[j];
+            auto subjOcc = subjOccs[j];
+            if (lH.gH.dbIndexIsFM)
+                setSeqOffset(subjOcc,
+                             suffixLength(subjOcc, lH.gH.dbFMIndex)
+                             - lH.options.seedLength);
 
             auto const seedId = getSeqNo(qryOcc);
             Match m {static_cast<Match::TQId>(lH.seedRefs[seedId]),
@@ -348,6 +359,11 @@ onFind(LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> & lH,
                      static_cast<Match::TPos>(getSeqOffset(subjOcc))};
 
             bool masked = false;
+
+//             std::cout << m.qryId << " "
+//                       << m.subjId << " "
+//                       << m.qryStart << " "
+//                       << m.subjStart << "\n";
 
             for (unsigned k = 0;
                  k < length(lH.gH.segIntStarts[m.subjId]);

@@ -43,7 +43,7 @@ using namespace seqan;
 struct Match
 {
     typedef uint32_t    TQId;
-    typedef uint32_t    TSId;// many suffixes in subject-index
+    typedef uint32_t    TSId;// many suffixes in subject-index TODO can be smaller now?
     typedef uint16_t    TPos;
     TQId qryId;
     TSId subjId;
