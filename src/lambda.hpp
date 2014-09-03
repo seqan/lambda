@@ -99,20 +99,34 @@ inline int
 loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
                     LambdaOptions const & options)
 {
-    std::cout << "Loading Database Index from disk…" << std::flush;
+    std::cout << "Loading Database Index from disk… trying SA-Index…" << std::flush;
     double start = sysTime();
-    int ret = open(globalHolder.dbIndex, toCString(options.dbFile));
+    int ret = open(globalHolder.dbSAIndex, toCString(options.dbFile));
     if (ret != true)
     {
-        std::cout << " failed.\n" << std::flush;
-        return 1;
+        std::cout << " failed… trying FM-Index…\n" << std::flush;
+
+        globalHolder.dbIndexIsFM = true;
+        ret = open(globalHolder.dbFMIndex, toCString(options.dbFile));
+        if (ret != true)
+        {
+            std::cout << " failed.\n" << std::flush;
+            std::cerr << "No Index found;"
+                      << "please create it with lambda_indexer.\n" 
+                      << std::flush;
+            return 1;
+        }
     }
     double finish = sysTime() - start;
     std::cout << " done.\n" << std::flush;
     std::cout << "Runtime: " << finish << "s \n" << std::flush;
-    std::cout << "No of Fibres: " << length(indexSA(globalHolder.dbIndex))
-              << "\t no of Seqs in Db: " << length(indexText(globalHolder.dbIndex))
-              << "\n\n";
+
+    if (globalHolder.dbIndexIsFM)
+        std::cout << "TODO\n";
+    else
+        std::cout << "No of Fibres: " << length(indexSA(globalHolder.dbSAIndex))
+           << "\t no of Seqs in Db: " << length(indexText(globalHolder.dbSAIndex))
+           << "\n\n";
 
     return 0;
 }
@@ -571,10 +585,9 @@ generateTrieOverSeeds(TLocalHolder & lH)
 // Function search()
 // --------------------------------------------------------------------------
 
-
-template <typename TLocalHolder>
+template <typename BackSpec, typename TDBIndex, typename TLocalHolder>
 inline int
-search(TLocalHolder & lH)
+__search(TLocalHolder & lH, TDBIndex & dbIndex)
 {
     // FIND
     lH.statusStr << "Seeding…";
@@ -582,40 +595,17 @@ search(TLocalHolder & lH)
         myPrint(lH.options, 2, lH.statusStr);
 
     double start = sysTime();
-    if (lH.options.hammingOnly)
+
+    using LambdaFinder = Finder_<TDBIndex, decltype(lH.seedIndex), BackSpec>;
+
+    LambdaFinder finder;
+
+    auto delegate = [&lH] (LambdaFinder const & finder)
     {
-        typedef Backtracking<HammingDistance>           BackSpec;
-        typedef Finder_<decltype(lH.gH.dbIndex),
-                        decltype(lH.seedIndex),
-                        BackSpec>                       LambdaFinder;
+        onFind(lH, finder);
+    };
 
-        LambdaFinder finder;
-
-        auto delegate = [&lH] (LambdaFinder const & finder)
-        {
-            onFind(lH, finder);
-        };
-
-        _find(finder, lH.gH.dbIndex, lH.seedIndex, lH.options.maxSeedDist,
-              delegate);
-    }
-    else
-    {
-        typedef Backtracking<EditDistance>              BackSpec;
-        typedef Finder_<decltype(lH.gH.dbIndex),
-                        decltype(lH.seedIndex),
-                        BackSpec>                       LambdaFinder;
-
-        LambdaFinder finder;
-
-        auto delegate = [&lH] (LambdaFinder const & finder)
-        {
-            onFind(lH, finder);
-        };
-
-        _find(finder, lH.gH.dbIndex, lH.seedIndex, lH.options.maxSeedDist,
-              delegate);
-    }
+    _find(finder, dbIndex, lH.seedIndex, lH.options.maxSeedDist, delegate);
 
     double finish = sysTime() - start;
 
@@ -625,6 +615,25 @@ search(TLocalHolder & lH)
     return 0;
 }
 
+template <typename BackSpec, typename TLocalHolder>
+inline int
+_search(TLocalHolder & lH)
+{
+    if (lH.gH.dbIndexIsFM)
+        return __search<BackSpec>(lH, lH.gH.dbFMIndex);
+    else
+        return __search<BackSpec>(lH, lH.gH.dbSAIndex);
+}
+
+template <typename TLocalHolder>
+inline int
+search(TLocalHolder & lH)
+{
+    if (lH.options.hammingOnly)
+        return _search<Backtracking<HammingDistance>>(lH);
+    else
+        return _search<Backtracking<EditDistance>>(lH);
+}
 
 // --------------------------------------------------------------------------
 // Function joinAndFilterMatches()

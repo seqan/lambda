@@ -252,7 +252,15 @@ mainAlphed(TRedAlph const & /**/,
     if (!checkIndexSize(reducedSeqs))
         return -17;
 
-    generateIndexAndDump(reducedSeqs, options);
+    if (options.indexIsFM)
+    {
+        using TIndexSpec = FMIndex<>;
+        generateIndexAndDump(reducedSeqs, options, TIndexSpec());
+    } else
+    {
+        using TIndexSpec = IndexSa<>;
+        generateIndexAndDump(reducedSeqs, options, TIndexSpec());
+    }
 
     return 0;
 }

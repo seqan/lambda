@@ -28,6 +28,7 @@
 #ifndef SEQAN_LAMBDA_HOLDERS_H_
 #define SEQAN_LAMBDA_HOLDERS_H_
 
+
 #include "match.hpp"
 #include "options.hpp"
 
@@ -146,7 +147,8 @@ public:
     using TFormat       = BlastFormat<m,p,g>;
     using TUnredSeqs    = TCDStringSet<TAlph>;
     using TRedSeqs      = TCDStringSet<TRedAlph>;
-    using TDbIndex      = Index<TRedSeqs,IndexSa<> >;
+    using TDbSAIndex    = Index<TRedSeqs, IndexSa<> >;
+    using TDbFMIndex    = Index<TRedSeqs, FMIndex<> >;
     using TPositions    = typename StringSetLimits<TUnredSeqs>::Type;
     using TIds          = StringSet<CharString, Owner<ConcatDirect<>>>;
     using TMasking      = StringSet<String<unsigned>, Owner<ConcatDirect<>>>;
@@ -155,7 +157,9 @@ public:
     TUnredSeqs                  qrySeqs;
     TUnredSeqs                  subjSeqs;
 
-    TDbIndex                    dbIndex;
+    TDbSAIndex                  dbSAIndex;
+    TDbFMIndex                  dbFMIndex;
+    bool                        dbIndexIsFM = false;
     BlastDbSpecs<>              dbSpecs;
 
     // TODO maybe remove these for other specs?

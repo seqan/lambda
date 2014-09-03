@@ -186,7 +186,9 @@ struct LambdaOptions : public SharedOptions
 
 struct LambdaIndexerOptions : public SharedOptions
 {
-    CharString      segFile;
+    CharString      segFile = "";
+
+    bool            indexIsFM = false;
 
     LambdaIndexerOptions()
         : SharedOptions(), segFile("")
