@@ -37,6 +37,7 @@
 #include <seqan/index.h>
 // #include <seqan/index_extras.h>
 
+#include <seqan/align.h>
 #include <seqan/blast.h>
 
 #include "options.hpp"
@@ -150,7 +151,7 @@ localAlignment2(Align<TSequence, TAlignSpec> & align,
 
     typedef FreeEndGaps_<True, True, True, True> TFreeEndGaps;
     typedef AlignConfig2<LocalAlignment_<>,
-                         DPBand_<BandOn>,
+                         DPBand,
                          TFreeEndGaps,
                          TracebackOn<TracebackConfig_<CompleteTrace,
                                                       GapsLeft> > > TAlignConfig;

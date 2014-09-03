@@ -585,25 +585,36 @@ search(TLocalHolder & lH)
     if (lH.options.hammingOnly)
     {
         typedef Backtracking<HammingDistance>           BackSpec;
-        typedef Finder2<decltype(lH.gH.dbIndex),
+        typedef Finder_<decltype(lH.gH.dbIndex),
                         decltype(lH.seedIndex),
                         BackSpec>                       LambdaFinder;
 
         LambdaFinder finder;
 
-//         (void*)lH.gH.dbIndex;
-        find(finder, lH.gH.dbIndex, lH.seedIndex, lH.options.maxSeedDist, lH);
+        auto delegate = [&lH] (LambdaFinder const & finder)
+        {
+            onFind(lH, finder);
+        };
+
+        _find(finder, lH.gH.dbIndex, lH.seedIndex, lH.options.maxSeedDist,
+              delegate);
     }
     else
     {
         typedef Backtracking<EditDistance>              BackSpec;
-        typedef Finder2<decltype(lH.gH.dbIndex),
+        typedef Finder_<decltype(lH.gH.dbIndex),
                         decltype(lH.seedIndex),
                         BackSpec>                       LambdaFinder;
 
         LambdaFinder finder;
 
-        find(finder, lH.gH.dbIndex, lH.seedIndex, lH.options.maxSeedDist, lH);
+        auto delegate = [&lH] (LambdaFinder const & finder)
+        {
+            onFind(lH, finder);
+        };
+
+        _find(finder, lH.gH.dbIndex, lH.seedIndex, lH.options.maxSeedDist,
+              delegate);
     }
 
     double finish = sysTime() - start;
