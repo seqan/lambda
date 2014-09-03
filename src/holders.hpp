@@ -296,8 +296,6 @@ public:
 
 };
 
-
-
 template <typename TMatch,
           typename TGlobalHolder,
           typename TScoreExtension,
