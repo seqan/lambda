@@ -157,6 +157,11 @@ int mainTyped(LambdaIndexerOptions const & options,
 
     switch (options.alphReduction)
     {
+        case 0:
+        {
+            typedef AminoAcid TAA;
+            return mainAlphed(TAA(), options, TFormat());
+        } break;
         case 1:
         {
             typedef AminoAcid10 TAA;
@@ -250,7 +255,7 @@ mainAlphed(TRedAlph const & /**/,
 
     // see if final sequence set actually fits into index 
     if (!checkIndexSize(reducedSeqs))
-        return -17;
+        return -1;
 
     if (options.indexIsFM)
     {

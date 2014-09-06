@@ -99,12 +99,12 @@ inline int
 loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
                     LambdaOptions const & options)
 {
-    std::cout << "Loading Database Index from disk… trying SA-Index…" << std::flush;
+    std::cout << "Searching for Database Index on disk…\n trying SA-Index…" << std::flush;
     double start = sysTime();
     int ret = open(globalHolder.dbSAIndex, toCString(options.dbFile));
     if (ret != true)
     {
-        std::cout << " failed… trying FM-Index…\n" << std::flush;
+        std::cout << " trying FM-Index…" << std::flush;
 
         globalHolder.dbIndexIsFM = true;
         ret = open(globalHolder.dbFMIndex, toCString(options.dbFile));
@@ -112,13 +112,13 @@ loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
         {
             std::cout << " failed.\n" << std::flush;
             std::cerr << "No Index found;"
-                      << "please create it with lambda_indexer.\n" 
+                      << "please create one with lambda_indexer.\n" 
                       << std::flush;
             return 1;
         }
     }
     double finish = sysTime() - start;
-    std::cout << " done.\n" << std::flush;
+    std::cout << " loaded.\n" << std::flush;
     std::cout << "Runtime: " << finish << "s \n" << std::flush;
 
     if (globalHolder.dbIndexIsFM)
@@ -136,7 +136,7 @@ loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
 // Function loadQuery()
 // --------------------------------------------------------------------------
 
-
+//TODO(h4nn3s): reduce duplication in the following functions
 // Generic, with translation and reduction
 template <BlastFormatFile m,
           BlastFormatProgram p,
@@ -229,6 +229,20 @@ loadQueryImpl(GlobalDataHolder<TRedAlph,
               untranslatedSeqs,
               SIX_FRAME,
               options.geneticCode);
+
+    // preserve lengths of untranslated sequences
+    resize(globalHolder.untransQrySeqLengths,
+           length(untranslatedSeqs.limits),
+           Exact());
+    for (uint32_t i = 0;
+         i < (length(globalHolder.untransQrySeqLengths) - 1);
+         ++i)
+    {
+        globalHolder.untransQrySeqLengths[i] =
+            untranslatedSeqs.limits[i + 1] - untranslatedSeqs.limits[i];
+    }
+    // save sum of lengths (both strings have n + 1 elements
+    back(untranslatedSeqs.limits) = length(untranslatedSeqs.concat);
 
     return 0;
 }
