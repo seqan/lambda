@@ -64,8 +64,11 @@ struct SAValue<StringSet<String<Dna5, TSpec1>, TSpec2> >
 
 using namespace seqan;
 
+#if defined LAMBDA_BITCOPMRESSED_STRINGS
 using TCDSpec = Packed<>;
-//using TCDSpec = Alloc<>;
+#else
+using TCDSpec = Alloc<>;
+#endif
 
 template <typename TAlph>
 using TCDStringSet = StringSet<String<TAlph, TCDSpec>, Owner<ConcatDirect<> > >;
@@ -213,8 +216,8 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     // Set short description, version, and date.
     setShortDescription(parser, "BLAST compatible local aligner optimized for "
                                 "NGS and Metagenomics.");
-    setVersion(parser, "0.2");
-    setDate(parser, "April 2014");
+    setVersion(parser, "0.3");
+    setDate(parser, "September 2014");
 
     // Define usage line and long description.
     addUsageLine(parser, "[\\fIOPTIONS\\fP] \\fI-q QUERY.fasta\\fP "
@@ -437,6 +440,22 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
                         "number of threads to use, defaults to number of "
                         "CPUs/-cores");
 
+    addTextSection(parser, "Memory requirements VS speed");
+    addText(parser, "Lambda has three main points of memory consumption:");
+    addText(parser, "1) the cache of the hits. This depends on the amount of "
+                    "hits and is difficult to estimate. doubling the --pf value "
+                    "will reduce this memory by a half at a modest penalty "
+                    "to run-time.");
+    addText(parser, "2) the database index. This depends on the size n of the "
+                    "database and the type of index. The SA index is 6*n in "
+                    "size, while the FM index is < 2*n in size. Using the FM "
+                    "index increases total running time by about ~ 10%, though."
+                    " Choose this when creating the index, default is SA.");
+    addText(parser, "3) the sequence strings. If you define "
+                    "LAMBDA_BITCOPMRESSED_STRINGS while compiling lambda, you "
+                    "can reduce the size per character from 8 to 4 bit. This "
+                    "will also increase running time, by ~ 10%.");
+
 
     // Parse command line.
     seqan::ArgumentParser::ParseResult res = seqan::parse(parser, argc, argv);
@@ -618,8 +637,8 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
     seqan::ArgumentParser parser("lambda_indexer");
     // Set short description, version, and date.
     setShortDescription(parser, "Indexer for Lambda");
-    setVersion(parser, "0.2");
-    setDate(parser, "April 2014");
+    setVersion(parser, "0.3");
+    setDate(parser, "September 2014");
 
     // Define usage line and long description.
     addUsageLine(parser, "[\\fIOPTIONS\\fP] \\-i DATABASE.fasta\\fP [\\-o INDEXFILE.sa\\fP]");
@@ -645,20 +664,23 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
 
 
     addSection(parser, "Output Options");
-    addOption(parser, seqan::ArgParseOption("o",
-                                            "output",
-                                            "Index of database sequences",
-                                            seqan::ArgParseArgument::OUTPUTFILE,
-                                            "OUT"));
-    setValidValues(parser, "output", "sa fm");
+//     addOption(parser, seqan::ArgParseOption("o",
+//                                             "output",
+//                                             "Index of database sequences",
+//                                             seqan::ArgParseArgument::OUTPUTFILE,
+//                                             "OUT"));
+//     setValidValues(parser, "output", "sa fm");
 
     addOption(parser, seqan::ArgParseOption("it",
                                             "index-type",
-                                            "Type of Index.",
+                                            "suffix array or full-text minute "
+                                            "space",
                                             seqan::ArgParseArgument::STRING,
                                             "type"));
     setValidValues(parser, "index-type", "sa fm");
-    setDefaultValue(parser, "index-type", "fm");
+    setDefaultValue(parser, "index-type", "sa");
+
+
 
     addSection(parser, "Program Options");
     addOption(parser, seqan::ArgParseOption("p",
@@ -694,6 +716,10 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
                         "set this to a local directory with lots of "
                         "space. If you can afford it use /dev/shm.");
 
+    addTextSection(parser, "Memory requirements");
+    addText(parser, "The FM index is < 2* text size, but ~ 10% slower than "
+                    "the SA index which is 6x text size. During construction "
+                    "a full suffix array always needs to be built in memory.");
     addTextSection(parser, "Remarks");
     addText(parser, "Note that the indeces created are binary and not "
                     "necessarily platform independant.");
@@ -809,6 +835,11 @@ printOptions(LambdaOptions const & options)
               << "eCutOff:       " << options.eCutOff << "\n"
               << "alphReduction: " << uint(options.alphReduction) << "\n"
               << "queryParts:    " << uint(options.queryPart) << "\n";
+    #if defined LAMBDA_BITCOPMRESSED_STRINGS
+    std::cout << "bit-compressed strings:  on\n\n";
+    #else
+    std::cout << "bit-compressed strings:  off\n\n";
+    #endif
 }
 
 
