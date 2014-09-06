@@ -24,9 +24,9 @@
 // lambda.cpp: Main File for Lambda
 // ==========================================================================
 
-#undef SEQAN_HAS_ZLIB
+//#undef SEQAN_HAS_ZLIB
 
-#define FASTBUILD
+//#define FASTBUILD
 
 // #define SEQAN_DEBUG_INDEX
 
@@ -46,7 +46,7 @@
 //     #define SORT std::sort
 // #endif
 
-#define SEQAN_CXX11_STANDARD
+//#define SEQAN_CXX11_STANDARD
 #define _GLIBCXX_USE_C99 1
 
 #include <iostream>
