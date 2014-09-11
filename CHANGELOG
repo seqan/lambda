@@ -1,0 +1,42 @@
+
+                               CHANGELOG
+
+===========================================================================
+ Version 0.4 [???]
+===========================================================================
+
+
+
+===========================================================================
+ Version 0.3 [2014/09/06]
+===========================================================================
+
+* Speed increased by ~20% over v0.2
+* Suffix-Array index memory consumption reduced from 16x to 6x input database size
+* experimental support for FM-index as index (instead of SA) [not widely tested, yet]
+* small bugs in BLAST output formats corrected
+
+source code available at
+* http://www.seqan.de/wp-content/plugins/download-monitor/download.php?id=53
+* https://github.com/h-2/seqan.git commit d41b4b58749282dbca838a7f8506c0b378767b1b
+
+
+===========================================================================
+ Version 0.2 [2014/04/07]
+===========================================================================
+
+* version submitted to ECCB
+* multiple optimization
+* added option to partition the query sequences
+* added overlapping seeds capability
+
+source code available at
+* http://www.seqan.de/wp-content/plugins/download-monitor/download.php?id=48
+* https://github.com/h-2/seqan.git commit b8ca36432d0530dd5d39560f8e2dc2cffb7c5d9d
+
+
+===========================================================================
+ Version 0.1 [2014/01/15]
+===========================================================================
+
+* initial release
