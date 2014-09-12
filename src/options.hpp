@@ -100,7 +100,7 @@ struct UnreducedStringSet<BlastFormatProgram::BLASTN>
 struct SharedOptions
 {
     // Verbosity level.  0 -- quiet, 1 -- normal, 2 -- verbose, 3 -- very verbose.
-    int verbosity;
+    int verbosity = 2;
 
 
     CharString  dbFile;
@@ -108,35 +108,24 @@ struct SharedOptions
     // for indexer, the file format of database sequences
     // for main app, the file format of query sequences
     // 0 -- fasta, 1 -- fastq
-    int         fileFormat; 
+    int         fileFormat = 0;
 
-    int         alphReduction;
+    int         alphReduction = 0;
 
-    GeneticCodeSpec geneticCode;
+    GeneticCodeSpec geneticCode = CANONICAL;
 
-    BlastFormatProgram blastProg;
+    BlastFormatProgram blastProg = BlastFormatProgram::BLASTX;
 
-    bool        isTerminal = false;
+    bool        isTerm = true;
     unsigned    terminalCols = 80;
 
-    SharedOptions() :
-        verbosity(2),fileFormat(0),alphReduction(0),
-        blastProg(BlastFormatProgram::BLASTX)
+    SharedOptions()
     {
-        isTerminal = isatty(fileno(stdout));
-        if (isTerminal)
+        isTerm = isTerminal();
+        if (isTerm)
         {
-            int cols = 80;
-        #ifdef TIOCGSIZE
-            struct ttysize ts;
-            ioctl(STDIN_FILENO, TIOCGSIZE, &ts);
-            cols = ts.ts_cols;
-        #elif defined(TIOCGWINSZ)
-            struct winsize ts;
-            ioctl(STDIN_FILENO, TIOCGWINSZ, &ts);
-            cols = ts.ws_col;
-        #endif /* TIOCGSIZE */
-            terminalCols = cols;
+            unsigned _rows;
+            getTerminalSize(terminalCols, _rows);
         }
     }
 };
@@ -153,6 +142,8 @@ struct LambdaOptions : public SharedOptions
     unsigned short  queryPart = 0;
 
 //     bool            semiGlobal;
+
+    bool            doubleIndexing = true;
 
     unsigned char   seedLength  = 0;
     unsigned char   maxSeedDist = 1;
@@ -194,7 +185,7 @@ struct LambdaIndexerOptions : public SharedOptions
     bool            indexIsFM = false;
 
     LambdaIndexerOptions()
-        : SharedOptions(), segFile("")
+        : SharedOptions()
     {}
 };
 
@@ -354,6 +345,13 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
                                             "discarded [raw score].",
                                             seqan::ArgParseArgument::INTEGER));
     setDefaultValue(parser, "seed-min-score", "32");
+
+    addOption(parser, seqan::ArgParseOption("si",
+                                            "seed-index",
+                                            "use double indexing or not.",
+                                            seqan::ArgParseArgument::STRING));
+    setValidValues(parser, "seed-index", "on off");
+    setDefaultValue(parser, "seed-index", "on");
 
 //     addOption(parser, seqan::ArgParseOption("se",
 //                                             "seedminevalue",
@@ -547,6 +545,10 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     getOptionValue(foo, parser, "seed-min-score");
     options.minSeedScore = foo;
 
+    CharString doubleIndex;
+    getOptionValue(doubleIndex, parser, "seed-index");
+    options.doubleIndexing = (doubleIndex == "on");
+
 //     getOptionValue(foo, parser, "seedminevalue");
 //     options.minSeedEVal = foo;
 
@@ -642,7 +644,7 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
 
     // Define usage line and long description.
     addUsageLine(parser, "[\\fIOPTIONS\\fP] \\-i DATABASE.fasta\\fP [\\-o INDEXFILE.sa\\fP]");
-    addDescription(parser, "This is the application skelleton and you should modify this string.");
+//     addDescription(parser, "This is the application skelleton and you should modify this string.");
 
 
     addSection(parser, "Input Options");
@@ -834,7 +836,9 @@ printOptions(LambdaOptions const & options)
               << "band:          " << options.band << "\n"
               << "eCutOff:       " << options.eCutOff << "\n"
               << "alphReduction: " << uint(options.alphReduction) << "\n"
-              << "queryParts:    " << uint(options.queryPart) << "\n";
+              << "queryParts:    " << uint(options.queryPart) << "\n"
+              << "terminal out:  " << options.isTerm << "\n"
+              << "terminal width:" << options.terminalCols << "\n";
     #if defined LAMBDA_BITCOPMRESSED_STRINGS
     std::cout << "bit-compressed strings:  on\n\n";
     #else
