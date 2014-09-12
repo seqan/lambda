@@ -33,9 +33,9 @@
 
 #include <seqan/basic.h>
 #include <seqan/sequence.h>
+#include <seqan/misc/misc_terminal.h>
 
 #include <seqan/index.h>
-// #include <seqan/index_extras.h>
 
 #include <seqan/blast.h>
 
@@ -69,10 +69,6 @@ template <typename TSav, typename TStringSet>
 struct Comp :
     public ::std::binary_function < TSav, TSav, bool >
 {
-//     TSeedIndex const & index;
-//     typedef typename Fibre<TSeedIndex, EsaSA>::Type TSa;
-//      typedef typename SAValue<TSa>::Type TSav;
-
     TStringSet const & stringSet;
 
     Comp(TStringSet const & _stringSet)
@@ -81,7 +77,6 @@ struct Comp :
 
     inline bool operator() (TSav const & i, TSav const & j) const
     {
-//        return false;
          return (value(stringSet,getSeqNo(i)) < value(stringSet,getSeqNo(j)));
     }
 };
@@ -523,7 +518,7 @@ inline int
 generateSeeds(TLocalHolder & lH)
 {
     lH.statusStr << "Generating Seeds…";
-    if (lH.options.isTerminal)
+    if (lH.options.isTerm)
         myPrint(lH.options, 2, lH.statusStr);
 
     double start = sysTime();
@@ -566,7 +561,7 @@ inline int
 generateTrieOverSeeds(TLocalHolder & lH)
 {
     lH.statusStr << "Generating Query-Index…";
-    if (lH.options.isTerminal)
+    if (lH.options.isTerm)
         myPrint(lH.options, 2, lH.statusStr);
 
     double start = sysTime();
@@ -601,11 +596,11 @@ generateTrieOverSeeds(TLocalHolder & lH)
 
 template <typename BackSpec, typename TDBIndex, typename TLocalHolder>
 inline int
-__search(TLocalHolder & lH, TDBIndex & dbIndex)
+__searchDoubleIndex(TLocalHolder & lH, TDBIndex & dbIndex)
 {
     // FIND
     lH.statusStr << "Seeding…";
-    if (lH.options.isTerminal)
+    if (lH.options.isTerm)
         myPrint(lH.options, 2, lH.statusStr);
 
     double start = sysTime();
@@ -616,7 +611,7 @@ __search(TLocalHolder & lH, TDBIndex & dbIndex)
 
     auto delegate = [&lH] (LambdaFinder const & finder)
     {
-        onFind(lH, finder);
+        onFindDoubleIndex(lH, finder);
     };
 
     _find(finder, dbIndex, lH.seedIndex, lH.options.maxSeedDist, delegate);
@@ -627,6 +622,48 @@ __search(TLocalHolder & lH, TDBIndex & dbIndex)
     myPrint(lH.options, 2, lH.statusStr);
 
     return 0;
+}
+
+template <typename BackSpec, typename TDBIndex, typename TLocalHolder>
+inline int
+__searchSingleIndex(TLocalHolder & lH, TDBIndex & dbIndex)
+{
+    typedef typename Iterator<decltype(lH.seeds), Rooted>::Type TSeedsIt;
+    typedef typename Iterator<TDBIndex, TopDown<>>::Type TIndexIt;
+
+    // FIND
+    lH.statusStr << "Seeding…";
+    if (lH.options.isTerm)
+        myPrint(lH.options, 2, lH.statusStr);
+
+    double start = sysTime();
+
+    auto delegate = [&lH] (TIndexIt const & indexIt,
+                           TSeedsIt const & seedsIt,
+                           int /*score*/)
+    {
+        onFindSingleIndex(lH, seedsIt, indexIt);
+    };
+
+    find(dbIndex, lH.seeds, int(lH.options.maxSeedDist), delegate,
+         Backtracking<BackSpec>());
+
+    double finish = sysTime() - start;
+
+    lH.statusStr << " done. " << finish << "[s]. ";
+    myPrint(lH.options, 2, lH.statusStr);
+
+    return 0;
+}
+
+template <typename BackSpec, typename TDBIndex, typename TLocalHolder>
+inline int
+__search(TLocalHolder & lH, TDBIndex & dbIndex)
+{
+    if (lH.options.doubleIndexing)
+        return __searchDoubleIndex<BackSpec>(lH, dbIndex);
+    else
+        return __searchSingleIndex<BackSpec>(lH, dbIndex);
 }
 
 template <typename BackSpec, typename TLocalHolder>
@@ -660,7 +697,7 @@ joinAndFilterMatches(TLocalHolder & lH)
 {
 //     auto const originalNum = length(lH.matches);
     lH.statusStr << "Sorting hits…";
-    if (lH.options.isTerminal)
+    if (lH.options.isTerm)
         myPrint(lH.options, 2, lH.statusStr);
 
     /// sort
@@ -1376,7 +1413,7 @@ void printStats(StatsHolder const & stats, LambdaOptions const & options)
 {
     if (options.verbosity >= 2)
     {
-        if (options.isTerminal)
+        if (options.isTerm)
             for (unsigned char i=0; i< options.threads+3; ++i)
                 std::cout << std::endl;
         unsigned long rem = stats.hitsAfterSeeding;

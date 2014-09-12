@@ -300,95 +300,85 @@ public:
 
 };
 
-// template <typename TMatch, typename TLocalHolder>
-// inline void
-// _fixPositions(TMatch & m, TLocalHolder const & lH)
-// {
-//     m.subjStart = toSuffixPosition(lH.gH.dbFMIndex, m.subjId, m.subjStart);
-// }
+template <typename TMatch,
+          typename TGlobalHolder,
+          typename TScoreExtension,
+          typename TSeedId,
+          typename TSubjOcc>
+inline void
+onFindImpl(LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> & lH,
+           TSeedId const & seedId,
+           TSubjOcc subjOcc)
+{
+    if (lH.gH.dbIndexIsFM)
+        setSeqOffset(subjOcc,
+                     suffixLength(subjOcc, lH.gH.dbFMIndex)
+                     - lH.options.seedLength);
+
+    Match m {static_cast<Match::TQId>(lH.seedRefs[seedId]),
+             static_cast<Match::TSId>(getSeqNo(subjOcc)),
+             static_cast<Match::TPos>(lH.seedRanks[seedId] * lH.options.seedOffset),
+             static_cast<Match::TPos>(getSeqOffset(subjOcc))};
+
+    bool masked = false;
+    auto const halfSubjL = lH.options.seedLength /  2;
+
+    for (unsigned k = 0;
+            k < length(lH.gH.segIntStarts[m.subjId]);
+            ++k)
+    {
+        // more than half of the seed falls into masked interval
+        if (intervalOverlap(m.subjStart,
+                            m.subjStart + lH.options.seedLength,
+                            lH.gH.segIntStarts[m.subjId][k],
+                            lH.gH.segIntEnds[m.subjId][k])
+                >= halfSubjL)
+        {
+            ++lH.stats.hitsMasked;
+            masked = true;
+            break;
+        }
+    }
+
+    if (!masked)
+        lH.matches.emplace_back(m);
+}
 
 template <typename TMatch,
           typename TGlobalHolder,
           typename TScoreExtension,
           typename TFinder>
 inline void
-onFind(LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> & lH,
-       TFinder const & finder)
+onFindDoubleIndex(LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> & lH,
+                  TFinder const & finder)
 {
-//     unsigned maxLen = lH.options.seedLength +
-//                             ((!lH.options.hammingOnly) * lH.options.maxSeedDist);
-//     TODO fix this in finder:
-//     if ((length(finder.patternStack) - 1 > maxLen) ||
-//         (length(finder.textStack) - 1 > maxLen))
-//     {
-// //         std::cout << __LINE__ << "\n";
-//         return;
-//     }
-
     auto qryOccs = getOccurrences(back(finder.patternStack));
     auto subjOccs = getOccurrences(back(finder.textStack));
 
-//     std::cout << __LINE__ << "\n";
-//     std::cout << length(qryOccs) << "\t" << length(subjOccs) << "\t"
-//               << length(finder.patternStack) << std::endl;
-//     for (auto const & s : finder.scoreStack)
-//     {
-//         for (auto const & ss : s)
-//             std::cout << unsigned(ss) << ' ';
-//         std::cout << std::endl;
-//     }
+    lH.stats.hitsAfterSeeding += length(qryOccs) * length(subjOccs);
 
-    auto const seedNum = length(qryOccs) * length(subjOccs);
-//     reserve(lH.matches, length(lH.matches)+seedNum, Generous());
-    lH.stats.hitsAfterSeeding += seedNum;
     for (unsigned i = 0; i< length(qryOccs); ++i)
-    {
         for (unsigned j = 0; j< length(subjOccs); ++j)
-        {
-            auto const & qryOcc  = qryOccs[i];
-            auto subjOcc = subjOccs[j];
-            if (lH.gH.dbIndexIsFM)
-                setSeqOffset(subjOcc,
-                             suffixLength(subjOcc, lH.gH.dbFMIndex)
-                             - lH.options.seedLength);
-
-            auto const seedId = getSeqNo(qryOcc);
-            Match m {static_cast<Match::TQId>(lH.seedRefs[seedId]),
-                     static_cast<Match::TSId>(getSeqNo(subjOcc)),
-                     static_cast<Match::TPos>(lH.seedRanks[seedId] * lH.options.seedOffset),
-                     static_cast<Match::TPos>(getSeqOffset(subjOcc))};
-
-            bool masked = false;
-
-//             std::cout << m.qryId << " "
-//                       << m.subjId << " "
-//                       << m.qryStart << " "
-//                       << m.subjStart << "\n";
-
-            for (unsigned k = 0;
-                 k < length(lH.gH.segIntStarts[m.subjId]);
-                 ++k)
-            {
-                auto const halfSubjL = lH.options.seedLength /  2;
-                // more than half of the seed falls into masked interval
-                if (intervalOverlap(m.subjStart,
-                                    m.subjStart + lH.options.seedLength,
-                                    lH.gH.segIntStarts[m.subjId][k],
-                                    lH.gH.segIntEnds[m.subjId][k])
-                     >= halfSubjL)
-                {
-                    ++lH.stats.hitsMasked;
-                    masked = true;
-                    break;
-                }
-            }
-
-            if (!masked)
-                lH.matches.emplace_back(m);
-        }
-    }
+            onFindImpl(lH, getSeqNo(qryOccs[i]), subjOccs[j]);
 }
 
+template <typename TMatch,
+          typename TGlobalHolder,
+          typename TScoreExtension,
+          typename TSeedListIterator,
+          typename TIndexIterator>
+inline void
+onFindSingleIndex(LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> & lH,
+                  TSeedListIterator const & seedIt,
+                  TIndexIterator const & indexIt)
+{
+    auto qryOcc = position(seedIt);
+    auto subjOccs = getOccurrences(indexIt);
 
+    lH.stats.hitsAfterSeeding += length(subjOccs);
+
+    for (unsigned j = 0; j< length(subjOccs); ++j)
+        onFindImpl(lH, qryOcc, subjOccs[j]);
+}
 
 #endif // SEQAN_LAMBDA_HOLDERS_H_
