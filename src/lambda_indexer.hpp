@@ -220,9 +220,10 @@ inline bool
 checkIndexSize(TCDStringSet<TRedAlph> const & seqs)
 {
     using SAV = typename SAValue<TCDStringSet<TRedAlph>>::Type;
+    uint64_t curNumSeq = length(seqs);
     uint64_t maxNumSeq = std::numeric_limits<typename Value<SAV, 1>::Type>::max();
 
-    if (length(seqs) >= maxNumSeq)
+    if (curNumSeq >= maxNumSeq)
     {
         std::cerr << "Too many sequences to be indexed:\n  "
                   << length(seqs) << " in file, but only "
