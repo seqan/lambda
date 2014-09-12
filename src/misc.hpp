@@ -333,7 +333,7 @@ myPrintImpl(LambdaOptions const & options,
     std::string str = first.str();
 //     std::cerr << "terminal cols: " << options.terminalCols
 //               << " str.size() " << str.size() << "\n";
-    if (options.isTerminal && (str.size() >= (options.terminalCols -12)))
+    if (options.isTerm && (str.size() >= (options.terminalCols -12)))
         std::cout << str.substr(str.size()-options.terminalCols+12,
                                 options.terminalCols);
     else
@@ -361,7 +361,7 @@ myPrintImplThread(LambdaOptions const & options,
     {
 //                 std::cout << "\033[" << omp_get_thread_num() << "B";
 //                 std::cout << "\033E";
-        if (options.isTerminal)
+        if (options.isTerm)
         {
             for (unsigned char i=0; i< omp_get_thread_num(); ++i)
                 std::cout << std::endl;
@@ -371,7 +371,7 @@ myPrintImplThread(LambdaOptions const & options,
 
         myPrintImpl(options, args...);
         std::cout << "\n" << std::flush;
-        if (options.isTerminal)
+        if (options.isTerm)
             std::cout << "\033[" << omp_get_thread_num()+1 << "A";
     }
 }
