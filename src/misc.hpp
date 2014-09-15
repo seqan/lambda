@@ -367,7 +367,7 @@ myPrintImplThread(LambdaOptions const & options,
                 std::cout << std::endl;
             std::cout << "\033[K";
         }
-        std::cout << "Thread " << omp_get_thread_num() << ": ";
+        std::cout << "Thread " << std::setw(3) << omp_get_thread_num() << "| ";
 
         myPrintImpl(options, args...);
         std::cout << "\n" << std::flush;
