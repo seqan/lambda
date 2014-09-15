@@ -628,7 +628,7 @@ template <typename BackSpec, typename TDBIndex, typename TLocalHolder>
 inline int
 __searchSingleIndex(TLocalHolder & lH, TDBIndex & dbIndex)
 {
-    typedef typename Iterator<decltype(lH.seeds), Rooted>::Type TSeedsIt;
+    typedef typename Iterator<decltype(lH.seeds) const, Rooted>::Type TSeedsIt;
     typedef typename Iterator<TDBIndex, TopDown<>>::Type TIndexIt;
 
     // FIND
@@ -638,7 +638,7 @@ __searchSingleIndex(TLocalHolder & lH, TDBIndex & dbIndex)
 
     double start = sysTime();
 
-    auto delegate = [&lH] (TIndexIt const & indexIt,
+    auto delegate = [&lH] (TIndexIt & indexIt,
                            TSeedsIt const & seedsIt,
                            int /*score*/)
     {
