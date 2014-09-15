@@ -256,24 +256,40 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
                                             "program",
                                             "Blast Operation Mode.",
                                             seqan::ArgParseArgument::STRING,
-                                            "OUT"));
+                                            "STR"));
     setValidValues(parser, "program", "blastn blastp blastx tblastn tblastx");
     setDefaultValue(parser, "program", "blastx");
 
-    addOption(parser, seqan::ArgParseOption("pf",
-                                            "partition-factor",
-                                            "The query sequences "
-                                            "are partioned into pf * n parts "
-                                            "and searched en bloc, where n is "
-                                            "the number of available threads. "
-                                            "A pf of 1 yields the best speed, "
-                                            "a higher pf results in slight "
-                                            "run-time increases, but "
-                                            "dramatically decreases memory "
-                                            "usage.",
+#ifdef _OPENMP
+    addOption(parser, seqan::ArgParseOption("t",
+                                            "threads",
+                                            "number of threads to run "
+                                            "concurrently.",
                                             seqan::ArgParseArgument::INTEGER));
-//     setValidValues(parser, "alph", "0 10");
-    setDefaultValue(parser, "partition-factor", "2");
+    setDefaultValue(parser, "threads", omp_get_max_threads());
+#else
+    addOption(parser, seqan::ArgParseOption("t",
+                                            "threads",
+                                            "LAMBDA BUILT WITHOUT OPENMP; "
+                                            "setting this option has no effect.",
+                                            seqan::ArgParseArgument::INTEGER));
+    setDefaultValue(parser, "threads", 1);
+#endif
+
+    addOption(parser, seqan::ArgParseOption("qp",
+                                            "query-partitions",
+                                            "Divide the query into qp number "
+                                            "of blocks before processing; "
+                                            "should be a multiple of the number "
+                                            "of threads; doubling qp halves "
+                                            "the memory used for cached hits, "
+                                            "see below.",
+                                            seqan::ArgParseArgument::INTEGER));
+#ifdef _OPENMP
+    setDefaultValue(parser, "query-partitions", 2 * omp_get_max_threads());
+#else
+     setDefaultValue(parser, "query-partitions", 2);
+#endif
 
     addSection(parser, "Translation and Alphabet");
     addOption(parser, seqan::ArgParseOption("gc",
@@ -300,7 +316,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     addSection(parser, "Seeding / Filtration");
     addOption(parser, seqan::ArgParseOption("su",
                                             "ungapped-seeds",
-                                            "Deacitvate EditDistance-Seeding.",
+                                            "allow only mismatches in seeds.",
                                             seqan::ArgParseArgument::INTEGER));
     setDefaultValue(parser, "ungapped-seeds", "1");
 
@@ -425,7 +441,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     addOption(parser, seqan::ArgParseOption("e",
                                             "e-value",
-                                            "Minimum E-Value for Results.",
+                                            "Maximum E-Value for Results.",
                                             seqan::ArgParseArgument::DOUBLE));
     setDefaultValue(parser, "e-value", "0.1");
 
@@ -434,14 +450,11 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     addListItem(parser, "\\fBTMPDIR\\fP",
                         "set this to a local directory with lots of "
                         "space. If you can afford it use /dev/shm.");
-    addListItem(parser, "\\fBOMP_NUM_THREADS\\fP",
-                        "number of threads to use, defaults to number of "
-                        "CPUs/-cores");
 
     addTextSection(parser, "Memory requirements VS speed");
     addText(parser, "Lambda has three main points of memory consumption:");
     addText(parser, "1) the cache of the hits. This depends on the amount of "
-                    "hits and is difficult to estimate. doubling the --pf value "
+                    "hits and is difficult to estimate. doubling the -qp value "
                     "will reduce this memory by a half at a modest penalty "
                     "to run-time.");
     addText(parser, "2) the database index. This depends on the size n of the "
@@ -591,12 +604,18 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
             return seqan::ArgumentParser::PARSE_ERROR;
     }
 
-    getOptionValue(foo, parser, "partition-factor");
 #ifdef _OPENMP
-    options.queryPart = foo * omp_get_max_threads();
+    getOptionValue(foo, parser, "threads");
+    options.threads = foo;
+    omp_set_num_threads(options.threads);
 #else
-    options.queryPart = 1;
+    options.threads = 1;
 #endif
+
+    getOptionValue(foo, parser, "query-partitions");
+    options.queryPart = foo;
+    if ((options.queryPart % options.threads) != 0)
+        std::cout << "-qp not a multiple of -t; expect suboptimal performance.\n";
 
     getOptionValue(options.scoringMethod, parser, "scoring-scheme");
     switch (options.scoringMethod)
@@ -819,31 +838,111 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
 }
 
 
+constexpr const char *
+_alphName(AminoAcid const & /**/)
+{
+    return "AminoAcid";
+}
 
+constexpr const char *
+_alphName(ReducedAminoAcid<Murphy10> const & /**/)
+{
+    return "Murphy10";
+}
+
+constexpr const char *
+_alphName(ReducedAminoAcid<ClusterReduction<8>> const & /**/)
+{
+    return "Lambda08";
+}
+
+constexpr const char *
+_alphName(ReducedAminoAcid<ClusterReduction<10>> const & /**/)
+{
+    return "Lambda10";
+}
+
+constexpr const char *
+_alphName(ReducedAminoAcid<ClusterReduction<12>> const & /**/)
+{
+    return "Lambda12";
+}
+
+constexpr const char *
+_alphName(Dna const & /**/)
+{
+    return "Dna4";
+}
+
+constexpr const char *
+_alphName(Dna5 const & /**/)
+{
+    return "Dna5";
+}
+
+template <typename TLH>
 inline void
 printOptions(LambdaOptions const & options)
 {
-    std::cout << "Seed-Length:   " << uint(options.seedLength) << "\n"
-              << "Seed-Offset:   " << uint(options.seedOffset) << "\n"
-              << "Seed-Delta:    " << uint(options.maxSeedDist) << "\n"
-              << "Hammingonly:   " << uint(options.hammingOnly) << "\n"
-              << "SeedGravity:   " << uint(options.seedGravity) << "\n"
-              << "MinSeedLength: " << uint(options.minSeedLength) << "\n"
-              << "MinSeedScore:  " << uint(options.minSeedScore) << "\n"
-              << "MinSeedEval:   " << uint(options.minSeedEVal) << "\n"
-              << "MinSeedBitS:   " << options.minSeedBitS << "\n"
-              << "xDropOff:      " << options.xDropOff << "\n"
-              << "band:          " << options.band << "\n"
-              << "eCutOff:       " << options.eCutOff << "\n"
-              << "alphReduction: " << uint(options.alphReduction) << "\n"
-              << "queryParts:    " << uint(options.queryPart) << "\n"
-              << "terminal out:  " << options.isTerm << "\n"
-              << "terminal width:" << options.terminalCols << "\n";
+    using TGH = typename TLH::TGlobalHolder;
+    using TFormat = typename TGH::TFormat;
+
+
+    std::string bandStr;
+    switch(options.band)
+    {
+        case -3: bandStr = "2 * log(queryLength) + 1"; break;
+        case -2: bandStr = "2 * sqrt(queryLength) + 1"; break;
+        case -1: bandStr = "no band"; break;
+        default: bandStr = std::to_string(2 * options.band + 1); break;
+    }
+
+    std::cout << "OPTIONS\n"
+              << " I/O\n"
+              << "  query file:               " << options.queryFile << "\n"
+              << "  db file:                  " << options.dbFile << "\n"
+              << "  output file:              " << options.output << "\n"
+              << " PROGRAM\n"
+              << "  blast mode:               " << _programTagToString(TFormat())
+              << "\n"
+              << "  threads:                  " << uint(options.threads) << "\n"
+              << "  query partitions:         " << uint(options.queryPart) << "\n"
+              << " TRANSLATION AND ALPHABETS\n"
+              << "  genetic code:             " << uint(options.geneticCode) << "\n"
+              << "  original alphabet (query):" << (qHasFrames(TFormat())
+                                                    ? "Dna5\n"
+                                                    : "AminoAcid\n")
+              << "  original alphabet (subj): " << (sHasFrames(TFormat())
+                                                    ? "Dna5\n"
+                                                    : "AminoAcid\n")
+              << "  translated alphabet:      " << _alphName(typename TGH::TAlph())
+              << "\n"
+              << "  reduced alphabet:         " << _alphName(typename TGH::TRedAlph())
+              << "\n"
+              << " SEEDING\n"
+              << "  seed length:              " << uint(options.seedLength) << "\n"
+              << "  seed offset:              " << uint(options.seedOffset) << "\n"
+              << "  seed delta:               " << uint(options.maxSeedDist) << "\n"
+              << "  seeds ungapped:           " << uint(options.hammingOnly) << "\n"
+              << "  seed gravity:             " << uint(options.seedGravity) << "\n"
+              << "  min seed length:          " << uint(options.minSeedLength) << "\n"
+              << "  min seed score:           " << uint(options.minSeedScore) << "\n"
+//               << "  min seed e-value:         " << uint(options.minSeedEVal) << "\n"
+//               << "MinSeedBitS:   " << options.minSeedBitS << "\n"
+              << " EXTENSION\n"
+              << "  x-drop:                   " << options.xDropOff << "\n"
+              << "  band:                     " << bandStr << "\n"
+              << "  maximum e-value:          " << options.eCutOff << "\n"
+              << " MISC\n"
+              << "  stdout is terminal:       " << options.isTerm << "\n"
+              << "  terminal width:           " << options.terminalCols << "\n"
+              << "  bit-compressed strings:   "
     #if defined LAMBDA_BITCOPMRESSED_STRINGS
-    std::cout << "bit-compressed strings:  on\n\n";
+              << "on\n"
     #else
-    std::cout << "bit-compressed strings:  off\n\n";
+              << "off\n"
     #endif
+              << "\n";
 }
 
 

@@ -517,7 +517,7 @@ template <typename TLocalHolder>
 inline int
 generateSeeds(TLocalHolder & lH)
 {
-    lH.statusStr << "Generating Seeds…";
+    lH.statusStr << "Block " << lH.i << ": Generating Seeds…";
     if (lH.options.isTerm)
         myPrint(lH.options, 2, lH.statusStr);
 

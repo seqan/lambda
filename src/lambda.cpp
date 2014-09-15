@@ -474,7 +474,7 @@ realMain(LambdaOptions      const & options,
     using TLocalHolder = LocalDataHolder<Match, TGlobalHolder, TScoreExtension>;
 
     if (options.verbosity >= 2)
-        printOptions(options);
+        printOptions<TLocalHolder>(options);
 
     TGlobalHolder globalHolder;
     globalHolder.stats.clear();
@@ -520,7 +520,7 @@ realMain(LambdaOptions      const & options,
             options.threads,
             " threads...\n");
 
-    if (isatty(fileno(stdin)))
+    if (options.isTerm)
     {
         for (unsigned char i=0; i< options.threads+3; ++i)
             std::cout << std::endl;
