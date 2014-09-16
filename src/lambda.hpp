@@ -53,7 +53,6 @@
 
 using namespace seqan;
 
-
 enum COMPUTERESULT_
 {
     SUCCESS = 0,
@@ -62,7 +61,6 @@ enum COMPUTERESULT_
     ALIGNSCORE,
     ALIGNEVAL
 };
-
 
 // comparison operator to sort SA-Values based on the strings in the SA they refer to
 template <typename TSav, typename TStringSet>
@@ -126,145 +124,74 @@ loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
     return 0;
 }
 
-
 // --------------------------------------------------------------------------
 // Function loadQuery()
 // --------------------------------------------------------------------------
 
-//TODO(h4nn3s): reduce duplication in the following functions
-// Generic, with translation and reduction
-template <BlastFormatFile m,
-          BlastFormatProgram p,
-          BlastFormatGeneration g,
-          typename TRedAlph,
-          typename TScoreScheme,
-          MyEnableIf<!std::is_same<TRedAlph,AminoAcid>::value &&
-          !std::is_same<TRedAlph,Dna5>::value> = 0>
-inline int
-loadQueryImpl(GlobalDataHolder<TRedAlph,
-                                TScoreScheme,
-                                m, p, g>         & globalHolder,
-              LambdaOptions                     const & options)
+template <typename TSourceAlph,
+          typename TTargetAlph,
+          typename TUntransLengths,
+          MyEnableIf<!std::is_same<TSourceAlph, TTargetAlph>::value> = 0>
+inline void
+loadQueryImplTrans(TCDStringSet<TTargetAlph> & target,
+                   TCDStringSet<TSourceAlph> & source,
+                   TUntransLengths           & untransQrySeqLengths,
+                   LambdaOptions       const & options)
 {
-    StringSet<String<Dna5>, Owner<ConcatDirect<>>> untranslatedSeqs;
-
-    int ret = 0;
-    if (options.fileFormat)
-        ret = loadSeqsAndIds(globalHolder.qryIds,
-                             untranslatedSeqs,
-                             options.queryFile,
-                             Fastq());
-    else
-        ret = loadSeqsAndIds(globalHolder.qryIds,
-                             untranslatedSeqs,
-                             options.queryFile,
-                             Fasta());
-    if (ret)
-        return ret;
-
     std::cout << "translating…" << std::flush;
-    translate(globalHolder.qrySeqs,
-              untranslatedSeqs,
+    // translate
+    translate(target,
+              source,
               SIX_FRAME,
               options.geneticCode);
 
     // preserve lengths of untranslated sequences
-    resize(globalHolder.untransQrySeqLengths,
-           length(untranslatedSeqs.limits),
+    resize(untransQrySeqLengths,
+           length(source.limits),
            Exact());
-    for (uint32_t i = 0;
-         i < (length(globalHolder.untransQrySeqLengths) - 1);
-         ++i)
-    {
-        globalHolder.untransQrySeqLengths[i] =
-            untranslatedSeqs.limits[i + 1] - untranslatedSeqs.limits[i];
-    }
-    // save sum of lengths (both strings have n + 1 elements
-    back(untranslatedSeqs.limits) = length(untranslatedSeqs.concat);
 
+    for (uint32_t i = 0; i < (length(untransQrySeqLengths) - 1); ++i)
+        untransQrySeqLengths[i] = source.limits[i + 1] - source.limits[i];
+
+    // save sum of lengths (both strings have n + 1 elements
+    back(source.limits) = length(source.concat);
+}
+
+template <typename TSourceAlph,
+          typename TTargetAlph,
+          typename TUntransLengths,
+          MyEnableIf<std::is_same<TSourceAlph, TTargetAlph>::value> = 0>
+inline void
+loadQueryImplTrans(TCDStringSet<TTargetAlph> & target,
+                   TCDStringSet<TSourceAlph> & source,
+                   TUntransLengths           & /**/,
+                   LambdaOptions       const & /**/)
+{
+    // no need for translation, but sequences have to be in right place
+    std::swap(target, source);
+}
+
+template <typename TSourceAlph,
+          typename TTargetAlph,
+          MyEnableIf<!std::is_same<TSourceAlph, TTargetAlph>::value> = 0>
+inline void
+loadQueryImplReduce(TCDStringSet<TTargetAlph> & target,
+                    TCDStringSet<TSourceAlph> & source)
+{
     // reduce implicitly
     std::cout << "reducing…" << std::flush;
-    globalHolder.redQrySeqs.concat = globalHolder.qrySeqs.concat;
-    globalHolder.redQrySeqs.limits = globalHolder.qrySeqs.limits;
-
-    return 0;
+    target.concat = source.concat;
+    target.limits = source.limits;
 }
 
-// only translation
-template <BlastFormatFile m,
-          BlastFormatProgram p,
-          BlastFormatGeneration g,
-          typename TRedAlph,
-          typename TScoreScheme,
-          MyEnableIf<std::is_same<TRedAlph,AminoAcid>::value> = 0 >
-inline int
-loadQueryImpl(GlobalDataHolder<TRedAlph,
-                                TScoreScheme,
-                                m, p, g>         & globalHolder,
-              LambdaOptions                     const & options)
+template <typename TSourceAlph,
+          typename TTargetAlph,
+          MyEnableIf<std::is_same<TSourceAlph, TTargetAlph>::value> = 0>
+inline void
+loadQueryImplReduce(TCDStringSet<TTargetAlph> const & /**/,
+                    TCDStringSet<TSourceAlph> & /**/)
 {
-    StringSet<String<Dna5>, Owner<ConcatDirect<>>> untranslatedSeqs;
-
-    int ret = 0;
-    if (options.fileFormat)
-        ret = loadSeqsAndIds(globalHolder.qryIds,
-                             untranslatedSeqs,
-                             options.queryFile,
-                             Fastq());
-    else
-        ret = loadSeqsAndIds(globalHolder.qryIds,
-                             untranslatedSeqs,
-                             options.queryFile,
-                             Fasta());
-    if (ret)
-        return ret;
-
-    std::cout << "translating…" << std::flush;
-    translate(globalHolder.qrySeqs,
-              untranslatedSeqs,
-              SIX_FRAME,
-              options.geneticCode);
-
-    // preserve lengths of untranslated sequences
-    resize(globalHolder.untransQrySeqLengths,
-           length(untranslatedSeqs.limits),
-           Exact());
-    for (uint32_t i = 0;
-         i < (length(globalHolder.untransQrySeqLengths) - 1);
-         ++i)
-    {
-        globalHolder.untransQrySeqLengths[i] =
-            untranslatedSeqs.limits[i + 1] - untranslatedSeqs.limits[i];
-    }
-    // save sum of lengths (both strings have n + 1 elements
-    back(untranslatedSeqs.limits) = length(untranslatedSeqs.concat);
-
-    return 0;
-}
-
-// none
-template <BlastFormatFile m,
-          BlastFormatProgram p,
-          BlastFormatGeneration g,
-          typename TRedAlph,
-          typename TScoreScheme,
-          MyEnableIf<std::is_same<TRedAlph,Dna5>::value> = 0>
-inline int
-loadQueryImpl(GlobalDataHolder<TRedAlph,
-                                TScoreScheme,
-                                m, p, g>         & globalHolder,
-              LambdaOptions                     const & options)
-{
-    if (options.fileFormat)
-        return loadSeqsAndIds(globalHolder.qryIds,
-                              globalHolder.qrySeqs,
-                              options.queryFile,
-                              Fastq());
-    else
-        return loadSeqsAndIds(globalHolder.qryIds,
-                              globalHolder.qrySeqs,
-                              options.queryFile,
-                              Fasta());
+    // no-op, since target already references source
 }
 
 template <BlastFormatFile m,
@@ -273,16 +200,42 @@ template <BlastFormatFile m,
           typename TRedAlph,
           typename TScoreScheme>
 inline int
-loadQuery(GlobalDataHolder<TRedAlph,
-                            TScoreScheme,
-                            m, p, g>         & globalHolder,
-          LambdaOptions                     const & options)
+loadQuery(GlobalDataHolder<TRedAlph, TScoreScheme, m, p, g>      & globalHolder,
+          LambdaOptions                                    const & options)
 {
+    int ret = 0;
     double start = sysTime();
+
     std::cout << "Loading Query Sequences and Ids…" << std::flush;
-    int ret = loadQueryImpl(globalHolder, options);
+
+    TCDStringSet<OrigQryAlph<p>> origSeqs;
+    if (options.fileFormat)
+        ret = loadSeqsAndIds(globalHolder.qryIds,
+                             origSeqs,
+                             options.queryFile,
+                             Fastq());
+    else
+        ret = loadSeqsAndIds(globalHolder.qryIds,
+                             origSeqs,
+                             options.queryFile,
+                             Fasta());
     if (ret)
+    {
+        std::cout << "failed. Please check that files are readable.\n"
+                  << std::flush;
         return ret;
+    }
+
+    // translate
+    loadQueryImplTrans(globalHolder.qrySeqs,
+                       origSeqs,
+                       globalHolder.untransQrySeqLengths,
+                       options);
+
+    // reduce
+    loadQueryImplReduce(globalHolder.redQrySeqs,
+                        globalHolder.qrySeqs);
+
 
     std::cout << " done.\n";
     double finish = sysTime() - start;
@@ -302,17 +255,14 @@ loadQuery(GlobalDataHolder<TRedAlph,
 // Function loadSubjects()
 // --------------------------------------------------------------------------
 
-
 template <BlastFormatFile m,
           BlastFormatProgram p,
           BlastFormatGeneration g,
           typename TRedAlph,
           typename TScoreScheme>
 inline int
-loadSubjects(GlobalDataHolder<TRedAlph,
-                              TScoreScheme,
-                              m, p, g>         & globalHolder,
-             LambdaOptions                    const & options)
+loadSubjects(GlobalDataHolder<TRedAlph, TScoreScheme, m, p, g>  & globalHolder,
+             LambdaOptions                                const & options)
 {
 //     typedef BlastFormat<m,p,g> TFormat;
 
@@ -351,6 +301,7 @@ loadSubjects(GlobalDataHolder<TRedAlph,
     std::cout << "Runtime: " << finish << "s \n\n" << std::flush;
 
     globalHolder.dbSpecs.dbName = options.dbFile;
+
     // if subjects where translated, we don't have the untranslated seqs at all
     // but we still need the data for statistics and position un-translation
     if (sHasFrames(p))
@@ -396,10 +347,8 @@ template <BlastFormatFile m,
           typename TRedAlph,
           typename TScoreScheme>
 inline int
-loadSegintervals(GlobalDataHolder<TRedAlph,
-                              TScoreScheme,
-                              m, p, g>         & globalHolder,
-             LambdaOptions                    const & options)
+loadSegintervals(GlobalDataHolder<TRedAlph, TScoreScheme, m,p,g> & globalHolder,
+                 LambdaOptions                             const & options)
 {
 
     double start = sysTime();
@@ -693,7 +642,7 @@ search(TLocalHolder & lH)
 
 template <typename TLocalHolder>
 inline void
-joinAndFilterMatches(TLocalHolder & lH)
+sortMatches(TLocalHolder & lH)
 {
 //     auto const originalNum = length(lH.matches);
     lH.statusStr << "Sorting hits…";
@@ -711,113 +660,15 @@ joinAndFilterMatches(TLocalHolder & lH)
     if (lH.options.verbosity > 2)
         lH.statusStr << finish << "[s]. ";
     myPrint(lH.options, 2, lH.statusStr);
-
-//     // join and remove duplicates, filter too short matches
-//     std::cout <<": Joining and filtering matches…" << std::flush;
-//     start = sysTime();
-
-
-//     std::cout << "Matches before DEBUG checks:" << lH.matches.size() << "\n";
-//     // DEBUG
-//     for (auto it = lH.matches.begin(),
-//               itEnd = lH.matches.end(),
-//               itN = std::next(it, 1);
-//          (it != itEnd) && (itN != itEnd);
-//         )
-//     {
-//         itN = std::next(it, 1);
-//         auto const & redQryInfix = infix(lH.gH.redQrySeqs[it->qryId],
-//                                          it->qryStart,
-//                                          it->qryStart+lH.options.seedLength);
-//         auto const & redSubjInfix = infix(value(indexText(lH.gH.dbIndex), it->subjId),
-//                                           it->subjStart,
-//                                           it->subjStart+lH.options.seedLength);
-// 
-//         /*if (((it->qryEnd - it->qryStart) != lH.options.seedLength) ||
-//             ((it->subjEnd - it->subjStart) != lH.options.seedLength))
-//         {
-//             std::cout << "Match with UNLENGTH\n"
-//                       << " qId: " << it->qryId << " sId: " << it->subjId
-//                       << "\n " << redQryInfix
-//                       << "\n " << redSubjInfix
-//                       << "\n\n";
-//             lH.matches.erase(it);
-//         } else */
-//         if (quickHamming(redQryInfix,redSubjInfix) >
-//                    lH.options.maxSeedDist)
-//         {
-//             std::cout << "Match with UNMATCH\n"
-//                       << " qId: " << it->qryId << " sId: " << it->subjId
-//                       << "\n " << redQryInfix
-//                       << "\n " << redSubjInfix
-//                       << "\n\n";
-//             lH.matches.erase(it);
-//         }
-// 
-//         it = itN;
-//     }
-// 
-//     std::cout << "Matches after DEBUG checks:" << lH.matches.size() << "\n";
-
-    
-//     // merge
-//     for (auto it = lH.matches.begin(),
-//               itEnd = lH.matches.end(),
-//               itN = std::next(it, 1);
-//          (it != itEnd) && (itN != itEnd);
-//         )
-//     {
-//         if (// same sequence pair
-//             (it->qryId == itN->qryId) &&
-//             (it->subjId == itN->subjId) &&
-//             // and matches overlap
-//             (overlap(*it, *itN, lH.options.seedGravity)))
-//         {
-//             mergeUnto(*it, *itN);
-//             lH.matches.erase(itN);
-//             itN = std::next(it, 1);
-//             ++lH.stats.hitsMerged;
-//             continue; // goto to next match
-//         }
-// 
-//         if ((itN->qryEnd - itN->qryStart) < lH.options.minSeedLength)
-//         {
-//             lH.matches.erase(itN);
-//             ++lH.stats.hitsTooShort;
-//         }
-//         ++it;
-//         itN = std::next(it, 1);
-// 
-//     }
-//     // check length of first list element
-//     auto it = lH.matches.begin();
-//     if ((it->qryEnd - it->qryStart) < lH.options.minSeedLength)
-//     {
-//         lH.matches.erase(it);
-//         ++lH.stats.hitsTooShort;
-//     }
-
-//     if (lH.options.verbosity >= 3)
-//     {
-//         finish = sysTime() - start;
-//         THREADLINE
-//         std::cout <<":  done.\n" << std::flush;
-//         THREADLINE
-//         std::cout <<": Runtime: " << finish << "s \n" << std::flush;
-//         THREADLINE
-//         std::cout <<": No of matches before joining and filtering: " << originalNum
-//                 << ". After: " << length(lH.matches) << "\n\n" << std::flush;
-//     }
-
 }
 
 
 template <typename TBlastMatch,
           typename TLocalHolder>
 inline int
-computeBlastMatch(TBlastMatch   & bm,
+computeBlastMatch(TBlastMatch         & bm,
                   Match         const & m,
-                  TLocalHolder  & lH)
+                  TLocalHolder        & lH)
 {
     using TFormat = typename TLocalHolder::TGlobalHolder::TFormat;
 
@@ -943,8 +794,8 @@ computeBlastMatch(TBlastMatch   & bm,
     if (scr < lH.options.minSeedScore)
         return PREALIGNSCORE;
 
-    // OLD WAY extension with birte's code
-    if (false)
+#if 0
+// OLD WAY extension with birte's code
     {
     //     std::cout << "   " <<  bm.qStart << " - " << bm.qEnd << " [after ali]\n";
     //     std::cout << bm.align << std::endl;
@@ -1001,111 +852,107 @@ computeBlastMatch(TBlastMatch   & bm,
                     << "\tscore: " << scr << '\n';
             std::cout << bm.align << '\n';
         }
-
-
     }
-    //NEW WAY extension with dp
-    if (true)
+#endif
+
+    if (false) // ungapped second prealign
     {
-        if (false) // ungapped second prealign
+        Tuple<decltype(bm.qStart), 4> positions =
+            { { bm.qStart, bm.sStart, bm.qEnd, bm.sEnd} };
+
+        decltype(lH.gH.scoreScheme) extScheme(lH.gH.scoreScheme);
+        setScoreGapOpen  (extScheme, -100);
+        setScoreGapExtend(extScheme, -100);
+        scr = extendAlignment(bm.align,
+                                lH.alignContext,
+                                scr,
+                                curQry,
+                                curSubj,
+                                positions,
+                                EXTEND_BOTH,
+                                0, // band of 0 size
+                                0, // band of 0 size
+                                1, // xdrop of 1
+                                extScheme);
+        bm.qStart  = beginPosition(row0);
+        bm.qEnd    = endPosition(row0);
+
+        bm.sStart =  beginPosition(row1);
+        bm.sEnd   =  endPosition(row1);
+    }
+
+    if (((bm.qStart > 0) && (bm.sStart > 0)) ||
+        ((bm.qEnd < qryLength - 1) && (bm.sEnd < length(curSubj) -1)))
+    {
+        // we want to allow more gaps in longer query sequences
+        switch (lH.options.band)
         {
-            Tuple<decltype(bm.qStart), 4> positions =
+            case -3: maxDist = ceil(log2(qryLength)); break;
+            case -2: maxDist = floor(sqrt(qryLength)); break;
+            case -1: break;
+            default: maxDist = lH.options.band; break;
+        }
+
+        Tuple<decltype(bm.qStart), 4> positions =
                 { { bm.qStart, bm.sStart, bm.qEnd, bm.sEnd} };
 
-            decltype(lH.gH.scoreScheme) extScheme(lH.gH.scoreScheme);
-            setScoreGapOpen  (extScheme, -100);
-            setScoreGapExtend(extScheme, -100);
-            scr = extendAlignment(bm.align,
-                                  lH.alignContext,
+        if (lH.options.band != -1)
+        {
+            if (lH.options.xDropOff != -1)
+            {
+                scr = extendAlignment(bm.align,
+                                        lH.alignContext,
                                     scr,
                                     curQry,
                                     curSubj,
                                     positions,
                                     EXTEND_BOTH,
-                                    0, // band of 0 size
-                                    0, // band of 0 size
-                                    1, // xdrop of 1
-                                    extScheme);
-            bm.qStart  = beginPosition(row0);
-            bm.qEnd    = endPosition(row0);
-
-            bm.sStart =  beginPosition(row1);
-            bm.sEnd   =  endPosition(row1);
-        }
-
-        if (((bm.qStart > 0) && (bm.sStart > 0)) ||
-            ((bm.qEnd < qryLength - 1) && (bm.sEnd < length(curSubj) -1)))
-        {
-            // we want to allow more gaps in longer query sequences
-            switch (lH.options.band)
-            {
-                case -3: maxDist = ceil(log2(qryLength)); break;
-                case -2: maxDist = floor(sqrt(qryLength)); break;
-                case -1: break;
-                default: maxDist = lH.options.band; break;
-            }
-
-            Tuple<decltype(bm.qStart), 4> positions =
-                    { { bm.qStart, bm.sStart, bm.qEnd, bm.sEnd} };
-
-            if (lH.options.band != -1)
-            {
-                if (lH.options.xDropOff != -1)
-                {
-                    scr = extendAlignment(bm.align,
-                                          lH.alignContext,
-                                        scr,
-                                        curQry,
-                                        curSubj,
-                                        positions,
-                                        EXTEND_BOTH,
-                                        -maxDist,
-                                        +maxDist,
-                                        lH.options.xDropOff,
-                                        lH.gH.scoreScheme);
-                } else
-                {
-                    //TODO add alignContext to other calls
-                    scr = extendAlignment(bm.align,
-                                        scr,
-                                        curQry,
-                                        curSubj,
-                                        positions,
-                                        EXTEND_BOTH,
-                                        -maxDist,
-                                        +maxDist,
-                                        lH.gH.scoreScheme);
-                }
+                                    -maxDist,
+                                    +maxDist,
+                                    lH.options.xDropOff,
+                                    lH.gH.scoreScheme);
             } else
             {
-                if (lH.options.xDropOff != -1)
-                {
-                    scr = extendAlignment(bm.align,
-                                        scr,
-                                        curQry,
-                                        curSubj,
-                                        positions,
-                                        EXTEND_BOTH,
-                                        lH.options.xDropOff,
-                                        lH.gH.scoreScheme);
-                } else
-                {
-                    scr = extendAlignment(bm.align,
-                                        scr,
-                                        curQry,
-                                        curSubj,
-                                        positions,
-                                        EXTEND_BOTH,
-                                        lH.gH.scoreScheme);
-                }
+                //TODO add alignContext to other calls
+                scr = extendAlignment(bm.align,
+                                    scr,
+                                    curQry,
+                                    curSubj,
+                                    positions,
+                                    EXTEND_BOTH,
+                                    -maxDist,
+                                    +maxDist,
+                                    lH.gH.scoreScheme);
             }
-            bm.sStart = beginPosition(row1);
-            bm.qStart = beginPosition(row0);
-            bm.sEnd   = endPosition(row1);
-            bm.qEnd   = endPosition(row0);
-
-    //         std::cout << "AFTER:\n" << bm.align << "\n";
+        } else
+        {
+            if (lH.options.xDropOff != -1)
+            {
+                scr = extendAlignment(bm.align,
+                                    scr,
+                                    curQry,
+                                    curSubj,
+                                    positions,
+                                    EXTEND_BOTH,
+                                    lH.options.xDropOff,
+                                    lH.gH.scoreScheme);
+            } else
+            {
+                scr = extendAlignment(bm.align,
+                                    scr,
+                                    curQry,
+                                    curSubj,
+                                    positions,
+                                    EXTEND_BOTH,
+                                    lH.gH.scoreScheme);
+            }
         }
+        bm.sStart = beginPosition(row1);
+        bm.qStart = beginPosition(row0);
+        bm.sEnd   = endPosition(row1);
+        bm.qEnd   = endPosition(row0);
+
+//         std::cout << "AFTER:\n" << bm.align << "\n";
     }
 
 //     std::cerr << "AFTEREXT:\n "<< bm.align << "\n";
@@ -1138,24 +985,6 @@ computeBlastMatch(TBlastMatch   & bm,
         return ALIGNEVAL;
     }
 
-    // make a Match with updated positions
-    // blast is 1-indexed, not 0-indexed, and last pos is lsat pos
-    // ON the sequence. Seqan end positions are 1 behind this evens out for end
-//     m.qryStart  = bm.qStart;
-//     m.qryEnd    = bm.qEnd;
-//     m.subjStart = bm.sStart;
-//     m.subjEnd   = bm.sEnd;
-
-    // UNTRANSLATE and add 1
-//     bm.qStart  = getTrueQryStartPos (m.qryId, bm.qStart, bm.qEnd,
-//                                      lH.options, TFormat());
-//     bm.qEnd    = getTrueQryEndPos   (m.qryId, bm.qStart, bm.qEnd,
-//                                      lH.options, TFormat());
-//     bm.sStart  = getTrueSubjStartPos(m.subjId, bm.sStart, bm.sEnd,
-//                                      lH.options, TFormat());
-//     bm.sEnd    = getTrueSubjEndPos  (m.subjId, bm.sStart, bm.sEnd,
-//                                      lH.options, TFormat());
-
     bm.qFrameShift = getQryFrameShift(m.qryId, lH.options, TFormat()) + 1;
     if (qryIsReverseComplemented(m.qryId, lH.options, TFormat()))
         bm.qFrameShift = -bm.qFrameShift;
@@ -1164,12 +993,6 @@ computeBlastMatch(TBlastMatch   & bm,
     if (qryIsReverseComplemented(m.subjId, lH.options, TFormat()))
         bm.sFrameShift = -bm.sFrameShift;
 
-//     std::cout << "Successfull Hit hat origSeedLeng: " << seedLeng
-//               << " and origE: " << seedE << "\n";
-//     (void)seedLeng;
-//     (void)seedE;
-//     (void)seedB;
-//     std::cout << "See Bit Score: " << seedB << "\n" << std::flush;
     return 0;
 }
 

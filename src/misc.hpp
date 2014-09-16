@@ -41,26 +41,12 @@
 #include <seqan/blast.h>
 
 #include "options.hpp"
-// #include "finder.hpp"
-
 
 using namespace seqan;
-
-// typedef StringSet<CharString, Owner<ConcatDirect<> > > TDbSeqs;
-// typedef StringSet<CharString, Owner<ConcatDirect<> > > TQuerySeqs;
-// 
-// typedef Index<TDbSeqs,      IndexSa<> > TDbIndex;
-// typedef Index<TQuerySeqs,   IndexSa<> > TQueryIndex;
-
 
 // ============================================================================
 // Forwards
 // ============================================================================
-
-
-
-
-
 
 // ============================================================================
 // Metafunctions
@@ -69,7 +55,6 @@ using namespace seqan;
 // makes partial function specialization convenient
 template <bool condition>
 using MyEnableIf = typename std::enable_if<condition, int>::type;
-
 
 // ============================================================================
 // Functions for translation and retranslation
@@ -296,22 +281,22 @@ loadIds2(StringSet<TString, TSpec > & ids,
 // truncate sequences
 // ----------------------------------------------------------------------------
 
-template <typename TString, typename TSpec>
-inline void
-_debug_shorten(StringSet<TString, TSpec > & seqs, unsigned const len)
-{
-    StringSet<TString, TSpec > copySeqs;
-    reserve(copySeqs.concat, length(seqs)*len, Exact());
-
-    for (TString const & s : seqs)
-        if (length(s) >= len)
-            appendValue(copySeqs, prefix(s, len), Exact());
-
-    clear(seqs);
-    reserve(seqs.concat, length(copySeqs)*len, Exact());
-    for (TString const & s : copySeqs)
-        appendValue(seqs, s);
-}
+// template <typename TString, typename TSpec>
+// inline void
+// _debug_shorten(StringSet<TString, TSpec > & seqs, unsigned const len)
+// {
+//     StringSet<TString, TSpec > copySeqs;
+//     reserve(copySeqs.concat, length(seqs)*len, Exact());
+// 
+//     for (TString const & s : seqs)
+//         if (length(s) >= len)
+//             appendValue(copySeqs, prefix(s, len), Exact());
+// 
+//     clear(seqs);
+//     reserve(seqs.concat, length(copySeqs)*len, Exact());
+//     for (TString const & s : copySeqs)
+//         appendValue(seqs, s);
+// }
 
 // ----------------------------------------------------------------------------
 // print if certain verbosity is set
@@ -348,7 +333,6 @@ myPrintImpl(LambdaOptions const & options,
 {
     std::cout << first;
     myPrintImpl(options, args...);
-
 }
 
 template <typename ... Args>
@@ -408,73 +392,73 @@ myPrint(LambdaOptions const & options, const int verbose, Args const &... args)
 // get plus-minus-range with bounds-checking for unsigned types
 // ----------------------------------------------------------------------------
 
-template <typename TNum, typename TNum2>
-inline TNum
-_protectUnderflow(const TNum n, const TNum2 s)
-{
-    const TNum r = n -s;
-    return std::min(r, n);
-}
-
-template <typename TNum, typename TNum2>
-inline TNum
-_protectOverflow(const TNum n, const TNum2 s)
-{
-    const TNum r = n + s;
-    return std::max(r, n);
-}
-
-template <typename TGaps>
-inline bool
-_startsWithGap(TGaps const & gaps)
-{
-    SEQAN_ASSERT(length(gaps._array) > 0);
-    return (gaps._array[0] != 0);
-}
-
-template <typename TGaps>
-inline int
-_endsWithGap(TGaps const & gaps)
-{
-    SEQAN_ASSERT(length(gaps._array) > 0);
-    if ((length(gaps._array)-1) % 2 == 1)
-        return -1;
-    return ((gaps._array[length(gaps._array)-1] != 0) ? 1 : 0);
-}
-
-template <typename TGaps, typename TSeq>
-inline void
-_prependNonGaps(TGaps & gaps, TSeq const & seq)
-{
-    if (_startsWithGap(gaps))
-    {
-        insertValue(gaps._array, 0, length(seq)); // new non-gap column
-        insertValue(gaps._array, 0, 0); // empty gaps column
-    }
-    else
-    {
-        gaps._array[1] += length(seq);
-    }
-
-    insert(value(gaps._source), 0, seq);
-    setBeginPosition(gaps, 0);
-}
-
-template <typename TGaps, typename TSeq>
-inline void
-_appendNonGaps(TGaps & gaps, TSeq const & seq)
-{
-    switch (_endsWithGap(gaps))
-    {
-        case -1:
-        case  1:
-            appendValue(gaps._array, length(seq)); // new non-gap column
-            break;
-        case 0:
-            gaps._array[1] += length(seq);
-    }
-    append(value(gaps._source), seq);
-    setEndPosition(gaps, length(value(gaps._source)));
-}
+// template <typename TNum, typename TNum2>
+// inline TNum
+// _protectUnderflow(const TNum n, const TNum2 s)
+// {
+//     const TNum r = n -s;
+//     return std::min(r, n);
+// }
+// 
+// template <typename TNum, typename TNum2>
+// inline TNum
+// _protectOverflow(const TNum n, const TNum2 s)
+// {
+//     const TNum r = n + s;
+//     return std::max(r, n);
+// }
+// 
+// template <typename TGaps>
+// inline bool
+// _startsWithGap(TGaps const & gaps)
+// {
+//     SEQAN_ASSERT(length(gaps._array) > 0);
+//     return (gaps._array[0] != 0);
+// }
+// 
+// template <typename TGaps>
+// inline int
+// _endsWithGap(TGaps const & gaps)
+// {
+//     SEQAN_ASSERT(length(gaps._array) > 0);
+//     if ((length(gaps._array)-1) % 2 == 1)
+//         return -1;
+//     return ((gaps._array[length(gaps._array)-1] != 0) ? 1 : 0);
+// }
+// 
+// template <typename TGaps, typename TSeq>
+// inline void
+// _prependNonGaps(TGaps & gaps, TSeq const & seq)
+// {
+//     if (_startsWithGap(gaps))
+//     {
+//         insertValue(gaps._array, 0, length(seq)); // new non-gap column
+//         insertValue(gaps._array, 0, 0); // empty gaps column
+//     }
+//     else
+//     {
+//         gaps._array[1] += length(seq);
+//     }
+// 
+//     insert(value(gaps._source), 0, seq);
+//     setBeginPosition(gaps, 0);
+// }
+// 
+// template <typename TGaps, typename TSeq>
+// inline void
+// _appendNonGaps(TGaps & gaps, TSeq const & seq)
+// {
+//     switch (_endsWithGap(gaps))
+//     {
+//         case -1:
+//         case  1:
+//             appendValue(gaps._array, length(seq)); // new non-gap column
+//             break;
+//         case 0:
+//             gaps._array[1] += length(seq);
+//     }
+//     append(value(gaps._source), seq);
+//     setEndPosition(gaps, length(value(gaps._source)));
+// }
 
 #endif // header guard

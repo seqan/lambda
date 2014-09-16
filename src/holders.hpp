@@ -132,30 +132,54 @@ struct StatsHolder
 // struct GlobalDataHolder  -- one object per program
 // ----------------------------------------------------------------------------
 
+
+template <typename TSet1,
+          typename TSet2,
+          MyEnableIf<std::is_same<TSet1, TSet2>::value> = 0>
+inline TSet1 const &
+initHelper(TSet1 && /**/, TSet2 const & set2)
+{
+    return set2;
+}
+
+template <typename TSet1,
+          typename TSet2,
+          MyEnableIf<!std::is_same<TSet1, TSet2>::value> = 0>
+inline TSet1 &&
+initHelper(TSet1 && set1, TSet2 const & /**/)
+{
+    return std::move(set1);
+}
+
 // base
-template <typename TAlph_,
-          typename TRedAlph_,
+template <typename TRedAlph_,
           typename TScoreScheme,
           BlastFormatFile m,
           BlastFormatProgram p,
           BlastFormatGeneration g>
-class GlobalDataHolderBase
+class GlobalDataHolder
 {
 public:
-    using TAlph         = TAlph_;
-    using TRedAlph      = TRedAlph_;
+    using TRedAlph      = RedAlph<p, TRedAlph_>;
     using TFormat       = BlastFormat<m,p,g>;
-    using TUnredSeqs    = TCDStringSet<TAlph>;
+    using TTransSeqs    = TCDStringSet<TransAlph<p>>;
     using TRedSeqs      = TCDStringSet<TRedAlph>;
+    using TRedSeqsACT   = typename std::conditional<
+                            std::is_same<TTransSeqs, TRedSeqs>::value,
+                            TRedSeqs const &,
+                            TRedSeqs>::type;
     using TDbSAIndex    = Index<TRedSeqs, IndexSa<> >;
     using TDbFMIndex    = Index<TRedSeqs, FMIndex<> >;
-    using TPositions    = typename StringSetLimits<TUnredSeqs>::Type;
+    using TPositions    = typename StringSetLimits<TTransSeqs>::Type;
     using TIds          = StringSet<CharString, Owner<ConcatDirect<>>>;
     using TMasking      = StringSet<String<unsigned>, Owner<ConcatDirect<>>>;
     using TBlastScoringAdapter = BlastScoringAdapter<TScoreScheme>;
 
-    TUnredSeqs                  qrySeqs;
-    TUnredSeqs                  subjSeqs;
+    // these are always translated, except for BLASTN mode, but *never reduced*
+    TTransSeqs                  qrySeqs;
+    TTransSeqs                  subjSeqs;
+    // reduced query sequences if using reduction, otherwise const & = qrySeqs
+    TRedSeqsACT                 redQrySeqs = initHelper(TRedSeqs(), qrySeqs);
 
     TDbSAIndex                  dbSAIndex;
     TDbFMIndex                  dbFMIndex;
@@ -176,45 +200,6 @@ public:
     TBlastScoringAdapter        blastScoringAdapter;
 
     StatsHolder                 stats;
-};
-
-// protein
-template <typename TRedAlph_,
-          typename TScoreScheme,
-          BlastFormatFile m,
-          BlastFormatProgram p,
-          BlastFormatGeneration g>
-class GlobalDataHolder :
-    public GlobalDataHolderBase<AminoAcid, TRedAlph_, TScoreScheme, m, p, g>
-{
-public:
-    TCDStringSet<TRedAlph_>     redQrySeqs;
-};
-
-// unreduced protein
-template <typename TScoreScheme,
-          BlastFormatFile m,
-          BlastFormatProgram p,
-          BlastFormatGeneration g>
-class GlobalDataHolder<AminoAcid, TScoreScheme, m, p, g> :
-    public GlobalDataHolderBase<AminoAcid, AminoAcid, TScoreScheme, m, p, g>
-{
-public:
-    using Base = GlobalDataHolderBase<AminoAcid, AminoAcid, TScoreScheme, m, p, g>;
-    TCDStringSet<AminoAcid> const & redQrySeqs = Base::qrySeqs;
-};
-
-// blastN
-template <typename TScoreScheme,
-          BlastFormatFile m,
-          BlastFormatProgram p,
-          BlastFormatGeneration g>
-class GlobalDataHolder<Dna5, TScoreScheme, m, p, g> :
-    public GlobalDataHolderBase<Dna5, Dna5, TScoreScheme, m, p, g>
-{
-public:
-    using Base = GlobalDataHolderBase<Dna5, Dna5, TScoreScheme, m, p, g>;
-    TCDStringSet<Dna5> const & redQrySeqs = Base::qrySeqs;
 };
 
 // ----------------------------------------------------------------------------
@@ -255,7 +240,7 @@ public:
     typedef Align<
         typename Infix<
             typename Value<
-                typename TGlobalHolder::TUnredSeqs>::Type>::Type,
+                typename TGlobalHolder::TTransSeqs>::Type>::Type,
                 ArrayGaps> TAlign;
 
     typedef DPContext<typename Value<decltype(gH.scoreScheme)>::Type,

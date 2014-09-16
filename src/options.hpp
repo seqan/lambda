@@ -53,6 +53,12 @@ struct SAValue<StringSet<String<ReducedAminoAcid<TSpec1>, TSpec2>, TSpec3> >
     typedef Pair<uint32_t, uint16_t, Pack> Type;
 };
 
+template<typename TSpec2, typename TSpec3>
+struct SAValue<StringSet<String<AminoAcid, TSpec2>, TSpec3> >
+{
+    typedef Pair<uint32_t, uint16_t, Pack> Type;
+};
+
 // Dna Sequences might be longer
 template<typename TSpec1, typename TSpec2>
 struct SAValue<StringSet<String<Dna5, TSpec1>, TSpec2> >
@@ -85,6 +91,36 @@ struct UnreducedStringSet<BlastFormatProgram::BLASTN>
 {
     typedef TCDStringSet<Dna5> Type;
 };
+
+
+template <BlastFormatProgram p>
+using OrigQryAlph = typename std::conditional<
+                                           (p == BlastFormatProgram::BLASTN) ||
+                                           (p == BlastFormatProgram::BLASTX) ||
+                                           (p == BlastFormatProgram::TBLASTX),
+                                           Dna5,
+                                           AminoAcid>::type;
+
+template <BlastFormatProgram p>
+using OrigSubjAlph = typename std::conditional<
+                                           (p == BlastFormatProgram::BLASTN) ||
+                                           (p == BlastFormatProgram::TBLASTN) ||
+                                           (p == BlastFormatProgram::TBLASTX),
+                                           Dna5,
+                                           AminoAcid>::type;
+
+template <BlastFormatProgram p>
+using TransAlph = typename std::conditional<(p == BlastFormatProgram::BLASTN),
+                                            Dna5,
+                                            AminoAcid>::type;
+
+
+template <BlastFormatProgram p, typename TRedAlph_>
+using RedAlph = typename std::conditional<(p == BlastFormatProgram::BLASTN),
+                                          Dna5,
+                                          TRedAlph_>::type;
+
+
 
 // ==========================================================================
 // Classes
@@ -886,6 +922,7 @@ printOptions(LambdaOptions const & options)
 {
     using TGH = typename TLH::TGlobalHolder;
     using TFormat = typename TGH::TFormat;
+    auto constexpr p = getProgramType(TFormat());
 
 
     std::string bandStr;
@@ -909,13 +946,11 @@ printOptions(LambdaOptions const & options)
               << "  query partitions:         " << uint(options.queryPart) << "\n"
               << " TRANSLATION AND ALPHABETS\n"
               << "  genetic code:             " << uint(options.geneticCode) << "\n"
-              << "  original alphabet (query):" << (qHasFrames(TFormat())
-                                                    ? "Dna5\n"
-                                                    : "AminoAcid\n")
-              << "  original alphabet (subj): " << (sHasFrames(TFormat())
-                                                    ? "Dna5\n"
-                                                    : "AminoAcid\n")
-              << "  translated alphabet:      " << _alphName(typename TGH::TAlph())
+              << "  original alphabet (query):" << _alphName(OrigQryAlph<p>())
+              << "\n"
+              << "  original alphabet (subj): " << _alphName(OrigSubjAlph<p>())
+              << "\n"
+              << "  translated alphabet:      " << _alphName(TransAlph<p>())
               << "\n"
               << "  reduced alphabet:         " << _alphName(typename TGH::TRedAlph())
               << "\n"

@@ -535,7 +535,7 @@ realMain(LambdaOptions      const & options,
         TLocalHolder localHolder(options, globalHolder);
         localHolder.init(t);
 
-        // seed and searchPipeline
+        // seed
         res = generateSeeds(localHolder);
         if (res)
             continue;
@@ -549,8 +549,8 @@ realMain(LambdaOptions      const & options,
         if (res)
             continue;
 
-        // sort, joing and filter
-        joinAndFilterMatches(localHolder);
+        // sort
+        sortMatches(localHolder);
 
         // extend
         res = iterateMatches(stream, localHolder);
