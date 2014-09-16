@@ -30,12 +30,10 @@
 #include <type_traits>
 #include <forward_list>
 
-
 #include <seqan/basic.h>
 #include <seqan/sequence.h>
 
 #include <seqan/index.h>
-// #include <seqan/index_extras.h>
 
 #include <seqan/align.h>
 #include <seqan/blast.h>

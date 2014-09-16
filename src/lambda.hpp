@@ -264,17 +264,31 @@ inline int
 loadSubjects(GlobalDataHolder<TRedAlph, TScoreScheme, m, p, g>  & globalHolder,
              LambdaOptions                                const & options)
 {
-//     typedef BlastFormat<m,p,g> TFormat;
+    if (options.alphReduction > 0) // otherwise sequences in index
+    {
+        double start = sysTime();
+        std::cout << "Loading Subj Sequences…" << std::flush;
+
+        CharString _dbSeqs = options.dbFile;
+        append(_dbSeqs, ".unredsubj"); // get unreduced stringset
+
+        int ret = open(globalHolder.subjSeqs, toCString(_dbSeqs));
+        if (ret != true)
+        {
+            std::cout << " failed.\n" << std::flush;
+            return 1;
+        }
+        std::cout << " done.\n";
+        double finish = sysTime() - start;
+        std::cout << "Runtime: " << finish << "s \n" << std::flush;
+        std::cout << "Amount: " << length(globalHolder.subjSeqs) << "\n\n"<< std::flush;
+    }
 
     double start = sysTime();
-    std::cout << "Loading Subj Sequences…" << std::flush;
-
+    std::cout << "Loading Subj Ids…" << std::flush;
     CharString _dbSeqs = options.dbFile;
-    if (options.alphReduction > 0)
-        append(_dbSeqs, ".unredsubj"); // get unreduced stringset
-    else // stringset already dumped by index dump
-        append(_dbSeqs, ".txt");
-    int ret = open(globalHolder.subjSeqs, toCString(_dbSeqs));
+    append(_dbSeqs, ".ids");
+    int ret = open(globalHolder.subjIds, toCString(_dbSeqs));
     if (ret != true)
     {
         std::cout << " failed.\n" << std::flush;
@@ -282,22 +296,6 @@ loadSubjects(GlobalDataHolder<TRedAlph, TScoreScheme, m, p, g>  & globalHolder,
     }
     std::cout << " done.\n";
     double finish = sysTime() - start;
-    std::cout << "Runtime: " << finish << "s \n" << std::flush;
-    std::cout << "Amount: " << length(globalHolder.subjSeqs) << "\n\n"<< std::flush;
-
-
-    start = sysTime();
-    std::cout << "Loading Subj Ids…" << std::flush;
-    _dbSeqs = options.dbFile;
-    append(_dbSeqs, ".ids");
-    ret = open(globalHolder.subjIds, toCString(_dbSeqs));
-    if (ret != true)
-    {
-        std::cout << " failed.\n" << std::flush;
-        return 1;
-    }
-    std::cout << " done.\n";
-    finish = sysTime() - start;
     std::cout << "Runtime: " << finish << "s \n\n" << std::flush;
 
     globalHolder.dbSpecs.dbName = options.dbFile;

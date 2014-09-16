@@ -136,8 +136,8 @@ struct StatsHolder
 template <typename TSet1,
           typename TSet2,
           MyEnableIf<std::is_same<TSet1, TSet2>::value> = 0>
-inline TSet1 const &
-initHelper(TSet1 && /**/, TSet2 const & set2)
+inline TSet1 &
+initHelper(TSet1 && /**/, TSet2 & set2)
 {
     return set2;
 }
@@ -146,12 +146,12 @@ template <typename TSet1,
           typename TSet2,
           MyEnableIf<!std::is_same<TSet1, TSet2>::value> = 0>
 inline TSet1 &&
-initHelper(TSet1 && set1, TSet2 const & /**/)
+initHelper(TSet1 && set1, TSet2 & /**/)
 {
     return std::move(set1);
 }
 
-// base
+
 template <typename TRedAlph_,
           typename TScoreScheme,
           BlastFormatFile m,
@@ -166,8 +166,12 @@ public:
     using TRedSeqs      = TCDStringSet<TRedAlph>;
     using TRedSeqsACT   = typename std::conditional<
                             std::is_same<TTransSeqs, TRedSeqs>::value,
-                            TRedSeqs const &,
+                            TRedSeqs &,
                             TRedSeqs>::type;
+    using TSubjSeqs     = typename std::conditional<
+                            std::is_same<TTransSeqs, TRedSeqs>::value,
+                            TTransSeqs &,
+                            TTransSeqs>::type;
     using TDbSAIndex    = Index<TRedSeqs, IndexSa<> >;
     using TDbFMIndex    = Index<TRedSeqs, FMIndex<> >;
     using TPositions    = typename StringSetLimits<TTransSeqs>::Type;
@@ -175,16 +179,18 @@ public:
     using TMasking      = StringSet<String<unsigned>, Owner<ConcatDirect<>>>;
     using TBlastScoringAdapter = BlastScoringAdapter<TScoreScheme>;
 
-    // these are always translated, except for BLASTN mode, but *never reduced*
-    TTransSeqs                  qrySeqs;
-    TTransSeqs                  subjSeqs;
-    // reduced query sequences if using reduction, otherwise const & = qrySeqs
-    TRedSeqsACT                 redQrySeqs = initHelper(TRedSeqs(), qrySeqs);
-
     TDbSAIndex                  dbSAIndex;
     TDbFMIndex                  dbFMIndex;
     bool                        dbIndexIsFM = false;
     BlastDbSpecs<>              dbSpecs;
+
+    // these are always translated, except for BLASTN mode, but *never reduced*
+    TTransSeqs                  qrySeqs;
+    TSubjSeqs                   subjSeqs = initHelper(TTransSeqs(),
+                                                      indexText(dbSAIndex));
+    // reduced query sequences if using reduction, otherwise const & = qrySeqs
+    TRedSeqsACT                 redQrySeqs = initHelper(TRedSeqs(), qrySeqs);
+
 
     // TODO maybe remove these for other specs?
     TPositions                  untransQrySeqLengths; // used iff qHasFrames(p)
