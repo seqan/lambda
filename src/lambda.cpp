@@ -520,8 +520,13 @@ preMain(LambdaOptions      const & options,
                                    TScoreScheme(),
                                    TScoreExtension());
 }
-/// REAL MAIN
 
+/// REAL MAIN
+#ifdef _OPENMP
+#define TID omp_get_thread_num()
+#else
+#define TID 0
+#endif
 template <typename TIndexSpec,
           typename TRedAlph,
           typename TScoreScheme,
@@ -582,51 +587,84 @@ realMain(LambdaOptions      const & options,
     if (ret)
         return ret;
 
-    myPrint(options, 1,
-            "Searching ",
-            options.queryPart,
-            " blocks of query with ",
-            options.threads,
-            " threads...\n");
-
-    if (options.isTerm)
+    if (options.doubleIndexing)
     {
-        for (unsigned char i=0; i< options.threads+3; ++i)
-            std::cout << std::endl;
-        std::cout << "\033[" << options.threads+2 << "A";
+        myPrint(options, 1,
+                "Searching ",
+                options.queryPart,
+                " blocks of query with ",
+                options.threads,
+                " threads...\n");
+        if (options.isTerm)
+        {
+            for (unsigned char i=0; i< options.threads+3; ++i)
+                std::cout << std::endl;
+            std::cout << "\033[" << options.threads+2 << "A";
+        }
+    } else
+    {
+        std::cout << "Searching and extending hits on-line..."
+                  << "progress:\n"
+                  << "   10%  20%  30%  40%  50%  60%  70%  80%  90%  100%\n"
+                  << std::flush;
     }
+    double start = sysTime();
 
-    // will become thread_local
-    TLocalHolder localHolder(options, globalHolder);
+    // at least a block for each thread on double-indexing,
+    // otherwise a block for each original query (contains 6 queries if
+    // translation is used)
+    uint64_t nBlocks = (options.doubleIndexing
+                        ? options.queryPart
+                        : length(globalHolder.qryIds));
 
-    SEQAN_OMP_PRAGMA(parallel for schedule(dynamic) firstprivate(localHolder))
-    for (unsigned short t = 0; t < options.queryPart; ++t)
+    unsigned lastPercent = 0;
+
+    SEQAN_OMP_PRAGMA(parallel)
     {
-        int res = 0;
+        TLocalHolder localHolder(options, globalHolder);
 
-        localHolder.init(t);
+        SEQAN_OMP_PRAGMA(for schedule(dynamic)) // TODO nowait
+        for (uint64_t t = 0; t < nBlocks; ++t)
+        {
+            int res = 0;
 
-        // seed
-        res = generateSeeds(localHolder);
-        if (res)
-            continue;
+            localHolder.init(t);
 
-        res = generateTrieOverSeeds(localHolder);
-        if (res)
-            continue;
+            // seed
+            res = generateSeeds(localHolder);
+            if (res)
+                continue;
 
-        // search
-        res = search(localHolder);
-        if (res)
-            continue;
+            if (options.doubleIndexing)
+            {
+                res = generateTrieOverSeeds(localHolder);
+                if (res)
+                    continue;
+            }
 
-        // sort
-        sortMatches(localHolder);
+            // search
+            res = search(localHolder);
+            if (res)
+                continue;
 
-        // extend
-        res = iterateMatches(stream, localHolder);
-        if (res)
-            continue;
+            // sort
+            sortMatches(localHolder);
+
+            // extend
+            res = iterateMatches(stream, localHolder);
+            if (res)
+                continue;
+
+
+            if ((!options.doubleIndexing) && (TID == 0))
+            {
+                unsigned curPercent = ((t * 50) / nBlocks) * 2; // round to even
+                printProgressBar(lastPercent, curPercent);
+            }
+        }
+
+        if ((!options.doubleIndexing) && (TID == 0))
+            printProgressBar(lastPercent, 100);
 
         if (options.verbosity >= 2)
         {
@@ -646,6 +684,9 @@ realMain(LambdaOptions      const & options,
 
     if (ret)
         return ret;
+
+    if (!options.doubleIndexing)
+        std::cout << "\nTime Spent: " << sysTime() - start << "s\n\n";
 
     printStats(globalHolder.stats, options);
 

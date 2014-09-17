@@ -296,6 +296,22 @@ loadIds2(StringSet<TString, TSpec > & ids,
 //         appendValue(seqs, s);
 // }
 
+inline void
+printProgressBar(unsigned & lastPercent, unsigned const curPerc)
+{
+    if ((lastPercent != curPerc))
+    {
+        for (unsigned i = lastPercent + 2; i <= curPerc; i+=2)
+        {
+            if (i % 10 == 0)
+                std::cout << "*" << std::flush;
+            else
+                std::cout << "·" << std::flush;
+        }
+        lastPercent = curPerc;
+    }
+}
+
 // ----------------------------------------------------------------------------
 // print if certain verbosity is set
 // ----------------------------------------------------------------------------
@@ -362,6 +378,8 @@ template <typename... Args>
 inline void
 myPrint(LambdaOptions const & options, const int verbose, Args const &... args)
 {
+    if (!options.doubleIndexing)
+        return;
     if (options.verbosity >= verbose)
     {
         #if defined(_OPENMP)

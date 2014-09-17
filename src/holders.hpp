@@ -73,9 +73,10 @@ struct StatsHolder
     unsigned long qrysWithHit;
 
 
-//     void hitsFinal()
-//     {
-//         return hitsAfterSeeding - hitsMerged - 
+    StatsHolder()
+    {
+        clear();
+    }
 
     void clear()
     {
@@ -224,6 +225,7 @@ class LocalDataHolder
 {
 public:
     using TGlobalHolder = TGlobalHolder_;
+    using TFormat       = typename TGlobalHolder::TFormat;
     using TRedQrySeq    = String<typename TGlobalHolder::TRedAlph, TCDSpec>;
     using TSeeds        = StringSet<typename Infix<TRedQrySeq const>::Type>;
     using TSeedIndex    = Index<TSeeds,IndexSa<>>;
@@ -233,11 +235,11 @@ public:
     TGlobalHolder /*const*/ & gH;
 
     // this is the localHolder for the i-th part of the queries
-    unsigned short      i;
+    uint64_t            i;
 
     // regarding range of queries
-    unsigned long       indexBeginQry;
-    unsigned long       indexEndQry;
+    uint64_t            indexBeginQry;
+    uint64_t            indexEndQry;
 
     // regarding seedingp
     TSeeds              seeds;
@@ -279,24 +281,28 @@ public:
         options(rhs.options), gH(rhs.gH)
     {}
 
-    void init(const int _i)
+    void init(uint64_t const _i)
     {
         i = _i;
-//         indexBeginQry = length(gH.qrySeqs) / options.queryPart * i;
-//         indexEndQry = length(gH.qrySeqs) / options.queryPart * (i+1) + 1;
-        indexBeginQry = (length(gH.qrySeqs) / options.queryPart) * i;
-        indexEndQry = (i+1 == options.queryPart) // last interval
-                        ? length(gH.qrySeqs) // reach until end
-                        : (length(gH.qrySeqs) / options.queryPart) * (i+1);
 
-//         std::cout << "Thread " << i << " beg: " << indexBeginQry
-//                   << " end: " << indexEndQry << "\n" << std::flush;
+        if (options.doubleIndexing)
+        {
+            indexBeginQry = (length(gH.qrySeqs) / options.queryPart) * i;
+            indexEndQry = (i+1 == options.queryPart) // last interval
+                            ? length(gH.qrySeqs) // reach until end
+                            : (length(gH.qrySeqs) / options.queryPart) * (i+1);
+        } else
+        {
+            indexBeginQry = qNumFrames(TFormat()) * i;
+            indexEndQry = qNumFrames(TFormat()) * (i+1);
+        }
+
         clear(seeds);
         clear(seedIndex);
         matches.clear();
         seedRefs.clear();
         seedRanks.clear();
-        stats.clear();
+//         stats.clear();
         statusStr.clear();
         statusStr.precision(2);
     }

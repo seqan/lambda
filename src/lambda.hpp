@@ -1222,7 +1222,7 @@ void printStats(StatsHolder const & stats, LambdaOptions const & options)
 {
     if (options.verbosity >= 2)
     {
-        if (options.isTerm)
+        if ((options.isTerm) && (options.doubleIndexing))
             for (unsigned char i=0; i< options.threads+3; ++i)
                 std::cout << std::endl;
         unsigned long rem = stats.hitsAfterSeeding;
