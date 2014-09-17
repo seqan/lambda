@@ -257,7 +257,7 @@ mainAlphed(TRedAlph const & /**/,
     if (!checkIndexSize(reducedSeqs))
         return -1;
 
-    if (options.indexIsFM)
+    if (options.dbIndexType == 1)
     {
         using TIndexSpec = FMIndex<>;
         generateIndexAndDump<TIndexSpec>(reducedSeqs, options);

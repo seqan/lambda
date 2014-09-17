@@ -154,6 +154,7 @@ initHelper(TSet1 && set1, TSet2 & /**/)
 
 template <typename TRedAlph_,
           typename TScoreScheme,
+          typename TIndexSpec_,
           BlastFormatFile m,
           BlastFormatProgram p,
           BlastFormatGeneration g>
@@ -172,25 +173,29 @@ public:
                             std::is_same<TTransSeqs, TRedSeqs>::value,
                             TTransSeqs &,
                             TTransSeqs>::type;
-    using TDbSAIndex    = Index<TRedSeqs, IndexSa<> >;
-    using TDbFMIndex    = Index<TRedSeqs, FMIndex<> >;
+//     using TDbSAIndex    = Index<TRedSeqs, IndexSa<> >;
+//     using TDbFMIndex    = Index<TRedSeqs, FMIndex<> >;
+
+    using TIndexSpec    = TIndexSpec_;
+    using TDbIndex      = Index<TRedSeqs, TIndexSpec>;
+
     using TPositions    = typename StringSetLimits<TTransSeqs>::Type;
     using TIds          = StringSet<CharString, Owner<ConcatDirect<>>>;
     using TMasking      = StringSet<String<unsigned>, Owner<ConcatDirect<>>>;
     using TBlastScoringAdapter = BlastScoringAdapter<TScoreScheme>;
 
-    TDbSAIndex                  dbSAIndex;
-    TDbFMIndex                  dbFMIndex;
-    bool                        dbIndexIsFM = false;
+//     TDbSAIndex                  dbSAIndex;
+//     TDbFMIndex                  dbFMIndex;
+//     bool                        dbIndexIsFM = false;
+    TDbIndex                    dbIndex;
     BlastDbSpecs<>              dbSpecs;
 
     // these are always translated, except for BLASTN mode, but *never reduced*
     TTransSeqs                  qrySeqs;
     TSubjSeqs                   subjSeqs = initHelper(TTransSeqs(),
-                                                      indexText(dbSAIndex));
+                                                      indexText(dbIndex));
     // reduced query sequences if using reduction, otherwise const & = qrySeqs
     TRedSeqsACT                 redQrySeqs = initHelper(TRedSeqs(), qrySeqs);
-
 
     // TODO maybe remove these for other specs?
     TPositions                  untransQrySeqLengths; // used iff qHasFrames(p)
@@ -263,9 +268,15 @@ public:
     // progress string
     std::stringstream         statusStr;
 
+    // constructor
     LocalDataHolder(LambdaOptions     const & _options,
                     TGlobalHolder     /*const*/ & _globalHolder) :
         options(_options), gH(_globalHolder)
+    {}
+
+    // copy constructor SHALLOW COPY ONLY, REQUIRED FOR firsprivate()
+    LocalDataHolder(LocalDataHolder const & rhs) :
+        options(rhs.options), gH(rhs.gH)
     {}
 
     void init(const int _i)
@@ -280,10 +291,11 @@ public:
 
 //         std::cout << "Thread " << i << " beg: " << indexBeginQry
 //                   << " end: " << indexEndQry << "\n" << std::flush;
+        clear(seeds);
         clear(seedIndex);
         matches.clear();
-        clear(seedRefs);
-        clear(seedRanks);
+        seedRefs.clear();
+        seedRanks.clear();
         stats.clear();
         statusStr.clear();
         statusStr.precision(2);
@@ -301,9 +313,9 @@ onFindImpl(LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> & lH,
            TSeedId const & seedId,
            TSubjOcc subjOcc)
 {
-    if (lH.gH.dbIndexIsFM)
+    if (std::is_same<typename TGlobalHolder::TIndexSpec, FMIndex<>>::value)
         setSeqOffset(subjOcc,
-                     suffixLength(subjOcc, lH.gH.dbFMIndex)
+                     suffixLength(subjOcc, lH.gH.dbIndex)
                      - lH.options.seedLength);
 
     Match m {static_cast<Match::TQId>(lH.seedRefs[seedId]),

@@ -79,8 +79,6 @@ _fileType(LambdaOptions const & options)
         return BlastFormatFile::INVALID_File;
 }
 
-
-
 // forwards
 
 inline int
@@ -125,6 +123,20 @@ template <BlastFormatFile m,
           typename TRedAlph,
           typename TScoreScheme,
           typename TScoreExtension>
+inline int
+preMain(LambdaOptions      const & options,
+         BlastFormat<m,p,g> const & /**/,
+         TRedAlph           const & /**/,
+         TScoreScheme       const & /**/,
+         TScoreExtension    const & /**/);
+//-
+template <typename TIndexSpec,
+          typename TRedAlph,
+          typename TScoreScheme,
+          typename TScoreExtension,
+          BlastFormatFile m,
+          BlastFormatProgram p,
+          BlastFormatGeneration g>
 inline int
 realMain(LambdaOptions      const & options,
          BlastFormat<m,p,g> const & /**/,
@@ -438,14 +450,14 @@ argConv3(LambdaOptions      const & options,
     using TFormat = BlastFormat<m,p,g>;
 #ifndef FASTBUILD
     if (options.gapOpen == 0)
-        return realMain(options,
+        return preMain(options,
                         TFormat(),
                         TRedAlph(),
                         TScoreScheme(),
                         LinearGaps());
     else
 #endif
-        return realMain(options,
+        return preMain(options,
                         TFormat(),
                         TRedAlph(),
                         TScoreScheme(),
@@ -453,14 +465,70 @@ argConv3(LambdaOptions      const & options,
 
 }
 
-/// REAL MAIN
-
 template <BlastFormatFile m,
           BlastFormatProgram p,
           BlastFormatGeneration g,
           typename TRedAlph,
           typename TScoreScheme,
           typename TScoreExtension>
+inline int
+preMain(LambdaOptions      const & options,
+         BlastFormat<m,p,g> const & /**/,
+         TRedAlph           const & /**/,
+         TScoreScheme       const & /**/,
+         TScoreExtension    const & /**/)
+{
+    using TFormat = BlastFormat<m,p,g>;
+    int indexType = options.dbIndexType;
+    if (indexType == -1) // autodetect
+    {
+        //TODO autodetect
+        CharString file = options.dbFile;
+        append(file, ".sa");
+        struct stat buffer;
+        if (stat(toCString(file), &buffer) == 0)
+        {
+            indexType = 0;
+        } else
+        {
+            file = options.dbFile;
+            append(file, ".sa.val"); // FM Index
+            struct stat buffer;
+            if (stat(toCString(file), &buffer) == 0)
+            {
+                indexType = 1;
+            } else
+            {
+                std::cout << "No Index file could be found, please make sure paths "
+                        << "are correct and the files are readable.\n" << std::flush;
+
+                return -1;
+            }
+        }
+    }
+
+    if (indexType == 0)
+        return realMain<IndexSa<>>(options,
+                                   TFormat(),
+                                   TRedAlph(),
+                                   TScoreScheme(),
+                                   TScoreExtension());
+    else
+        return realMain<FMIndex<>>(options,
+                                   TFormat(),
+                                   TRedAlph(),
+                                   TScoreScheme(),
+                                   TScoreExtension());
+}
+/// REAL MAIN
+
+template <typename TIndexSpec,
+          typename TRedAlph,
+          typename TScoreScheme,
+          typename TScoreExtension,
+          BlastFormatFile m,
+          BlastFormatProgram p,
+          BlastFormatGeneration g>
 inline int
 realMain(LambdaOptions      const & options,
          BlastFormat<m,p,g> const & /**/,
@@ -470,6 +538,7 @@ realMain(LambdaOptions      const & options,
 {
     using TGlobalHolder = GlobalDataHolder<TRedAlph,
                                            TScoreScheme,
+                                           TIndexSpec,
                                            m, p, g>;
     using TLocalHolder = LocalDataHolder<Match, TGlobalHolder, TScoreExtension>;
 
@@ -527,12 +596,14 @@ realMain(LambdaOptions      const & options,
         std::cout << "\033[" << options.threads+2 << "A";
     }
 
-    // TODO evaluate localHolder outside of loop and firstprivate
-    SEQAN_OMP_PRAGMA(parallel for schedule(dynamic))
+    // will become thread_local
+    TLocalHolder localHolder(options, globalHolder);
+
+    SEQAN_OMP_PRAGMA(parallel for schedule(dynamic) firstprivate(localHolder))
     for (unsigned short t = 0; t < options.queryPart; ++t)
     {
         int res = 0;
-        TLocalHolder localHolder(options, globalHolder);
+
         localHolder.init(t);
 
         // seed

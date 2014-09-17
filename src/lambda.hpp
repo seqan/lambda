@@ -92,33 +92,23 @@ inline int
 loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
                     LambdaOptions const & options)
 {
-    std::cout << "Searching for Database Index on disk…\n trying SA-Index…" << std::flush;
+    std::cout << "Reading Database Index from disk…" << std::flush;
     double start = sysTime();
-    int ret = open(globalHolder.dbSAIndex, toCString(options.dbFile));
+    int ret = open(globalHolder.dbIndex, toCString(options.dbFile));
     if (ret != true)
     {
-        std::cout << " trying FM-Index…" << std::flush;
-
-        globalHolder.dbIndexIsFM = true;
-        ret = open(globalHolder.dbFMIndex, toCString(options.dbFile));
-        if (ret != true)
-        {
-            std::cout << " failed.\n" << std::flush;
-            std::cerr << "No Index found;"
-                      << "please create one with lambda_indexer.\n" 
-                      << std::flush;
-            return 1;
-        }
+        std::cout << " failed.\n" << std::flush;
+        return 1;
     }
     double finish = sysTime() - start;
     std::cout << " loaded.\n" << std::flush;
     std::cout << "Runtime: " << finish << "s \n" << std::flush;
 
-    if (globalHolder.dbIndexIsFM)
+    if (std::is_same<typename TGlobalHolder::TIndexSpec, FMIndex<>>::value)
         std::cout << "TODO\n";
     else
-        std::cout << "No of Fibres: " << length(indexSA(globalHolder.dbSAIndex))
-           << "\t no of Seqs in Db: " << length(indexText(globalHolder.dbSAIndex))
+        std::cout << "No of Fibres: " << length(indexSA(globalHolder.dbIndex))
+           << "\t no of Seqs in Db: " << length(indexText(globalHolder.dbIndex))
            << "\n\n";
 
     return 0;
@@ -168,7 +158,7 @@ loadQueryImplTrans(TCDStringSet<TTargetAlph> & target,
                    LambdaOptions       const & /**/)
 {
     // no need for translation, but sequences have to be in right place
-    std::swap(target, source);
+    swap(target, source);
 }
 
 template <typename TSourceAlph,
@@ -188,7 +178,7 @@ template <typename TSourceAlph,
           typename TTargetAlph,
           MyEnableIf<std::is_same<TSourceAlph, TTargetAlph>::value> = 0>
 inline void
-loadQueryImplReduce(TCDStringSet<TTargetAlph> const & /**/,
+loadQueryImplReduce(TCDStringSet<TTargetAlph> & /**/,
                     TCDStringSet<TSourceAlph> & /**/)
 {
     // no-op, since target already references source
@@ -198,9 +188,10 @@ template <BlastFormatFile m,
           BlastFormatProgram p,
           BlastFormatGeneration g,
           typename TRedAlph,
-          typename TScoreScheme>
+          typename TScoreScheme,
+          typename TIndexSpec>
 inline int
-loadQuery(GlobalDataHolder<TRedAlph, TScoreScheme, m, p, g>      & globalHolder,
+loadQuery(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, m, p, g>      & globalHolder,
           LambdaOptions                                    const & options)
 {
     int ret = 0;
@@ -259,9 +250,10 @@ template <BlastFormatFile m,
           BlastFormatProgram p,
           BlastFormatGeneration g,
           typename TRedAlph,
-          typename TScoreScheme>
+          typename TScoreScheme,
+          typename TIndexSpec>
 inline int
-loadSubjects(GlobalDataHolder<TRedAlph, TScoreScheme, m, p, g>  & globalHolder,
+loadSubjects(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, m, p, g>  & globalHolder,
              LambdaOptions                                const & options)
 {
     if (options.alphReduction > 0) // otherwise sequences in index
@@ -343,9 +335,10 @@ template <BlastFormatFile m,
           BlastFormatProgram p,
           BlastFormatGeneration g,
           typename TRedAlph,
-          typename TScoreScheme>
+          typename TScoreScheme,
+          typename TIndexSpec>
 inline int
-loadSegintervals(GlobalDataHolder<TRedAlph, TScoreScheme, m,p,g> & globalHolder,
+loadSegintervals(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, m,p,g> & globalHolder,
                  LambdaOptions                             const & options)
 {
 
@@ -394,10 +387,11 @@ template <BlastFormatFile m,
           BlastFormatProgram p,
           BlastFormatGeneration g,
           typename TRedAlph,
-          typename TScoreScheme>
+          typename TScoreScheme,
+          typename TIndexSpec>
 inline void
 prepareScoringMore(GlobalDataHolder<TRedAlph,
-                                    TScoreScheme,
+                                    TScoreScheme,TIndexSpec,
                                     m, p, g>         & globalHolder,
                    LambdaOptions                    const & options,
                    std::true_type                   const & /**/)
@@ -410,10 +404,11 @@ template <BlastFormatFile m,
           BlastFormatProgram p,
           BlastFormatGeneration g,
           typename TRedAlph,
-          typename TScoreScheme>
+          typename TScoreScheme,
+          typename TIndexSpec>
 inline void
 prepareScoringMore(GlobalDataHolder<TRedAlph,
-                                    TScoreScheme,
+                                    TScoreScheme,TIndexSpec,
                                     m, p, g>              & /*globalHolder*/,
                    LambdaOptions                    const & /*options*/,
                    std::false_type                  const & /**/)
@@ -425,9 +420,10 @@ template <BlastFormatFile m,
           BlastFormatProgram p,
           BlastFormatGeneration g,
           typename TRedAlph,
-          typename TScoreScheme>
+          typename TScoreScheme,
+          typename TIndexSpec>
 inline int
-prepareScoring(GlobalDataHolder<TRedAlph, TScoreScheme, m, p, g>
+prepareScoring(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, m, p, g>
                                                       & globalHolder,
                LambdaOptions                    const & options)
 {
@@ -541,9 +537,9 @@ generateTrieOverSeeds(TLocalHolder & lH)
 // Function search()
 // --------------------------------------------------------------------------
 
-template <typename BackSpec, typename TDBIndex, typename TLocalHolder>
+template <typename BackSpec, typename TLocalHolder>
 inline int
-__searchDoubleIndex(TLocalHolder & lH, TDBIndex & dbIndex)
+__searchDoubleIndex(TLocalHolder & lH)
 {
     // FIND
     lH.statusStr << "Seeding…";
@@ -552,7 +548,9 @@ __searchDoubleIndex(TLocalHolder & lH, TDBIndex & dbIndex)
 
     double start = sysTime();
 
-    using LambdaFinder = Finder_<TDBIndex, decltype(lH.seedIndex), BackSpec>;
+    using LambdaFinder = Finder_<decltype(lH.gH.dbIndex),
+                                 decltype(lH.seedIndex),
+                                 BackSpec>;
 
     LambdaFinder finder;
 
@@ -561,7 +559,7 @@ __searchDoubleIndex(TLocalHolder & lH, TDBIndex & dbIndex)
         onFindDoubleIndex(lH, finder);
     };
 
-    _find(finder, dbIndex, lH.seedIndex, lH.options.maxSeedDist, delegate);
+    _find(finder, lH.gH.dbIndex, lH.seedIndex, lH.options.maxSeedDist, delegate);
 
     double finish = sysTime() - start;
 
@@ -571,12 +569,12 @@ __searchDoubleIndex(TLocalHolder & lH, TDBIndex & dbIndex)
     return 0;
 }
 
-template <typename BackSpec, typename TDBIndex, typename TLocalHolder>
+template <typename BackSpec, typename TLocalHolder>
 inline int
-__searchSingleIndex(TLocalHolder & lH, TDBIndex & dbIndex)
+__searchSingleIndex(TLocalHolder & lH)
 {
     typedef typename Iterator<decltype(lH.seeds) const, Rooted>::Type TSeedsIt;
-    typedef typename Iterator<TDBIndex, TopDown<>>::Type TIndexIt;
+    typedef typename Iterator<decltype(lH.gH.dbIndex),TopDown<>>::Type TIndexIt;
 
     // FIND
     lH.statusStr << "Seeding…";
@@ -592,7 +590,7 @@ __searchSingleIndex(TLocalHolder & lH, TDBIndex & dbIndex)
         onFindSingleIndex(lH, seedsIt, indexIt);
     };
 
-    find(dbIndex, lH.seeds, int(lH.options.maxSeedDist), delegate,
+    find(lH.gH.dbIndex, lH.seeds, int(lH.options.maxSeedDist), delegate,
          Backtracking<BackSpec>());
 
     double finish = sysTime() - start;
@@ -603,24 +601,14 @@ __searchSingleIndex(TLocalHolder & lH, TDBIndex & dbIndex)
     return 0;
 }
 
-template <typename BackSpec, typename TDBIndex, typename TLocalHolder>
-inline int
-__search(TLocalHolder & lH, TDBIndex & dbIndex)
-{
-    if (lH.options.doubleIndexing)
-        return __searchDoubleIndex<BackSpec>(lH, dbIndex);
-    else
-        return __searchSingleIndex<BackSpec>(lH, dbIndex);
-}
-
 template <typename BackSpec, typename TLocalHolder>
 inline int
-_search(TLocalHolder & lH)
+__search(TLocalHolder & lH)
 {
-    if (lH.gH.dbIndexIsFM)
-        return __search<BackSpec>(lH, lH.gH.dbFMIndex);
+    if (lH.options.doubleIndexing)
+        return __searchDoubleIndex<BackSpec>(lH);
     else
-        return __search<BackSpec>(lH, lH.gH.dbSAIndex);
+        return __searchSingleIndex<BackSpec>(lH);
 }
 
 template <typename TLocalHolder>
@@ -628,9 +616,9 @@ inline int
 search(TLocalHolder & lH)
 {
     if (lH.options.hammingOnly)
-        return _search<Backtracking<HammingDistance>>(lH);
+        return __search<Backtracking<HammingDistance>>(lH);
     else
-        return _search<Backtracking<EditDistance>>(lH);
+        return __search<Backtracking<EditDistance>>(lH);
 }
 
 // --------------------------------------------------------------------------

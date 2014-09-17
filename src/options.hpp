@@ -136,17 +136,18 @@ using RedAlph = typename std::conditional<(p == BlastFormatProgram::BLASTN),
 struct SharedOptions
 {
     // Verbosity level.  0 -- quiet, 1 -- normal, 2 -- verbose, 3 -- very verbose.
-    int verbosity = 2;
+    int8_t verbosity = 2;
 
 
     CharString  dbFile;
 
+    int8_t      dbIndexType = 0;
     // for indexer, the file format of database sequences
     // for main app, the file format of query sequences
     // 0 -- fasta, 1 -- fastq
-    int         fileFormat = 0;
+    int8_t      fileFormat = 0;
 
-    int         alphReduction = 0;
+    int      alphReduction = 0;
 
     GeneticCodeSpec geneticCode = CANONICAL;
 
@@ -181,16 +182,16 @@ struct LambdaOptions : public SharedOptions
 
     bool            doubleIndexing = true;
 
-    unsigned char   seedLength  = 0;
-    unsigned char   maxSeedDist = 1;
+    uint8_t         seedLength  = 0;
+    uint8_t         maxSeedDist = 1;
     bool            hammingOnly = false;
 
-    char            seedGravity     = 0;
-    unsigned char   seedOffset      = 0;
-    unsigned char   minSeedLength   = 0;
-    unsigned char   minSeedScore    = 0;
-    unsigned int    minSeedEVal     = 0;
-    double          minSeedBitS     = -1;
+    int8_t          seedGravity     = 0;
+    uint8_t         seedOffset      = 0;
+    uint8_t         minSeedLength   = 0;
+    uint8_t         minSeedScore    = 0;
+//     unsigned int    minSeedEVal     = 0;
+//     double          minSeedBitS     = -1;
 
     // 0 = manual, positive X = blosumX, negative Y = pamY
     int             scoringMethod   = 62;
@@ -204,7 +205,7 @@ struct LambdaOptions : public SharedOptions
     int             band        = -1;
     double          eCutOff     = 0;
 
-    unsigned        threads     = 1; // not exposed
+    unsigned        threads     = 1;
     LambdaOptions() :
         SharedOptions()
     {
@@ -273,8 +274,15 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setRequired(parser, "d");
     setValidValues(parser, "database", "fasta fa fna faa");
 
-    // TODO implement some way to transfer options from index builder
-    // maybe write a spec file that is loaded by this app
+    addOption(parser, seqan::ArgParseOption("it",
+                                            "index-type",
+                                            "database index is in this format "
+                                            "(auto means \"try sa first then "
+                                            "fm\").",
+                                            seqan::ArgParseArgument::STRING,
+                                            "STR"));
+    setValidValues(parser, "index-type", "auto sa fm");
+    setDefaultValue(parser, "index-type", "auto");
 
     addSection(parser, "Output Options");
     addOption(parser, seqan::ArgParseOption("o",
@@ -516,30 +524,38 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     getOptionValue(options.queryFile, parser, "query");
     getOptionValue(options.dbFile, parser, "database");
 
-    CharString blastMode;
-    getOptionValue(blastMode, parser, "program");
-    if (blastMode == "blastn")
+    CharString buffer;
+    getOptionValue(buffer, parser, "index-type");
+    if (buffer == "auto")
+        options.dbIndexType = -1;
+    else if (buffer == "sa")
+        options.dbIndexType = 0;
+    else // if fm
+        options.dbIndexType = 1;
+
+    getOptionValue(buffer, parser, "program");
+    if (buffer == "blastn")
     {
         options.blastProg   = BlastFormatProgram::BLASTN;
         options.seedLength  = 20;
         options.alphReduction = 0;
     }
-    else if (blastMode == "blastp")
+    else if (buffer == "blastp")
     {
         options.blastProg = BlastFormatProgram::BLASTP;
         options.seedLength  = 10;
     }
-    else if (blastMode == "blastx")
+    else if (buffer == "blastx")
     {
         options.blastProg = BlastFormatProgram::BLASTX;
         options.seedLength  = 10;
     }
-    else if (blastMode == "tblastn")
+    else if (buffer == "tblastn")
     {
         options.blastProg = BlastFormatProgram::TBLASTN;
         options.seedLength  = 10;
     }
-    else if (blastMode == "tblastx")
+    else if (buffer == "tblastx")
     {
         options.blastProg = BlastFormatProgram::TBLASTX;
         options.seedLength  = 10;
@@ -794,30 +810,30 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
 
     seqan::getOptionValue(options.dbFile, parser, "input");
 
-    CharString blastMode;
-    getOptionValue(blastMode, parser, "program");
-    if (blastMode == "blastn")
+    CharString buffer;
+    getOptionValue(buffer, parser, "program");
+    if (buffer == "blastn")
     {
         options.blastProg   = BlastFormatProgram::BLASTN;
         options.alphReduction = 0;
 
     }
-    else if (blastMode == "blastp")
+    else if (buffer == "blastp")
     {
         options.blastProg = BlastFormatProgram::BLASTP;
 
     }
-    else if (blastMode == "blastx")
+    else if (buffer == "blastx")
     {
         options.blastProg = BlastFormatProgram::BLASTX;
 
     }
-    else if (blastMode == "tblastn")
+    else if (buffer == "tblastn")
     {
         options.blastProg = BlastFormatProgram::TBLASTN;
 
     }
-    else if (blastMode == "tblastx")
+    else if (buffer == "tblastx")
     {
         options.blastProg = BlastFormatProgram::TBLASTX;
 
@@ -827,13 +843,13 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
 
     //verifyFileFormat(); TODO
 
-    CharString indexType;
-    getOptionValue(indexType, parser, "index-type");
+    CharString dbIndexType;
+    getOptionValue(dbIndexType, parser, "index-type");
 
-    if (indexType == "fm")
-        options.indexIsFM = true;
+    if (dbIndexType == "fm")
+        options.dbIndexType = 1;
     else
-        options.indexIsFM = false;
+        options.dbIndexType = 0;
 
     getOptionValue(options.alphReduction, parser, "alph");
     switch (options.alphReduction)
@@ -923,6 +939,7 @@ printOptions(LambdaOptions const & options)
     using TGH = typename TLH::TGlobalHolder;
     using TFormat = typename TGH::TFormat;
     auto constexpr p = getProgramType(TFormat());
+    bool isFM = std::is_same<typename TGH::TIndexSpec,FMIndex<>>::value;
 
 
     std::string bandStr;
@@ -938,6 +955,9 @@ printOptions(LambdaOptions const & options)
               << " I/O\n"
               << "  query file:               " << options.queryFile << "\n"
               << "  db file:                  " << options.dbFile << "\n"
+              << "  db index type:            " << (isFM
+                                                    ? "FM-Index\n"
+                                                    : "SA-Index\n")
               << "  output file:              " << options.output << "\n"
               << " PROGRAM\n"
               << "  blast mode:               " << _programTagToString(TFormat())
@@ -962,6 +982,7 @@ printOptions(LambdaOptions const & options)
               << "  seed gravity:             " << uint(options.seedGravity) << "\n"
               << "  min seed length:          " << uint(options.minSeedLength) << "\n"
               << "  min seed score:           " << uint(options.minSeedScore) << "\n"
+              << "  double indexing:          " << options.doubleIndexing << "\n"
 //               << "  min seed e-value:         " << uint(options.minSeedEVal) << "\n"
 //               << "MinSeedBitS:   " << options.minSeedBitS << "\n"
               << " EXTENSION\n"
