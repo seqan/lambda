@@ -605,8 +605,8 @@ realMain(LambdaOptions      const & options,
     {
         std::cout << "Searching and extending hits on-line..."
                   << "progress:\n"
-                  << "   10%  20%  30%  40%  50%  60%  70%  80%  90%  100%\n"
-                  << std::flush;
+                  << "0%  10%  20%  30%  40%  50%  60%  70%  80%  90%  100%\n"
+                  << "|" <<  std::flush;
     }
     double start = sysTime();
 

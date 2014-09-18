@@ -303,7 +303,9 @@ printProgressBar(unsigned & lastPercent, unsigned const curPerc)
     {
         for (unsigned i = lastPercent + 2; i <= curPerc; i+=2)
         {
-            if (i % 10 == 0)
+            if (i == 100)
+                std::cout << "|" << std::flush;
+            else if (i % 10 == 0)
                 std::cout << "*" << std::flush;
             else
                 std::cout << "·" << std::flush;

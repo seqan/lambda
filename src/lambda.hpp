@@ -648,6 +648,42 @@ sortMatches(TLocalHolder & lH)
     myPrint(lH.options, 2, lH.statusStr);
 }
 
+template <typename TSeq,
+          typename TSeqInfix,
+          MyEnableIf<std::is_same<TSeq,int>::value> = 0>
+void
+_reverseHelper(TSeq & /**/ , TSeqInfix const &)
+{
+}
+
+template <typename TSeq,
+          typename TSeqInfix,
+          MyEnableIf<!std::is_same<TSeq,int>::value> = 0>
+void
+_reverseHelper(TSeq & seq, TSeqInfix const & seqInfix)
+{
+    seq = seqInfix;
+    reverse(seq);
+}
+
+template <typename TSeq,
+          typename TSeqInfix,
+          MyEnableIf<std::is_same<TSeq,int>::value> = 0>
+TSeqInfix &&
+_reverseHelper2(TSeq & /**/, TSeqInfix && seqInfix)
+{
+    return std::move(seqInfix);
+}
+
+template <typename TSeq,
+          typename TSeqInfix,
+          MyEnableIf<!std::is_same<TSeq,int>::value> = 0>
+TSeqInfix &&
+_reverseHelper2(TSeq & seq, TSeqInfix && /**/)
+{
+    return std::move(infix(seq, 0, length(seq)));
+}
+
 
 template <typename TBlastMatch,
           typename TLocalHolder>
@@ -656,13 +692,27 @@ computeBlastMatch(TBlastMatch         & bm,
                   Match         const & m,
                   TLocalHolder        & lH)
 {
-    using TFormat = typename TLocalHolder::TGlobalHolder::TFormat;
-
+    using TGH       = typename TLocalHolder::TGlobalHolder;
+    using TFormat   = typename TGH::TFormat;
+//     using TTransSeq = typename Value<typename TGH::TTransSeqs>::Type;
+//     using TQrySeq   = TTransSeq const &;
+//     using TSubjSeq  = typename std::conditional<TGH::subjIsReversed,
+//                                     String<TransAlph<getProgramType(TFormat())>>,
+//                                     TTransSeq const &>::type;
+//     using TQrySeq   = decltype(lH.gH.qrySeqs[m.qryId]) const &;
+//     using TSubjSeq  = typename std::conditional<TGH::subjIsReversed,
+//                             String<TransAlph<getProgramType(TFormat())>>,
+//                             decltype(lH.gH.subjSeqs[m.subjId]) const &>::type;
+    using TSubjHost  = typename std::conditional<TGH::subjIsReversed,
+                            String<TransAlph<getProgramType(TFormat())>>,
+                            int>::type; // cheap type
     const unsigned long qryLength = length(value(lH.gH.qrySeqs, m.qryId));
 
-    auto const &  curQry = value(lH.gH.qrySeqs, m.qryId);
-    auto const & curSubj = value(lH.gH.subjSeqs, m.subjId);
+    TSubjHost subjHost;
+    _reverseHelper(subjHost, lH.gH.subjSeqs[m.subjId]);
 
+    auto const &   curQry = lH.gH.qrySeqs[m.qryId];
+    auto const &  curSubj = _reverseHelper2(subjHost, lH.gH.subjSeqs[m.subjId]);
 
     SEQAN_ASSERT_LEQ(bm.qStart, bm.qEnd);
     SEQAN_ASSERT_LEQ(bm.sStart, bm.sEnd);
@@ -1231,7 +1281,7 @@ void printStats(StatsHolder const & stats, LambdaOptions const & options)
         #define RR " = " << std::setw(w)
         #define BLANKS for (unsigned i = 0; i< w; ++i) std::cout << " ";
         std::cout << "\033[1m   HITS                         "; BLANKS; std::cout << "Remaining\033[0m"
-                 << "\n   after Seeding               "; BLANKS; std::cout << R << rem;
+                 << "\n   after Seeding     "; BLANKS; std::cout << R << rem;
         std::cout<< "\n - masked                   " << R << stats.hitsMasked       << RR << (rem-= stats.hitsMasked);
         std::cout<< "\n - merged                   " << R << stats.hitsMerged       << RR << (rem-= stats.hitsMerged);
 //         std::cout<< "\n - tooShort                 " << R << stats.hitsTooShort     << RR << (rem-= stats.hitsTooShort);

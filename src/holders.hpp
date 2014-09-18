@@ -166,28 +166,29 @@ public:
     using TFormat       = BlastFormat<m,p,g>;
     using TTransSeqs    = TCDStringSet<TransAlph<p>>;
     using TRedSeqs      = TCDStringSet<TRedAlph>;
+    static bool
+    constexpr noReduction = std::is_same<TTransSeqs, TRedSeqs>::value;
     using TRedSeqsACT   = typename std::conditional<
-                            std::is_same<TTransSeqs, TRedSeqs>::value,
+                            noReduction,
                             TRedSeqs &,
                             TRedSeqs>::type;
     using TSubjSeqs     = typename std::conditional<
-                            std::is_same<TTransSeqs, TRedSeqs>::value,
+                            noReduction,
                             TTransSeqs &,
                             TTransSeqs>::type;
-//     using TDbSAIndex    = Index<TRedSeqs, IndexSa<> >;
-//     using TDbFMIndex    = Index<TRedSeqs, FMIndex<> >;
 
     using TIndexSpec    = TIndexSpec_;
     using TDbIndex      = Index<TRedSeqs, TIndexSpec>;
+    static bool
+    constexpr indexIsFM = std::is_same<TIndexSpec, FMIndex<>>::value;
+    static bool
+    constexpr subjIsReversed = (noReduction && indexIsFM);
 
     using TPositions    = typename StringSetLimits<TTransSeqs>::Type;
     using TIds          = StringSet<CharString, Owner<ConcatDirect<>>>;
     using TMasking      = StringSet<String<unsigned>, Owner<ConcatDirect<>>>;
     using TBlastScoringAdapter = BlastScoringAdapter<TScoreScheme>;
 
-//     TDbSAIndex                  dbSAIndex;
-//     TDbFMIndex                  dbFMIndex;
-//     bool                        dbIndexIsFM = false;
     TDbIndex                    dbIndex;
     BlastDbSpecs<>              dbSpecs;
 
@@ -309,6 +310,49 @@ public:
 
 };
 
+// perform a fast local alignment score calculation on the seed and see if we
+// reach above threshold
+// WARNING the following function only works for hammingdistanced seeds
+template <typename TMatch,
+          typename TGlobalHolder,
+          typename TScoreExtension>
+inline bool
+seedLooksPromising(
+            LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> const & lH,
+            TMatch const & m)
+{
+
+    auto const & qSeq = infix(lH.gH.qrySeqs[m.qryId],
+                              m.qryStart,
+                              m.qryStart + lH.options.seedLength);
+    auto const & sSeq = infix(lH.gH.subjSeqs[m.subjId],
+                              m.subjStart,
+                              m.subjStart + lH.options.seedLength);
+    int maxScore = 0;
+
+    int scores[lH.options.seedLength]; // C99, C++14, -Wno-vla
+    scores[0] = 0;
+
+    // score the diagonal
+    for (unsigned i = 0; i < lH.options.seedLength; ++i)
+    {
+        scores[i] += score(lH.gH.scoreScheme,
+                           qSeq[i],
+                           TGlobalHolder::subjIsReversed
+                            ? sSeq[lH.options.seedLength - 1 - i]
+                            : sSeq[i]);
+        if (scores[i] < 0)
+            scores[i] = 0;
+        else if (scores[i] >= maxScore)
+            maxScore = scores[i];
+
+        if (i < lH.options.seedLength -1)
+            scores[i+1] = scores[i];
+    }
+
+    return (maxScore >= lH.options.minSeedScore);
+}
+
 template <typename TMatch,
           typename TGlobalHolder,
           typename TScoreExtension,
@@ -329,7 +373,7 @@ onFindImpl(LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> & lH,
              static_cast<Match::TPos>(lH.seedRanks[seedId] * lH.options.seedOffset),
              static_cast<Match::TPos>(getSeqOffset(subjOcc))};
 
-    bool masked = false;
+    bool discarded = false;
     auto const halfSubjL = lH.options.seedLength /  2;
 
     for (unsigned k = 0;
@@ -344,12 +388,18 @@ onFindImpl(LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> & lH,
                 >= halfSubjL)
         {
             ++lH.stats.hitsMasked;
-            masked = true;
+            discarded = true;
             break;
         }
     }
 
-    if (!masked)
+//     if (!seedLooksPromising(lH, m))
+//     {
+//         discarded = true;
+//         ++lH.stats.hitsFailedSeedAlignScoreTest;
+//     }
+
+    if (!discarded)
         lH.matches.emplace_back(m);
 }
 
