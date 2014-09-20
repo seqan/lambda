@@ -162,27 +162,30 @@ template <typename TRedAlph_,
 class GlobalDataHolder
 {
 public:
+    static bool
+    constexpr indexIsFM = std::is_same<TIndexSpec_, FMIndex<>>::value;
+
     using TRedAlph      = RedAlph<p, TRedAlph_>;
     using TFormat       = BlastFormat<m,p,g>;
     using TTransSeqs    = TCDStringSet<TransAlph<p>>;
     using TRedSeqs      = TCDStringSet<TRedAlph>;
     static bool
     constexpr noReduction = std::is_same<TTransSeqs, TRedSeqs>::value;
+    static bool
+    constexpr subjIsReversed = false; //(noReduction && indexIsFM);
+
     using TRedSeqsACT   = typename std::conditional<
                             noReduction,
                             TRedSeqs &,
                             TRedSeqs>::type;
-    using TSubjSeqs     = typename std::conditional<
-                            noReduction,
-                            TTransSeqs &,
-                            TTransSeqs>::type;
+//    using TSubjSeqs     = typename std::conditional<
+//                            noReduction,
+//                            TTransSeqs &,
+//                            TTransSeqs>::type;
+    using TSubjSeqs     = TTransSeqs;
 
     using TIndexSpec    = TIndexSpec_;
     using TDbIndex      = Index<TRedSeqs, TIndexSpec>;
-    static bool
-    constexpr indexIsFM = std::is_same<TIndexSpec, FMIndex<>>::value;
-    static bool
-    constexpr subjIsReversed = (noReduction && indexIsFM);
 
     using TPositions    = typename StringSetLimits<TTransSeqs>::Type;
     using TIds          = StringSet<CharString, Owner<ConcatDirect<>>>;
@@ -194,8 +197,9 @@ public:
 
     // these are always translated, except for BLASTN mode, but *never reduced*
     TTransSeqs                  qrySeqs;
-    TSubjSeqs                   subjSeqs = initHelper(TTransSeqs(),
-                                                      indexText(dbIndex));
+//    TSubjSeqs                   subjSeqs = initHelper(TTransSeqs(),
+//                                                      indexText(dbIndex));
+    TSubjSeqs                   subjSeqs;
     // reduced query sequences if using reduction, otherwise const & = qrySeqs
     TRedSeqsACT                 redQrySeqs = initHelper(TRedSeqs(), qrySeqs);
 
@@ -212,7 +216,7 @@ public:
     TScoreScheme                scoreScheme;
     TBlastScoringAdapter        blastScoringAdapter;
 
-    StatsHolder                 stats;
+    StatsHolder                 stats = StatsHolder();
 };
 
 // ----------------------------------------------------------------------------
@@ -274,12 +278,12 @@ public:
     // constructor
     LocalDataHolder(LambdaOptions     const & _options,
                     TGlobalHolder     /*const*/ & _globalHolder) :
-        options(_options), gH(_globalHolder)
+        options(_options), gH(_globalHolder), stats()
     {}
 
     // copy constructor SHALLOW COPY ONLY, REQUIRED FOR firsprivate()
     LocalDataHolder(LocalDataHolder const & rhs) :
-        options(rhs.options), gH(rhs.gH)
+        options(rhs.options), gH(rhs.gH), stats()
     {}
 
     void init(uint64_t const _i)
@@ -393,11 +397,11 @@ onFindImpl(LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> & lH,
         }
     }
 
-//     if (!seedLooksPromising(lH, m))
-//     {
-//         discarded = true;
-//         ++lH.stats.hitsFailedSeedAlignScoreTest;
-//     }
+     if (!seedLooksPromising(lH, m))
+     {
+         discarded = true;
+         ++lH.stats.hitsFailedSeedAlignScoreTest;
+     }
 
     if (!discarded)
         lH.matches.emplace_back(m);

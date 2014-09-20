@@ -256,7 +256,8 @@ inline int
 loadSubjects(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, m, p, g>  & globalHolder,
              LambdaOptions                                const & options)
 {
-    if (options.alphReduction > 0) // otherwise sequences in index
+//    using TGH = GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, m, p, g>;
+//    if (!TGH::noReduction) // otherwise sequences in index
     {
         double start = sysTime();
         std::cout << "Loading Subj Sequences…" << std::flush;
@@ -651,39 +652,47 @@ sortMatches(TLocalHolder & lH)
 template <typename TSeq,
           typename TSeqInfix,
           MyEnableIf<std::is_same<TSeq,int>::value> = 0>
-void
-_reverseHelper(TSeq & /**/ , TSeqInfix const &)
+inline void
+_reverseHelper(TSeq & seq, TSeqInfix const &)
 {
+    seq = 0; // initialize
+//    std::cerr << "subjHost :" << seq << "\n";
 }
 
 template <typename TSeq,
           typename TSeqInfix,
           MyEnableIf<!std::is_same<TSeq,int>::value> = 0>
-void
+inline void
 _reverseHelper(TSeq & seq, TSeqInfix const & seqInfix)
 {
     seq = seqInfix;
     reverse(seq);
+//    std::cerr << "subjHost :" << toCString(CharString(seq)) << "\n";
 }
 
 template <typename TSeq,
           typename TSeqInfix,
           MyEnableIf<std::is_same<TSeq,int>::value> = 0>
-TSeqInfix &&
-_reverseHelper2(TSeq & /**/, TSeqInfix && seqInfix)
+inline TSeqInfix const &
+_reverseHelper2(TSeq & /**/, TSeqInfix const & seqInfix)
 {
-    return std::move(seqInfix);
+    return seqInfix;
 }
 
 template <typename TSeq,
           typename TSeqInfix,
           MyEnableIf<!std::is_same<TSeq,int>::value> = 0>
-TSeqInfix &&
-_reverseHelper2(TSeq & seq, TSeqInfix && /**/)
+inline TSeqInfix &&
+_reverseHelper2(TSeq & seq, TSeqInfix const & /**/)
 {
     return std::move(infix(seq, 0, length(seq)));
 }
 
+const char * toCString(int const foo)
+{
+    std::string s = std::to_string(foo);
+    return s.c_str();
+}
 
 template <typename TBlastMatch,
           typename TLocalHolder>
@@ -708,11 +717,15 @@ computeBlastMatch(TBlastMatch         & bm,
                             int>::type; // cheap type
     const unsigned long qryLength = length(value(lH.gH.qrySeqs, m.qryId));
 
+//    std::cerr << "[]       :" << toCString(CharString(lH.gH.subjSeqs[m.subjId])) << "\n";
     TSubjHost subjHost;
     _reverseHelper(subjHost, lH.gH.subjSeqs[m.subjId]);
-
+    //TODO fix this reverse business
     auto const &   curQry = lH.gH.qrySeqs[m.qryId];
-    auto const &  curSubj = _reverseHelper2(subjHost, lH.gH.subjSeqs[m.subjId]);
+//    auto const &  curSubj = _reverseHelper2(subjHost, lH.gH.subjSeqs[m.subjId]);
+    auto const &  curSubj = lH.gH.subjSeqs[m.subjId];
+
+//    std::cerr << "curSubj  :" << toCString(CharString(curSubj)) << "\n";
 
     SEQAN_ASSERT_LEQ(bm.qStart, bm.qEnd);
     SEQAN_ASSERT_LEQ(bm.sStart, bm.sEnd);

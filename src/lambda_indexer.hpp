@@ -183,7 +183,8 @@ inline void
 dumpTranslatedSeqs(TCDStringSet<TTransAlph> const & translatedSeqs,
                    LambdaIndexerOptions const & options)
 {
-    if (options.alphReduction > 0)
+// TODO remove this once lambda is fixed for this again as well
+//    if (options.alphReduction > 0)
         _dumpTranslatedSeqs(translatedSeqs, options);
 }
 
