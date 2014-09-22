@@ -244,15 +244,16 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     // Set short description, version, and date.
     setShortDescription(parser, "BLAST compatible local aligner optimized for "
                                 "NGS and Metagenomics.");
-    setVersion(parser, "0.3");
-    setDate(parser, "September 2014");
+    setVersion(parser, "0.4");
+    setDate(parser, "October 2014");
 
     // Define usage line and long description.
     addUsageLine(parser, "[\\fIOPTIONS\\fP] \\fI-q QUERY.fasta\\fP "
                          "\\fI-d DATABASE.fasta\\fP "
                          "[\\fI-o output.m8\\fP]");
-    addDescription(parser, "Lambda is a local aligner that is faster than "
-                           "BLAST, optimized for many query sequences.");
+    addDescription(parser, "Lambda is a local aligner optimized for many query "
+    "sequences and searches in protein space. It is faster than BLAST and many "
+    "other comparable tools.");
 
     addSection(parser, "Input Options");
     addOption(parser, seqan::ArgParseOption("q",
@@ -274,15 +275,15 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setRequired(parser, "d");
     setValidValues(parser, "database", "fasta fa fna faa");
 
-    addOption(parser, seqan::ArgParseOption("it",
-                                            "index-type",
+    addOption(parser, seqan::ArgParseOption("di",
+                                            "db-index-type",
                                             "database index is in this format "
                                             "(auto means \"try sa first then "
                                             "fm\").",
                                             seqan::ArgParseArgument::STRING,
                                             "STR"));
-    setValidValues(parser, "index-type", "auto sa fm");
-    setDefaultValue(parser, "index-type", "auto");
+    setValidValues(parser, "db-index-type", "auto sa fm");
+    setDefaultValue(parser, "db-index-type", "auto");
 
     addSection(parser, "Output Options");
     addOption(parser, seqan::ArgParseOption("o",
@@ -294,8 +295,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setValidValues(parser, "output", "m0 m8 m9");
     setDefaultValue(parser, "output", "output.m8");
 
-
-    addSection(parser, "Program Options");
+    addSection(parser, "Alphabets and Translation");
     addOption(parser, seqan::ArgParseOption("p",
                                             "program",
                                             "Blast Operation Mode.",
@@ -304,39 +304,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setValidValues(parser, "program", "blastn blastp blastx tblastn tblastx");
     setDefaultValue(parser, "program", "blastx");
 
-#ifdef _OPENMP
-    addOption(parser, seqan::ArgParseOption("t",
-                                            "threads",
-                                            "number of threads to run "
-                                            "concurrently.",
-                                            seqan::ArgParseArgument::INTEGER));
-    setDefaultValue(parser, "threads", omp_get_max_threads());
-#else
-    addOption(parser, seqan::ArgParseOption("t",
-                                            "threads",
-                                            "LAMBDA BUILT WITHOUT OPENMP; "
-                                            "setting this option has no effect.",
-                                            seqan::ArgParseArgument::INTEGER));
-    setDefaultValue(parser, "threads", 1);
-#endif
-
-    addOption(parser, seqan::ArgParseOption("qp",
-                                            "query-partitions",
-                                            "Divide the query into qp number "
-                                            "of blocks before processing; "
-                                            "should be a multiple of the number "
-                                            "of threads; doubling qp halves "
-                                            "the memory used for cached hits, "
-                                            "see below.",
-                                            seqan::ArgParseArgument::INTEGER));
-#ifdef _OPENMP
-    setDefaultValue(parser, "query-partitions", 2 * omp_get_max_threads());
-#else
-     setDefaultValue(parser, "query-partitions", 2);
-#endif
-
-    addSection(parser, "Translation and Alphabet");
-    addOption(parser, seqan::ArgParseOption("gc",
+    addOption(parser, seqan::ArgParseOption("g",
                                             "genetic-code",
                                             "The translation table to use "
                                             "for nucl -> amino acid translation"
@@ -356,13 +324,53 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 //     setValidValues(parser, "alph", "0 10");
     setDefaultValue(parser, "alph", "2");
 
+    addSection(parser, "General Options");
+#ifdef _OPENMP
+    addOption(parser, seqan::ArgParseOption("t",
+                                            "threads",
+                                            "number of threads to run "
+                                            "concurrently.",
+                                            seqan::ArgParseArgument::INTEGER));
+    setDefaultValue(parser, "threads", omp_get_max_threads());
+#else
+    addOption(parser, seqan::ArgParseOption("t",
+                                            "threads",
+                                            "LAMBDA BUILT WITHOUT OPENMP; "
+                                            "setting this option has no effect.",
+                                            seqan::ArgParseArgument::INTEGER));
+    setDefaultValue(parser, "threads", 1);
+#endif
+
+    addOption(parser, seqan::ArgParseOption("qi",
+                                            "query-index-type",
+                                            "setting this to \"none\" "
+                                            "deactivates double-indexing.",
+                                            seqan::ArgParseArgument::STRING));
+    setValidValues(parser, "query-index-type", "radix none");
+    setDefaultValue(parser, "query-index-type", "radix");
+
+    addOption(parser, seqan::ArgParseOption("qp",
+                                            "query-partitions",
+                                            "Divide the query into qp number "
+                                            "of blocks before processing; "
+                                            "should be a multiple of the number "
+                                            "of threads, defaults to one per "
+                                            "thread. Only used with double-"
+                                            "indexing; strong influence on "
+                                            "memory, see below.",
+                                            seqan::ArgParseArgument::INTEGER));
+#ifdef _OPENMP
+    setDefaultValue(parser, "query-partitions", omp_get_max_threads());
+#else
+     setDefaultValue(parser, "query-partitions", 1);
+#endif
 
     addSection(parser, "Seeding / Filtration");
-    addOption(parser, seqan::ArgParseOption("su",
-                                            "ungapped-seeds",
-                                            "allow only mismatches in seeds.",
-                                            seqan::ArgParseArgument::INTEGER));
-    setDefaultValue(parser, "ungapped-seeds", "1");
+//     addOption(parser, seqan::ArgParseOption("su",
+//                                             "ungapped-seeds",
+//                                             "allow only mismatches in seeds.",
+//                                             seqan::ArgParseArgument::INTEGER));
+//     setDefaultValue(parser, "ungapped-seeds", "1");
 
     addOption(parser, seqan::ArgParseOption("sl",
                                             "seed-length",
@@ -406,12 +414,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
                                             seqan::ArgParseArgument::INTEGER));
     setDefaultValue(parser, "seed-min-score", "32");
 
-    addOption(parser, seqan::ArgParseOption("si",
-                                            "seed-index",
-                                            "use double indexing or not.",
-                                            seqan::ArgParseArgument::STRING));
-    setValidValues(parser, "seed-index", "on off");
-    setDefaultValue(parser, "seed-index", "on");
+
 
 //     addOption(parser, seqan::ArgParseOption("se",
 //                                             "seedminevalue",
@@ -490,17 +493,29 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setDefaultValue(parser, "e-value", "0.1");
 
 
+    addText(parser, "\012\033[5mATTENTION:\033[0m the \033[1m-d, -di, -p, -g\033[0m "
+    "and \033[1m-a\033[0m options must match those set by the indexer.");
+
     addTextSection(parser, "Environment Variables");
     addListItem(parser, "\\fBTMPDIR\\fP",
                         "set this to a local directory with lots of "
                         "space. If you can afford it use /dev/shm.");
 
-    addTextSection(parser, "Memory requirements VS speed");
+    addTextSection(parser, "Speed VS sensitivity");
+    addText(parser, "Playing with the seeding and alphabet parameters has high "
+                    "influence on both speed and sensitivity. We recommend the "
+                    "following alternative profiles:");
+    addText(parser, "fast: \033[1m-a 0 -sl 8 -ss 26 -sd 0 -so 4\033[0m");
+    addText(parser, "sensitive: \033[1m-so 5\033[0m");
+
+    addTextSection(parser, "Speed VS memory requirements");
     addText(parser, "Lambda has three main points of memory consumption:");
-    addText(parser, "1) the cache of the hits. This depends on the amount of "
-                    "hits and is difficult to estimate. doubling the -qp value "
-                    "will reduce this memory by a half at a modest penalty "
-                    "to run-time.");
+    addText(parser, "1) the cache of putative hits. Since version 0.4 this is "
+                    "quite small, but grows linearly with input data when "
+                    "double-indexing is used; doubling \033[1m-qp\033[0m will "
+                    "reduce this memory by a half at a modest penalty "
+                    "to run-time; however using single-indexing might be "
+                    "better if you are memory-constrained.");
     addText(parser, "2) the database index. This depends on the size n of the "
                     "database and the type of index. The SA index is 6*n in "
                     "size, while the FM index is < 2*n in size. Using the FM "
@@ -510,6 +525,9 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
                     "LAMBDA_BITCOPMRESSED_STRINGS while compiling lambda, you "
                     "can reduce the size per character from 8 to 4 bit. This "
                     "will also increase running time, by ~ 10%.");
+    addText(parser, "As a rule of thumb, if you run out of memory, add "
+                    "\033[1m-di fm\033[0m to the indexer call and \033[1m-di fm"
+                    " -qi none\033[0m to the lambda call.");
 
 
     // Parse command line.
@@ -525,7 +543,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     getOptionValue(options.dbFile, parser, "database");
 
     CharString buffer;
-    getOptionValue(buffer, parser, "index-type");
+    getOptionValue(buffer, parser, "db-index-type");
     if (buffer == "auto")
         options.dbIndexType = -1;
     else if (buffer == "sa")
@@ -611,8 +629,8 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     options.minSeedScore = foo;
 
     CharString doubleIndex;
-    getOptionValue(doubleIndex, parser, "seed-index");
-    options.doubleIndexing = (doubleIndex == "on");
+    getOptionValue(doubleIndex, parser, "query-index-type");
+    options.doubleIndexing = (doubleIndex == "radix");
 
 //     getOptionValue(foo, parser, "seedminevalue");
 //     options.minSeedEVal = foo;
@@ -710,22 +728,22 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
     seqan::ArgumentParser parser("lambda_indexer");
     // Set short description, version, and date.
     setShortDescription(parser, "Indexer for Lambda");
-    setVersion(parser, "0.3");
-    setDate(parser, "September 2014");
+    setVersion(parser, "0.4");
+    setDate(parser, "October 2014");
 
     // Define usage line and long description.
-    addUsageLine(parser, "[\\fIOPTIONS\\fP] \\-i DATABASE.fasta\\fP [\\-o INDEXFILE.sa\\fP]");
+    addUsageLine(parser, "[\\fIOPTIONS\\fP] \\-i DATABASE.fasta\\fP");
 //     addDescription(parser, "This is the application skelleton and you should modify this string.");
 
 
     addSection(parser, "Input Options");
-    addOption(parser, seqan::ArgParseOption("i",
-                                            "input",
+    addOption(parser, seqan::ArgParseOption("d",
+                                            "database",
                                             "Database sequences (fasta).",
                                             seqan::ArgParseArgument::INPUTFILE,
                                             "IN"));
-    setRequired(parser, "i");
-    setValidValues(parser, "input", "fasta fa fna faa");
+    setRequired(parser, "database");
+    setValidValues(parser, "database", "fasta fa fna faa");
 
     addOption(parser, seqan::ArgParseOption("s",
                                             "segfile",
@@ -744,18 +762,16 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
 //                                             "OUT"));
 //     setValidValues(parser, "output", "sa fm");
 
-    addOption(parser, seqan::ArgParseOption("it",
-                                            "index-type",
+    addOption(parser, seqan::ArgParseOption("di",
+                                            "db-index-type",
                                             "suffix array or full-text minute "
                                             "space",
                                             seqan::ArgParseArgument::STRING,
                                             "type"));
-    setValidValues(parser, "index-type", "sa fm");
-    setDefaultValue(parser, "index-type", "sa");
+    setValidValues(parser, "db-index-type", "sa fm");
+    setDefaultValue(parser, "db-index-type", "sa");
 
-
-
-    addSection(parser, "Program Options");
+    addSection(parser, "Alphabets and Translation");
     addOption(parser, seqan::ArgParseOption("p",
                                             "program",
                                             "Blast Operation Mode.",
@@ -763,9 +779,7 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
                                             "program"));
     setValidValues(parser, "program", "blastn blastp blastx tblastn tblastx");
     setDefaultValue(parser, "program", "blastx");
-
-    addSection(parser, "Translation and Alphabet");
-    addOption(parser, seqan::ArgParseOption("gc",
+    addOption(parser, seqan::ArgParseOption("g",
                                             "genetic-code",
                                             "The translation table to use "
                                             "(not for BlastN, BlastP). See "
@@ -790,9 +804,12 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
                         "space. If you can afford it use /dev/shm.");
 
     addTextSection(parser, "Memory requirements");
-    addText(parser, "The FM index is < 2* text size, but ~ 10% slower than "
-                    "the SA index which is 6x text size. During construction "
-                    "a full suffix array always needs to be built in memory.");
+    addText(parser, "See \033[1mlambda --help\033[0m on details concerning the "
+                    "choice of db-index-type. Note also that during "
+                    "construction a full suffix array always needs to be built "
+                    "in memory, so if you fail to produce an fm-index, you "
+                    "could build it on another machine and still succeed "
+                    "at running lambda.");
     addTextSection(parser, "Remarks");
     addText(parser, "Note that the indeces created are binary and not "
                     "necessarily platform independant.");
@@ -844,7 +861,7 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
     //verifyFileFormat(); TODO
 
     CharString dbIndexType;
-    getOptionValue(dbIndexType, parser, "index-type");
+    getOptionValue(dbIndexType, parser, "db-index-type");
 
     if (dbIndexType == "fm")
         options.dbIndexType = 1;
