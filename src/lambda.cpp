@@ -686,7 +686,7 @@ realMain(LambdaOptions      const & options,
         return ret;
 
     if (!options.doubleIndexing)
-        std::cout << "\nTime Spent: " << sysTime() - start << "s\n\n";
+        std::cout << "\nRuntime: " << sysTime() - start << "[s].\n\n";
 
     printStats(globalHolder.stats, options);
 

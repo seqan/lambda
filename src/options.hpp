@@ -184,7 +184,7 @@ struct LambdaOptions : public SharedOptions
 
     uint8_t         seedLength  = 0;
     uint8_t         maxSeedDist = 1;
-    bool            hammingOnly = false;
+    bool            hammingOnly = true;
 
     int8_t          seedGravity     = 0;
     uint8_t         seedOffset      = 0;
@@ -598,19 +598,19 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     buf = 0;
     getOptionValue(buf, parser, "seed-delta");
     options.maxSeedDist = buf;
-    if (buf == 0)
-    {
-        options.hammingOnly = true;
-    } else
-    {
-        getOptionValue(buf, parser, "ungapped-seeds");
-        options.hammingOnly = (buf != 0);
-        if (!options.hammingOnly)
-        {
-            std::cerr << "Edit-Distance seeds not supported in the build.\n";
-            return seqan::ArgumentParser::PARSE_ERROR;
-        }
-    }
+//     if (buf == 0)
+//     {
+//         options.hammingOnly = true;
+//     } else
+//     {
+//         getOptionValue(buf, parser, "ungapped-seeds");
+//         options.hammingOnly = (buf != 0);
+//         if (!options.hammingOnly)
+//         {
+//             std::cerr << "Edit-Distance seeds not supported in the build.\n";
+//             return seqan::ArgumentParser::PARSE_ERROR;
+//         }
+//     }
 
 
     getOptionValue(buf, parser, "seed-gravity");
@@ -825,7 +825,7 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
 
     // Extract option values.
 
-    seqan::getOptionValue(options.dbFile, parser, "input");
+    seqan::getOptionValue(options.dbFile, parser, "database");
 
     CharString buffer;
     getOptionValue(buffer, parser, "program");

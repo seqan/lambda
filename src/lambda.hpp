@@ -256,8 +256,8 @@ inline int
 loadSubjects(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, m, p, g>  & globalHolder,
              LambdaOptions                                const & options)
 {
-//    using TGH = GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, m, p, g>;
-//    if (!TGH::noReduction) // otherwise sequences in index
+    using TGH = GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, m, p, g>;
+    if (!TGH::subjsInIndex)
     {
         double start = sysTime();
         std::cout << "Loading Subj Sequences…" << std::flush;
@@ -712,14 +712,14 @@ computeBlastMatch(TBlastMatch         & bm,
 //     using TSubjSeq  = typename std::conditional<TGH::subjIsReversed,
 //                             String<TransAlph<getProgramType(TFormat())>>,
 //                             decltype(lH.gH.subjSeqs[m.subjId]) const &>::type;
-    using TSubjHost  = typename std::conditional<TGH::subjIsReversed,
-                            String<TransAlph<getProgramType(TFormat())>>,
-                            int>::type; // cheap type
+//     using TSubjHost  = typename std::conditional<TGH::subjIsReversed,
+//                             String<TransAlph<getProgramType(TFormat())>>,
+//                             int>::type; // cheap type
     const unsigned long qryLength = length(value(lH.gH.qrySeqs, m.qryId));
 
 //    std::cerr << "[]       :" << toCString(CharString(lH.gH.subjSeqs[m.subjId])) << "\n";
-    TSubjHost subjHost;
-    _reverseHelper(subjHost, lH.gH.subjSeqs[m.subjId]);
+//     TSubjHost subjHost;
+//     _reverseHelper(subjHost, lH.gH.subjSeqs[m.subjId]);
     //TODO fix this reverse business
     auto const &   curQry = lH.gH.qrySeqs[m.qryId];
 //    auto const &  curSubj = _reverseHelper2(subjHost, lH.gH.subjSeqs[m.subjId]);

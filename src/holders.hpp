@@ -172,17 +172,17 @@ public:
     static bool
     constexpr noReduction = std::is_same<TTransSeqs, TRedSeqs>::value;
     static bool
-    constexpr subjIsReversed = false; //(noReduction && indexIsFM);
+    constexpr subjsInIndex = (noReduction && !indexIsFM);
 
     using TRedSeqsACT   = typename std::conditional<
                             noReduction,
                             TRedSeqs &,
                             TRedSeqs>::type;
-//    using TSubjSeqs     = typename std::conditional<
-//                            noReduction,
-//                            TTransSeqs &,
-//                            TTransSeqs>::type;
-    using TSubjSeqs     = TTransSeqs;
+    using TSubjSeqs     = typename std::conditional<
+                            subjsInIndex,
+                            TTransSeqs &,
+                            TTransSeqs>::type;
+//     using TSubjSeqs     = TTransSeqs;
 
     using TIndexSpec    = TIndexSpec_;
     using TDbIndex      = Index<TRedSeqs, TIndexSpec>;
@@ -197,9 +197,9 @@ public:
 
     // these are always translated, except for BLASTN mode, but *never reduced*
     TTransSeqs                  qrySeqs;
-//    TSubjSeqs                   subjSeqs = initHelper(TTransSeqs(),
-//                                                      indexText(dbIndex));
-    TSubjSeqs                   subjSeqs;
+    TSubjSeqs                   subjSeqs = initHelper(TTransSeqs(),
+                                                      indexText(dbIndex));
+//     TSubjSeqs                   subjSeqs;
     // reduced query sequences if using reduction, otherwise const & = qrySeqs
     TRedSeqsACT                 redQrySeqs = initHelper(TRedSeqs(), qrySeqs);
 
@@ -342,15 +342,16 @@ seedLooksPromising(
     {
         scores[i] += score(lH.gH.scoreScheme,
                            qSeq[i],
-                           TGlobalHolder::subjIsReversed
-                            ? sSeq[lH.options.seedLength - 1 - i]
-                            : sSeq[i]);
+//                            TGlobalHolder::subjIsReversed
+//                             ? sSeq[lH.options.seedLength - 1 - i]
+//                             : 
+                            sSeq[i]);
         if (scores[i] < 0)
             scores[i] = 0;
         else if (scores[i] >= maxScore)
             maxScore = scores[i];
 
-        if (i < lH.options.seedLength -1)
+        if (i < static_cast<unsigned>(lH.options.seedLength - 1))
             scores[i+1] = scores[i];
     }
 
@@ -420,8 +421,8 @@ onFindDoubleIndex(LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> & lH,
 
     lH.stats.hitsAfterSeeding += length(qryOccs) * length(subjOccs);
 
-    for (unsigned i = 0; i< length(qryOccs); ++i)
-        for (unsigned j = 0; j< length(subjOccs); ++j)
+    for (unsigned i = 0; i < length(qryOccs); ++i)
+        for (unsigned j = 0; j < length(subjOccs); ++j)
             onFindImpl(lH, getSeqNo(qryOccs[i]), subjOccs[j]);
 }
 
@@ -440,7 +441,7 @@ onFindSingleIndex(LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> & lH,
 
     lH.stats.hitsAfterSeeding += length(subjOccs);
 
-    for (unsigned j = 0; j< length(subjOccs); ++j)
+    for (unsigned j = 0; j < length(subjOccs); ++j)
         onFindImpl(lH, qryOcc, subjOccs[j]);
 }
 

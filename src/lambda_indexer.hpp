@@ -183,9 +183,10 @@ inline void
 dumpTranslatedSeqs(TCDStringSet<TTransAlph> const & translatedSeqs,
                    LambdaIndexerOptions const & options)
 {
-// TODO remove this once lambda is fixed for this again as well
-//    if (options.alphReduction > 0)
+    if ((options.alphReduction > 0) || (options.dbIndexType == 1))
         _dumpTranslatedSeqs(translatedSeqs, options);
+    // if there is no reduction and index is not FM then the sequences
+    // will be dumped together with the index
 }
 
 // --------------------------------------------------------------------------
@@ -199,7 +200,7 @@ reduceOrSwap(TCDStringSet<TRedAlph> & out,
 {
     //TODO more output
     // reduce implicitly
-    std::cout << "reducing…" << std::flush;
+    std::cout << "Reducing…" << std::flush;
     out.concat = in.concat;
     out.limits = in.limits;
 }
@@ -393,14 +394,17 @@ generateIndexAndDump(StringSet<TString, TSpec> & seqs,
     std::cout << "Generating Index..." << std::flush;
     double s = sysTime();
 
+    // FM-Index needs reverse input
     if (isFM)
         reverse(seqs);
 
     TDBIndex dbIndex(seqs);
     indexRequire(dbIndex, TFibre());// instantiate
 
-//     if (isFM)
-//         reverse(seqs);
+    // search on fm-index actually doesn't require text
+    // so we can remove it before dump 
+    if (isFM)
+        clear(seqs);
 
     double e = sysTime() - s;
     std::cout << " done.\n" << std::flush;
