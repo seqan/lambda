@@ -136,7 +136,7 @@ using RedAlph = typename std::conditional<(p == BlastFormatProgram::BLASTN),
 struct SharedOptions
 {
     // Verbosity level.  0 -- quiet, 1 -- normal, 2 -- verbose, 3 -- very verbose.
-    int8_t verbosity = 2;
+    int8_t verbosity = 2; //TODO CHANGE to 1 before release
 
 
     CharString  dbFile;
@@ -256,7 +256,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     "other comparable tools.");
 
     addSection(parser, "Input Options");
-    addOption(parser, seqan::ArgParseOption("q",
+    addOption(parser, ArgParseOption("q",
                                             "query",
                                             "Query sequences (fasta).",
                                             seqan::ArgParseArgument::INPUTFILE,
@@ -266,7 +266,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
 
 
-    addOption(parser, seqan::ArgParseOption("d",
+    addOption(parser, ArgParseOption("d",
                                             "database",
                                             "Database sequences (fasta), with "
                                              "precomputed index (.sa).",
@@ -275,7 +275,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setRequired(parser, "d");
     setValidValues(parser, "database", "fasta fa fna faa");
 
-    addOption(parser, seqan::ArgParseOption("di",
+    addOption(parser, ArgParseOption("di",
                                             "db-index-type",
                                             "database index is in this format "
                                             "(auto means \"try sa first then "
@@ -286,7 +286,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setDefaultValue(parser, "db-index-type", "auto");
 
     addSection(parser, "Output Options");
-    addOption(parser, seqan::ArgParseOption("o",
+    addOption(parser, ArgParseOption("o",
                                             "output",
                                             "File to hold reports on hits (.m8 "
                                             "is blastall -m8 et cetera)",
@@ -295,8 +295,15 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setValidValues(parser, "output", "m0 m8 m9");
     setDefaultValue(parser, "output", "output.m8");
 
+    addOption(parser, ArgParseOption("v", "verbosity",
+        "The amount of terminal output printed; 0 [only errors]; 1 [default]; 2 "
+        "[+run-time, options and statistics].",
+        seqan::ArgParseArgument::INTEGER));
+
+    setDefaultValue(parser, "verbosity", "1");
+
     addSection(parser, "Alphabets and Translation");
-    addOption(parser, seqan::ArgParseOption("p",
+    addOption(parser, ArgParseOption("p",
                                             "program",
                                             "Blast Operation Mode.",
                                             seqan::ArgParseArgument::STRING,
@@ -304,7 +311,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setValidValues(parser, "program", "blastn blastp blastx tblastn tblastx");
     setDefaultValue(parser, "program", "blastx");
 
-    addOption(parser, seqan::ArgParseOption("g",
+    addOption(parser, ArgParseOption("g",
                                             "genetic-code",
                                             "The translation table to use "
                                             "for nucl -> amino acid translation"
@@ -315,7 +322,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 //     setValidValues(parser, "alph", "0 10");
     setDefaultValue(parser, "genetic-code", "1");
 
-    addOption(parser, seqan::ArgParseOption("a",
+    addOption(parser, ArgParseOption("a",
                                             "alph",
                                             "Alphabet Reduction for AminoAcid "
                                             "Alphabet (0 -> off; 2 -> Murphy10; "
@@ -326,14 +333,14 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     addSection(parser, "General Options");
 #ifdef _OPENMP
-    addOption(parser, seqan::ArgParseOption("t",
+    addOption(parser, ArgParseOption("t",
                                             "threads",
                                             "number of threads to run "
                                             "concurrently.",
                                             seqan::ArgParseArgument::INTEGER));
     setDefaultValue(parser, "threads", omp_get_max_threads());
 #else
-    addOption(parser, seqan::ArgParseOption("t",
+    addOption(parser, ArgParseOption("t",
                                             "threads",
                                             "LAMBDA BUILT WITHOUT OPENMP; "
                                             "setting this option has no effect.",
@@ -341,7 +348,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setDefaultValue(parser, "threads", 1);
 #endif
 
-    addOption(parser, seqan::ArgParseOption("qi",
+    addOption(parser, ArgParseOption("qi",
                                             "query-index-type",
                                             "setting this to \"none\" "
                                             "deactivates double-indexing.",
@@ -349,7 +356,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setValidValues(parser, "query-index-type", "radix none");
     setDefaultValue(parser, "query-index-type", "radix");
 
-    addOption(parser, seqan::ArgParseOption("qp",
+    addOption(parser, ArgParseOption("qp",
                                             "query-partitions",
                                             "Divide the query into qp number "
                                             "of blocks before processing; "
@@ -366,40 +373,40 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 #endif
 
     addSection(parser, "Seeding / Filtration");
-//     addOption(parser, seqan::ArgParseOption("su",
+//     addOption(parser, ArgParseOption("su",
 //                                             "ungapped-seeds",
 //                                             "allow only mismatches in seeds.",
 //                                             seqan::ArgParseArgument::INTEGER));
 //     setDefaultValue(parser, "ungapped-seeds", "1");
 
-    addOption(parser, seqan::ArgParseOption("sl",
+    addOption(parser, ArgParseOption("sl",
                                             "seed-length",
                                             "Length of the seeds (0 -> choose "
                                             "automatically).",
                                             seqan::ArgParseArgument::INTEGER));
     setDefaultValue(parser, "seed-length", "0");
 
-    addOption(parser, seqan::ArgParseOption("so",
+    addOption(parser, ArgParseOption("so",
                                             "seed-offset",
                                             "Offset for seeding (by default "
                                             "same as length -> non-overlapping).",
                                             seqan::ArgParseArgument::INTEGER));
     setDefaultValue(parser, "seed-offset", "0");
 
-    addOption(parser, seqan::ArgParseOption("sd",
+    addOption(parser, ArgParseOption("sd",
                                             "seed-delta",
                                             "maximum seed distance.",
                                             seqan::ArgParseArgument::INTEGER));
     setDefaultValue(parser, "seed-delta", "1");
 
-    addOption(parser, seqan::ArgParseOption("sg",
+    addOption(parser, ArgParseOption("sg",
                                             "seed-gravity",
                                             "Seeds closer than this are joined"
                                             "(-1 -> choose automatically).",
                                             seqan::ArgParseArgument::INTEGER));
     setDefaultValue(parser, "seed-gravity", "-1");
 
-    addOption(parser, seqan::ArgParseOption("sm",
+    addOption(parser, ArgParseOption("sm",
                                             "seed-min-length",
                                             "after postproc shorter seeds are "
                                             "discarded"
@@ -407,7 +414,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
                                             seqan::ArgParseArgument::INTEGER));
     setDefaultValue(parser, "seed-min-length", "0");
 
-    addOption(parser, seqan::ArgParseOption("ss",
+    addOption(parser, ArgParseOption("ss",
                                             "seed-min-score",
                                             "after postproc worse seeds are "
                                             "discarded [raw score].",
@@ -416,7 +423,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
 
 
-//     addOption(parser, seqan::ArgParseOption("se",
+//     addOption(parser, ArgParseOption("se",
 //                                             "seedminevalue",
 //                                             "after postproc worse seeds are "
 //                                             "discarded"
@@ -424,7 +431,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 //                                             seqan::ArgParseArgument::INTEGER));
 //     setDefaultValue(parser, "seedminevalue", "100000");
 
-//     addOption(parser, seqan::ArgParseOption("sb",
+//     addOption(parser, ArgParseOption("sb",
 //                                             "seedminbits",
 //                                             "after postproc worse seeds are "
 //                                             "discarded"
@@ -434,7 +441,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     addSection(parser, "Scoring");
 
-    addOption(parser, seqan::ArgParseOption("sc",
+    addOption(parser, ArgParseOption("sc",
                                             "scoring-scheme",
                                             "'62' for Blosum62 (default); '50' for "
                                             "Blosum50; '0' for manual (default "
@@ -442,25 +449,25 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
                                             seqan::ArgParseArgument::INTEGER));
     setDefaultValue(parser, "scoring-scheme", "62");
 
-    addOption(parser, seqan::ArgParseOption("ge",
+    addOption(parser, ArgParseOption("ge",
                                             "score-gap",
                                             "Score per gap character.",
                                             seqan::ArgParseArgument::INTEGER));
     setDefaultValue(parser, "score-gap", "-1");
 
-    addOption(parser, seqan::ArgParseOption("go",
+    addOption(parser, ArgParseOption("go",
                                             "score-gap-open",
                                             "Additional cost for opening gap.",
                                             seqan::ArgParseArgument::INTEGER));
     setDefaultValue(parser, "score-gap-open", "-11");
 
-    addOption(parser, seqan::ArgParseOption("ma",
+    addOption(parser, ArgParseOption("ma",
                                             "score-match",
                                             "Match score (manual scoring only)",
                                             seqan::ArgParseArgument::INTEGER));
     setDefaultValue(parser, "score-match", "2");
 
-    addOption(parser, seqan::ArgParseOption("mi",
+    addOption(parser, ArgParseOption("mi",
                                             "score-mismatch",
                                             "Mismatch score (manual scoring only)",
                                             seqan::ArgParseArgument::INTEGER));
@@ -468,7 +475,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     addSection(parser, "Extension");
 
-    addOption(parser, seqan::ArgParseOption("x",
+    addOption(parser, ArgParseOption("x",
                                             "x-drop",
                                             "Stop Banded extension if score "
                                             "x below the maximum seen"
@@ -476,7 +483,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
                                             seqan::ArgParseArgument::INTEGER));
     setDefaultValue(parser, "x-drop", "30");
 
-    addOption(parser, seqan::ArgParseOption("b",
+    addOption(parser, ArgParseOption("b",
                                             "band",
                                             "Size of the DP-band used in "
                                             "extension (-3 means log2 "
@@ -486,7 +493,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
                                             seqan::ArgParseArgument::INTEGER));
     setDefaultValue(parser, "band", "-3");
 
-    addOption(parser, seqan::ArgParseOption("e",
+    addOption(parser, ArgParseOption("e",
                                             "e-value",
                                             "Maximum E-Value for Results.",
                                             seqan::ArgParseArgument::DOUBLE));
@@ -542,6 +549,15 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     getOptionValue(options.queryFile, parser, "query");
     getOptionValue(options.dbFile, parser, "database");
 
+    int buf = 0;
+    getOptionValue(buf, parser, "verbosity");
+    switch(buf)
+    {
+        case 0: options.verbosity = 0; break;
+        case 2: options.verbosity = 2; break;
+        default: options.verbosity = 1; break;
+    }
+
     CharString buffer;
     getOptionValue(buffer, parser, "db-index-type");
     if (buffer == "auto")
@@ -583,7 +599,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     //TODO adapt seedlength if alphReduction
 
-    int buf = 0;
+    buf = 0;
     getOptionValue(buf, parser, "seed-length");
     if (buf != 0) // seed length was specified manually
         options.seedLength = buf;
@@ -611,6 +627,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 //             return seqan::ArgumentParser::PARSE_ERROR;
 //         }
 //     }
+
 
 
     getOptionValue(buf, parser, "seed-gravity");
@@ -737,7 +754,7 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
 
 
     addSection(parser, "Input Options");
-    addOption(parser, seqan::ArgParseOption("d",
+    addOption(parser, ArgParseOption("d",
                                             "database",
                                             "Database sequences (fasta).",
                                             seqan::ArgParseArgument::INPUTFILE,
@@ -745,7 +762,7 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
     setRequired(parser, "database");
     setValidValues(parser, "database", "fasta fa fna faa");
 
-    addOption(parser, seqan::ArgParseOption("s",
+    addOption(parser, ArgParseOption("s",
                                             "segfile",
                                             "SEG intervals for database"
                                             "(optional).",
@@ -755,14 +772,14 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
 
 
     addSection(parser, "Output Options");
-//     addOption(parser, seqan::ArgParseOption("o",
+//     addOption(parser, ArgParseOption("o",
 //                                             "output",
 //                                             "Index of database sequences",
 //                                             seqan::ArgParseArgument::OUTPUTFILE,
 //                                             "OUT"));
 //     setValidValues(parser, "output", "sa fm");
 
-    addOption(parser, seqan::ArgParseOption("di",
+    addOption(parser, ArgParseOption("di",
                                             "db-index-type",
                                             "suffix array or full-text minute "
                                             "space",
@@ -772,14 +789,14 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
     setDefaultValue(parser, "db-index-type", "sa");
 
     addSection(parser, "Alphabets and Translation");
-    addOption(parser, seqan::ArgParseOption("p",
+    addOption(parser, ArgParseOption("p",
                                             "program",
                                             "Blast Operation Mode.",
                                             seqan::ArgParseArgument::STRING,
                                             "program"));
     setValidValues(parser, "program", "blastn blastp blastx tblastn tblastx");
     setDefaultValue(parser, "program", "blastx");
-    addOption(parser, seqan::ArgParseOption("g",
+    addOption(parser, ArgParseOption("g",
                                             "genetic-code",
                                             "The translation table to use "
                                             "(not for BlastN, BlastP). See "
@@ -789,7 +806,7 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
 //     setValidValues(parser, "alph", "0 10");
     setDefaultValue(parser, "genetic-code", "1");
 
-    addOption(parser, seqan::ArgParseOption("a",
+    addOption(parser, ArgParseOption("a",
                                             "alph",
                                             "Alphabet Reduction for AminoAcid "
                                             "Alphabet (0 -> off; 2 -> Murphy10; "

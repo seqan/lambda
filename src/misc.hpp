@@ -347,7 +347,7 @@ myPrintImpl(LambdaOptions const & options,
             T const & first,
             Args const & ... args)
 {
-    std::cout << first;
+    myPrintImpl(options, first);
     myPrintImpl(options, args...);
 }
 
@@ -380,8 +380,6 @@ template <typename... Args>
 inline void
 myPrint(LambdaOptions const & options, const int verbose, Args const &... args)
 {
-    if (!options.doubleIndexing)
-        return;
     if (options.verbosity >= verbose)
     {
         #if defined(_OPENMP)
@@ -391,10 +389,38 @@ myPrint(LambdaOptions const & options, const int verbose, Args const &... args)
         #endif
             myPrintImpl(options, args...);
 
+        std::cout << std::flush;
     }
 }
 
+template <typename T>
+inline void
+appendToStatusImpl(std::stringstream & status,
+                   T const & first)
+{
+    status << first;
+}
 
+template <typename T, typename ... Args>
+inline void
+appendToStatusImpl(std::stringstream & status,
+                   T const & first,
+                   Args const & ... args)
+{
+    appendToStatusImpl(status, first);
+    appendToStatusImpl(status, args...);
+}
+
+template <typename... Args>
+inline void
+appendToStatus(std::stringstream & status,
+               LambdaOptions const & options,
+               const int verbose,
+               Args const & ... args)
+{
+    if (options.verbosity >= verbose)
+        appendToStatusImpl(status, args...);
+}
 
 // ----------------------------------------------------------------------------
 // remove tag type

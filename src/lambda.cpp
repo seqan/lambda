@@ -499,7 +499,7 @@ preMain(LambdaOptions      const & options,
                 indexType = 1;
             } else
             {
-                std::cout << "No Index file could be found, please make sure paths "
+                std::cerr << "No Index file could be found, please make sure paths "
                         << "are correct and the files are readable.\n" << std::flush;
 
                 return -1;
@@ -595,7 +595,7 @@ realMain(LambdaOptions      const & options,
                 " blocks of query with ",
                 options.threads,
                 " threads...\n");
-        if (options.isTerm)
+        if ((options.isTerm) && (options.verbosity >= 1))
         {
             for (unsigned char i=0; i< options.threads+3; ++i)
                 std::cout << std::endl;
@@ -603,10 +603,8 @@ realMain(LambdaOptions      const & options,
         }
     } else
     {
-        std::cout << "Searching and extending hits on-line..."
-                  << "progress:\n"
-                  << "0%  10%  20%  30%  40%  50%  60%  70%  80%  90%  100%\n"
-                  << "|" <<  std::flush;
+        myPrint(options, 1, "Searching and extending hits on-line...progress:\n"
+                "0%  10%  20%  30%  40%  50%  60%  70%  80%  90%  100%\n|");
     }
     double start = sysTime();
 
@@ -643,9 +641,7 @@ realMain(LambdaOptions      const & options,
             }
 
             // search
-            res = search(localHolder);
-            if (res)
-                continue;
+            search(localHolder);
 
             // sort
             sortMatches(localHolder);
@@ -656,22 +652,21 @@ realMain(LambdaOptions      const & options,
                 continue;
 
 
-            if ((!options.doubleIndexing) && (TID == 0))
+            if ((!options.doubleIndexing) && (TID == 0) &&
+                (options.verbosity >= 1))
             {
                 unsigned curPercent = ((t * 50) / nBlocks) * 2; // round to even
                 printProgressBar(lastPercent, curPercent);
             }
+
         } // implicit thread sync here
 
-        if ((!options.doubleIndexing) && (TID == 0))
+        if ((!options.doubleIndexing) && (TID == 0) && (options.verbosity >= 1))
             printProgressBar(lastPercent, 100);
 
-        if (options.verbosity >= 2)
+        SEQAN_OMP_PRAGMA(critical(statsAdd))
         {
-            SEQAN_OMP_PRAGMA(critical(statsAdd))
-            {
-                globalHolder.stats += localHolder.stats;
-            }
+            globalHolder.stats += localHolder.stats;
         }
     }
 
@@ -686,7 +681,10 @@ realMain(LambdaOptions      const & options,
         return ret;
 
     if (!options.doubleIndexing)
-        std::cout << "\nRuntime: " << sysTime() - start << "[s].\n\n";
+    {
+        myPrint(options, 1, "\n");
+        myPrint(options, 2, "Runtime: ", sysTime() - start, "s.\n\n");
+    }
 
     printStats(globalHolder.stats, options);
 

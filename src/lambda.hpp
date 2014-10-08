@@ -92,21 +92,20 @@ inline int
 loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
                     LambdaOptions const & options)
 {
-    std::cout << "Reading Database Index from disk…" << std::flush;
+    std::string strIdent = "Reading Database Index from disk…";
+    myPrint(options, 1, strIdent);
     double start = sysTime();
     int ret = open(globalHolder.dbIndex, toCString(options.dbFile));
     if (ret != true)
     {
-        std::cout << " failed.\n" << std::flush;
+        std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
+                  << " failed.\n";
         return 1;
     }
     double finish = sysTime() - start;
-    std::cout << " done.\n" << std::flush;
-    std::cout << "Runtime: " << finish << "s \n" << std::flush;
-
-    std::cout << "No of Fibres: " << length(indexSA(globalHolder.dbIndex))
-//         << "\t no of Seqs in Db: " << length(globalHolder.subjSeqs)
-        << "\n\n";
+    myPrint(options, 1, " done.\n");
+    myPrint(options, 2, "Runtime: ", finish, "s \n", "No of Fibres: ",
+            length(indexSA(globalHolder.dbIndex)), "\n\n");
 
     return 0;
 }
@@ -125,7 +124,7 @@ loadQueryImplTrans(TCDStringSet<TTargetAlph> & target,
                    TUntransLengths           & untransQrySeqLengths,
                    LambdaOptions       const & options)
 {
-    std::cout << "translating…" << std::flush;
+    myPrint(options, 1, "translating…");
     // translate
     translate(target,
               source,
@@ -163,10 +162,11 @@ template <typename TSourceAlph,
           MyEnableIf<!std::is_same<TSourceAlph, TTargetAlph>::value> = 0>
 inline void
 loadQueryImplReduce(TCDStringSet<TTargetAlph> & target,
-                    TCDStringSet<TSourceAlph> & source)
+                    TCDStringSet<TSourceAlph> & source,
+                    LambdaOptions       const & options)
 {
     // reduce implicitly
-    std::cout << "reducing…" << std::flush;
+    myPrint(options, 1, "reducing…");
     target.concat = source.concat;
     target.limits = source.limits;
 }
@@ -176,7 +176,8 @@ template <typename TSourceAlph,
           MyEnableIf<std::is_same<TSourceAlph, TTargetAlph>::value> = 0>
 inline void
 loadQueryImplReduce(TCDStringSet<TTargetAlph> & /**/,
-                    TCDStringSet<TSourceAlph> & /**/)
+                    TCDStringSet<TSourceAlph> & /**/,
+                    LambdaOptions       const & /**/)
 {
     // no-op, since target already references source
 }
@@ -188,13 +189,15 @@ template <BlastFormatFile m,
           typename TScoreScheme,
           typename TIndexSpec>
 inline int
-loadQuery(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, m, p, g>      & globalHolder,
-          LambdaOptions                                    const & options)
+loadQuery(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, m, p, g> &
+          globalHolder,
+          LambdaOptions const & options)
 {
     int ret = 0;
     double start = sysTime();
 
-    std::cout << "Loading Query Sequences and Ids…" << std::flush;
+    std::string strIdent = "Loading Query Sequences and Ids…";
+    myPrint(options, 1, strIdent);
 
     TCDStringSet<OrigQryAlph<p>> origSeqs;
     if (options.fileFormat)
@@ -209,8 +212,8 @@ loadQuery(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, m, p, g>      & g
                              Fasta());
     if (ret)
     {
-        std::cout << "failed. Please check that files are readable.\n"
-                  << std::flush;
+        std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
+                  << " failed.\n";
         return ret;
     }
 
@@ -222,20 +225,23 @@ loadQuery(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, m, p, g>      & g
 
     // reduce
     loadQueryImplReduce(globalHolder.redQrySeqs,
-                        globalHolder.qrySeqs);
+                        globalHolder.qrySeqs,
+                        options);
 
-
-    std::cout << " done.\n";
     double finish = sysTime() - start;
-    std::cout << "Runtime: " << finish << "s \n" << std::flush;
+    myPrint(options, 1, " done.\n");
 
-    unsigned long maxLen = 0ul;
-    for (auto const & s : globalHolder.qrySeqs)
-        if (length(s) > maxLen)
-            maxLen = length(s);
-    std::cout << "Number of sequences read: " << length(globalHolder.qrySeqs)
-              << "\nLongest sequence read: " << maxLen << "\n\n" << std::flush;
-
+    if (options.verbosity >= 2)
+    {
+        unsigned long maxLen = 0ul;
+        for (auto const & s : globalHolder.qrySeqs)
+            if (length(s) > maxLen)
+                maxLen = length(s);
+        myPrint(options, 2, "Runtime: ", finish, "s \n",
+                "No of Fibres: ", length(indexSA(globalHolder.dbIndex)), "\n",
+                "Number of sequences read: ", length(globalHolder.qrySeqs),
+                "\nLongest sequence read: ", maxLen, "\n\n");
+    }
     return 0;
 }
 
@@ -257,7 +263,8 @@ loadSubjects(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, m, p, g>  & gl
     if (!TGH::subjsInIndex)
     {
         double start = sysTime();
-        std::cout << "Loading Subj Sequences…" << std::flush;
+        std::string strIdent = "Loading Subj Sequences…";
+        myPrint(options, 1, strIdent);
 
         CharString _dbSeqs = options.dbFile;
         append(_dbSeqs, ".unredsubj"); // get unreduced stringset
@@ -265,28 +272,33 @@ loadSubjects(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, m, p, g>  & gl
         int ret = open(globalHolder.subjSeqs, toCString(_dbSeqs));
         if (ret != true)
         {
-            std::cout << " failed.\n" << std::flush;
+            std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
+                      << " failed.\n";
             return 1;
         }
-        std::cout << " done.\n";
+
         double finish = sysTime() - start;
-        std::cout << "Runtime: " << finish << "s \n" << std::flush;
-        std::cout << "Amount: " << length(globalHolder.subjSeqs) << "\n\n"<< std::flush;
+        myPrint(options, 1, " done.\n");
+        myPrint(options, 2, "Runtime: ", finish, "s \n", "Amount: ",
+                length(globalHolder.subjSeqs), "\n\n");
     }
 
     double start = sysTime();
-    std::cout << "Loading Subj Ids…" << std::flush;
+    std::string strIdent = "Loading Subj Ids…";
+    myPrint(options, 1, strIdent);
+
     CharString _dbSeqs = options.dbFile;
     append(_dbSeqs, ".ids");
     int ret = open(globalHolder.subjIds, toCString(_dbSeqs));
     if (ret != true)
     {
-        std::cout << " failed.\n" << std::flush;
+        std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
+                  << " failed.\n";
         return 1;
     }
-    std::cout << " done.\n";
     double finish = sysTime() - start;
-    std::cout << "Runtime: " << finish << "s \n\n" << std::flush;
+    myPrint(options, 1, " done.\n");
+    myPrint(options, 2, "Runtime: ", finish, "s \n\n");
 
     globalHolder.dbSpecs.dbName = options.dbFile;
 
@@ -295,18 +307,22 @@ loadSubjects(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, m, p, g>  & gl
     if (sHasFrames(p))
     {
         start = sysTime();
-        std::cout << "Loading Lengths of untranslated Subj sequences…" << std::flush;
+        std::string strIdent = "Loading Lengths of untranslated Subj sequences…";
+        myPrint(options, 1, strIdent);
+
         _dbSeqs = options.dbFile;
         append(_dbSeqs, ".untranslengths");
         ret = open(globalHolder.untransSubjSeqLengths, toCString(_dbSeqs));
         if (ret != true)
         {
-            std::cout << " failed.\n" << std::flush;
+            std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
+                      << " failed.\n";
             return 1;
         }
-        std::cout << " done.\n";
+
         finish = sysTime() - start;
-        std::cout << "Runtime: " << finish << "s \n\n" << std::flush;
+        myPrint(options, 1, " done.\n");
+        myPrint(options, 2, "Runtime: ", finish, "s \n\n");
 
         // last value has sum of lengths
         globalHolder.dbSpecs.dbTotalLength =
@@ -336,17 +352,20 @@ template <BlastFormatFile m,
           typename TScoreScheme,
           typename TIndexSpec>
 inline int
-loadSegintervals(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, m,p,g> & globalHolder,
-                 LambdaOptions                             const & options)
+loadSegintervals(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, m,p,g> &
+                 globalHolder,
+                 LambdaOptions const & options)
 {
 
     double start = sysTime();
-    std::cout << "Loading Database Masking file…" << std::flush;
+    std::string strIdent = "Loading Database Masking file…";
+    myPrint(options, 1, strIdent);
 
     CharString segFileS = options.dbFile;
     append(segFileS, ".binseg_s.concat");
     CharString segFileE = options.dbFile;
     append(segFileE, ".binseg_e.concat");
+    bool fail = false;
     struct stat buffer;
     // file exists
     if ((stat(toCString(segFileS), &buffer) == 0) &&
@@ -356,22 +375,24 @@ loadSegintervals(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, m,p,g> & g
         resize(segFileS, length(segFileS) - 7);
         resize(segFileE, length(segFileE) - 7);
 
-        int ret = open(globalHolder.segIntStarts, toCString(segFileS));
-        if (ret != true)
-            return -89;
-        ret = open(globalHolder.segIntEnds, toCString(segFileE));
-        if (ret != true)
-            return -89;
-
+        fail = !open(globalHolder.segIntStarts, toCString(segFileS));
+        if (!fail)
+            fail = !open(globalHolder.segIntEnds, toCString(segFileE));
     } else
     {
-        std::cout << "ERROR: Masking files not found.\n";
-        return -89;
+        fail = true;
     }
 
-    std::cout << " done.\n";
+    if (fail)
+    {
+        std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
+                  << " failed.\n";
+        return 1;
+    }
+
     double finish = sysTime() - start;
-    std::cout << "Runtime: " << finish << "s \n" << std::flush;
+    myPrint(options, 1, " done.\n");
+    myPrint(options, 2, "Runtime: ", finish, "s \n\n");
     return 0;
 }
 
@@ -413,7 +434,6 @@ prepareScoringMore(GlobalDataHolder<TRedAlph,
 {
 }
 
-
 template <BlastFormatFile m,
           BlastFormatProgram p,
           BlastFormatGeneration g,
@@ -425,7 +445,6 @@ prepareScoring(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, m, p, g>
                                                       & globalHolder,
                LambdaOptions                    const & options)
 {
-
     setScoreGapOpen  (globalHolder.scoreScheme, options.gapOpen);
     setScoreGapExtend(globalHolder.scoreScheme, options.gapExtend);
     blastScoringScheme2seqanScoringScheme(globalHolder.scoreScheme);
@@ -436,8 +455,8 @@ prepareScoring(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, m, p, g>
     if (!assignScoreScheme(globalHolder.blastScoringAdapter,
                       globalHolder.scoreScheme))
     {
-        ::std::cerr << "Could not computer Karlin-Altschul-Values for "
-                    << "Scoring Scheme. Exiting.\n";
+        std::cerr << "Could not computer Karlin-Altschul-Values for "
+                  << "Scoring Scheme. Exiting.\n";
         return -1;
     }
     return 0;
@@ -458,9 +477,13 @@ template <typename TLocalHolder>
 inline int
 generateSeeds(TLocalHolder & lH)
 {
-    lH.statusStr << "Block " <<  std::setw(4) << lH.i << ": Generating Seeds…";
-    if (lH.options.isTerm)
-        myPrint(lH.options, 2, lH.statusStr);
+    if (lH.options.doubleIndexing)
+    {
+        appendToStatus(lH.statusStr, lH.options, 1, "Block ", std::setw(4), 
+                       lH.i, ": Generating Seeds…");
+        if (lH.options.isTerm)
+            myPrint(lH.options, 1, lH.statusStr);
+    }
 
     double start = sysTime();
     for (unsigned long i = lH.indexBeginQry; i < lH.indexEndQry; ++i)
@@ -482,12 +505,14 @@ generateSeeds(TLocalHolder & lH)
         }
     }
     double finish = sysTime() - start;
-    lH.statusStr << " done. " ;
-    if (lH.options.verbosity > 2)
-        lH.statusStr << finish << "[s]. "
-                     << length(lH.seeds) << " seeds created.";
+    if (lH.options.doubleIndexing)
+    {
+        appendToStatus(lH.statusStr, lH.options, 1, " done. ");
+        appendToStatus(lH.statusStr, lH.options, 2, finish, "s. ",
+                       length(lH.seeds), " seeds created.");
 
-    myPrint(lH.options, 2, lH.statusStr);
+        myPrint(lH.options, 1, lH.statusStr);
+    }
     return 0;
 }
 
@@ -501,9 +526,12 @@ template <typename TLocalHolder>
 inline int
 generateTrieOverSeeds(TLocalHolder & lH)
 {
-    lH.statusStr << "Generating Query-Index…";
-    if (lH.options.isTerm)
-        myPrint(lH.options, 2, lH.statusStr);
+    if (lH.options.doubleIndexing)
+    {
+        appendToStatus(lH.statusStr, lH.options, 1, "Generating Query-Index…");
+        if (lH.options.isTerm)
+            myPrint(lH.options, 1, lH.statusStr);
+    }
 
     double start = sysTime();
     // we only want full length seed sequences in index, build up manually
@@ -522,11 +550,13 @@ generateTrieOverSeeds(TLocalHolder & lH)
     typename Iterator<typename TLocalHolder::TSeedIndex, TopDown<> >::Type it(lH.seedIndex); // instantiate
     double finish = sysTime() - start;
 
-    lH.statusStr << " done. " ;
-    if (lH.options.verbosity > 2)
-        lH.statusStr << finish << "[s]. "
-                     << length(sa) << " fibres in SeedIndex. ";
-    myPrint(lH.options, 2, lH.statusStr);
+    if (lH.options.doubleIndexing)
+    {
+        appendToStatus(lH.statusStr, lH.options, 1, " done. ");
+        appendToStatus(lH.statusStr, lH.options, 2, finish, "s. ",
+                       length(sa), " fibres in SeedIndex. ");;
+        myPrint(lH.options, 1, lH.statusStr);
+    }
 
     return 0;
 }
@@ -536,13 +566,12 @@ generateTrieOverSeeds(TLocalHolder & lH)
 // --------------------------------------------------------------------------
 
 template <typename BackSpec, typename TLocalHolder>
-inline int
+inline void
 __searchDoubleIndex(TLocalHolder & lH)
 {
-    // FIND
-    lH.statusStr << "Seeding…";
+    appendToStatus(lH.statusStr, lH.options, 1, "Seeding…");
     if (lH.options.isTerm)
-        myPrint(lH.options, 2, lH.statusStr);
+        myPrint(lH.options, 1, lH.statusStr);
 
     double start = sysTime();
 
@@ -561,25 +590,17 @@ __searchDoubleIndex(TLocalHolder & lH)
 
     double finish = sysTime() - start;
 
-    lH.statusStr << " done. " << finish << "[s]. ";
-    myPrint(lH.options, 2, lH.statusStr);
-
-    return 0;
+    appendToStatus(lH.statusStr, lH.options, 1, " done. ");
+    appendToStatus(lH.statusStr, lH.options, 2, finish, "s. ");
+    myPrint(lH.options, 1, lH.statusStr);
 }
 
 template <typename BackSpec, typename TLocalHolder>
-inline int
+inline void
 __searchSingleIndex(TLocalHolder & lH)
 {
     typedef typename Iterator<decltype(lH.seeds) const, Rooted>::Type TSeedsIt;
     typedef typename Iterator<decltype(lH.gH.dbIndex),TopDown<>>::Type TIndexIt;
-
-    // FIND
-    lH.statusStr << "Seeding…";
-    if (lH.options.isTerm)
-        myPrint(lH.options, 2, lH.statusStr);
-
-    double start = sysTime();
 
     auto delegate = [&lH] (TIndexIt & indexIt,
                            TSeedsIt const & seedsIt,
@@ -590,33 +611,26 @@ __searchSingleIndex(TLocalHolder & lH)
 
     find(lH.gH.dbIndex, lH.seeds, int(lH.options.maxSeedDist), delegate,
          Backtracking<BackSpec>());
-
-    double finish = sysTime() - start;
-
-    lH.statusStr << " done. " << finish << "[s]. ";
-    myPrint(lH.options, 2, lH.statusStr);
-
-    return 0;
 }
 
 template <typename BackSpec, typename TLocalHolder>
-inline int
+inline void
 __search(TLocalHolder & lH)
 {
     if (lH.options.doubleIndexing)
-        return __searchDoubleIndex<BackSpec>(lH);
+        __searchDoubleIndex<BackSpec>(lH);
     else
-        return __searchSingleIndex<BackSpec>(lH);
+        __searchSingleIndex<BackSpec>(lH);
 }
 
 template <typename TLocalHolder>
-inline int
+inline void
 search(TLocalHolder & lH)
 {
     if (lH.options.hammingOnly)
-        return __search<Backtracking<HammingDistance>>(lH);
+        __search<Backtracking<HammingDistance>>(lH);
     else
-        return __search<Backtracking<EditDistance>>(lH);
+        __search<Backtracking<EditDistance>>(lH);
 }
 
 // --------------------------------------------------------------------------
@@ -628,22 +642,27 @@ template <typename TLocalHolder>
 inline void
 sortMatches(TLocalHolder & lH)
 {
-//     auto const originalNum = length(lH.matches);
-    lH.statusStr << "Sorting hits…";
-    if (lH.options.isTerm)
-        myPrint(lH.options, 2, lH.statusStr);
-
-    /// sort
+    if (lH.options.doubleIndexing)
+    {
+        appendToStatus(lH.statusStr, lH.options, 1, "Sorting hits…");
+        if (lH.options.isTerm)
+            myPrint(lH.options, 1, lH.statusStr);
+    }
 
     double start = sysTime();
+
 //    std::sort(begin(lH.matches, Standard()), end(lH.matches, Standard()));
    std::sort(lH.matches.begin(), lH.matches.end());
 //     lH.matches.sort();
+
     double finish = sysTime() - start;
-    lH.statusStr << " done. " ;
-    if (lH.options.verbosity > 2)
-        lH.statusStr << finish << "[s]. ";
-    myPrint(lH.options, 2, lH.statusStr);
+
+    if (lH.options.doubleIndexing)
+    {
+        appendToStatus(lH.statusStr, lH.options, 1, " done. ");
+        appendToStatus(lH.statusStr, lH.options, 2, finish, "s. ");
+        myPrint(lH.options, 1, lH.statusStr);
+    }
 }
 
 template <typename TBlastMatch,
@@ -996,8 +1015,12 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
 //     constexpr uint8_t sFactor = sHasRevComp(TFormat()) ? 3 : 1;
 
     double start = sysTime();
-    lH.statusStr << "Extending and writing hits…";
-    myPrint(lH.options, 2, lH.statusStr);
+    if (lH.options.doubleIndexing)
+    {
+        appendToStatus(lH.statusStr, lH.options, 1,
+                       "Extending and writing hits…");
+        myPrint(lH.options, 1, lH.statusStr);
+    }
 
     //DEBUG
 //     std::cout << "Length of matches:   " << length(lH.matches);
@@ -1207,20 +1230,26 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
 
     }
 
-    double finish = sysTime() - start;
+    if (lH.options.doubleIndexing)
+    {
+        double finish = sysTime() - start;
 
-    lH.statusStr << " done. " << finish << "[s]. ";
-    myPrint(lH.options, 2, lH.statusStr);
+        appendToStatus(lH.statusStr, lH.options, 1, " done. ");
+        appendToStatus(lH.statusStr, lH.options, 2, finish, "s. ");
+        myPrint(lH.options, 1, lH.statusStr);
+    }
+
     return 0;
 }
 
 void printStats(StatsHolder const & stats, LambdaOptions const & options)
 {
+    if ((options.verbosity >= 1) && options.isTerm && options.doubleIndexing)
+        for (unsigned char i=0; i < options.threads + 3; ++i)
+            std::cout << std::endl;
+
     if (options.verbosity >= 2)
     {
-        if ((options.isTerm) && (options.doubleIndexing))
-            for (unsigned char i=0; i< options.threads+3; ++i)
-                std::cout << std::endl;
         unsigned long rem = stats.hitsAfterSeeding;
         auto const w = _numberOfDigits(rem); // number of digits
         #define R  " " << std::setw(w)
@@ -1248,7 +1277,7 @@ void printStats(StatsHolder const & stats, LambdaOptions const & options)
                   << std::setw(w) << stats.hitsFinal
                   << "\nNumber of Queries with at least one valid hit:  "
                   << std::setw(w) << stats.qrysWithHit
-                  << "\n\n";
+                  << "\n";
     }
 
 }
