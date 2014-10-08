@@ -162,17 +162,17 @@ template <typename TRedAlph_,
 class GlobalDataHolder
 {
 public:
-    static bool
-    constexpr indexIsFM = std::is_same<TIndexSpec_, FMIndex<>>::value;
-
     using TRedAlph      = RedAlph<p, TRedAlph_>;
     using TFormat       = BlastFormat<m,p,g>;
     using TTransSeqs    = TCDStringSet<TransAlph<p>>;
     using TRedSeqs      = TCDStringSet<TRedAlph>;
-    static bool
-    constexpr noReduction = std::is_same<TTransSeqs, TRedSeqs>::value;
-    static bool
-    constexpr subjsInIndex = (noReduction && !indexIsFM);
+
+    static bool constexpr
+    indexIsFM           = std::is_same<TIndexSpec_, FMIndex<>>::value;
+    static bool constexpr
+    noReduction         = std::is_same<TTransSeqs, TRedSeqs>::value;
+    static bool constexpr
+    subjsInIndex        = (noReduction && !indexIsFM);
 
     using TRedSeqsACT   = typename std::conditional<
                             noReduction,
@@ -182,7 +182,6 @@ public:
                             subjsInIndex,
                             TTransSeqs &,
                             TTransSeqs>::type;
-//     using TSubjSeqs     = TTransSeqs;
 
     using TIndexSpec    = TIndexSpec_;
     using TDbIndex      = Index<TRedSeqs, TIndexSpec>;
@@ -195,11 +194,11 @@ public:
     TDbIndex                    dbIndex;
     BlastDbSpecs<>              dbSpecs;
 
-    // these are always translated, except for BLASTN mode, but *never reduced*
+    // these are the sequences in *unreduced space*
     TTransSeqs                  qrySeqs;
     TSubjSeqs                   subjSeqs = initHelper(TTransSeqs(),
                                                       indexText(dbIndex));
-//     TSubjSeqs                   subjSeqs;
+
     // reduced query sequences if using reduction, otherwise const & = qrySeqs
     TRedSeqsACT                 redQrySeqs = initHelper(TRedSeqs(), qrySeqs);
 
@@ -325,7 +324,6 @@ seedLooksPromising(
             LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> const & lH,
             TMatch const & m)
 {
-
     auto const & qSeq = infix(lH.gH.qrySeqs[m.qryId],
                               m.qryStart,
                               m.qryStart + lH.options.seedLength);
@@ -334,18 +332,13 @@ seedLooksPromising(
                               m.subjStart + lH.options.seedLength);
     int maxScore = 0;
 
-    int scores[lH.options.seedLength]; // C99, C++14, -Wno-vla
+    int scores[lH.options.seedLength]; // C99, C++14, -Wno-vla before that
     scores[0] = 0;
 
     // score the diagonal
     for (unsigned i = 0; i < lH.options.seedLength; ++i)
     {
-        scores[i] += score(lH.gH.scoreScheme,
-                           qSeq[i],
-//                            TGlobalHolder::subjIsReversed
-//                             ? sSeq[lH.options.seedLength - 1 - i]
-//                             : 
-                            sSeq[i]);
+        scores[i] += score(lH.gH.scoreScheme, qSeq[i], sSeq[i]);
         if (scores[i] < 0)
             scores[i] = 0;
         else if (scores[i] >= maxScore)
@@ -368,9 +361,10 @@ onFindImpl(LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> & lH,
            TSeedId const & seedId,
            TSubjOcc subjOcc)
 {
-    if (std::is_same<typename TGlobalHolder::TIndexSpec, FMIndex<>>::value)
+    if (TGlobalHolder::indexIsFM) // positions are reversed
         setSeqOffset(subjOcc,
-                     suffixLength(subjOcc, lH.gH.dbIndex)
+                     length(lH.gH.subjSeqs[getSeqNo(subjOcc)])
+                     - getSeqOffset(subjOcc)
                      - lH.options.seedLength);
 
     Match m {static_cast<Match::TQId>(lH.seedRefs[seedId]),
@@ -381,9 +375,7 @@ onFindImpl(LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> & lH,
     bool discarded = false;
     auto const halfSubjL = lH.options.seedLength /  2;
 
-    for (unsigned k = 0;
-            k < length(lH.gH.segIntStarts[m.subjId]);
-            ++k)
+    for (unsigned k = 0; k < length(lH.gH.segIntStarts[m.subjId]); ++k)
     {
         // more than half of the seed falls into masked interval
         if (intervalOverlap(m.subjStart,
@@ -398,7 +390,7 @@ onFindImpl(LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> & lH,
         }
     }
 
-     if (!seedLooksPromising(lH, m))
+     if ((!discarded) && (!seedLooksPromising(lH, m)))
      {
          discarded = true;
          ++lH.stats.hitsFailedSeedAlignScoreTest;

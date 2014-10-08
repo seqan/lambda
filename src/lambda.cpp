@@ -623,7 +623,7 @@ realMain(LambdaOptions      const & options,
     {
         TLocalHolder localHolder(options, globalHolder);
 
-        SEQAN_OMP_PRAGMA(for schedule(dynamic)) // TODO nowait
+        SEQAN_OMP_PRAGMA(for schedule(dynamic))
         for (uint64_t t = 0; t < nBlocks; ++t)
         {
             int res = 0;
@@ -661,7 +661,7 @@ realMain(LambdaOptions      const & options,
                 unsigned curPercent = ((t * 50) / nBlocks) * 2; // round to even
                 printProgressBar(lastPercent, curPercent);
             }
-        }
+        } // implicit thread sync here
 
         if ((!options.doubleIndexing) && (TID == 0))
             printProgressBar(lastPercent, 100);

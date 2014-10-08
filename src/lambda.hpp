@@ -101,15 +101,12 @@ loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
         return 1;
     }
     double finish = sysTime() - start;
-    std::cout << " loaded.\n" << std::flush;
+    std::cout << " done.\n" << std::flush;
     std::cout << "Runtime: " << finish << "s \n" << std::flush;
 
-    if (std::is_same<typename TGlobalHolder::TIndexSpec, FMIndex<>>::value)
-        std::cout << "TODO\n";
-    else
-        std::cout << "No of Fibres: " << length(indexSA(globalHolder.dbIndex))
-           << "\t no of Seqs in Db: " << length(indexText(globalHolder.dbIndex))
-           << "\n\n";
+    std::cout << "No of Fibres: " << length(indexSA(globalHolder.dbIndex))
+//         << "\t no of Seqs in Db: " << length(globalHolder.subjSeqs)
+        << "\n\n";
 
     return 0;
 }
@@ -649,51 +646,6 @@ sortMatches(TLocalHolder & lH)
     myPrint(lH.options, 2, lH.statusStr);
 }
 
-template <typename TSeq,
-          typename TSeqInfix,
-          MyEnableIf<std::is_same<TSeq,int>::value> = 0>
-inline void
-_reverseHelper(TSeq & seq, TSeqInfix const &)
-{
-    seq = 0; // initialize
-//    std::cerr << "subjHost :" << seq << "\n";
-}
-
-template <typename TSeq,
-          typename TSeqInfix,
-          MyEnableIf<!std::is_same<TSeq,int>::value> = 0>
-inline void
-_reverseHelper(TSeq & seq, TSeqInfix const & seqInfix)
-{
-    seq = seqInfix;
-    reverse(seq);
-//    std::cerr << "subjHost :" << toCString(CharString(seq)) << "\n";
-}
-
-template <typename TSeq,
-          typename TSeqInfix,
-          MyEnableIf<std::is_same<TSeq,int>::value> = 0>
-inline TSeqInfix const &
-_reverseHelper2(TSeq & /**/, TSeqInfix const & seqInfix)
-{
-    return seqInfix;
-}
-
-template <typename TSeq,
-          typename TSeqInfix,
-          MyEnableIf<!std::is_same<TSeq,int>::value> = 0>
-inline TSeqInfix &&
-_reverseHelper2(TSeq & seq, TSeqInfix const & /**/)
-{
-    return std::move(infix(seq, 0, length(seq)));
-}
-
-const char * toCString(int const foo)
-{
-    std::string s = std::to_string(foo);
-    return s.c_str();
-}
-
 template <typename TBlastMatch,
           typename TLocalHolder>
 inline int
@@ -703,33 +655,14 @@ computeBlastMatch(TBlastMatch         & bm,
 {
     using TGH       = typename TLocalHolder::TGlobalHolder;
     using TFormat   = typename TGH::TFormat;
-//     using TTransSeq = typename Value<typename TGH::TTransSeqs>::Type;
-//     using TQrySeq   = TTransSeq const &;
-//     using TSubjSeq  = typename std::conditional<TGH::subjIsReversed,
-//                                     String<TransAlph<getProgramType(TFormat())>>,
-//                                     TTransSeq const &>::type;
-//     using TQrySeq   = decltype(lH.gH.qrySeqs[m.qryId]) const &;
-//     using TSubjSeq  = typename std::conditional<TGH::subjIsReversed,
-//                             String<TransAlph<getProgramType(TFormat())>>,
-//                             decltype(lH.gH.subjSeqs[m.subjId]) const &>::type;
-//     using TSubjHost  = typename std::conditional<TGH::subjIsReversed,
-//                             String<TransAlph<getProgramType(TFormat())>>,
-//                             int>::type; // cheap type
+
     const unsigned long qryLength = length(value(lH.gH.qrySeqs, m.qryId));
 
-//    std::cerr << "[]       :" << toCString(CharString(lH.gH.subjSeqs[m.subjId])) << "\n";
-//     TSubjHost subjHost;
-//     _reverseHelper(subjHost, lH.gH.subjSeqs[m.subjId]);
-    //TODO fix this reverse business
     auto const &   curQry = lH.gH.qrySeqs[m.qryId];
-//    auto const &  curSubj = _reverseHelper2(subjHost, lH.gH.subjSeqs[m.subjId]);
     auto const &  curSubj = lH.gH.subjSeqs[m.subjId];
-
-//    std::cerr << "curSubj  :" << toCString(CharString(curSubj)) << "\n";
 
     SEQAN_ASSERT_LEQ(bm.qStart, bm.qEnd);
     SEQAN_ASSERT_LEQ(bm.sStart, bm.sEnd);
-
 
 //     auto qryInfix = infix(curQry,
 //                                 bm.qStart,
@@ -788,7 +721,7 @@ computeBlastMatch(TBlastMatch         & bm,
     // fast local alignment without DP-stuff
     if (maxDist == 0)
     {
-        int scores[row0len]; // non-iso, waiting for std::dynarray
+        int scores[row0len]; // C99, C++14, -Wno-vla before that
         scores[0] = 0;
         unsigned newEnd = 0;
         unsigned newBeg = 0;
