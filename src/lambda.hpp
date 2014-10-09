@@ -157,27 +157,28 @@ loadQueryImplTrans(TCDStringSet<TTargetAlph> & target,
     swap(target, source);
 }
 
-template <typename TSourceAlph,
-          typename TTargetAlph,
-          MyEnableIf<!std::is_same<TSourceAlph, TTargetAlph>::value> = 0>
+template <typename TSourceSet,
+          typename TTargetSet,
+          MyEnableIf<!std::is_same<TSourceSet, TTargetSet>::value> = 0>
 inline void
-loadQueryImplReduce(TCDStringSet<TTargetAlph> & target,
-                    TCDStringSet<TSourceAlph> & source,
-                    LambdaOptions       const & options)
+loadQueryImplReduce(TSourceSet          & target,
+                    TTargetSet          & source,
+                    LambdaOptions const & options)
 {
     // reduce implicitly
     myPrint(options, 1, "reducing…");
-    target.concat = source.concat;
+    target.concat._host = &source.concat;
     target.limits = source.limits;
+//     target(source);
 }
 
-template <typename TSourceAlph,
-          typename TTargetAlph,
-          MyEnableIf<std::is_same<TSourceAlph, TTargetAlph>::value> = 0>
+template <typename TSourceSet,
+          typename TTargetSet,
+          MyEnableIf<std::is_same<TSourceSet, TTargetSet>::value> = 0>
 inline void
-loadQueryImplReduce(TCDStringSet<TTargetAlph> & /**/,
-                    TCDStringSet<TSourceAlph> & /**/,
-                    LambdaOptions       const & /**/)
+loadQueryImplReduce(TSourceSet          & /**/,
+                    TTargetSet          & /**/,
+                    LambdaOptions const & /**/)
 {
     // no-op, since target already references source
 }

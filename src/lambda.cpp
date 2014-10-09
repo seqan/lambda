@@ -388,9 +388,9 @@ argConv1(LambdaOptions      const & options,
             return argConv2(options, TFormat(), AminoAcid());
         case 2:
             return argConv2(options, TFormat(), ReducedAminoAcid<Murphy10>());
+#ifndef FASTBUILD
         case 10:
             return argConv2(options, TFormat(), ReducedAminoAcid<ClusterReduction<10>>());
-#ifndef FASTBUILD
         case 1:
             return argConv2(options, TFormat(), AminoAcid10());
         case 8:

@@ -71,13 +71,13 @@ struct SAValue<StringSet<String<Dna5, TSpec1>, TSpec2> >
 using namespace seqan;
 
 #if defined LAMBDA_BITCOPMRESSED_STRINGS
-using TCDSpec = Packed<>;
+using PackSpec = Packed<>;
 #else
-using TCDSpec = Alloc<>;
+using PackSpec = Alloc<>;
 #endif
 
 template <typename TAlph>
-using TCDStringSet = StringSet<String<TAlph, TCDSpec>, Owner<ConcatDirect<> > >;
+using TCDStringSet = StringSet<String<TAlph, PackSpec>, Owner<ConcatDirect<> > >;
 
 
 template <BlastFormatProgram p>

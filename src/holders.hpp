@@ -152,7 +152,6 @@ initHelper(TSet1 && set1, TSet2 & /**/)
     return std::move(set1);
 }
 
-
 template <typename TRedAlph_,
           typename TScoreScheme,
           typename TIndexSpec_,
@@ -162,29 +161,40 @@ template <typename TRedAlph_,
 class GlobalDataHolder
 {
 public:
-    using TRedAlph      = RedAlph<p, TRedAlph_>;
     using TFormat       = BlastFormat<m,p,g>;
+
     using TTransSeqs    = TCDStringSet<TransAlph<p>>;
-    using TRedSeqs      = TCDStringSet<TRedAlph>;
+
+    using TRedAlph      = RedAlph<p, TRedAlph_>;
+    using TRedFunct     = RedViewFunctor<TRedAlph>;
+
+    using TRedSeqsReal  = TCDStringSet<TRedAlph>;
+    using TRedSeqVirt   = ModifiedString<String<TransAlph<p>, PackSpec>,
+                                        ModView<TRedFunct>>;
+    using TRedSeqsVirt  = StringSet<TRedSeqVirt, Owner<ConcatDirect<>>>;
 
     static bool constexpr
     indexIsFM           = std::is_same<TIndexSpec_, FMIndex<>>::value;
     static bool constexpr
-    noReduction         = std::is_same<TTransSeqs, TRedSeqs>::value;
+    noReduction         = std::is_same<TTransSeqs, TRedSeqsReal>::value;
     static bool constexpr
     subjsInIndex        = (noReduction && !indexIsFM);
 
+    using TRedSeqs      = typename std::conditional<
+                            noReduction,
+                            TRedSeqsReal,           // owner
+                            TRedSeqsVirt>::type;    // modview
     using TRedSeqsACT   = typename std::conditional<
                             noReduction,
-                            TRedSeqs &,
-                            TRedSeqs>::type;
+                            TRedSeqsReal &,         // reference to owner
+                            TRedSeqsVirt>::type;    // modview
     using TSubjSeqs     = typename std::conditional<
                             subjsInIndex,
                             TTransSeqs &,
                             TTransSeqs>::type;
 
     using TIndexSpec    = TIndexSpec_;
-    using TDbIndex      = Index<TRedSeqs, TIndexSpec>;
+    using TDbIndex      = Index<TRedSeqsReal, TIndexSpec>;
 
     using TPositions    = typename StringSetLimits<TTransSeqs>::Type;
     using TIds          = StringSet<CharString, Owner<ConcatDirect<>>>;
@@ -201,6 +211,7 @@ public:
 
     // reduced query sequences if using reduction, otherwise const & = qrySeqs
     TRedSeqsACT                 redQrySeqs = initHelper(TRedSeqs(), qrySeqs);
+//     TRedSeqsACT                 redQrySeqs = qrySeqs;
 
     // TODO maybe remove these for other specs?
     TPositions                  untransQrySeqLengths; // used iff qHasFrames(p)
@@ -230,7 +241,7 @@ class LocalDataHolder
 public:
     using TGlobalHolder = TGlobalHolder_;
     using TFormat       = typename TGlobalHolder::TFormat;
-    using TRedQrySeq    = String<typename TGlobalHolder::TRedAlph, TCDSpec>;
+    using TRedQrySeq    = typename Value<typename TGlobalHolder::TRedSeqs>::Type;
     using TSeeds        = StringSet<typename Infix<TRedQrySeq const>::Type>;
     using TSeedIndex    = Index<TSeeds,IndexSa<>>;
 
