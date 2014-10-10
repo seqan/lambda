@@ -55,29 +55,6 @@ using namespace seqan;
 template <bool condition>
 using MyEnableIf = typename std::enable_if<condition, int>::type;
 
-template <typename TSpec>
-struct GetTSpec
-{
-//     static_assert(false, "Wrong instantiation");
-};
-
-template <typename TAlphSpec_>
-struct GetTSpec <SimpleType<unsigned char, ReducedAminoAcid_<TAlphSpec_>>>
-{
-    using TAlphSpec = TAlphSpec_;
-};
-
-template <typename TRedAlph>
-struct RedViewFunctor :
-    public std::unary_function<AminoAcid,TRedAlph>
-{
-    using TRedSpec = typename GetTSpec<TRedAlph>::TAlphSpec;
-    inline TRedAlph operator()(AminoAcid c) const
-    {
-        return TranslateTableAAToRedAA_<TRedSpec>::VALUE[c.value];
-    }
-};
-
 // ============================================================================
 // Functions for translation and retranslation
 // ============================================================================

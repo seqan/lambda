@@ -166,11 +166,9 @@ public:
     using TTransSeqs    = TCDStringSet<TransAlph<p>>;
 
     using TRedAlph      = RedAlph<p, TRedAlph_>;
-    using TRedFunct     = RedViewFunctor<TRedAlph>;
-
     using TRedSeqsReal  = TCDStringSet<TRedAlph>;
     using TRedSeqVirt   = ModifiedString<String<TransAlph<p>, PackSpec>,
-                                        ModView<TRedFunct>>;
+                                         FunctorConvert<TransAlph<p>,TRedAlph>>;
     using TRedSeqsVirt  = StringSet<TRedSeqVirt, Owner<ConcatDirect<>>>;
 
     static bool constexpr
