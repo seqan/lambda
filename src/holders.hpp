@@ -133,25 +133,6 @@ struct StatsHolder
 // struct GlobalDataHolder  -- one object per program
 // ----------------------------------------------------------------------------
 
-
-template <typename TSet1,
-          typename TSet2,
-          MyEnableIf<std::is_same<TSet1, TSet2>::value> = 0>
-inline TSet1 &
-initHelper(TSet1 && /**/, TSet2 & set2)
-{
-    return set2;
-}
-
-template <typename TSet1,
-          typename TSet2,
-          MyEnableIf<!std::is_same<TSet1, TSet2>::value> = 0>
-inline TSet1 &&
-initHelper(TSet1 && set1, TSet2 & /**/)
-{
-    return std::move(set1);
-}
-
 template <typename TRedAlph_,
           typename TScoreScheme,
           typename TIndexSpec_,
@@ -163,10 +144,10 @@ class GlobalDataHolder
 public:
     using TFormat       = BlastFormat<m,p,g>;
 
+    // SEQUENCES AND THEIR TYPE //
     using TTransSeqs    = TCDStringSet<TransAlph<p>>;
 
-    using TRedAlph      = RedAlph<p, TRedAlph_>;
-    using TRedSeqsReal  = TCDStringSet<TRedAlph>;
+    using TRedAlph      = RedAlph<p, TRedAlph_>; // ensures == Dna5 for BlastN
     using TRedSeqVirt   = ModifiedString<String<TransAlph<p>, PackSpec>,
                                          FunctorConvert<TransAlph<p>,TRedAlph>>;
     using TRedSeqsVirt  = StringSet<TRedSeqVirt, Owner<ConcatDirect<>>>;
@@ -174,53 +155,46 @@ public:
     static bool constexpr
     indexIsFM           = std::is_same<TIndexSpec_, FMIndex<>>::value;
     static bool constexpr
-    noReduction         = std::is_same<TTransSeqs, TRedSeqsReal>::value;
-    static bool constexpr
-    subjsInIndex        = (noReduction && !indexIsFM);
+    noReduction         = std::is_same<TransAlph<p>, TRedAlph>::value;
 
     using TRedSeqs      = typename std::conditional<
                             noReduction,
-                            TRedSeqsReal,           // owner
+                            TTransSeqs,             // owner
                             TRedSeqsVirt>::type;    // modview
     using TRedSeqsACT   = typename std::conditional<
                             noReduction,
-                            TRedSeqsReal &,         // reference to owner
+                            TTransSeqs &,           // reference to owner
                             TRedSeqsVirt>::type;    // modview
-    using TSubjSeqs     = typename std::conditional<
-                            subjsInIndex,
-                            TTransSeqs &,
-                            TTransSeqs>::type;
-
-    using TIndexSpec    = TIndexSpec_;
-    using TDbIndex      = Index<TRedSeqsReal, TIndexSpec>;
-
-    using TPositions    = typename StringSetLimits<TTransSeqs>::Type;
-    using TIds          = StringSet<CharString, Owner<ConcatDirect<>>>;
-    using TMasking      = StringSet<String<unsigned>, Owner<ConcatDirect<>>>;
-    using TBlastScoringAdapter = BlastScoringAdapter<TScoreScheme>;
-
-    TDbIndex                    dbIndex;
-    BlastDbSpecs<>              dbSpecs;
 
     // these are the sequences in *unreduced space*
-    TTransSeqs                  qrySeqs;
-    TSubjSeqs                   subjSeqs = initHelper(TTransSeqs(),
-                                                      indexText(dbIndex));
+    TTransSeqs          qrySeqs;
+    TTransSeqs          subjSeqs;
 
-    // reduced query sequences if using reduction, otherwise const & = qrySeqs
-    TRedSeqsACT                 redQrySeqs = initHelper(TRedSeqs(), qrySeqs);
-//     TRedSeqsACT                 redQrySeqs = qrySeqs;
+    // reduced query sequences if using reduction, otherwise & = transSeqs
+    TRedSeqsACT         redQrySeqs = qrySeqs;//  = initHelper(TRedSeqs(qrySeqs), qrySeqs);
+    TRedSeqsACT         redSubjSeqs = subjSeqs;// = initHelper(TRedSeqs(subjSeqs), subjSeqs);
+
+    // INDECES AND THEIR TYPE //
+    using TIndexSpec    = TIndexSpec_;
+    using TDbIndex      = Index<TRedSeqs, TIndexSpec>;
+
+    TDbIndex            dbIndex;
+    BlastDbSpecs<>      dbSpecs;
 
     // TODO maybe remove these for other specs?
-    TPositions                  untransQrySeqLengths; // used iff qHasFrames(p)
-    TPositions                  untransSubjSeqLengths; // used iff sHasFrames(p)
+    using TPositions    = typename StringSetLimits<TTransSeqs>::Type;
+    TPositions          untransQrySeqLengths; // used iff qHasFrames(p)
+    TPositions          untransSubjSeqLengths; // used iff sHasFrames(p)
 
-    TMasking                    segIntStarts;
-    TMasking                    segIntEnds;
+    using TMasking      = StringSet<String<unsigned>, Owner<ConcatDirect<>>>;
+    TMasking            segIntStarts;
+    TMasking            segIntEnds;
 
-    TIds                        qryIds;
-    TIds                        subjIds;
+    using TIds          = StringSet<CharString, Owner<ConcatDirect<>>>;
+    TIds                qryIds;
+    TIds                subjIds;
 
+    using TBlastScoringAdapter = BlastScoringAdapter<TScoreScheme>;
     TScoreScheme                scoreScheme;
     TBlastScoringAdapter        blastScoringAdapter;
 

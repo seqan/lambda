@@ -84,6 +84,165 @@ struct Comp :
 // ============================================================================
 
 // --------------------------------------------------------------------------
+// Function prepareScoring()
+// --------------------------------------------------------------------------
+
+template <BlastFormatFile m,
+          BlastFormatProgram p,
+          BlastFormatGeneration g,
+          typename TRedAlph,
+          typename TScoreScheme,
+          typename TIndexSpec>
+inline void
+prepareScoringMore(GlobalDataHolder<TRedAlph,
+                                    TScoreScheme,TIndexSpec,
+                                    m, p, g>         & globalHolder,
+                   LambdaOptions                    const & options,
+                   std::true_type                   const & /**/)
+{
+    setScoreMatch(globalHolder.scoreScheme, options.match);
+    setScoreMismatch(globalHolder.scoreScheme, options.misMatch);
+}
+
+template <BlastFormatFile m,
+          BlastFormatProgram p,
+          BlastFormatGeneration g,
+          typename TRedAlph,
+          typename TScoreScheme,
+          typename TIndexSpec>
+inline void
+prepareScoringMore(GlobalDataHolder<TRedAlph,
+                                    TScoreScheme,TIndexSpec,
+                                    m, p, g>              & /*globalHolder*/,
+                   LambdaOptions                    const & /*options*/,
+                   std::false_type                  const & /**/)
+{
+}
+
+template <BlastFormatFile m,
+          BlastFormatProgram p,
+          BlastFormatGeneration g,
+          typename TRedAlph,
+          typename TScoreScheme,
+          typename TIndexSpec>
+inline int
+prepareScoring(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, m, p, g>
+                                                      & globalHolder,
+               LambdaOptions                    const & options)
+{
+    setScoreGapOpen  (globalHolder.scoreScheme, options.gapOpen);
+    setScoreGapExtend(globalHolder.scoreScheme, options.gapExtend);
+    blastScoringScheme2seqanScoringScheme(globalHolder.scoreScheme);
+
+    prepareScoringMore(globalHolder, options,
+                       std::is_same<TScoreScheme, Score<int, Simple>>());
+
+    if (!assignScoreScheme(globalHolder.blastScoringAdapter,
+                      globalHolder.scoreScheme))
+    {
+        std::cerr << "Could not computer Karlin-Altschul-Values for "
+                  << "Scoring Scheme. Exiting.\n";
+        return -1;
+    }
+    return 0;
+}
+
+// --------------------------------------------------------------------------
+// Function loadSubjects()
+// --------------------------------------------------------------------------
+
+template <BlastFormatFile m,
+          BlastFormatProgram p,
+          BlastFormatGeneration g,
+          typename TRedAlph,
+          typename TScoreScheme,
+          typename TIndexSpec>
+inline int
+loadSubjects(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, m, p, g>  & globalHolder,
+             LambdaOptions                                const & options)
+{
+//     using TGH = GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, m, p, g>;
+//     if (!TGH::subjsInIndex)
+    {
+        double start = sysTime();
+        std::string strIdent = "Loading Subj Sequences…";
+        myPrint(options, 1, strIdent);
+
+        CharString _dbSeqs = options.dbFile;
+        append(_dbSeqs, ".unredsubj"); // get unreduced stringset
+
+        int ret = open(globalHolder.subjSeqs, toCString(_dbSeqs));
+        if (ret != true)
+        {
+            std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
+                      << " failed.\n";
+            return 1;
+        }
+
+        double finish = sysTime() - start;
+        myPrint(options, 1, " done.\n");
+        myPrint(options, 2, "Runtime: ", finish, "s \n", "Amount: ",
+                length(globalHolder.subjSeqs), "\n\n");
+    }
+
+    double start = sysTime();
+    std::string strIdent = "Loading Subj Ids…";
+    myPrint(options, 1, strIdent);
+
+    CharString _dbSeqs = options.dbFile;
+    append(_dbSeqs, ".ids");
+    int ret = open(globalHolder.subjIds, toCString(_dbSeqs));
+    if (ret != true)
+    {
+        std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
+                  << " failed.\n";
+        return 1;
+    }
+    double finish = sysTime() - start;
+    myPrint(options, 1, " done.\n");
+    myPrint(options, 2, "Runtime: ", finish, "s \n\n");
+
+    globalHolder.dbSpecs.dbName = options.dbFile;
+
+    // if subjects where translated, we don't have the untranslated seqs at all
+    // but we still need the data for statistics and position un-translation
+    if (sHasFrames(p))
+    {
+        start = sysTime();
+        std::string strIdent = "Loading Lengths of untranslated Subj sequences…";
+        myPrint(options, 1, strIdent);
+
+        _dbSeqs = options.dbFile;
+        append(_dbSeqs, ".untranslengths");
+        ret = open(globalHolder.untransSubjSeqLengths, toCString(_dbSeqs));
+        if (ret != true)
+        {
+            std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
+                      << " failed.\n";
+            return 1;
+        }
+
+        finish = sysTime() - start;
+        myPrint(options, 1, " done.\n");
+        myPrint(options, 2, "Runtime: ", finish, "s \n\n");
+
+        // last value has sum of lengths
+        globalHolder.dbSpecs.dbTotalLength =
+            back(globalHolder.untransSubjSeqLengths);
+        globalHolder.dbSpecs.dbNumberOfSeqs =
+            length(globalHolder.untransSubjSeqLengths) - 1;
+    } else
+    {
+        globalHolder.dbSpecs.dbTotalLength =
+            length(concat(globalHolder.subjSeqs));
+        globalHolder.dbSpecs.dbNumberOfSeqs =
+            length(globalHolder.subjSeqs);
+    }
+
+    return 0;
+}
+
+// --------------------------------------------------------------------------
 // Function loadIndexFromDisk()
 // --------------------------------------------------------------------------
 
@@ -102,11 +261,72 @@ loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
                   << " failed.\n";
         return 1;
     }
+
+    // assign previously loaded sub sequences (possibly modifier-wrapped
+    // to the text-member of our new index (unless isFM, which doesnt need text)
+    if (!TGlobalHolder::indexIsFM)
+        indexText(globalHolder.dbIndex) = globalHolder.redSubjSeqs;
+
     double finish = sysTime() - start;
     myPrint(options, 1, " done.\n");
     myPrint(options, 2, "Runtime: ", finish, "s \n", "No of Fibres: ",
             length(indexSA(globalHolder.dbIndex)), "\n\n");
 
+    return 0;
+}
+
+// --------------------------------------------------------------------------
+// Function loadSegintervals()
+// --------------------------------------------------------------------------
+
+template <BlastFormatFile m,
+          BlastFormatProgram p,
+          BlastFormatGeneration g,
+          typename TRedAlph,
+          typename TScoreScheme,
+          typename TIndexSpec>
+inline int
+loadSegintervals(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, m,p,g> &
+                 globalHolder,
+                 LambdaOptions const & options)
+{
+
+    double start = sysTime();
+    std::string strIdent = "Loading Database Masking file…";
+    myPrint(options, 1, strIdent);
+
+    CharString segFileS = options.dbFile;
+    append(segFileS, ".binseg_s.concat");
+    CharString segFileE = options.dbFile;
+    append(segFileE, ".binseg_e.concat");
+    bool fail = false;
+    struct stat buffer;
+    // file exists
+    if ((stat(toCString(segFileS), &buffer) == 0) &&
+        (stat(toCString(segFileE), &buffer) == 0))
+    {
+        //cut off ".concat" again
+        resize(segFileS, length(segFileS) - 7);
+        resize(segFileE, length(segFileE) - 7);
+
+        fail = !open(globalHolder.segIntStarts, toCString(segFileS));
+        if (!fail)
+            fail = !open(globalHolder.segIntEnds, toCString(segFileE));
+    } else
+    {
+        fail = true;
+    }
+
+    if (fail)
+    {
+        std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
+                  << " failed.\n";
+        return 1;
+    }
+
+    double finish = sysTime() - start;
+    myPrint(options, 1, " done.\n");
+    myPrint(options, 2, "Runtime: ", finish, "s \n\n");
     return 0;
 }
 
@@ -225,9 +445,9 @@ loadQuery(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, m, p, g> &
                        options);
 
     // reduce
-    loadQueryImplReduce(globalHolder.redQrySeqs,
-                        globalHolder.qrySeqs,
-                        options);
+//     loadQueryImplReduce(globalHolder.redQrySeqs,
+//                         globalHolder.qrySeqs,
+//                         options);
 
     double finish = sysTime() - start;
     myPrint(options, 1, " done.\n");
@@ -245,224 +465,6 @@ loadQuery(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, m, p, g> &
     }
     return 0;
 }
-
-// --------------------------------------------------------------------------
-// Function loadSubjects()
-// --------------------------------------------------------------------------
-
-template <BlastFormatFile m,
-          BlastFormatProgram p,
-          BlastFormatGeneration g,
-          typename TRedAlph,
-          typename TScoreScheme,
-          typename TIndexSpec>
-inline int
-loadSubjects(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, m, p, g>  & globalHolder,
-             LambdaOptions                                const & options)
-{
-    using TGH = GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, m, p, g>;
-    if (!TGH::subjsInIndex)
-    {
-        double start = sysTime();
-        std::string strIdent = "Loading Subj Sequences…";
-        myPrint(options, 1, strIdent);
-
-        CharString _dbSeqs = options.dbFile;
-        append(_dbSeqs, ".unredsubj"); // get unreduced stringset
-
-        int ret = open(globalHolder.subjSeqs, toCString(_dbSeqs));
-        if (ret != true)
-        {
-            std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
-                      << " failed.\n";
-            return 1;
-        }
-
-        double finish = sysTime() - start;
-        myPrint(options, 1, " done.\n");
-        myPrint(options, 2, "Runtime: ", finish, "s \n", "Amount: ",
-                length(globalHolder.subjSeqs), "\n\n");
-    }
-
-    double start = sysTime();
-    std::string strIdent = "Loading Subj Ids…";
-    myPrint(options, 1, strIdent);
-
-    CharString _dbSeqs = options.dbFile;
-    append(_dbSeqs, ".ids");
-    int ret = open(globalHolder.subjIds, toCString(_dbSeqs));
-    if (ret != true)
-    {
-        std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
-                  << " failed.\n";
-        return 1;
-    }
-    double finish = sysTime() - start;
-    myPrint(options, 1, " done.\n");
-    myPrint(options, 2, "Runtime: ", finish, "s \n\n");
-
-    globalHolder.dbSpecs.dbName = options.dbFile;
-
-    // if subjects where translated, we don't have the untranslated seqs at all
-    // but we still need the data for statistics and position un-translation
-    if (sHasFrames(p))
-    {
-        start = sysTime();
-        std::string strIdent = "Loading Lengths of untranslated Subj sequences…";
-        myPrint(options, 1, strIdent);
-
-        _dbSeqs = options.dbFile;
-        append(_dbSeqs, ".untranslengths");
-        ret = open(globalHolder.untransSubjSeqLengths, toCString(_dbSeqs));
-        if (ret != true)
-        {
-            std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
-                      << " failed.\n";
-            return 1;
-        }
-
-        finish = sysTime() - start;
-        myPrint(options, 1, " done.\n");
-        myPrint(options, 2, "Runtime: ", finish, "s \n\n");
-
-        // last value has sum of lengths
-        globalHolder.dbSpecs.dbTotalLength =
-            back(globalHolder.untransSubjSeqLengths);
-        globalHolder.dbSpecs.dbNumberOfSeqs =
-            length(globalHolder.untransSubjSeqLengths) - 1;
-    } else
-    {
-        globalHolder.dbSpecs.dbTotalLength =
-            length(concat(globalHolder.subjSeqs));
-        globalHolder.dbSpecs.dbNumberOfSeqs =
-            length(globalHolder.subjSeqs);
-    }
-
-    return 0;
-}
-
-// --------------------------------------------------------------------------
-// Function loadSegintervals()
-// --------------------------------------------------------------------------
-
-
-template <BlastFormatFile m,
-          BlastFormatProgram p,
-          BlastFormatGeneration g,
-          typename TRedAlph,
-          typename TScoreScheme,
-          typename TIndexSpec>
-inline int
-loadSegintervals(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, m,p,g> &
-                 globalHolder,
-                 LambdaOptions const & options)
-{
-
-    double start = sysTime();
-    std::string strIdent = "Loading Database Masking file…";
-    myPrint(options, 1, strIdent);
-
-    CharString segFileS = options.dbFile;
-    append(segFileS, ".binseg_s.concat");
-    CharString segFileE = options.dbFile;
-    append(segFileE, ".binseg_e.concat");
-    bool fail = false;
-    struct stat buffer;
-    // file exists
-    if ((stat(toCString(segFileS), &buffer) == 0) &&
-        (stat(toCString(segFileE), &buffer) == 0))
-    {
-        //cut off ".concat" again
-        resize(segFileS, length(segFileS) - 7);
-        resize(segFileE, length(segFileE) - 7);
-
-        fail = !open(globalHolder.segIntStarts, toCString(segFileS));
-        if (!fail)
-            fail = !open(globalHolder.segIntEnds, toCString(segFileE));
-    } else
-    {
-        fail = true;
-    }
-
-    if (fail)
-    {
-        std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
-                  << " failed.\n";
-        return 1;
-    }
-
-    double finish = sysTime() - start;
-    myPrint(options, 1, " done.\n");
-    myPrint(options, 2, "Runtime: ", finish, "s \n\n");
-    return 0;
-}
-
-
-// --------------------------------------------------------------------------
-// Function prepareScoring()
-// --------------------------------------------------------------------------
-
-
-template <BlastFormatFile m,
-          BlastFormatProgram p,
-          BlastFormatGeneration g,
-          typename TRedAlph,
-          typename TScoreScheme,
-          typename TIndexSpec>
-inline void
-prepareScoringMore(GlobalDataHolder<TRedAlph,
-                                    TScoreScheme,TIndexSpec,
-                                    m, p, g>         & globalHolder,
-                   LambdaOptions                    const & options,
-                   std::true_type                   const & /**/)
-{
-    setScoreMatch(globalHolder.scoreScheme, options.match);
-    setScoreMismatch(globalHolder.scoreScheme, options.misMatch);
-}
-
-template <BlastFormatFile m,
-          BlastFormatProgram p,
-          BlastFormatGeneration g,
-          typename TRedAlph,
-          typename TScoreScheme,
-          typename TIndexSpec>
-inline void
-prepareScoringMore(GlobalDataHolder<TRedAlph,
-                                    TScoreScheme,TIndexSpec,
-                                    m, p, g>              & /*globalHolder*/,
-                   LambdaOptions                    const & /*options*/,
-                   std::false_type                  const & /**/)
-{
-}
-
-template <BlastFormatFile m,
-          BlastFormatProgram p,
-          BlastFormatGeneration g,
-          typename TRedAlph,
-          typename TScoreScheme,
-          typename TIndexSpec>
-inline int
-prepareScoring(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, m, p, g>
-                                                      & globalHolder,
-               LambdaOptions                    const & options)
-{
-    setScoreGapOpen  (globalHolder.scoreScheme, options.gapOpen);
-    setScoreGapExtend(globalHolder.scoreScheme, options.gapExtend);
-    blastScoringScheme2seqanScoringScheme(globalHolder.scoreScheme);
-
-    prepareScoringMore(globalHolder, options,
-                       std::is_same<TScoreScheme, Score<int, Simple>>());
-
-    if (!assignScoreScheme(globalHolder.blastScoringAdapter,
-                      globalHolder.scoreScheme))
-    {
-        std::cerr << "Could not computer Karlin-Altschul-Values for "
-                  << "Scoring Scheme. Exiting.\n";
-        return -1;
-    }
-    return 0;
-}
-
 
 /// THREAD LOCAL STUFF
 

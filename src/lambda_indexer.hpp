@@ -183,7 +183,7 @@ inline void
 dumpTranslatedSeqs(TCDStringSet<TTransAlph> const & translatedSeqs,
                    LambdaIndexerOptions const & options)
 {
-    if ((options.alphReduction > 0) || (options.dbIndexType == 1))
+//     if ((options.alphReduction > 0) || (options.dbIndexType == 1))
         _dumpTranslatedSeqs(translatedSeqs, options);
     // if there is no reduction and index is not FM then the sequences
     // will be dumped together with the index
@@ -380,30 +380,64 @@ convertMaskingFile(uint64_t numberOfSeqs,
 // Function loadSubj()
 // --------------------------------------------------------------------------
 
-template <typename TIndexSpec,typename TString, typename TSpec>
+template <typename TIndexSpec,
+          typename TString,
+          typename TSpec,
+          typename TRedAlph_,
+          BlastFormatProgram p>
 inline void
 generateIndexAndDump(StringSet<TString, TSpec> & seqs,
-                     LambdaIndexerOptions const & options)
+                     LambdaIndexerOptions const & options,
+                     TRedAlph_ const & /**/,
+                     BlastFormat<BlastFormatFile::INVALID_File,p,
+                       BlastFormatGeneration::INVALID_Generation> const & /**/)
 {
-    bool constexpr isFM = std::is_same<TIndexSpec, FMIndex<> >::value;
-    using TDBIndex =  Index<StringSet<TString, TSpec>, TIndexSpec >;
-    using TFibre = typename std::conditional<isFM,
-                                             FibreSALF,
-                                             FibreSA>::type;
+//     using TFormat   = BlastFormat<BlastFormatFile::INVALID_File,
+//                                   p,
+//                                   BlastFormatGeneration::INVALID_Generation>;
+
+    using TTransSeqs    = TCDStringSet<TransAlph<p>>;
+
+    using TRedAlph      = RedAlph<p, TRedAlph_>; // ensures == Dna5 for BlastN
+    using TRedSeqVirt   = ModifiedString<String<TransAlph<p>, PackSpec>,
+                                         FunctorConvert<TransAlph<p>,TRedAlph>>;
+    using TRedSeqsVirt  = StringSet<TRedSeqVirt, Owner<ConcatDirect<>>>;
+
+    static bool constexpr
+    indexIsFM           = std::is_same<TIndexSpec, FMIndex<>>::value;
+    static bool constexpr
+    noReduction         = std::is_same<TransAlph<p>, TRedAlph>::value;
+
+    using TRedSeqs      = typename std::conditional<
+                            noReduction,
+                            TTransSeqs,             // owner
+                            TRedSeqsVirt>::type;    // modview
+    using TRedSeqsACT   = typename std::conditional<
+                            noReduction,
+                            TTransSeqs &,           // reference to owner
+                            TRedSeqsVirt>::type;    // modview
+
+    using TDbIndex      = Index<TRedSeqs, TIndexSpec>;
+    using TFibre        = typename std::conditional<indexIsFM,
+                                                    FibreSALF,
+                                                    FibreSA>::type;
+
     // Generate Index
     std::cout << "Generating Index..." << std::flush;
     double s = sysTime();
 
     // FM-Index needs reverse input
-    if (isFM)
+    if (indexIsFM)
         reverse(seqs);
 
-    TDBIndex dbIndex(seqs);
-    indexRequire(dbIndex, TFibre());// instantiate
+    TRedSeqsACT redSubjSeqs(seqs);/* = initHelper(TRedSeqs{{ seqs.limits, seqs.concat }},
+                                         seqs);*/
+    TDbIndex dbIndex(redSubjSeqs);
+    indexRequire(dbIndex, TFibre()); // instantiate
 
     // search on fm-index actually doesn't require text
     // so we can remove it before dump 
-    if (isFM)
+//     if (isFM)
         clear(seqs);
 
     double e = sysTime() - s;

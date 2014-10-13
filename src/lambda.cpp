@@ -557,11 +557,11 @@ realMain(LambdaOptions      const & options,
     if (ret)
         return ret;
 
-    ret = loadDbIndexFromDisk(globalHolder, options);
+    ret = loadSubjects(globalHolder, options);
     if (ret)
         return ret;
 
-    ret = loadSubjects(globalHolder, options);
+    ret = loadDbIndexFromDisk(globalHolder, options);
     if (ret)
         return ret;
 

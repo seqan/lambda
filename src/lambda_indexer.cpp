@@ -65,20 +65,18 @@ using namespace seqan;
 // --------------------------------------------------------------------------
 
 
-template <BlastFormatFile m,
-          BlastFormatProgram p,
-          BlastFormatGeneration g>
+template <BlastFormatProgram p>
 int mainTyped(LambdaIndexerOptions const & options,
-              BlastFormat<m,p,g> const & /*tag*/);
+              BlastFormat<BlastFormatFile::INVALID_File, p,
+                BlastFormatGeneration::INVALID_Generation> const & /*tag*/);
 
-template <BlastFormatFile m,
-          BlastFormatProgram p,
-          BlastFormatGeneration g,
+template <BlastFormatProgram p,
           typename TRedAlph>
 inline int
 mainAlphed(TRedAlph const & /**/,
-           LambdaOptions const & options,
-           BlastFormat<m,p,g> const & /*tag*/);
+           LambdaIndexerOptions const & options,
+           BlastFormat<BlastFormatFile::INVALID_File, p,
+                BlastFormatGeneration::INVALID_Generation> const & /*tag*/);
 
 // Program entry point.
 
@@ -94,8 +92,6 @@ int main(int argc, char const ** argv)
     // were errors and 0 if there were none.
     if (res != seqan::ArgumentParser::PARSE_OK)
         return res == seqan::ArgumentParser::PARSE_ERROR;
-
-
 
   // CONVERT Run-time options to compile-time Format-Type
     switch (options.blastProg)
@@ -146,13 +142,14 @@ int main(int argc, char const ** argv)
 }
 
 
-template <BlastFormatFile m,
-          BlastFormatProgram p,
-          BlastFormatGeneration g>
+template <BlastFormatProgram p>
 int mainTyped(LambdaIndexerOptions const & options,
-              BlastFormat<m,p,g> const & /*tag*/)
+              BlastFormat<BlastFormatFile::INVALID_File, p,
+                BlastFormatGeneration::INVALID_Generation> const & /*tag*/)
 {
-    typedef BlastFormat<m,p,g> TFormat;
+    using TFormat   = BlastFormat<BlastFormatFile::INVALID_File,
+                                  p,
+                                  BlastFormatGeneration::INVALID_Generation>;
     std::cout << "Lambda Indexer\n"
               << "===============\n\n";
 
@@ -195,77 +192,67 @@ int mainTyped(LambdaIndexerOptions const & options,
 }
 
 
-template <BlastFormatFile m,
-          BlastFormatProgram p,
-          BlastFormatGeneration g,
+template <BlastFormatProgram p,
           typename TRedAlph>
 inline int
 mainAlphed(TRedAlph const & /**/,
            LambdaIndexerOptions const & options,
-           BlastFormat<m,p,g> const & /*tag*/)
+           BlastFormat<BlastFormatFile::INVALID_File, p,
+                BlastFormatGeneration::INVALID_Generation> const & /*tag*/)
 {
     using TFormat   = BlastFormat<BlastFormatFile::INVALID_File,
                                   p,
                                   BlastFormatGeneration::INVALID_Generation>;
 
-    using TOrigAlph = typename std::conditional<(p == BlastFormatProgram::BLASTN) ||
-                                       (p == BlastFormatProgram::TBLASTN),
-                                       Dna5,
-                                       AminoAcid>::type;
-    using TTransAlph = typename std::conditional<(p == BlastFormatProgram::BLASTN),
-                                       Dna5,
-                                       AminoAcid>::type;
-    using TOrigSet  = TCDStringSet<TOrigAlph>;
-    using TTransSet = TCDStringSet<TTransAlph>;
-    using TRedSet   = TCDStringSet<TRedAlph>;
+    using TOrigSet  = TCDStringSet<OrigSubjAlph<p>>;
+    using TTransSet = TCDStringSet<TransAlph<p>>;
 
-    TRedSet reducedSeqs;
+    TTransSet translatedSeqs;
 
     {
-        TTransSet translatedSeqs;
+        TOrigSet originalSeqs;
+        int ret = 0;
 
-        {
-            TOrigSet originalSeqs;
-            int ret = 0;
+        // ids get saved to disk again immediately and are not kept in memory
+        ret = loadSubjSeqsAndIds(originalSeqs, options);
+        if (ret)
+            return ret;
 
-            // ids get saved to disk again immediately and are not kept in memory
-            ret = loadSubjSeqsAndIds(originalSeqs, options);
-            if (ret)
-                return ret;
+        // preserve lengths of untranslated sequences
+        _saveOriginalSeqLengths(originalSeqs.limits,
+                                options,
+                                SHasFrames<TFormat>());
 
-            // preserve lengths of untranslated sequences
-            _saveOriginalSeqLengths(originalSeqs.limits,
-                                    options,
-                                    SHasFrames<TFormat>());
+        // convert the seg file to seqan binary format
+        ret = convertMaskingFile(length(originalSeqs), options);
+        if (ret)
+            return ret;
 
-            // convert the seg file to seqan binary format
-            ret = convertMaskingFile(length(originalSeqs), options);
-            if (ret)
-                return ret;
-
-            // translate or swap depending on program
-            translateOrSwap(translatedSeqs, originalSeqs, options);
-        }
-
-        // dump translated and unreduced sequences
-        dumpTranslatedSeqs(translatedSeqs, options);
-
-        // reduce or swap depending on program
-        reduceOrSwap(reducedSeqs, translatedSeqs);
+        // translate or swap depending on program
+        translateOrSwap(translatedSeqs, originalSeqs, options);
     }
 
+    // dump translated and unreduced sequences
+    dumpTranslatedSeqs(translatedSeqs, options);
+
     // see if final sequence set actually fits into index 
-    if (!checkIndexSize(reducedSeqs))
+    if (!checkIndexSize(translatedSeqs))
         return -1;
 
     if (options.dbIndexType == 1)
     {
         using TIndexSpec = FMIndex<>;
-        generateIndexAndDump<TIndexSpec>(reducedSeqs, options);
+        generateIndexAndDump<TIndexSpec>(translatedSeqs,
+                                         options,
+                                         TRedAlph(),
+                                         TFormat());
     } else
     {
         using TIndexSpec = IndexSa<>;
-        generateIndexAndDump<TIndexSpec>(reducedSeqs, options);
+        generateIndexAndDump<TIndexSpec>(translatedSeqs,
+                                         options,
+                                         TRedAlph(),
+                                         TFormat());
     }
 
     return 0;

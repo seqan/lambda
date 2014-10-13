@@ -59,6 +59,39 @@ using MyEnableIf = typename std::enable_if<condition, int>::type;
 // Functions for translation and retranslation
 // ============================================================================
 
+// tricky initialization helper, see holder.hpp for conditional init
+// if types are the same, the second object is passed through
+template <typename TSet1,
+          typename TSet2,
+          MyEnableIf<std::is_same<TSet1, TSet2>::value> = 0>
+inline TSet1 &
+initHelper(TSet1 && /**/, TSet2 & set2)
+{
+    return set2;
+}
+
+// if not the first
+template <typename TSet1,
+          typename TSet2,
+          MyEnableIf<!std::is_same<TSet1, TSet2>::value> = 0>
+inline TSet1 &&
+initHelper(TSet1 && set1, TSet2 & /**/)
+{
+    return std::move(set1);
+}
+
+
+
+template <typename TString, typename TSpec>
+inline void
+assign(StringSet<ModifiedString<TString, TSpec>, Owner<ConcatDirect<>> > & target,
+       StringSet<TString, Owner<ConcatDirect<>> > & source)
+{
+    target.limits = source.limits;
+    target.concat._host = &source.concat;
+}
+
+
 template <typename T>
 inline uint64_t
 length(std::deque<T> const & list)
