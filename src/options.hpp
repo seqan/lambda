@@ -680,10 +680,11 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         case 1: case 2: case 8: case 10: case 12:
         if (options.blastProg == BlastFormatProgram::BLASTN)
         {
-            std::cerr << "Alphabet Reduction only makes sense"
-                            " for proteins." << std::endl;
-            return seqan::ArgumentParser::PARSE_ERROR;
-        } break;
+            options.alphReduction = 0;
+//             std::cerr << "Alphabet Reduction only makes sense"
+//                             " for proteins." << std::endl;
+//             return seqan::ArgumentParser::PARSE_ERROR;
+        }
         case 0: break;
         break;
         default:
@@ -891,9 +892,10 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
         case 0: case 1: case 2: case 8: case 10: case 12:
         if (options.blastProg == BlastFormatProgram::BLASTN)
         {
-            std::cerr << "Alphabet Reduction only makes sense"
-                            " for proteins." << std::endl;
-            return seqan::ArgumentParser::PARSE_ERROR;
+            options.alphReduction = 0;
+//             std::cerr << "Alphabet Reduction only makes sense"
+//                             " for proteins." << std::endl;
+//             return seqan::ArgumentParser::PARSE_ERROR;
         }
         break;
         default:
