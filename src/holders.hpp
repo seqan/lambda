@@ -171,8 +171,8 @@ public:
     TTransSeqs          subjSeqs;
 
     // reduced query sequences if using reduction, otherwise & = transSeqs
-    TRedSeqsACT         redQrySeqs = qrySeqs;//  = initHelper(TRedSeqs(qrySeqs), qrySeqs);
-    TRedSeqsACT         redSubjSeqs = subjSeqs;// = initHelper(TRedSeqs(subjSeqs), subjSeqs);
+    TRedSeqsACT         redQrySeqs = qrySeqs;
+    TRedSeqsACT         redSubjSeqs = subjSeqs;
 
     // INDECES AND THEIR TYPE //
     using TIndexSpec    = TIndexSpec_;

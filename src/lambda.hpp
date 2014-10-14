@@ -161,44 +161,46 @@ inline int
 loadSubjects(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, m, p, g>  & globalHolder,
              LambdaOptions                                const & options)
 {
-//     using TGH = GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, m, p, g>;
-//     if (!TGH::subjsInIndex)
-    {
-        double start = sysTime();
-        std::string strIdent = "Loading Subj Sequences…";
-        myPrint(options, 1, strIdent);
-
-        CharString _dbSeqs = options.dbFile;
-        append(_dbSeqs, ".unredsubj"); // get unreduced stringset
-
-        int ret = open(globalHolder.subjSeqs, toCString(_dbSeqs));
-        if (ret != true)
-        {
-            std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
-                      << " failed.\n";
-            return 1;
-        }
-
-        double finish = sysTime() - start;
-        myPrint(options, 1, " done.\n");
-        myPrint(options, 2, "Runtime: ", finish, "s \n", "Amount: ",
-                length(globalHolder.subjSeqs), "\n\n");
-    }
+    using TGH = GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, m, p, g>;
 
     double start = sysTime();
-    std::string strIdent = "Loading Subj Ids…";
+    std::string strIdent = "Loading Subj Sequences…";
     myPrint(options, 1, strIdent);
 
     CharString _dbSeqs = options.dbFile;
+    append(_dbSeqs, ".unredsubj"); // get unreduced stringset
+
+    int ret = open(globalHolder.subjSeqs, toCString(_dbSeqs));
+    if (ret != true)
+    {
+        std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
+                    << " failed.\n";
+        return 1;
+    }
+
+    if (!TGH::noReduction)
+        globalHolder.redSubjSeqs.limits = globalHolder.subjSeqs.limits;
+
+    double finish = sysTime() - start;
+    myPrint(options, 1, " done.\n");
+    myPrint(options, 2, "Runtime: ", finish, "s \n", "Amount: ",
+            length(globalHolder.subjSeqs), "\n\n");
+
+
+    start = sysTime();
+    strIdent = "Loading Subj Ids…";
+    myPrint(options, 1, strIdent);
+
+    _dbSeqs = options.dbFile;
     append(_dbSeqs, ".ids");
-    int ret = open(globalHolder.subjIds, toCString(_dbSeqs));
+    ret = open(globalHolder.subjIds, toCString(_dbSeqs));
     if (ret != true)
     {
         std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
                   << " failed.\n";
         return 1;
     }
-    double finish = sysTime() - start;
+    finish = sysTime() - start;
     myPrint(options, 1, " done.\n");
     myPrint(options, 2, "Runtime: ", finish, "s \n\n");
 
@@ -377,30 +379,46 @@ loadQueryImplTrans(TCDStringSet<TTargetAlph> & target,
     swap(target, source);
 }
 
-template <typename TSourceSet,
-          typename TTargetSet,
-          MyEnableIf<!std::is_same<TSourceSet, TTargetSet>::value> = 0>
-inline void
-loadQueryImplReduce(TSourceSet          & target,
-                    TTargetSet          & source,
-                    LambdaOptions const & options)
+// template <typename TSourceSet,
+//           typename TTargetSet,
+//           MyEnableIf<!std::is_same<TSourceSet, TTargetSet>::value> = 0>
+// inline void
+// loadQueryImplReduce(TSourceSet          & target,
+//                     TTargetSet          & source,
+//                     LambdaOptions const & options)
+// {
+//     // reduce implicitly
+//     myPrint(options, 1, "reducing…");
+// //     target.concat._host = &source.concat;
+//     target.limits = source.limits;
+// //     target(source);
+// }
+// 
+// template <typename TSourceSet,
+//           typename TTargetSet,
+//           MyEnableIf<std::is_same<TSourceSet, TTargetSet>::value> = 0>
+// inline void
+// loadQueryImplReduce(TSourceSet          & /**/,
+//                     TTargetSet          & /**/,
+//                     LambdaOptions const & /**/)
+// {
+//     // no-op, since target already references source
+// }
+
+
+//DEBUG WARNING
+template <typename THost, typename TSpec>
+inline uint64_t
+myhost(ModifiedString<THost, TSpec> const & str)
 {
-    // reduce implicitly
-    myPrint(options, 1, "reducing…");
-    target.concat._host = &source.concat;
-    target.limits = source.limits;
-//     target(source);
+    return uint64_t(str._host);
 }
 
-template <typename TSourceSet,
-          typename TTargetSet,
-          MyEnableIf<std::is_same<TSourceSet, TTargetSet>::value> = 0>
-inline void
-loadQueryImplReduce(TSourceSet          & /**/,
-                    TTargetSet          & /**/,
-                    LambdaOptions const & /**/)
+template <typename T, typename TSpec>
+inline uint64_t
+myhost(String<T, TSpec> const & str)
 {
-    // no-op, since target already references source
+    return uint64_t(&str);
 }
 
 template <BlastFormatFile m,
@@ -414,6 +432,7 @@ loadQuery(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, m, p, g> &
           globalHolder,
           LambdaOptions const & options)
 {
+    using TGH = GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, m, p, g>;
     int ret = 0;
     double start = sysTime();
 
@@ -448,6 +467,8 @@ loadQuery(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, m, p, g> &
 //     loadQueryImplReduce(globalHolder.redQrySeqs,
 //                         globalHolder.qrySeqs,
 //                         options);
+    if (!TGH::noReduction)
+        globalHolder.redQrySeqs.limits = globalHolder.qrySeqs.limits;
 
     double finish = sysTime() - start;
     myPrint(options, 1, " done.\n");
@@ -459,9 +480,8 @@ loadQuery(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, m, p, g> &
             if (length(s) > maxLen)
                 maxLen = length(s);
         myPrint(options, 2, "Runtime: ", finish, "s \n",
-                "No of Fibres: ", length(indexSA(globalHolder.dbIndex)), "\n",
-                "Number of sequences read: ", length(globalHolder.qrySeqs),
-                "\nLongest sequence read: ", maxLen, "\n\n");
+                "Number of query sequences: ", length(globalHolder.qrySeqs),
+                "\nLongest query sequence: ", maxLen, "\n\n");
     }
     return 0;
 }

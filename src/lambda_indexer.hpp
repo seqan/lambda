@@ -430,8 +430,7 @@ generateIndexAndDump(StringSet<TString, TSpec> & seqs,
     if (indexIsFM)
         reverse(seqs);
 
-    TRedSeqsACT redSubjSeqs(seqs);/* = initHelper(TRedSeqs{{ seqs.limits, seqs.concat }},
-                                         seqs);*/
+    TRedSeqsACT redSubjSeqs(seqs);
     TDbIndex dbIndex(redSubjSeqs);
     indexRequire(dbIndex, TFibre()); // instantiate
 
