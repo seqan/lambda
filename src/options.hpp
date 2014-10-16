@@ -53,6 +53,13 @@ struct SAValue<StringSet<String<ReducedAminoAcid<TSpec1>, TSpec2>, TSpec3> >
     typedef Pair<uint32_t, uint16_t, Pack> Type;
 };
 
+//TODO verify that this worked
+template<typename TSpec2, typename TSpec3, typename TFunctor>
+struct SAValue<StringSet<ModifiedString<String<AminoAcid, TSpec2>, TFunctor>, TSpec3> >
+{
+    typedef Pair<uint32_t, uint16_t, Pack> Type;
+};
+
 template<typename TSpec2, typename TSpec3>
 struct SAValue<StringSet<String<AminoAcid, TSpec2>, TSpec3> >
 {
