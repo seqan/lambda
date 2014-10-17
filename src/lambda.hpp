@@ -351,7 +351,8 @@ loadQueryImplTrans(TCDStringSet<TTargetAlph> & target,
     translate(target,
               source,
               SIX_FRAME,
-              options.geneticCode);
+              options.geneticCode,
+              Serial());
 
     // preserve lengths of untranslated sequences
     resize(untransQrySeqLengths,
@@ -625,6 +626,13 @@ __searchSingleIndex(TLocalHolder & lH)
     typedef typename Iterator<decltype(lH.seeds) const, Rooted>::Type TSeedsIt;
     typedef typename Iterator<decltype(lH.gH.dbIndex),TopDown<>>::Type TIndexIt;
 
+//     SEQAN_OMP_PRAGMA(critical(stdout))
+//     {
+//         std::cout << "ReadId: " << lH.i << std::endl;
+//         for (auto const & seed : lH.seeds)
+//             std::cout << "\"" << toCString(CharString(seed)) << "\" ";
+//         std::cout << std::endl;
+//     }
     auto delegate = [&lH] (TIndexIt & indexIt,
                            TSeedsIt const & seedsIt,
                            int /*score*/)

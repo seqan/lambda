@@ -400,7 +400,7 @@ generateIndexAndDump(StringSet<TString, TSpec> & seqs,
 
     using TRedAlph      = RedAlph<p, TRedAlph_>; // ensures == Dna5 for BlastN
     using TRedSeqVirt   = ModifiedString<String<TransAlph<p>, PackSpec>,
-                                         ModView<FunctorConvert<TransAlph<p>,TRedAlph>>>;
+                            ModView<FunctorConvert<TransAlph<p>,TRedAlph>>>;
     using TRedSeqsVirt  = StringSet<TRedSeqVirt, Owner<ConcatDirect<>>>;
 
     static bool constexpr
@@ -430,6 +430,10 @@ generateIndexAndDump(StringSet<TString, TSpec> & seqs,
     if (indexIsFM)
         reverse(seqs);
 
+    std::cout << "DEBUG: ValueSize<TDbIndex>: " 
+              << unsigned(ValueSize<typename Value<TDbIndex>::Type>::VALUE)
+              << "\n" << std::flush;
+
     TRedSeqsACT redSubjSeqs(seqs);
     TDbIndex dbIndex(redSubjSeqs);
     indexRequire(dbIndex, TFibre()); // instantiate
@@ -437,7 +441,9 @@ generateIndexAndDump(StringSet<TString, TSpec> & seqs,
     // search on fm-index actually doesn't require text
     // so we can remove it before dump 
 //     if (isFM)
-        clear(seqs);
+    clear(seqs);
+//     if (!noReduction)
+//         clear(redSubjSeqs);
 
     double e = sysTime() - s;
     std::cout << " done.\n" << std::flush;
