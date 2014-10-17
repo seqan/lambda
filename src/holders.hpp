@@ -149,7 +149,7 @@ public:
 
     using TRedAlph      = RedAlph<p, TRedAlph_>; // ensures == Dna5 for BlastN
     using TRedSeqVirt   = ModifiedString<String<TransAlph<p>, PackSpec>,
-                                         ModView<FunctorConvert<TransAlph<p>,TRedAlph>>>;
+                                ModView<FunctorConvert<TransAlph<p>,TRedAlph>>>;
     using TRedSeqsVirt  = StringSet<TRedSeqVirt, Owner<ConcatDirect<>>>;
 
     static bool constexpr

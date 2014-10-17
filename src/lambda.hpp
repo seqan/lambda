@@ -351,8 +351,7 @@ loadQueryImplTrans(TCDStringSet<TTargetAlph> & target,
     translate(target,
               source,
               SIX_FRAME,
-              options.geneticCode,
-              Serial());
+              options.geneticCode);
 
     // preserve lengths of untranslated sequences
     resize(untransQrySeqLengths,
