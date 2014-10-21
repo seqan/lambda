@@ -179,7 +179,6 @@ argConv0(LambdaOptions const & options)
 {
     switch (options.blastProg)
     {
-#ifndef FASTBUILD
          case BlastFormatProgram::BLASTN :
          {
  //             template <BlastFormatFile m>
@@ -213,7 +212,7 @@ argConv0(LambdaOptions const & options)
                      break;
              }
          } break;
-
+#ifndef FASTBUILD
         case BlastFormatProgram::BLASTP :
         {
 //             template <BlastFormatFile m>
