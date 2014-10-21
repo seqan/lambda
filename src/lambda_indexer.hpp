@@ -162,56 +162,44 @@ translateOrSwap(TCDStringSet<TSameAlph> & out,
 
 template <typename TTransAlph>
 inline void
-_dumpTranslatedSeqs(TCDStringSet<TTransAlph> const & translatedSeqs,
-                    LambdaIndexerOptions const & options)
+dumpTranslatedSeqs(TCDStringSet<TTransAlph> const & translatedSeqs,
+                   LambdaIndexerOptions const & options)
 {
     double start = sysTime();
     std::cout << "Dumping unreduced Subj Sequences..." << std::flush;
 
     //TODO save to TMPDIR instead
-    CharString _path = options.dbFile;
-    append(_path, ".unredsubj");
-    save(translatedSeqs, toCString(_path));
+    std::string _path = options.dbFile + '.' + std::string(_alphName(TTransAlph()));
+    save(translatedSeqs, _path.c_str());
 
     std::cout << " done.\n";
     double finish = sysTime() - start;
     std::cout << "Runtime: " << finish << "s \n\n" << std::flush;
 }
 
-template <typename TTransAlph>
-inline void
-dumpTranslatedSeqs(TCDStringSet<TTransAlph> const & translatedSeqs,
-                   LambdaIndexerOptions const & options)
-{
-//     if ((options.alphReduction > 0) || (options.dbIndexType == 1))
-        _dumpTranslatedSeqs(translatedSeqs, options);
-    // if there is no reduction and index is not FM then the sequences
-    // will be dumped together with the index
-}
-
 // --------------------------------------------------------------------------
 // Function loadSubj()
 // --------------------------------------------------------------------------
 
-template <typename TTransAlph, typename TRedAlph>
-inline void
-reduceOrSwap(TCDStringSet<TRedAlph> & out,
-             TCDStringSet<TTransAlph> & in)
-{
-    //TODO more output
-    // reduce implicitly
-    std::cout << "Reducing…" << std::flush;
-    out.concat = in.concat;
-    out.limits = in.limits;
-}
-
-template <typename TSameAlph>
-inline void
-reduceOrSwap(TCDStringSet<TSameAlph> & out,
-             TCDStringSet<TSameAlph> & in)
-{
-    swap(out, in);
-}
+// template <typename TTransAlph, typename TRedAlph>
+// inline void
+// reduceOrSwap(TCDStringSet<TRedAlph> & out,
+//              TCDStringSet<TTransAlph> & in)
+// {
+//     //TODO more output
+//     // reduce implicitly
+//     std::cout << "Reducing…" << std::flush;
+//     out.concat = in.concat;
+//     out.limits = in.limits;
+// }
+// 
+// template <typename TSameAlph>
+// inline void
+// reduceOrSwap(TCDStringSet<TSameAlph> & out,
+//              TCDStringSet<TSameAlph> & in)
+// {
+//     swap(out, in);
+// }
 
 // --------------------------------------------------------------------------
 // Function loadSubj()
@@ -430,30 +418,30 @@ generateIndexAndDump(StringSet<TString, TSpec> & seqs,
     if (indexIsFM)
         reverse(seqs);
 
-    std::cout << "DEBUG: ValueSize<TDbIndex>: " 
-              << unsigned(ValueSize<typename Value<TDbIndex>::Type>::VALUE)
-              << "\n" << std::flush;
-
     TRedSeqsACT redSubjSeqs(seqs);
     TDbIndex dbIndex(redSubjSeqs);
     indexRequire(dbIndex, TFibre()); // instantiate
 
-    // search on fm-index actually doesn't require text
-    // so we can remove it before dump 
-//     if (isFM)
+    // since we dumped unreduced sequences before and reduced sequences are
+    // only "virtual" we clear them before dump
     clear(seqs);
-//     if (!noReduction)
-//         clear(redSubjSeqs);
+    if (!noReduction)
+        clear(redSubjSeqs.limits);
 
     double e = sysTime() - s;
     std::cout << " done.\n" << std::flush;
     std::cout << "Runtime: " << e << "s \n\n" << std::flush;
 
-
     // Dump Index
     std::cout << "Writing Index to disk..." << std::flush;
     s = sysTime();
-    save(dbIndex, toCString(options.dbFile));
+    std::string path = toCString(options.dbFile);
+    path += '.' + std::string(_alphName(TRedAlph()));
+    if (indexIsFM)
+        path += ".fm";
+    else
+        path += ".sa";
+    save(dbIndex, path.c_str());
     e = sysTime() - s;
     std::cout << " done.\n" << std::flush;
     std::cout << "Runtime: " << e << "s \n" << std::flush;

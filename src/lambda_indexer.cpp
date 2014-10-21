@@ -160,33 +160,33 @@ int mainTyped(LambdaIndexerOptions const & options,
             typedef AminoAcid TAA;
             return mainAlphed(TAA(), options, TFormat());
         } break;
-        case 1:
-        {
-            typedef AminoAcid10 TAA;
-            return mainAlphed(TAA(), options, TFormat());
-        } break;
+//         case 1:
+//         {
+//             typedef AminoAcid10 TAA;
+//             return mainAlphed(TAA(), options, TFormat());
+//         } break;
         case 2:
         {
             typedef ReducedAminoAcid<Murphy10> TAA;
             return mainAlphed(TAA(), options, TFormat());
         } break;
-        case 8:
-        {
-            typedef ReducedAminoAcid<ClusterReduction<8>> TAA;
-            return mainAlphed(TAA(), options, TFormat());
-        } break;
-
-        case 10:
-        {
-            typedef ReducedAminoAcid<ClusterReduction<10>> TAA;
-            return mainAlphed(TAA(), options, TFormat());
-        } break;
-
-        case 12:
-        {
-            typedef ReducedAminoAcid<ClusterReduction<12>> TAA;
-            return mainAlphed(TAA(), options, TFormat());
-        } break;
+//         case 8:
+//         {
+//             typedef ReducedAminoAcid<ClusterReduction<8>> TAA;
+//             return mainAlphed(TAA(), options, TFormat());
+//         } break;
+// 
+//         case 10:
+//         {
+//             typedef ReducedAminoAcid<ClusterReduction<10>> TAA;
+//             return mainAlphed(TAA(), options, TFormat());
+//         } break;
+// 
+//         case 12:
+//         {
+//             typedef ReducedAminoAcid<ClusterReduction<12>> TAA;
+//             return mainAlphed(TAA(), options, TFormat());
+//         } break;
     }
     return -1;
 }

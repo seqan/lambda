@@ -373,7 +373,8 @@ onFindImpl(LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> & lH,
         }
     }
 
-     if ((!discarded) && (!seedLooksPromising(lH, m)))
+     if ((!TGlobalHolder::noReduction) && (!discarded) &&
+         (!seedLooksPromising(lH, m)))
      {
          discarded = true;
          ++lH.stats.hitsFailedSeedAlignScoreTest;

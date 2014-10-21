@@ -256,7 +256,13 @@ loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
     std::string strIdent = "Reading Database Index from disk…";
     myPrint(options, 1, strIdent);
     double start = sysTime();
-    int ret = open(globalHolder.dbIndex, toCString(options.dbFile));
+    std::string path = toCString(options.dbFile);
+    path += '.' + std::string(_alphName(typename TGlobalHolder::TRedAlph()));
+    if (TGlobalHolder::indexIsFM)
+        path += ".fm";
+    else
+        path += ".sa";
+    int ret = open(globalHolder.dbIndex, path.c_str());
     if (ret != true)
     {
         std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
