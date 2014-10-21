@@ -168,7 +168,8 @@ loadSubjects(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, m, p, g>  & gl
     myPrint(options, 1, strIdent);
 
     CharString _dbSeqs = options.dbFile;
-    append(_dbSeqs, ".unredsubj"); // get unreduced stringset
+    append(_dbSeqs, ".");
+    append(_dbSeqs, _alphName(TransAlph<p>()));
 
     int ret = open(globalHolder.subjSeqs, toCString(_dbSeqs));
     if (ret != true)
