@@ -645,7 +645,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     getOptionValue(options.gapOpen, parser, "score-gap-open");
     if ((!isSet(parser, "score-gap-open")) &&
         (options.blastProg == BlastFormatProgram::BLASTN))
-        options.gapExtend = -4;
+        options.gapOpen = -4;
 
     getOptionValue(buf, parser, "genetic-code");
     switch (buf)
@@ -862,8 +862,6 @@ printOptions(LambdaOptions const & options)
     using TGH = typename TLH::TGlobalHolder;
     using TFormat = typename TGH::TFormat;
     auto constexpr p = getProgramType(TFormat());
-    bool isFM = std::is_same<typename TGH::TIndexSpec,FMIndex<>>::value;
-
 
     std::string bandStr;
     switch(options.band)
@@ -878,17 +876,20 @@ printOptions(LambdaOptions const & options)
               << " I/O\n"
               << "  query file:               " << options.queryFile << "\n"
               << "  db file:                  " << options.dbFile << "\n"
-              << "  db index type:            " << (isFM
+              << "  db index type:            " << (TGH::indexIsFM
                                                     ? "FM-Index\n"
                                                     : "SA-Index\n")
               << "  output file:              " << options.output << "\n"
-              << " PROGRAM\n"
-              << "  blast mode:               " << _programTagToString(TFormat())
-              << "\n"
+              << " GENERAL\n"
+              << "  double indexing:          " << options.doubleIndexing << "\n"
               << "  threads:                  " << uint(options.threads) << "\n"
-              << "  query partitions:         " << uint(options.queryPart) << "\n"
+              << "  query partitions:         " << (options.doubleIndexing
+                                                    ? std::to_string(options.queryPart)
+                                                    : std::string("n/a")) << "\n"
               << " TRANSLATION AND ALPHABETS\n"
               << "  genetic code:             " << uint(options.geneticCode) << "\n"
+              << "  blast mode:               " << _programTagToString(TFormat())
+              << "\n"
               << "  original alphabet (query):" << _alphName(OrigQryAlph<p>())
               << "\n"
               << "  original alphabet (subj): " << _alphName(OrigSubjAlph<p>())
@@ -905,9 +906,18 @@ printOptions(LambdaOptions const & options)
               << "  seed gravity:             " << uint(options.seedGravity) << "\n"
               << "  min seed length:          " << uint(options.minSeedLength) << "\n"
               << "  min seed score:           " << uint(options.minSeedScore) << "\n"
-              << "  double indexing:          " << options.doubleIndexing << "\n"
 //               << "  min seed e-value:         " << uint(options.minSeedEVal) << "\n"
 //               << "MinSeedBitS:   " << options.minSeedBitS << "\n"
+              << " SCORING\n"
+              << "  scoring scheme:           " << options.scoringMethod << "\n"
+              << "  score-match:              " << (options.scoringMethod
+                                                    ? std::string("n/a")
+                                                    : std::to_string(options.match)) << "\n"
+              << "  score-mismatch:           " << (options.scoringMethod
+                                                    ? std::string("n/a")
+                                                    : std::to_string(options.misMatch)) << "\n"
+              << "  score-gap:                " << options.gapExtend << "\n"
+              << "  score-gap-open:           " << options.gapOpen << "\n"
               << " EXTENSION\n"
               << "  x-drop:                   " << options.xDropOff << "\n"
               << "  band:                     " << bandStr << "\n"
