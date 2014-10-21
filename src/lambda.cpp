@@ -388,7 +388,7 @@ argConv1(LambdaOptions      const & options,
             return argConv2(options, TFormat(), AminoAcid());
         case 2:
             return argConv2(options, TFormat(), ReducedAminoAcid<Murphy10>());
-#ifndef FASTBUILD
+#if 0
         case 10:
             return argConv2(options, TFormat(), ReducedAminoAcid<ClusterReduction<10>>());
         case 1:
@@ -418,9 +418,10 @@ argConv2(LambdaOptions      const & options,
     using TFormat = BlastFormat<m,p,g>;
     switch (options.scoringMethod)
     {
-#ifndef FASTBUILD
+
         case 0:
             return argConv3(options, TFormat(), TRedAlph(), Score<int, Simple>());
+#ifndef FASTBUILD
         case 45:
             return argConv3(options, TFormat(), TRedAlph(), Blosum45());
         case 80:

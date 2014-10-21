@@ -65,7 +65,7 @@ struct SAValue<StringSet<String<AminoAcid, TSpec2>, TSpec3> >
     typedef Pair<uint32_t, uint16_t, Pack> Type;
 };
 
-// Dna Sequences might be longer
+// Dna Sequences might be longer TODO REALLY?
 template<typename TSpec1, typename TSpec2>
 struct SAValue<StringSet<String<Dna5, TSpec1>, TSpec2> >
 {
@@ -446,12 +446,12 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     addOption(parser, ArgParseOption("ma", "score-match",
         "Match score (BLASTN or manual scoring)",
         seqan::ArgParseArgument::INTEGER));
-    setDefaultValue(parser, "score-match", "1");
+    setDefaultValue(parser, "score-match", "2");
 
     addOption(parser, ArgParseOption("mi", "score-mismatch",
         "Mismatch score (BLASTN or manual scoring)",
         seqan::ArgParseArgument::INTEGER));
-    setDefaultValue(parser, "score-mismatch", "-2");
+    setDefaultValue(parser, "score-mismatch", "-3");
 
     addSection(parser, "Extension");
 
@@ -599,20 +599,11 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     getOptionValue(options.eCutOff, parser, "e-value");
 
     getOptionValue(options.xDropOff, parser, "x-drop");
-    if (options.xDropOff < -1)
-    {
-        std::cerr << "xDropOff must be in [ -1 : MAXINT ]" << std::endl;
-        return seqan::ArgumentParser::PARSE_ERROR;
-    }
+    if ((!isSet(parser, "x-drop")) &&
+        (options.blastProg == BlastFormatProgram::BLASTN))
+        options.xDropOff = 16;
 
     getOptionValue(options.band, parser, "band");
-    if (options.band < -3)
-    {
-        std::cerr << "band must be in [ -3 : MAXINT ]" << std::endl;
-        return seqan::ArgumentParser::PARSE_ERROR;
-    }
-
-    //verifyFileFormat(); TODO verify fileformats for program mode
 
 #ifdef _OPENMP
     getOptionValue(options.threads, parser, "threads");
@@ -649,12 +640,12 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     getOptionValue(options.gapExtend, parser, "score-gap");
     if ((!isSet(parser, "score-gap")) &&
         (options.blastProg == BlastFormatProgram::BLASTN))
-        options.gapExtend = -2;
+        options.gapExtend = -4;
 
     getOptionValue(options.gapOpen, parser, "score-gap-open");
     if ((!isSet(parser, "score-gap-open")) &&
         (options.blastProg == BlastFormatProgram::BLASTN))
-        options.gapExtend = -5;
+        options.gapExtend = -4;
 
     getOptionValue(buf, parser, "genetic-code");
     switch (buf)
