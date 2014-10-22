@@ -372,13 +372,53 @@ loadQueryImplTrans(TCDStringSet<TTargetAlph> & target,
     back(source.limits) = length(source.concat);
 }
 
-template <typename TSourceAlph,
-          typename TTargetAlph,
-          typename TUntransLengths,
-          MyEnableIf<std::is_same<TSourceAlph, TTargetAlph>::value> = 0>
+// BLASTN
+template <typename TUntransLengths>
 inline void
-loadQueryImplTrans(TCDStringSet<TTargetAlph> & target,
-                   TCDStringSet<TSourceAlph> & source,
+loadQueryImplTrans(TCDStringSet<TransAlph<BlastFormatProgram::BLASTN>> & target,
+                   TCDStringSet<TransAlph<BlastFormatProgram::BLASTN>> & source,
+                   TUntransLengths           & /**/,
+                   LambdaOptions       const & options)
+{
+    using TAlph = TransAlph<BlastFormatProgram::BLASTN>;
+//     using TReverseCompl =  ModifiedString<ModifiedString<String<TAlph>,
+//                             ModView<FunctorComplement<TAlph>>>, ModReverse>;
+    myPrint(options, 1, "generating reverse complements…");
+    // no need for translation, but we need reverse complements
+    resize(target.concat, length(source.concat) * 2);
+    resize(target.limits, length(source) * 2 + 1);
+
+    target.limits[0] = 0;
+    uint64_t const l = length(target.limits) - 1;
+    for (uint64_t i = 1; i < l; i+=2)
+    {
+        target.limits[i] = target.limits[i-1] + length(source[i/2]);
+        target.limits[i+1] = target.limits[i] + length(source[i/2]);
+    }
+
+    FunctorComplement<TAlph> functor;
+    uint64_t tBeg, tBegNext, len, sBeg;
+    SEQAN_OMP_PRAGMA(parallel for schedule(dynamic) private(tBeg, tBegNext, len, sBeg))
+    for (uint64_t i = 0; i < (l - 1); i+=2)
+    {
+        tBeg = target.limits[i];
+        tBegNext = target.limits[i+1];
+        len = tBegNext - tBeg;
+        sBeg = source.limits[i/2];
+        // avoid senseless copying and iterate manually
+        for (uint32_t j = 0; j < len; ++j)
+        {
+            target.concat[tBeg + j] = source.concat[sBeg + j];
+            target.concat[tBegNext + j] = functor(source.concat[sBeg+len-j]);
+        }
+    }
+}
+
+// BLASTP
+template <typename TUntransLengths>
+inline void
+loadQueryImplTrans(TCDStringSet<TransAlph<BlastFormatProgram::BLASTP>> & target,
+                   TCDStringSet<TransAlph<BlastFormatProgram::BLASTP>> & source,
                    TUntransLengths           & /**/,
                    LambdaOptions       const & /**/)
 {
