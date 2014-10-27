@@ -267,7 +267,8 @@ loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
     if (ret != true)
     {
         std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
-                  << " failed.\n";
+                  << " failed. "
+                  << "Did you use the same options as with lambda_indexer?\n";
         return 1;
     }
 

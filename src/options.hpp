@@ -69,7 +69,7 @@ struct SAValue<StringSet<String<AminoAcid, TSpec2>, TSpec3> >
 template<typename TSpec1, typename TSpec2>
 struct SAValue<StringSet<String<Dna5, TSpec1>, TSpec2> >
 {
-    typedef Pair<uint32_t, uint32_t, Pack> Type;
+    typedef Pair<uint32_t, uint16_t, Pack> Type;
 };
 
 }
@@ -273,12 +273,12 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setValidValues(parser, "database", "fasta fa fna faa fas");
 
     addOption(parser, ArgParseOption("di", "db-index-type",
-        "database index is in this format (auto means \"try sa first then "
-        "fm\").",
+        "database index is in this format.",
+//         "(auto means \"try sa first then fm\").",
         seqan::ArgParseArgument::STRING,
         "STR"));
-    setValidValues(parser, "db-index-type", "auto sa fm");
-    setDefaultValue(parser, "db-index-type", "auto");
+    setValidValues(parser, "db-index-type", "sa fm");
+    setDefaultValue(parser, "db-index-type", "sa");
 
     addSection(parser, "Output Options");
     addOption(parser, ArgParseOption("o", "output",
@@ -570,7 +570,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     getOptionValue(options.seedLength, parser, "seed-length");
     if ((!isSet(parser, "seed-length")) &&
         (options.blastProg == BlastFormatProgram::BLASTN))
-        options.seedLength = 20;
+        options.seedLength = 15;
 
     if (isSet(parser, "seed-offset"))
         getOptionValue(options.seedOffset, parser, "seed-offset");
@@ -640,12 +640,12 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     getOptionValue(options.gapExtend, parser, "score-gap");
     if ((!isSet(parser, "score-gap")) &&
         (options.blastProg == BlastFormatProgram::BLASTN))
-        options.gapExtend = -4;
+        options.gapExtend = -2;
 
     getOptionValue(options.gapOpen, parser, "score-gap-open");
     if ((!isSet(parser, "score-gap-open")) &&
         (options.blastProg == BlastFormatProgram::BLASTN))
-        options.gapOpen = -4;
+        options.gapOpen = -5;
 
     getOptionValue(buf, parser, "genetic-code");
     switch (buf)

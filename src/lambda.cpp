@@ -480,32 +480,32 @@ preMain(LambdaOptions      const & options,
 {
     using TFormat = BlastFormat<m,p,g>;
     int indexType = options.dbIndexType;
-    if (indexType == -1) // autodetect
-    {
-        //TODO autodetect
-        CharString file = options.dbFile;
-        append(file, ".sa");
-        struct stat buffer;
-        if (stat(toCString(file), &buffer) == 0)
-        {
-            indexType = 0;
-        } else
-        {
-            file = options.dbFile;
-            append(file, ".sa.val"); // FM Index
-            struct stat buffer;
-            if (stat(toCString(file), &buffer) == 0)
-            {
-                indexType = 1;
-            } else
-            {
-                std::cerr << "No Index file could be found, please make sure paths "
-                        << "are correct and the files are readable.\n" << std::flush;
-
-                return -1;
-            }
-        }
-    }
+//     if (indexType == -1) // autodetect
+//     {
+//         //TODO FIX THIS WITH NEW EXTENSIONS
+//         CharString file = options.dbFile;
+//         append(file, ".sa");
+//         struct stat buffer;
+//         if (stat(toCString(file), &buffer) == 0)
+//         {
+//             indexType = 0;
+//         } else
+//         {
+//             file = options.dbFile;
+//             append(file, ".sa.val"); // FM Index
+//             struct stat buffer;
+//             if (stat(toCString(file), &buffer) == 0)
+//             {
+//                 indexType = 1;
+//             } else
+//             {
+//                 std::cerr << "No Index file could be found, please make sure paths "
+//                         << "are correct and the files are readable.\n" << std::flush;
+// 
+//                 return -1;
+//             }
+//         }
+//     }
 
     if (indexType == 0)
         return realMain<IndexSa<>>(options,
