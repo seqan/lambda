@@ -56,10 +56,9 @@ using namespace seqan;
 enum COMPUTERESULT_
 {
     SUCCESS = 0,
-    PREALIGNSCORE,
-    PREALIGNEVAL,
-    ALIGNSCORE,
-    ALIGNEVAL
+    PREEXTEND,
+    PERCENTIDENT,
+    EVALUE
 };
 
 // comparison operator to sort SA-Values based on the strings in the SA they refer to
@@ -662,7 +661,8 @@ __searchDoubleIndex(TLocalHolder & lH)
     double finish = sysTime() - start;
 
     appendToStatus(lH.statusStr, lH.options, 1, " done. ");
-    appendToStatus(lH.statusStr, lH.options, 2, finish, "s. ");
+    appendToStatus(lH.statusStr, lH.options, 2, finish, "s. #hits: ",
+                   length(lH.matches));
     myPrint(lH.options, 1, lH.statusStr);
 }
 
@@ -839,7 +839,7 @@ computeBlastMatch(TBlastMatch         & bm,
         }
         if (newEnd == 0)
         {
-            return PREALIGNSCORE;
+            return PREEXTEND;
         }
         // backtrack
         for (unsigned i = newEnd - 1; i > 0; --i)
@@ -871,7 +871,7 @@ computeBlastMatch(TBlastMatch         & bm,
 
 
     if (scr < lH.options.minSeedScore)
-        return PREALIGNSCORE;
+        return PREEXTEND;
 
 #if 0
 // OLD WAY extension with birte's code
@@ -1040,7 +1040,7 @@ computeBlastMatch(TBlastMatch         & bm,
     {
         std::cout << "## LATE FAIL\n" << bm.align << '\n';
 
-        return ALIGNSCORE;
+        return PERCENTIDENT;
     }
 //     std::cout << "##LINE: " << __LINE__ << '\n';
 
@@ -1061,7 +1061,7 @@ computeBlastMatch(TBlastMatch         & bm,
     if (bm.eValue > lH.options.eCutOff)
     {
 
-        return ALIGNEVAL;
+        return EVALUE;
     }
 
     bm.qFrameShift = getQryFrameShift(m.qryId, lH.options, TFormat()) + 1;
@@ -1216,17 +1216,14 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
     //                     lastMatch = ma;
     //                     ++lH.stats.goodMatches;
                         break;
-                    case ALIGNEVAL:
-                        ++lH.stats.hitsFailedExtendAlignEValTest;
+                    case EVALUE:
+                        ++lH.stats.hitsFailedExtendEValueTest;
                         break;
-                    case ALIGNSCORE:
-                        ++lH.stats.hitsFailedExtendAlignScoreTest;
+                    case PERCENTIDENT:
+                        ++lH.stats.hitsFailedExtendPercentIdentTest;
                         break;
-                    case PREALIGNEVAL:
-                        ++lH.stats.hitsFailedSeedAlignEValTest;
-                        break;
-                    case PREALIGNSCORE:
-                        ++lH.stats.hitsFailedSeedAlignScoreTest;
+                    case PREEXTEND:
+                        ++lH.stats.hitsFailedPreExtendTest;
                         break;
                     default:
                         return lret;
@@ -1334,13 +1331,16 @@ void printStats(StatsHolder const & stats, LambdaOptions const & options)
         #define RR " = " << std::setw(w)
         #define BLANKS for (unsigned i = 0; i< w; ++i) std::cout << " ";
         std::cout << "\033[1m   HITS                         "; BLANKS; std::cout << "Remaining\033[0m"
-                 << "\n   after Seeding     "; BLANKS; std::cout << R << rem;
+                 << "\n   after Seeding            "; BLANKS; std::cout << R << rem;
         std::cout<< "\n - masked                   " << R << stats.hitsMasked       << RR << (rem-= stats.hitsMasked);
         std::cout<< "\n - merged                   " << R << stats.hitsMerged       << RR << (rem-= stats.hitsMerged);
 //         std::cout<< "\n - tooShort                 " << R << stats.hitsTooShort     << RR << (rem-= stats.hitsTooShort);
         std::cout<< "\n - putative duplicates      " << R << stats.hitsPutativeDuplicate   << RR << (rem-= stats.hitsPutativeDuplicate);
-        std::cout<< "\n - failed seed align test   " << R << stats.hitsFailedSeedAlignScoreTest  << RR << (rem-= stats.hitsFailedSeedAlignScoreTest);
-        std::cout<< "\n - failed extend align test " << R << stats.hitsFailedExtendAlignEValTest << RR << (rem-= stats.hitsFailedExtendAlignEValTest);
+        std::cout<< "\n - putative abundant        " << R << stats.hitsPutativeAbundant   << RR << (rem-= stats.hitsPutativeDuplicate);
+        std::cout<< "\n - failed pre-extend test   " << R << stats.hitsFailedSeedAlignScoreTest  << RR << (rem-= stats.hitsFailedSeedAlignScoreTest);
+        std::cout<< "\n - failed %-identity test   " << R << stats.hitsFailedExtendPercentIdentTest << RR << (rem-= stats.hitsFailedExtendAlignEValTest);
+        std::cout<< "\n - failed e-value test      " << R << stats.hitsFailedExtendEValueTest << RR << (rem-= stats.hitsFailedExtendAlignEValTest);
+        std::cout<< "\n - abundant                 " << R << stats.hitsAbundant << RR << (rem-= stats.hitsFailedExtendAlignEValTest);
         std::cout<< "\n - duplicates               " << R << stats.hitsDuplicate    << "\033[1m" << RR << (rem-= stats.hitsDuplicate)
                  << "\033[0m\n\n";
 

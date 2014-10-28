@@ -55,22 +55,25 @@
 struct StatsHolder
 {
 // seeding
-    unsigned long hitsAfterSeeding;
-    unsigned long hitsMerged;
-    unsigned long hitsTooShort;
-    unsigned long hitsMasked;
+    uint64_t hitsAfterSeeding;
+    uint64_t hitsMerged;
+    uint64_t hitsTooShort;
+    uint64_t hitsMasked;
 
-// extension
-    unsigned long hitsFailedSeedAlignScoreTest;
-    unsigned long hitsFailedSeedAlignEValTest;
-    unsigned long hitsFailedExtendAlignScoreTest;
-    unsigned long hitsFailedExtendAlignEValTest;
-    unsigned long hitsPutativeDuplicate;
-    unsigned long hitsDuplicate;
+// pre-extension
+    uint64_t hitsFailedPreExtendTest;
+    uint64_t hitsPutativeDuplicate;
+    uint64_t hitsPutativeAbundant;
+
+// post-extension
+    uint64_t hitsFailedExtendPercentIdentTest;
+    uint64_t hitsFailedExtendEValueTest;
+    uint64_t hitsAbundant;
+    uint64_t hitsDuplicate;
 
 // final
-    unsigned long hitsFinal;
-    unsigned long qrysWithHit;
+    uint64_t hitsFinal;
+    uint64_t qrysWithHit;
 
 
     StatsHolder()
@@ -90,10 +93,10 @@ struct StatsHolder
         hitsPutativeDuplicate = 0;
         hitsDuplicate     = 0;
 
-        hitsFailedExtendAlignEValTest   = 0;
+        hitsFailedExtendEValueTest   = 0;
         hitsFailedExtendAlignScoreTest  = 0;
         hitsFailedSeedAlignEValTest = 0;
-        hitsFailedSeedAlignScoreTest = 0;
+        hitsFailedPreExtendTest = 0;
     }
 
     StatsHolder plus(StatsHolder const & rhs)
@@ -108,10 +111,10 @@ struct StatsHolder
         hitsPutativeDuplicate += rhs.hitsPutativeDuplicate;
         hitsDuplicate      +=  rhs.hitsDuplicate     ;
 
-        hitsFailedExtendAlignEValTest    +=  rhs.hitsFailedExtendAlignEValTest   ;
+        hitsFailedExtendEValueTest    +=  rhs.hitsFailedExtendEValueTest   ;
         hitsFailedExtendAlignScoreTest   +=  rhs.hitsFailedExtendAlignScoreTest  ;
         hitsFailedSeedAlignEValTest +=  rhs.hitsFailedSeedAlignEValTest;
-        hitsFailedSeedAlignScoreTest+=  rhs.hitsFailedSeedAlignScoreTest;
+        hitsFailedPreExtendTest+=  rhs.hitsFailedPreExtendTest;
         return *this;
     }
 
@@ -377,7 +380,7 @@ onFindImpl(LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> & lH,
          (!seedLooksPromising(lH, m)))
      {
          discarded = true;
-         ++lH.stats.hitsFailedSeedAlignScoreTest;
+         ++lH.stats.hitsFailedPreExtendTest;
      }
 
     if (!discarded)

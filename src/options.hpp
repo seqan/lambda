@@ -206,6 +206,8 @@ struct LambdaOptions : public SharedOptions
     int             xDropOff    = 0;
     int             band        = -1;
     double          eCutOff     = 0;
+    int             idCutOff    = 0;
+    int             maxMatches  = 500;
 
     unsigned        threads     = 1;
     LambdaOptions() :
@@ -287,6 +289,22 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         "OUT"));
     setValidValues(parser, "output", "m0 m8 m9");
     setDefaultValue(parser, "output", "output.m8");
+
+    addOption(parser, ArgParseOption("id", "percent-identity",
+        "Output only matches above this threshold (checked before e-value "
+        "check).",
+        seqan::ArgParseArgument::INTEGER));
+    setDefaultValue(parser, "percent-identity", "0");
+
+    addOption(parser, ArgParseOption("e", "e-value",
+        "Output only matches that score below this threshold.",
+        seqan::ArgParseArgument::DOUBLE));
+    setDefaultValue(parser, "e-value", "0.1");
+
+    addOption(parser, ArgParseOption("nm", "num-matches",
+        "Print at most this number of matches per query.",
+        seqan::ArgParseArgument::INTEGER));
+    setDefaultValue(parser, "num-matches", "500");
 
     addOption(parser, ArgParseOption("v", "verbosity",
         "The amount of terminal output printed; 0 [only errors]; 1 [default]; 2 "
@@ -470,10 +488,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setDefaultValue(parser, "band", "-3");
     setMinValue(parser, "band", "-3");
 
-    addOption(parser, ArgParseOption("e", "e-value",
-        "Maximum E-Value for Results.",
-        seqan::ArgParseArgument::DOUBLE));
-    setDefaultValue(parser, "e-value", "0.1");
+
 
 
     addTextSection(parser, "Environment Variables");
