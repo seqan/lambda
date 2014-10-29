@@ -295,22 +295,28 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         "check).",
         seqan::ArgParseArgument::INTEGER));
     setDefaultValue(parser, "percent-identity", "0");
+    setMinValue(parser, "percent-identity", "0");
+    setMaxValue(parser, "percent-identity", "100");
 
     addOption(parser, ArgParseOption("e", "e-value",
         "Output only matches that score below this threshold.",
         seqan::ArgParseArgument::DOUBLE));
     setDefaultValue(parser, "e-value", "0.1");
+    setMinValue(parser, "e-value", "0");
 
     addOption(parser, ArgParseOption("nm", "num-matches",
         "Print at most this number of matches per query.",
         seqan::ArgParseArgument::INTEGER));
     setDefaultValue(parser, "num-matches", "500");
+    setMinValue(parser, "num-matches", "1");
 
     addOption(parser, ArgParseOption("v", "verbosity",
         "The amount of terminal output printed; 0 [only errors]; 1 [default]; 2 "
         "[+run-time, options and statistics].",
         seqan::ArgParseArgument::INTEGER));
     setDefaultValue(parser, "verbosity", "1");
+    setMinValue(parser, "verbosity", "0");
+    setMaxValue(parser, "verbosity", "2");
 
     addSection(parser, "Alphabets and Translation");
     addOption(parser, ArgParseOption("p", "program",
@@ -896,6 +902,7 @@ printOptions(LambdaOptions const & options)
                                                     : "SA-Index\n")
               << " OUTPUT\n"
               << "  output file:              " << options.output << "\n"
+              << "  max #matches per query:   " << options.maxMatches << "\n"
               << "  minimum % identity:       " << options.idCutOff << "\n"
               << "  maximum e-value:          " << options.eCutOff << "\n"
               << " GENERAL\n"

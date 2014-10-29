@@ -221,7 +221,7 @@ mainAlphed(TRedAlph const & /**/,
         // preserve lengths of untranslated sequences
         _saveOriginalSeqLengths(originalSeqs.limits,
                                 options,
-                                SHasFrames<TFormat>());
+                                SIsTranslated<TFormat>());
 
         // convert the seg file to seqan binary format
         ret = convertMaskingFile(length(originalSeqs), options);

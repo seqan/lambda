@@ -209,7 +209,7 @@ loadSubjects(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, m, p, g>  & gl
 
     // if subjects where translated, we don't have the untranslated seqs at all
     // but we still need the data for statistics and position un-translation
-    if (sHasFrames(p))
+    if (sIsTranslated(p))
     {
         start = sysTime();
         std::string strIdent = "Loading Lengths of untranslated Subj sequences…";
@@ -528,8 +528,9 @@ loadQuery(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, m, p, g> &
             if (length(s) > maxLen)
                 maxLen = length(s);
         myPrint(options, 2, "Runtime: ", finish, "s \n",
-                "Number of query sequences: ", length(globalHolder.qrySeqs),
-                "\nLongest query sequence: ", maxLen, "\n\n");
+                "Number of effective query sequences: ",
+                length(globalHolder.qrySeqs), "\nLongest query sequence: ",
+                maxLen, "\n\n");
     }
     return 0;
 }
@@ -1125,9 +1126,11 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
 
         TBlastRecord record(lH.gH.qryIds[trueQryId]);
 
-        record.qLength = qHasFrames(TFormat())
+        record.qLength = qIsTranslated(TFormat())
                             ? lH.gH.untransQrySeqLengths[trueQryId]
                             : length(lH.gH.qrySeqs[it->qryId]);
+
+        topMaxMatchesMedianBitScore = 0;
 
         // inner loop over matches per record
         for (; it != itEnd; ++it)
@@ -1153,8 +1156,8 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
 //                 std::cout << "BAX\n" << std::flush;
                 // create blastmatch in list without copy or move
                 record.matches.emplace_back(
-                lH.gH.qryIds [getTrueQryId(it->qryId, lH.options, TFormat())],
-                lH.gH.subjIds[getTrueSubjId(it->subjId, lH.options, TFormat())]);
+                lH.gH.qryIds [trueQryId],
+                lH.gH.subjIds[trueSubjId]);
 
                 auto & bm = back(record.matches);
 
@@ -1223,7 +1226,7 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
                 {
                     case COMPUTERESULT_::SUCCESS:
                         // set remaining unset members of match
-                        bm.sLength = sHasFrames(TFormat())
+                        bm.sLength = sIsTranslated(TFormat())
                                     ? lH.gH.untransSubjSeqLengths[trueSubjId]
                                     : length(lH.gH.subjSeqs[it->subjId]);
                         bm.qLength = record.qLength;
@@ -1316,12 +1319,13 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
                                                  lH.options,
                                                  TFormat())))
                             {
-                                // wasnt duplicate or merged
+                                // not already marked as duplicate or merged
                                  if (!((itN->qryStart == TPosMax) &&
                                        (itN->subjStart == TPosMax)))
                                      ++lH.stats.hitsPutativeAbundant;
                                  ++itN;
                              }
+                             it = itN;
                         }
                     }
                 }
@@ -1387,7 +1391,7 @@ void printStats(StatsHolder const & stats, LambdaOptions const & options)
         #define BLANKS for (unsigned i = 0; i< w; ++i) std::cout << " ";
         std::cout << "\033[1m   HITS                         "; BLANKS;
         std::cout << "Remaining\033[0m"
-                  << "\n   after Seeding            "; BLANKS;
+                  << "\n   after Seeding              "; BLANKS;
         std::cout << R << rem;
         std::cout << "\n - masked                   " << R << stats.hitsMasked
                   << RR << (rem -= stats.hitsMasked);
