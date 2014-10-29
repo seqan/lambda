@@ -410,7 +410,7 @@ loadQueryImplTrans(TCDStringSet<TransAlph<BlastFormatProgram::BLASTN>> & target,
         for (uint32_t j = 0; j < len; ++j)
         {
             target.concat[tBeg + j] = source.concat[sBeg + j];
-            target.concat[tBegNext + j] = functor(source.concat[sBeg+len-j]);
+            target.concat[tBegNext + j] = functor(source.concat[sBeg+len-j-1]);
         }
     }
 }
@@ -663,7 +663,7 @@ __searchDoubleIndex(TLocalHolder & lH)
 
     appendToStatus(lH.statusStr, lH.options, 1, " done. ");
     appendToStatus(lH.statusStr, lH.options, 2, finish, "s. #hits: ",
-                   length(lH.matches));
+                   length(lH.matches), " ");
     myPrint(lH.options, 1, lH.statusStr);
 }
 
