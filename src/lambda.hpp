@@ -1146,9 +1146,9 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
                 // maxMatches already found, compute median score
                 if ((record.matches.size()+1) % lH.options.maxMatches == 0)
                 {
-                    std::sort(record.matches.begin(), record.matches.end());
+                    record.matches.sort();
                     topMaxMatchesMedianBitScore =
-                        record.matches[lH.options.maxMatches/2].bitScore;
+                    (std::next(record.matches.begin(), lH.options.maxMatches/2))->bitScore;
                 }
 //                 std::cout << "BAX\n" << std::flush;
                 // create blastmatch in list without copy or move
@@ -1297,14 +1297,19 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
                          lH.options.maxMatches / 10))
                     {
                         unsigned intervalSize = lH.options.maxMatches / 10;
-                        auto b = record.matches.end() - intervalSize;
-                        auto m = b + intervalSize/2;
-                        std::nth_element(b, m, record.matches.end());
-                        m = b + intervalSize/2;
+                        // get median of current interval
+                        std::vector<double> bitScores;
+                        bitScores.resize(intervalSize);
+                        auto revIt = std::prev(record.matches.end());
+                        for (unsigned i = 0; i < intervalSize; ++i, --revIt)
+                            bitScores[i] = revIt->bitScore;
+                        std::sort(bitScores.begin(), bitScores.end());
+
                         // if current intervals median is not better than
                         // topMaxMatchesMedianBitScore than stop processing for
                         // this hit
-                        if (! m->bitScore > topMaxMatchesMedianBitScore)
+                        if (bitScores[intervalSize/2] <=
+                            topMaxMatchesMedianBitScore)
                         {
                             while ((itN != itEnd) && (trueQryId ==
                                     getTrueQryId(itN->qryId,
@@ -1333,8 +1338,8 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
             ++lH.stats.qrysWithHit;
             // sort and remove duplicates -> STL, yeah!
             auto const before = record.matches.size();
-            std::sort(record.matches.begin(), record.matches.end());
-            std::unique(record.matches.begin(), record.matches.end());
+            record.matches.sort();
+            record.matches.unique();
             lH.stats.hitsDuplicate += before - record.matches.size();
             if (record.matches.size() > lH.options.maxMatches)
             {
