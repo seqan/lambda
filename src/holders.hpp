@@ -102,22 +102,22 @@ struct StatsHolder
 
     StatsHolder plus(StatsHolder const & rhs)
     {
-        hitsAfterSeeding = rhs.hitsAfterSeeding;
-        hitsMerged = rhs.hitsMerged;
-        hitsTooShort = rhs.hitsTooShort;
-        hitsMasked = rhs.hitsMasked;
+        hitsAfterSeeding += rhs.hitsAfterSeeding;
+        hitsMerged += rhs.hitsMerged;
+        hitsTooShort += rhs.hitsTooShort;
+        hitsMasked += rhs.hitsMasked;
 
-        hitsFailedPreExtendTest = rhs.hitsFailedPreExtendTest;
-        hitsPutativeDuplicate = rhs.hitsPutativeDuplicate;
-        hitsPutativeAbundant = rhs.hitsPutativeAbundant;
+        hitsFailedPreExtendTest += rhs.hitsFailedPreExtendTest;
+        hitsPutativeDuplicate += rhs.hitsPutativeDuplicate;
+        hitsPutativeAbundant += rhs.hitsPutativeAbundant;
 
-        hitsFailedExtendPercentIdentTest = rhs.hitsFailedExtendPercentIdentTest;
-        hitsFailedExtendEValueTest = rhs.hitsFailedExtendEValueTest;
-        hitsAbundant = rhs.hitsAbundant;
-        hitsDuplicate = rhs.hitsDuplicate;
+        hitsFailedExtendPercentIdentTest += rhs.hitsFailedExtendPercentIdentTest;
+        hitsFailedExtendEValueTest += rhs.hitsFailedExtendEValueTest;
+        hitsAbundant += rhs.hitsAbundant;
+        hitsDuplicate += rhs.hitsDuplicate;
 
-        hitsFinal = rhs.hitsFinal;
-        qrysWithHit = rhs.qrysWithHit;
+        hitsFinal += rhs.hitsFinal;
+        qrysWithHit += rhs.qrysWithHit;
         return *this;
     }
 
