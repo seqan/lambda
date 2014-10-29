@@ -207,7 +207,7 @@ struct LambdaOptions : public SharedOptions
     int             band        = -1;
     double          eCutOff     = 0;
     int             idCutOff    = 0;
-    int             maxMatches  = 500;
+    unsigned long   maxMatches  = 500;
 
     unsigned        threads     = 1;
     LambdaOptions() :
@@ -888,13 +888,16 @@ printOptions(LambdaOptions const & options)
     }
 
     std::cout << "OPTIONS\n"
-              << " I/O\n"
+              << " INPUT\n"
               << "  query file:               " << options.queryFile << "\n"
               << "  db file:                  " << options.dbFile << "\n"
               << "  db index type:            " << (TGH::indexIsFM
                                                     ? "FM-Index\n"
                                                     : "SA-Index\n")
+              << " OUTPUT\n"
               << "  output file:              " << options.output << "\n"
+              << "  minimum % identity:       " << options.idCutOff << "\n"
+              << "  maximum e-value:          " << options.eCutOff << "\n"
               << " GENERAL\n"
               << "  double indexing:          " << options.doubleIndexing << "\n"
               << "  threads:                  " << uint(options.threads) << "\n"
@@ -902,7 +905,11 @@ printOptions(LambdaOptions const & options)
                                                     ? std::to_string(options.queryPart)
                                                     : std::string("n/a")) << "\n"
               << " TRANSLATION AND ALPHABETS\n"
-              << "  genetic code:             " << uint(options.geneticCode) << "\n"
+              << "  genetic code:             "
+              << ((p == BlastFormatProgram::BLASTN) ||
+                  (p == BlastFormatProgram::BLASTP)
+                 ? std::to_string(options.geneticCode)
+                 : std::string("n/a")) << "\n"
               << "  blast mode:               " << _programTagToString(TFormat())
               << "\n"
               << "  original alphabet (query):" << _alphName(OrigQryAlph<p>())
@@ -936,10 +943,10 @@ printOptions(LambdaOptions const & options)
               << " EXTENSION\n"
               << "  x-drop:                   " << options.xDropOff << "\n"
               << "  band:                     " << bandStr << "\n"
-              << "  maximum e-value:          " << options.eCutOff << "\n"
               << " MISC\n"
               << "  stdout is terminal:       " << options.isTerm << "\n"
               << "  terminal width:           " << options.terminalCols << "\n"
+              << "  verbosity:                " << options.verbosity << "\n"
               << "  bit-compressed strings:   "
     #if defined LAMBDA_BITCOPMRESSED_STRINGS
               << "on\n"

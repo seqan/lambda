@@ -58,7 +58,8 @@ enum COMPUTERESULT_
     SUCCESS = 0,
     PREEXTEND,
     PERCENTIDENT,
-    EVALUE
+    EVALUE,
+    OTHER_FAIL
 };
 
 // comparison operator to sort SA-Values based on the strings in the SA they refer to
@@ -869,9 +870,8 @@ computeBlastMatch(TBlastMatch         & bm,
     bm.sEnd   =  bm.sStart + endPosition(row1);
     bm.sStart += beginPosition(row1);
 
-
-    if (scr < lH.options.minSeedScore)
-        return PREEXTEND;
+//     if (scr < lH.options.minSeedScore)
+//         return PREEXTEND;
 
 #if 0
 // OLD WAY extension with birte's code
@@ -934,7 +934,8 @@ computeBlastMatch(TBlastMatch         & bm,
     }
 #endif
 
-    if (false) // ungapped second prealign
+#if 0
+    // ungapped second prealign
     {
         Tuple<decltype(bm.qStart), 4> positions =
             { { bm.qStart, bm.sStart, bm.qEnd, bm.sEnd} };
@@ -959,7 +960,7 @@ computeBlastMatch(TBlastMatch         & bm,
         bm.sStart =  beginPosition(row1);
         bm.sEnd   =  endPosition(row1);
     }
-
+#endif
     if (((bm.qStart > 0) && (bm.sStart > 0)) ||
         ((bm.qEnd < qryLength - 1) && (bm.sEnd < length(curSubj) -1)))
     {
@@ -1040,13 +1041,17 @@ computeBlastMatch(TBlastMatch         & bm,
     {
         std::cout << "## LATE FAIL\n" << bm.align << '\n';
 
-        return PERCENTIDENT;
+        return OTHER_FAIL;
     }
 //     std::cout << "##LINE: " << __LINE__ << '\n';
 
 //     std::cout << "ALIGN BEFORE STATS:\n" << bm.align << "\n";
 
     calcStatsAndScore(bm, lH.gH.scoreScheme);
+
+    if ((bm.identities * 100 / bm.aliLength) < lH.options.idCutOff)
+        return PERCENTIDENT;
+
 //     const unsigned long qryLength = length(row0);
     bm.bitScore = calcBitScore(bm.score, lH.gH.blastScoringAdapter);
     // TODO possibly cache the lengthAdjustments
@@ -1107,6 +1112,7 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
 //         std::cout << m.qryId << "\t" << getTrueQryId(m,lH.options, TFormat()) << "\n";
 //     }
 
+    double topMaxMatchesMedianBitScore = 0;
     // outer loop over records (all matches of one query)
     for (auto it = lH.matches.begin(),
               itN = std::next(it, 1),
@@ -1136,6 +1142,14 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
 //             std::cout << "BAR\n" << std::flush;
             if (!((it->qryStart == TPosMax) && (it->subjStart == TPosMax)))
             {
+                // PUTATIVE ABUNDANCY CHECK (part 1)
+                // maxMatches already found, compute median score
+                if ((record.matches.size()+1) % lH.options.maxMatches == 0)
+                {
+                    std::sort(record.matches.begin(), record.matches.end());
+                    topMaxMatchesMedianBitScore =
+                        record.matches[lH.options.maxMatches/2].bitScore;
+                }
 //                 std::cout << "BAX\n" << std::flush;
                 // create blastmatch in list without copy or move
                 record.matches.emplace_back(
@@ -1149,7 +1163,7 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
                 bm.sStart    = it->subjStart;
                 bm.sEnd      = it->subjStart + lH.options.seedLength;
 
-                // merge putative siblings into this match
+                // MERGE PUTATIVE SIBLINGS INTO THIS MATCH
                 for (auto it2 = itN;
                      (it2 != itEnd) &&
                      (trueQryId == getTrueQryId(it2->qryId,
@@ -1235,7 +1249,7 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
                     record.matches.pop_back();
                 } else
                 {
-                    // filter the following matches for duplicate-candidates
+                    // PUTATIVE DUBLICATES CHECK
                     for (auto it2 = itN;
                          (it2 != itEnd) &&
                          (trueQryId == getTrueQryId(it2->qryId,
@@ -1275,6 +1289,36 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
 //                             }
                         }
                     }
+
+                    // PUTATIVE ABUNDANCY CHECK (part 2)
+                    // if current intervals isn't better than topX, continue
+                    if ((record.matches.size() > lH.options.maxMatches) &&
+                        ((record.matches.size()+1) % lH.options.maxMatches ==
+                         lH.options.maxMatches / 10))
+                    {
+                        unsigned intervalSize = lH.options.maxMatches / 10;
+                        auto b = record.matches.end() - intervalSize;
+                        auto m = b + intervalSize/2;
+                        std::nth_element(b, m, record.matches.end());
+                        m = b + intervalSize/2;
+                        // if current intervals median is not better than
+                        // topMaxMatchesMedianBitScore than stop processing for
+                        // this hit
+                        if (! m->bitScore > topMaxMatchesMedianBitScore)
+                        {
+                            while ((itN != itEnd) && (trueQryId ==
+                                    getTrueQryId(itN->qryId,
+                                                 lH.options,
+                                                 TFormat())))
+                            {
+                                // wasnt duplicate or merged
+                                 if (!((itN->qryStart == TPosMax) &&
+                                       (itN->subjStart == TPosMax)))
+                                     ++lH.stats.hitsPutativeAbundant;
+                                 ++itN;
+                             }
+                        }
+                    }
                 }
             }
 
@@ -1289,10 +1333,16 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
             ++lH.stats.qrysWithHit;
             // sort and remove duplicates -> STL, yeah!
             auto const before = record.matches.size();
-            record.matches.sort();
-            record.matches.unique();
-            lH.stats.hitsFinal += record.matches.size();
+            std::sort(record.matches.begin(), record.matches.end());
+            std::unique(record.matches.begin(), record.matches.end());
             lH.stats.hitsDuplicate += before - record.matches.size();
+            if (record.matches.size() > lH.options.maxMatches)
+            {
+                lH.stats.hitsAbundant += record.matches.size() -
+                                         lH.options.maxMatches;
+                record.matches.resize(lH.options.maxMatches);
+            }
+            lH.stats.hitsFinal += record.matches.size();
 
             int lret = 0;
             SEQAN_OMP_PRAGMA(critical(filewrite))
@@ -1330,19 +1380,36 @@ void printStats(StatsHolder const & stats, LambdaOptions const & options)
         #define R  " " << std::setw(w)
         #define RR " = " << std::setw(w)
         #define BLANKS for (unsigned i = 0; i< w; ++i) std::cout << " ";
-        std::cout << "\033[1m   HITS                         "; BLANKS; std::cout << "Remaining\033[0m"
-                 << "\n   after Seeding            "; BLANKS; std::cout << R << rem;
-        std::cout<< "\n - masked                   " << R << stats.hitsMasked       << RR << (rem-= stats.hitsMasked);
-        std::cout<< "\n - merged                   " << R << stats.hitsMerged       << RR << (rem-= stats.hitsMerged);
-//         std::cout<< "\n - tooShort                 " << R << stats.hitsTooShort     << RR << (rem-= stats.hitsTooShort);
-        std::cout<< "\n - putative duplicates      " << R << stats.hitsPutativeDuplicate   << RR << (rem-= stats.hitsPutativeDuplicate);
-        std::cout<< "\n - putative abundant        " << R << stats.hitsPutativeAbundant   << RR << (rem-= stats.hitsPutativeDuplicate);
-        std::cout<< "\n - failed pre-extend test   " << R << stats.hitsFailedSeedAlignScoreTest  << RR << (rem-= stats.hitsFailedSeedAlignScoreTest);
-        std::cout<< "\n - failed %-identity test   " << R << stats.hitsFailedExtendPercentIdentTest << RR << (rem-= stats.hitsFailedExtendAlignEValTest);
-        std::cout<< "\n - failed e-value test      " << R << stats.hitsFailedExtendEValueTest << RR << (rem-= stats.hitsFailedExtendAlignEValTest);
-        std::cout<< "\n - abundant                 " << R << stats.hitsAbundant << RR << (rem-= stats.hitsFailedExtendAlignEValTest);
-        std::cout<< "\n - duplicates               " << R << stats.hitsDuplicate    << "\033[1m" << RR << (rem-= stats.hitsDuplicate)
-                 << "\033[0m\n\n";
+        std::cout << "\033[1m   HITS                         "; BLANKS;
+        std::cout << "Remaining\033[0m"
+                  << "\n   after Seeding            "; BLANKS;
+        std::cout << R << rem;
+        std::cout << "\n - masked                   " << R << stats.hitsMasked
+                  << RR << (rem -= stats.hitsMasked);
+        std::cout << "\n - merged                   " << R << stats.hitsMerged
+                  << RR << (rem -= stats.hitsMerged);
+        std::cout << "\n - putative duplicates      " << R
+                  << stats.hitsPutativeDuplicate << RR
+                  << (rem -= stats.hitsPutativeDuplicate);
+        std::cout << "\n - putative abundant        " << R
+                  << stats.hitsPutativeAbundant   << RR
+                  << (rem -= stats.hitsPutativeAbundant);
+        std::cout << "\n - failed pre-extend test   " << R
+                  << stats.hitsFailedPreExtendTest  << RR
+                  << (rem -= stats.hitsFailedPreExtendTest);
+        std::cout << "\n - failed %-identity test   " << R
+                  << stats.hitsFailedExtendPercentIdentTest << RR
+                  << (rem -= stats.hitsFailedExtendPercentIdentTest);
+        std::cout << "\n - failed e-value test      " << R
+                  << stats.hitsFailedExtendEValueTest << RR
+                  << (rem -= stats.hitsFailedExtendEValueTest);
+        std::cout << "\n - abundant                 " << R
+                  << stats.hitsAbundant << RR
+                  << (rem -= stats.hitsAbundant);
+        std::cout << "\n - duplicates               " << R
+                  << stats.hitsDuplicate << "\033[1m" << RR
+                  << (rem -= stats.hitsDuplicate)
+                  << "\033[0m\n\n";
 
         if (rem != stats.hitsFinal)
             std::cout << "WARNING: hits dont add up\n";

@@ -75,7 +75,6 @@ struct StatsHolder
     uint64_t hitsFinal;
     uint64_t qrysWithHit;
 
-
     StatsHolder()
     {
         clear();
@@ -83,38 +82,42 @@ struct StatsHolder
 
     void clear()
     {
-        hitsFinal       = 0;
-        hitsAfterSeeding      = 0;
-        hitsMerged     = 0;
-        hitsTooShort   = 0;
-        hitsMasked      = 0;
+        hitsAfterSeeding = 0;
+        hitsMerged = 0;
+        hitsTooShort = 0;
+        hitsMasked = 0;
 
-        qrysWithHit    = 0;
-        hitsPutativeDuplicate = 0;
-        hitsDuplicate     = 0;
-
-        hitsFailedExtendEValueTest   = 0;
-        hitsFailedExtendAlignScoreTest  = 0;
-        hitsFailedSeedAlignEValTest = 0;
         hitsFailedPreExtendTest = 0;
+        hitsPutativeDuplicate = 0;
+        hitsPutativeAbundant = 0;
+
+        hitsFailedExtendPercentIdentTest = 0;
+        hitsFailedExtendEValueTest = 0;
+        hitsAbundant = 0;
+        hitsDuplicate = 0;
+
+        hitsFinal = 0;
+        qrysWithHit = 0;
     }
 
     StatsHolder plus(StatsHolder const & rhs)
     {
-        hitsFinal       += rhs.hitsFinal;
-        hitsAfterSeeding       +=  rhs.hitsAfterSeeding      ;
-        hitsMerged      +=  rhs.hitsMerged     ;
-        hitsTooShort    +=  rhs.hitsTooShort   ;
-        hitsMasked       +=  rhs.hitsMasked      ;
+        hitsAfterSeeding = rhs.hitsAfterSeeding;
+        hitsMerged = rhs.hitsMerged;
+        hitsTooShort = rhs.hitsTooShort;
+        hitsMasked = rhs.hitsMasked;
 
-        qrysWithHit     +=  rhs.qrysWithHit    ;
-        hitsPutativeDuplicate += rhs.hitsPutativeDuplicate;
-        hitsDuplicate      +=  rhs.hitsDuplicate     ;
+        hitsFailedPreExtendTest = rhs.hitsFailedPreExtendTest;
+        hitsPutativeDuplicate = rhs.hitsPutativeDuplicate;
+        hitsPutativeAbundant = rhs.hitsPutativeAbundant;
 
-        hitsFailedExtendEValueTest    +=  rhs.hitsFailedExtendEValueTest   ;
-        hitsFailedExtendAlignScoreTest   +=  rhs.hitsFailedExtendAlignScoreTest  ;
-        hitsFailedSeedAlignEValTest +=  rhs.hitsFailedSeedAlignEValTest;
-        hitsFailedPreExtendTest+=  rhs.hitsFailedPreExtendTest;
+        hitsFailedExtendPercentIdentTest = rhs.hitsFailedExtendPercentIdentTest;
+        hitsFailedExtendEValueTest = rhs.hitsFailedExtendEValueTest;
+        hitsAbundant = rhs.hitsAbundant;
+        hitsDuplicate = rhs.hitsDuplicate;
+
+        hitsFinal = rhs.hitsFinal;
+        qrysWithHit = rhs.qrysWithHit;
         return *this;
     }
 
