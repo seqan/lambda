@@ -906,8 +906,8 @@ printOptions(LambdaOptions const & options)
                                                     : std::string("n/a")) << "\n"
               << " TRANSLATION AND ALPHABETS\n"
               << "  genetic code:             "
-              << ((p == BlastFormatProgram::BLASTN) ||
-                  (p == BlastFormatProgram::BLASTP)
+              << ((p != BlastFormatProgram::BLASTN) &&
+                  (p != BlastFormatProgram::BLASTP)
                  ? std::to_string(options.geneticCode)
                  : std::string("n/a")) << "\n"
               << "  blast mode:               " << _programTagToString(TFormat())
