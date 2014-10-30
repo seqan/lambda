@@ -726,6 +726,9 @@ template <typename TLocalHolder>
 inline void
 sortMatches(TLocalHolder & lH)
 {
+    using TGH       = typename TLocalHolder::TGlobalHolder;
+    using TFormat   = typename TGH::TFormat;
+
     if (lH.options.doubleIndexing)
     {
         appendToStatus(lH.statusStr, lH.options, 1, "Sorting hits…");
@@ -738,14 +741,16 @@ sortMatches(TLocalHolder & lH)
 //    std::sort(begin(lH.matches, Standard()), end(lH.matches, Standard()));
 //     std::sort(lH.matches.begin(), lH.matches.end());
 
-    if (lH.matches.size() > lH.options.maxMatches)
-    {
-        MatchSortComp   comp(lH.matches);
-        std::sort(lH.matches.begin(), lH.matches.end(), comp);
-    } else
+//     if (lH.matches.size() > lH.options.maxMatches)
+//     {
+//         MatchSortComp   comp(lH.matches);
+//         std::sort(lH.matches.begin(), lH.matches.end(), comp);
+//     } else
+    if (lH.options.doubleIndexing)
     {
         std::sort(lH.matches.begin(), lH.matches.end());
-    }
+    } else
+        myHyperSortSingleIndex(lH.matches, TFormat());
 
     double finish = sysTime() - start;
 

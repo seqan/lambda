@@ -141,6 +141,54 @@ struct MatchSortComp :
     }
 };
 
+template <typename TFormat>
+inline void
+myHyperSortSingleIndex(std::vector<Match> & matches, TFormat const &)
+{
+    if (matches.size() == 0)
+        return;
+    // regular sort
+    std::sort(matches.begin(), matches.end());
+
+    //                    begin, end
+    std::vector<std::pair<uint32_t, uint32_t>> intervals;
+    for (uint32_t i = 1; i < length(matches); ++i)
+    {
+        if ((matches[i-1].subjId / sNumFrames(TFormat())) !=
+            (matches[i].subjId / sNumFrames(TFormat())))
+        {
+            if (length(intervals) == 0)
+                intervals.emplace_back(std::make_pair(0,i));
+            else
+                intervals.emplace_back(std::make_pair(std::get<1>(intervals.back()),
+                                                      i));
+        }
+    }
+
+    // sort by lengths of interval
+    std::sort(intervals.begin(), intervals.end(),
+              [] (std::pair<uint32_t, uint32_t> const & i1,
+                  std::pair<uint32_t, uint32_t> const & i2)
+    {
+        return (std::get<1>(i1) - std::get<0>(i1))
+            >  (std::get<1>(i2) - std::get<0>(i2));
+    });
+
+    std::vector<Match> tmpVector;
+    tmpVector.resize(matches.size());
+
+    uint32_t newIndex = 0;
+    for (auto const & i : intervals)
+    {
+        uint32_t limit = std::get<1>(i);
+        for (uint32_t j = std::get<0>(i); j < limit; ++j)
+        {
+            tmpVector[newIndex] = matches[j];
+            newIndex++;
+        }
+    }
+    std::swap(tmpVector, matches);
+}
 
 
 // inline bool
