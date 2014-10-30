@@ -1320,12 +1320,12 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
                                                  TFormat())))
                             {
                                 // not already marked as duplicate or merged
-                                 if (!((itN->qryStart == TPosMax) &&
-                                       (itN->subjStart == TPosMax)))
-                                     ++lH.stats.hitsPutativeAbundant;
-                                 ++itN;
-                             }
-                             it = itN;
+                                if (!((itN->qryStart == TPosMax) &&
+                                      (itN->subjStart == TPosMax)))
+                                    ++lH.stats.hitsPutativeAbundant;
+                                ++itN;
+                            }
+                            it = std::prev(itN);
                         }
                     }
                 }
