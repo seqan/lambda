@@ -635,12 +635,15 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     if (options.doubleIndexing)
     {
-        getOptionValue(options.queryPart, parser, "query-partitions");
+        if (isSet(parser, "query-partitions"))
+            getOptionValue(options.queryPart, parser, "query-partitions");
+        else
+            options.queryPart = options.threads;
         if ((options.queryPart % options.threads) != 0)
             std::cout << "-qp not a multiple of -t; expect suboptimal performance.\n";
     } else
     {
-        options.queryPart = options.threads;
+        options.queryPart = 1;
     }
 
     getOptionValue(options.scoringMethod, parser, "scoring-scheme");

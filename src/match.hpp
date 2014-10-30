@@ -28,6 +28,7 @@
 #define SEQAN_LAMBDA_FINDER_H_
 
 #include <forward_list>
+#include <unordered_map>
 #include <vector>
 
 #include "misc.hpp"
@@ -80,6 +81,67 @@ struct Match
               < std::tie(m2.qryId, m2.subjId, m2.qryStart, m2.subjStart/*, m2.qryEnd, m2.subjEnd*/);
     }
 };
+
+inline void
+setToSkip(Match & m)
+{
+    using TPos          = typename Match::TPos;
+    constexpr TPos posMax = std::numeric_limits<TPos>::max();
+    m.qryStart = posMax;
+    m.subjStart = posMax;
+}
+
+inline bool
+isSetToSkip(Match const & m)
+{
+    using TPos          = typename Match::TPos;
+    constexpr TPos posMax = std::numeric_limits<TPos>::max();
+    return (m.qryStart == posMax) && (m.subjStart == posMax);
+}
+
+struct IdPairHash
+{
+    std::size_t
+    operator()(std::pair<Match::TQId, Match::TSId> const & pair) const
+    {
+        return std::hash<Match::TQId>()(std::get<0>(pair)) ^
+               std::hash<Match::TSId>()(std::get<1>(pair));
+    }
+};
+
+
+// this is a comparison structure that takes the relative abundance of hits
+// on a specific subject into account thereby moving those subjects to
+// front of a queries hits that are more likely to be top-scoring
+struct MatchSortComp :
+    public ::std::binary_function <Match, Match, bool>
+{
+    std::unordered_map<std::pair<Match::TQId, Match::TSId>,
+                       uint64_t,
+                       IdPairHash> map;
+
+    MatchSortComp(std::vector<Match> const & matches)
+    {
+        for (Match const & m : matches)
+            ++map[std::make_pair(m.qryId, m.subjId)];
+    }
+
+    inline bool operator() (Match const & i, Match const & j) const
+    {
+        int64_t iAb = -map.at(std::make_pair(i.qryId, i.subjId));
+        int64_t jAb = -map.at(std::make_pair(j.qryId, j.subjId));
+        return std::tie(i.qryId,
+                        iAb,
+                        i.qryStart,
+                        i.subjStart)
+           <   std::tie(j.qryId,
+                        jAb,
+                        j.qryStart,
+                        j.subjStart);
+    }
+};
+
+
 
 // inline bool
 // overlap(Match const & m1, Match const & m2, unsigned char d = 0)

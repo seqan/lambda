@@ -79,6 +79,10 @@ struct Comp :
     }
 };
 
+
+
+
+
 // ============================================================================
 // Functions
 // ============================================================================
@@ -732,8 +736,16 @@ sortMatches(TLocalHolder & lH)
     double start = sysTime();
 
 //    std::sort(begin(lH.matches, Standard()), end(lH.matches, Standard()));
-   std::sort(lH.matches.begin(), lH.matches.end());
-//     lH.matches.sort();
+//     std::sort(lH.matches.begin(), lH.matches.end());
+
+    if (lH.matches.size() > lH.options.maxMatches)
+    {
+        MatchSortComp   comp(lH.matches);
+        std::sort(lH.matches.begin(), lH.matches.end(), comp);
+    } else
+    {
+        std::sort(lH.matches.begin(), lH.matches.end());
+    }
 
     double finish = sysTime() - start;
 
@@ -1143,21 +1155,21 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
 //             std::cout << "QryStart: " << it->qryStart << "\n" << std::flush;
 //             std::cout << "SubjStart: " << it->subjStart << "\n" << std::flush;
 //             std::cout << "BAR\n" << std::flush;
-            if (!((it->qryStart == TPosMax) && (it->subjStart == TPosMax)))
+            if (!isSetToSkip(*it))
             {
                 // PUTATIVE ABUNDANCY CHECK (part 1)
                 // maxMatches already found, compute median score
                 if ((record.matches.size()+1) % lH.options.maxMatches == 0)
                 {
                     record.matches.sort();
-                    topMaxMatchesMedianBitScore =
-                    (std::next(record.matches.begin(), lH.options.maxMatches/2))->bitScore;
+                    topMaxMatchesMedianBitScore = (std::next(
+                        record.matches.begin(),
+                        lH.options.maxMatches / 2))->bitScore;
                 }
 //                 std::cout << "BAX\n" << std::flush;
                 // create blastmatch in list without copy or move
-                record.matches.emplace_back(
-                lH.gH.qryIds [trueQryId],
-                lH.gH.subjIds[trueSubjId]);
+                record.matches.emplace_back(lH.gH.qryIds [trueQryId],
+                                            lH.gH.subjIds[trueSubjId]);
 
                 auto & bm = back(record.matches);
 
@@ -1213,8 +1225,7 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
                                                + lH.options.seedLength));
                             ++lH.stats.hitsMerged;
 
-                            it2->qryStart = TPosMax;
-                            it2->subjStart = TPosMax;
+                            setToSkip(*it2);
                         }
                     }
                 }
@@ -1287,8 +1298,7 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
 //                                 == TPos(it2->qryStart - bm.qStart))
 //                             {
                                 ++lH.stats.hitsPutativeDuplicate;
-                                it2->qryStart = TPosMax;
-                                it2->subjStart = TPosMax;
+                                setToSkip(*it2);
 //                             }
                         }
                     }
@@ -1320,8 +1330,7 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
                                                  TFormat())))
                             {
                                 // not already marked as duplicate or merged
-                                if (!((itN->qryStart == TPosMax) &&
-                                      (itN->subjStart == TPosMax)))
+                                if (!isSetToSkip(*itN))
                                     ++lH.stats.hitsPutativeAbundant;
                                 ++itN;
                             }
