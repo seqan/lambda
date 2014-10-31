@@ -388,7 +388,7 @@ loadQueryImplTrans(TCDStringSet<TransAlph<BlastFormatProgram::BLASTN>> & target,
     using TAlph = TransAlph<BlastFormatProgram::BLASTN>;
 //     using TReverseCompl =  ModifiedString<ModifiedString<String<TAlph>,
 //                             ModView<FunctorComplement<TAlph>>>, ModReverse>;
-    myPrint(options, 1, "generating reverse complements…");
+    myPrint(options, 1, " generating reverse complements…");
     // no need for translation, but we need reverse complements
     resize(target.concat, length(source.concat) * 2);
     resize(target.limits, length(source) * 2 + 1);
@@ -1205,17 +1205,18 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
                                 int(medianTopNMatchesBefore))
                             {
                                 // declare all the rest as putative duplicates
-                                while ((itN != itEnd) &&
-                                       (trueQryId == getTrueQryId(itN->qryId,
+                                while ((it != itEnd) &&
+                                       (trueQryId == getTrueQryId(it->qryId,
                                                                   lH.options,
                                                                   TFormat())))
                                 {
                                     // not already marked as duplicate or merged
                                     if (!isSetToSkip(*itN))
                                         ++lH.stats.hitsPutativeAbundant;
-                                    ++itN;
+                                    ++it;
                                 }
-                                it = std::prev(itN);
+                                // move back so if-loop's increment still valid
+                                std::advance(it, -1);
                                 break;
                             }
                         }
@@ -1357,41 +1358,6 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
 //                             }
                         }
                     }
-
-//                     // PUTATIVE ABUNDANCY CHECK (part 2)
-//                     // if current intervals isn't better than topX, continue
-//                     if ((record.matches.size() > lH.options.maxMatches) &&
-//                         ((record.matches.size()+1) % lH.options.maxMatches ==
-//                          lH.options.maxMatches / 10))
-//                     {
-//                         unsigned intervalSize = lH.options.maxMatches / 10;
-//                         // get median of current interval
-//                         std::vector<double> bitScores;
-//                         bitScores.resize(intervalSize);
-//                         auto revIt = std::prev(record.matches.end());
-//                         for (unsigned i = 0; i < intervalSize; ++i, --revIt)
-//                             bitScores[i] = revIt->bitScore;
-//                         std::sort(bitScores.begin(), bitScores.end());
-// 
-//                         // if current intervals median is not better than
-//                         // topMaxMatchesMedianBitScore than stop processing for
-//                         // this hit
-//                         if (bitScores[intervalSize/2] <=
-//                             topMaxMatchesMedianBitScore)
-//                         {
-//                             while ((itN != itEnd) && (trueQryId ==
-//                                     getTrueQryId(itN->qryId,
-//                                                  lH.options,
-//                                                  TFormat())))
-//                             {
-//                                 // not already marked as duplicate or merged
-//                                 if (!isSetToSkip(*itN))
-//                                     ++lH.stats.hitsPutativeAbundant;
-//                                 ++itN;
-//                             }
-//                             it = std::prev(itN);
-//                         }
-//                     }
                 }
             }
 
@@ -1455,7 +1421,7 @@ void printStats(StatsHolder const & stats, LambdaOptions const & options)
         #define BLANKS for (unsigned i = 0; i< w; ++i) std::cout << " ";
         std::cout << "\033[1m   HITS                         "; BLANKS;
         std::cout << "Remaining\033[0m"
-                  << "\n   after Seeding              "; BLANKS;
+                  << "\n   after Seeding               "; BLANKS;
         std::cout << R << rem;
         std::cout << "\n - masked                   " << R << stats.hitsMasked
                   << RR << (rem -= stats.hitsMasked);

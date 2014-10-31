@@ -99,47 +99,47 @@ isSetToSkip(Match const & m)
     return (m.qryStart == posMax) && (m.subjStart == posMax);
 }
 
-struct IdPairHash
-{
-    std::size_t
-    operator()(std::pair<Match::TQId, Match::TSId> const & pair) const
-    {
-        return std::hash<Match::TQId>()(std::get<0>(pair)) ^
-               std::hash<Match::TSId>()(std::get<1>(pair));
-    }
-};
-
-
-// this is a comparison structure that takes the relative abundance of hits
-// on a specific subject into account thereby moving those subjects to
-// front of a queries hits that are more likely to be top-scoring
-struct MatchSortComp :
-    public ::std::binary_function <Match, Match, bool>
-{
-    std::unordered_map<std::pair<Match::TQId, Match::TSId>,
-                       uint64_t,
-                       IdPairHash> map;
-
-    MatchSortComp(std::vector<Match> const & matches)
-    {
-        for (Match const & m : matches)
-            ++map[std::make_pair(m.qryId, m.subjId)];
-    }
-
-    inline bool operator() (Match const & i, Match const & j) const
-    {
-        int64_t iAb = -map.at(std::make_pair(i.qryId, i.subjId));
-        int64_t jAb = -map.at(std::make_pair(j.qryId, j.subjId));
-        return std::tie(i.qryId,
-                        iAb,
-                        i.qryStart,
-                        i.subjStart)
-           <   std::tie(j.qryId,
-                        jAb,
-                        j.qryStart,
-                        j.subjStart);
-    }
-};
+// struct IdPairHash
+// {
+//     std::size_t
+//     operator()(std::pair<Match::TQId, Match::TSId> const & pair) const
+//     {
+//         return std::hash<Match::TQId>()(std::get<0>(pair)) ^
+//                std::hash<Match::TSId>()(std::get<1>(pair));
+//     }
+// };
+// 
+// 
+// // this is a comparison structure that takes the relative abundance of hits
+// // on a specific subject into account thereby moving those subjects to
+// // front of a queries hits that are more likely to be top-scoring
+// struct MatchSortComp :
+//     public ::std::binary_function <Match, Match, bool>
+// {
+//     std::unordered_map<std::pair<Match::TQId, Match::TSId>,
+//                        uint64_t,
+//                        IdPairHash> map;
+// 
+//     MatchSortComp(std::vector<Match> const & matches)
+//     {
+//         for (Match const & m : matches)
+//             ++map[std::make_pair(m.qryId, m.subjId)];
+//     }
+// 
+//     inline bool operator() (Match const & i, Match const & j) const
+//     {
+//         int64_t iAb = -map.at(std::make_pair(i.qryId, i.subjId));
+//         int64_t jAb = -map.at(std::make_pair(j.qryId, j.subjId));
+//         return std::tie(i.qryId,
+//                         iAb,
+//                         i.qryStart,
+//                         i.subjStart)
+//            <   std::tie(j.qryId,
+//                         jAb,
+//                         j.qryStart,
+//                         j.subjStart);
+//     }
+// };
 
 template <typename TFormat>
 inline void
@@ -147,18 +147,9 @@ myHyperSortSingleIndex(std::vector<Match> & matches,
                        LambdaOptions const & options,
                        TFormat const &)
 {
-    if (matches.size() == 0)
-        return;
     // regular sort
     std::sort(matches.begin(), matches.end());
 
-//     if (matches[0].qryId / qNumFrames(TFormat()) == 2)
-//     {
-//         std::cout << "# matches: " << matches.size() << '\n'
-//                   << "first matche's subjId: " << matches[0].subjId << '\n';
-//     }
-    // TODO maybe we need to uphold effective qryId order for other vodoo
-    // even with single indexing
     //                    trueQryId, begin,    end
     std::vector<std::tuple<uint32_t, uint32_t, uint32_t>> intervals;
     for (uint32_t i = 1; i < length(matches); ++i)
@@ -179,13 +170,6 @@ myHyperSortSingleIndex(std::vector<Match> & matches,
                                                        i));
         }
     }
-
-//     if (matches[0].qryId / qNumFrames(TFormat()) == 2)
-//     {
-//         std::cout << "Intervals:\n";
-//         for (auto const & p : intervals)
-//             std::cout << '(' << std::get<0>(p) << ','<< std::get<1>(p) << ")\n";
-//     }
 
     if (options.doubleIndexing)
     {
@@ -210,12 +194,6 @@ myHyperSortSingleIndex(std::vector<Match> & matches,
                 >  (std::get<2>(i2) - std::get<1>(i2));
         });
     }
-//     if (matches[0].qryId / qNumFrames(TFormat()) == 2)
-//     {
-//         std::cout << "Sorted Intervals:\n";
-//         for (auto const & p : intervals)
-//             std::cout << '(' << std::get<0>(p) << ','<< std::get<1>(p) << ")\n";
-//     }
 
     std::vector<Match> tmpVector;
     tmpVector.resize(matches.size());
