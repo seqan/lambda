@@ -209,6 +209,9 @@ struct LambdaOptions : public SharedOptions
     int             idCutOff    = 0;
     unsigned long   maxMatches  = 500;
 
+    bool            filterPutativeDuplicates = true;
+    bool            filterPutativeAbundant = true;
+
     unsigned        threads     = 1;
     LambdaOptions() :
         SharedOptions()
@@ -427,12 +430,26 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         seqan::ArgParseArgument::INTEGER));
     setDefaultValue(parser, "seed-min-length", "10");
 
+    addSection(parser, "Miscellaneous Heuristics");
+
     addOption(parser, ArgParseOption("ss", "seed-min-score",
         "after postproc worse seeds are discarded (raw score). Only used in "
         "combination with Alphabet reduction.",
         seqan::ArgParseArgument::INTEGER));
     setDefaultValue(parser, "seed-min-score", "32");
 
+    addOption(parser, ArgParseOption("pd", "filter-putative-duplicates",
+        "filter hits that will likely duplicate a match already found.",
+        seqan::ArgParseArgument::STRING));
+    setValidValues(parser, "filter-putative-duplicates", "on off");
+    setDefaultValue(parser, "filter-putative-duplicates", "on");
+
+    addOption(parser, ArgParseOption("pa", "filter-putative-abundant",
+        "If the maximum number of matches per query are found already, "
+        "stop searching if the remaining realm looks unfeasable.",
+        seqan::ArgParseArgument::STRING));
+    setValidValues(parser, "filter-putative-abundant", "on off");
+    setDefaultValue(parser, "filter-putative-abundant", "on");
 //     addOption(parser, ArgParseOption("se",
 //                                             "seedminevalue",
 //                                             "after postproc worse seeds are "
@@ -685,6 +702,13 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
                       << std::endl;
             return seqan::ArgumentParser::PARSE_ERROR;
     }
+
+    getOptionValue(buffer, parser, "filter-putative-duplicates");
+    options.filterPutativeDuplicates = (buffer == "on");
+
+    getOptionValue(buffer, parser, "filter-putative-abundant");
+    options.filterPutativeAbundant = (buffer == "on");
+
     return seqan::ArgumentParser::PARSE_OK;
 }
 

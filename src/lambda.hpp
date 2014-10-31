@@ -746,11 +746,13 @@ sortMatches(TLocalHolder & lH)
 //         MatchSortComp   comp(lH.matches);
 //         std::sort(lH.matches.begin(), lH.matches.end(), comp);
 //     } else
-    if (lH.options.doubleIndexing)
-    {
+
+    if ((lH.options.filterPutativeAbundant) &&
+        (lH.matches.size() > lH.options.maxMatches))
+        // more expensive sort to get likely targets to front
+        myHyperSortSingleIndex(lH.matches, lH.options, TFormat());
+    else
         std::sort(lH.matches.begin(), lH.matches.end());
-    } else
-        myHyperSortSingleIndex(lH.matches, TFormat());
 
     double finish = sysTime() - start;
 
@@ -1111,7 +1113,7 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
                            TPos,
                            typename TLocalHolder::TAlign>;
 
-    constexpr TPos TPosMax = std::numeric_limits<TPos>::max();
+//     constexpr TPos TPosMax = std::numeric_limits<TPos>::max();
 //     constexpr uint8_t qFactor = qHasRevComp(TFormat()) ? 3 : 1;
 //     constexpr uint8_t sFactor = sHasRevComp(TFormat()) ? 3 : 1;
 
@@ -1131,7 +1133,8 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
 //     }
 
     double topMaxMatchesMedianBitScore = 0;
-    // outer loop over records (all matches of one query)
+    // outer loop over records
+    // (only one iteration if single indexing is used)
     for (auto it = lH.matches.begin(),
               itN = std::next(it, 1),
               itEnd = lH.matches.end();
@@ -1162,14 +1165,61 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
 //             std::cout << "BAR\n" << std::flush;
             if (!isSetToSkip(*it))
             {
-                // PUTATIVE ABUNDANCY CHECK (part 1)
-                // maxMatches already found, compute median score
-                if ((record.matches.size()+1) % lH.options.maxMatches == 0)
+                // ABUNDANCY and PUTATIVE ABUNDANCY CHECKS
+                if (record.matches.size() % lH.options.maxMatches == 0)
                 {
-                    record.matches.sort();
-                    topMaxMatchesMedianBitScore = (std::next(
-                        record.matches.begin(),
-                        lH.options.maxMatches / 2))->bitScore;
+                    if (record.matches.size() / lH.options.maxMatches == 1)
+                    {
+                        // numMaxMatches found the first time
+                        record.matches.sort();
+                    }
+                    else if (record.matches.size() / lH.options.maxMatches > 1)
+                    {
+                        double medianTopNMatchesBefore = 0.0;
+                        if (lH.options.filterPutativeAbundant)
+                        {
+                            medianTopNMatchesBefore =
+                            (std::next(record.matches.begin(),
+                                       lH.options.maxMatches / 2))->bitScore;
+                        }
+
+                        uint64_t before = record.matches.size();
+                        record.matches.sort();
+                        record.matches.unique();
+                        lH.stats.hitsDuplicate += before -
+                                                  record.matches.size();
+
+                        before = record.matches.size();
+                        record.matches.resize(lH.options.maxMatches + 1);
+                        // +1 so as not to trigger % == 0 in the next run
+                        lH.stats.hitsAbundant += before -
+                                                 record.matches.size();
+
+                        if (lH.options.filterPutativeAbundant)
+                        {
+                            double medianTopNMatchesAfter =
+                            (std::next(record.matches.begin(),
+                                       lH.options.maxMatches / 2))->bitScore;
+                            // no new matches in top n/2
+                            if (int(medianTopNMatchesAfter) <=
+                                int(medianTopNMatchesBefore))
+                            {
+                                // declare all the rest as putative duplicates
+                                while ((itN != itEnd) &&
+                                       (trueQryId == getTrueQryId(itN->qryId,
+                                                                  lH.options,
+                                                                  TFormat())))
+                                {
+                                    // not already marked as duplicate or merged
+                                    if (!isSetToSkip(*itN))
+                                        ++lH.stats.hitsPutativeAbundant;
+                                    ++itN;
+                                }
+                                it = std::prev(itN);
+                                break;
+                            }
+                        }
+                    }
                 }
 //                 std::cout << "BAX\n" << std::flush;
                 // create blastmatch in list without copy or move
@@ -1266,7 +1316,7 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
                 if (lret != 0)// discard match
                 {
                     record.matches.pop_back();
-                } else
+                } else if (lH.options.filterPutativeDuplicates)
                 {
                     // PUTATIVE DUBLICATES CHECK
                     for (auto it2 = itN;
@@ -1308,40 +1358,40 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
                         }
                     }
 
-                    // PUTATIVE ABUNDANCY CHECK (part 2)
-                    // if current intervals isn't better than topX, continue
-                    if ((record.matches.size() > lH.options.maxMatches) &&
-                        ((record.matches.size()+1) % lH.options.maxMatches ==
-                         lH.options.maxMatches / 10))
-                    {
-                        unsigned intervalSize = lH.options.maxMatches / 10;
-                        // get median of current interval
-                        std::vector<double> bitScores;
-                        bitScores.resize(intervalSize);
-                        auto revIt = std::prev(record.matches.end());
-                        for (unsigned i = 0; i < intervalSize; ++i, --revIt)
-                            bitScores[i] = revIt->bitScore;
-                        std::sort(bitScores.begin(), bitScores.end());
-
-                        // if current intervals median is not better than
-                        // topMaxMatchesMedianBitScore than stop processing for
-                        // this hit
-                        if (bitScores[intervalSize/2] <=
-                            topMaxMatchesMedianBitScore)
-                        {
-                            while ((itN != itEnd) && (trueQryId ==
-                                    getTrueQryId(itN->qryId,
-                                                 lH.options,
-                                                 TFormat())))
-                            {
-                                // not already marked as duplicate or merged
-                                if (!isSetToSkip(*itN))
-                                    ++lH.stats.hitsPutativeAbundant;
-                                ++itN;
-                            }
-                            it = std::prev(itN);
-                        }
-                    }
+//                     // PUTATIVE ABUNDANCY CHECK (part 2)
+//                     // if current intervals isn't better than topX, continue
+//                     if ((record.matches.size() > lH.options.maxMatches) &&
+//                         ((record.matches.size()+1) % lH.options.maxMatches ==
+//                          lH.options.maxMatches / 10))
+//                     {
+//                         unsigned intervalSize = lH.options.maxMatches / 10;
+//                         // get median of current interval
+//                         std::vector<double> bitScores;
+//                         bitScores.resize(intervalSize);
+//                         auto revIt = std::prev(record.matches.end());
+//                         for (unsigned i = 0; i < intervalSize; ++i, --revIt)
+//                             bitScores[i] = revIt->bitScore;
+//                         std::sort(bitScores.begin(), bitScores.end());
+// 
+//                         // if current intervals median is not better than
+//                         // topMaxMatchesMedianBitScore than stop processing for
+//                         // this hit
+//                         if (bitScores[intervalSize/2] <=
+//                             topMaxMatchesMedianBitScore)
+//                         {
+//                             while ((itN != itEnd) && (trueQryId ==
+//                                     getTrueQryId(itN->qryId,
+//                                                  lH.options,
+//                                                  TFormat())))
+//                             {
+//                                 // not already marked as duplicate or merged
+//                                 if (!isSetToSkip(*itN))
+//                                     ++lH.stats.hitsPutativeAbundant;
+//                                 ++itN;
+//                             }
+//                             it = std::prev(itN);
+//                         }
+//                     }
                 }
             }
 
