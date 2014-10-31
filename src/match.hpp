@@ -165,7 +165,7 @@ myHyperSortSingleIndex(std::vector<Match> & matches,
     {
         if ((matches[i-1].qryId != matches[i].qryId) ||
             (matches[i-1].subjId / sNumFrames(TFormat()) !=
-            (matches[i].subjId / sNumFrames(TFormat()))))
+             (matches[i].subjId / sNumFrames(TFormat()))))
         {
             if (length(intervals) == 0)
                 intervals.emplace_back(std::make_tuple(matches[i-1].qryId
@@ -175,7 +175,7 @@ myHyperSortSingleIndex(std::vector<Match> & matches,
             else
                 intervals.emplace_back(std::make_tuple(matches[i-1].qryId
                                                        / qNumFrames(TFormat()),
-                                                       std::get<1>(intervals.back()),
+                                                       std::get<2>(intervals.back()),
                                                        i));
         }
     }

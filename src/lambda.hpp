@@ -1132,7 +1132,7 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
 //         std::cout << m.qryId << "\t" << getTrueQryId(m,lH.options, TFormat()) << "\n";
 //     }
 
-    double topMaxMatchesMedianBitScore = 0;
+//     double topMaxMatchesMedianBitScore = 0;
     // outer loop over records
     // (only one iteration if single indexing is used)
     for (auto it = lH.matches.begin(),
@@ -1150,7 +1150,7 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
                             ? lH.gH.untransQrySeqLengths[trueQryId]
                             : length(lH.gH.qrySeqs[it->qryId]);
 
-        topMaxMatchesMedianBitScore = 0;
+//         topMaxMatchesMedianBitScore = 0;
 
         // inner loop over matches per record
         for (; it != itEnd; ++it)
