@@ -1211,7 +1211,7 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
                                                                   TFormat())))
                                 {
                                     // not already marked as duplicate or merged
-                                    if (!isSetToSkip(*itN))
+                                    if (!isSetToSkip(*it))
                                         ++lH.stats.hitsPutativeAbundant;
                                     ++it;
                                 }
