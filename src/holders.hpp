@@ -284,6 +284,9 @@ public:
             indexEndQry = (i+1 == options.queryPart) // last interval
                             ? length(gH.qrySeqs) // reach until end
                             : (length(gH.qrySeqs) / options.queryPart) * (i+1);
+            // make sure different frames of one sequence in same interval
+            indexBeginQry -= (indexBeginQry % qNumFrames(TFormat()));
+            indexEndQry -= (indexEndQry % qNumFrames(TFormat()));
         } else
         {
             indexBeginQry = qNumFrames(TFormat()) * i;
