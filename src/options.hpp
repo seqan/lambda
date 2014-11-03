@@ -407,12 +407,13 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 //     setDefaultValue(parser, "ungapped-seeds", "1");
 
     addOption(parser, ArgParseOption("sl", "seed-length",
-        "Length of the seeds (default = 20 for BLASTN).",
+        "Length of the seeds (default = 14 for BLASTN).",
         seqan::ArgParseArgument::INTEGER));
     setDefaultValue(parser, "seed-length", "10");
 
     addOption(parser, ArgParseOption("so", "seed-offset",
-        "Offset for seeding (if unset = seed-length; non-overlapping).",
+        "Offset for seeding (if unset = seed-length; non-overlapping; "
+        "default = 5 for BLASTN).",
         seqan::ArgParseArgument::INTEGER));
     setDefaultValue(parser, "seed-offset", "10");
 
@@ -437,15 +438,16 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     addOption(parser, ArgParseOption("ps", "pre-scoring",
         "evaluate score of a region NUM times the size of the seed "
         "before extension (0 -> no pre-scoring, 1 -> evaluate seed, n-> area "
-        "around seed, as well; 0 is default if no reduction takes place).",
+        "around seed, as well).",
         seqan::ArgParseArgument::INTEGER));
     setMinValue(parser, "pre-scoring", "0");
-    setDefaultValue(parser, "pre-scoring", "1");
+    setDefaultValue(parser, "pre-scoring", "2");
 
     addOption(parser, ArgParseOption("pt", "pre-scoring-threshold",
-        "minimum average score per position in pre-scoring region",
+        "minimum average score per position in pre-scoring region (default = "
+        "1 for BLASTN).",
         seqan::ArgParseArgument::DOUBLE));
-    setDefaultValue(parser, "pre-scoring-threshold", "3.2");
+    setDefaultValue(parser, "pre-scoring-threshold", "2");
 
     addOption(parser, ArgParseOption("pd", "filter-putative-duplicates",
         "filter hits that will likely duplicate a match already found.",
@@ -617,7 +619,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     getOptionValue(options.seedLength, parser, "seed-length");
     if ((!isSet(parser, "seed-length")) &&
         (options.blastProg == BlastFormatProgram::BLASTN))
-        options.seedLength = 15;
+        options.seedLength = 14;
 
     if (isSet(parser, "seed-offset"))
         getOptionValue(options.seedOffset, parser, "seed-offset");
@@ -716,13 +718,11 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     options.filterPutativeAbundant = (buffer == "on");
 
     getOptionValue(options.preScoring, parser, "pre-scoring");
-    if ((!isSet(parser, "pre-scoring")) &&
-        (options.alphReduction == 0))
-        options.preScoring = 0;
 
     getOptionValue(options.preScoringThresh, parser, "pre-scoring-threshold");
-    if (options.preScoring == 0)
-        options.preScoringThresh = 0;
+    if ((!isSet(parser, "pre-scoring-threshold")) &&
+        (options.blastProg == BlastFormatProgram::BLASTN))
+        options.preScoringThresh = 1;
 
     return seqan::ArgumentParser::PARSE_OK;
 }
