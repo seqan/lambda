@@ -318,7 +318,7 @@ seedLooksPromising(
 {
     int64_t effectiveQBegin = m.qryStart;
     int64_t effectiveSBegin = m.subjStart;
-    uint64_t effectiveLength = lH.options.seedLength;
+    uint64_t effectiveLength = lH.options.seedLength * lH.options.preScoring;
     if (lH.options.preScoring > 1)
     {
         effectiveQBegin += (lH.options.seedLength / 2) -
