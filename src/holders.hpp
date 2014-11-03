@@ -321,10 +321,10 @@ seedLooksPromising(
     uint64_t effectiveLength = lH.options.seedLength * lH.options.preScoring;
     if (lH.options.preScoring > 1)
     {
-        effectiveQBegin += (static_cast<int64_t>(lH.options.seedLength) / 2) -
-                           (lH.options.preScoring * lH.options.seedLength / 2);
-        effectiveSBegin += (static_cast<int64_t>(lH.options.seedLength) / 2) -
-                           (lH.options.preScoring * lH.options.seedLength / 2);
+        effectiveQBegin -= (lH.options.preScoring - 1) *
+                           lH.options.seedLength / 2;
+        effectiveSBegin -= (lH.options.preScoring - 1) *
+                           lH.options.seedLength / 2;
 //         std::cout << effectiveQBegin << "\t" << effectiveSBegin << "\n";
         int64_t min = std::min(effectiveQBegin, effectiveSBegin);
         if (min < 0)
