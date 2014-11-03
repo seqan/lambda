@@ -316,19 +316,41 @@ seedLooksPromising(
             LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> const & lH,
             TMatch const & m)
 {
+    int64_t effectiveQBegin = m.qryStart;
+    int64_t effectiveSBegin = m.subjStart;
+    uint64_t effectiveLength = lH.options.seedLength;
+    if (lH.options.preScoring > 1)
+    {
+        effectiveQBegin += (lH.options.seedLength / 2) -
+                           (lH.options.preScoring * lH.options.seedLength / 2);
+        effectiveSBegin += (lH.options.seedLength / 2) -
+                           (lH.options.preScoring * lH.options.seedLength / 2);
+        int64_t min = std::min(effectiveQBegin, effectiveSBegin);
+        if (min < 0)
+        {
+            effectiveQBegin -= min;
+            effectiveSBegin -= min;
+            effectiveLength += min;
+        }
+        effectiveLength = std::min({
+                            length(lH.gH.qrySeqs[m.qryId]) - effectiveQBegin,
+                            length(lH.gH.subjSeqs[m.subjId]) - effectiveSBegin,
+                            effectiveLength});
+    }
+
     auto const & qSeq = infix(lH.gH.qrySeqs[m.qryId],
-                              m.qryStart,
-                              m.qryStart + lH.options.seedLength);
+                              effectiveQBegin,
+                              effectiveQBegin + effectiveLength);
     auto const & sSeq = infix(lH.gH.subjSeqs[m.subjId],
-                              m.subjStart,
-                              m.subjStart + lH.options.seedLength);
+                              effectiveSBegin,
+                              effectiveSBegin + effectiveLength);
     int maxScore = 0;
 
-    int scores[lH.options.seedLength]; // C99, C++14, -Wno-vla before that
+    int scores[effectiveLength]; // C99, C++14, -Wno-vla before that
     scores[0] = 0;
 
     // score the diagonal
-    for (unsigned i = 0; i < lH.options.seedLength; ++i)
+    for (uint64_t i = 0; i < effectiveLength; ++i)
     {
         scores[i] += score(lH.gH.scoreScheme, qSeq[i], sSeq[i]);
         if (scores[i] < 0)
@@ -336,11 +358,11 @@ seedLooksPromising(
         else if (scores[i] >= maxScore)
             maxScore = scores[i];
 
-        if (i < static_cast<unsigned>(lH.options.seedLength - 1))
+        if (i < static_cast<uint64_t>(effectiveLength - 1))
             scores[i+1] = scores[i];
     }
 
-    return (maxScore >= lH.options.minSeedScore);
+    return (maxScore >= int(lH.options.preScoringThresh * effectiveLength));
 }
 
 template <typename TMatch,
@@ -382,7 +404,7 @@ onFindImpl(LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> & lH,
         }
     }
 
-     if ((!TGlobalHolder::noReduction) && (!discarded) &&
+     if ((lH.options.preScoring) && (!discarded) &&
          (!seedLooksPromising(lH, m)))
      {
          discarded = true;

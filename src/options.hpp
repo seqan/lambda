@@ -191,7 +191,7 @@ struct LambdaOptions : public SharedOptions
     int             seedGravity     = 0;
     unsigned        seedOffset      = 0;
     unsigned        minSeedLength   = 0;
-    int             minSeedScore    = 0;
+
 //     unsigned int    minSeedEVal     = 0;
 //     double          minSeedBitS     = -1;
 
@@ -212,6 +212,8 @@ struct LambdaOptions : public SharedOptions
     bool            filterPutativeDuplicates = true;
     bool            filterPutativeAbundant = true;
 
+    int             preScoring = 0; // 0 = off, 1 = seed, 2 = region (
+    double          preScoringThresh    = 0.0;
     unsigned        threads     = 1;
     LambdaOptions() :
         SharedOptions()
@@ -354,7 +356,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         "The translation table to use for nucl -> amino acid translation"
         "(not for BlastN, BlastP). See "
         "https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi?mode=c"
-        " for ids (default is generic)",
+        " for ids (default is generic). Six frames are generated.",
         seqan::ArgParseArgument::INTEGER));
 //     setValidValues(parser, "alph", "0 10");
     setDefaultValue(parser, "genetic-code", "1");
@@ -432,11 +434,18 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     addSection(parser, "Miscellaneous Heuristics");
 
-    addOption(parser, ArgParseOption("ss", "seed-min-score",
-        "after postproc worse seeds are discarded (raw score). Only used in "
-        "combination with Alphabet reduction.",
+    addOption(parser, ArgParseOption("ps", "pre-scoring",
+        "evaluate score of a region NUM times the size of the seed "
+        "before extension (0 -> no pre-scoring, 1 -> evaluate seed, n-> area "
+        "around seed, as well; 0 is default if no reduction takes place).",
         seqan::ArgParseArgument::INTEGER));
-    setDefaultValue(parser, "seed-min-score", "32");
+    setMinValue(parser, "pre-scoring", "0");
+    setDefaultValue(parser, "pre-scoring", "1");
+
+    addOption(parser, ArgParseOption("pt", "pre-scoring-threshold",
+        "minimum average score per position in pre-scoring region",
+        seqan::ArgParseArgument::DOUBLE));
+    setDefaultValue(parser, "pre-scoring-threshold", "3.2");
 
     addOption(parser, ArgParseOption("pd", "filter-putative-duplicates",
         "filter hits that will likely duplicate a match already found.",
@@ -627,9 +636,6 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     getOptionValue(options.maxSeedDist, parser, "seed-delta");
 
-    getOptionValue(options.minSeedScore, parser, "seed-min-score");
-    if (options.alphReduction == 0)
-        options.minSeedScore = 0;
 
     getOptionValue(buffer, parser, "query-index-type");
     options.doubleIndexing = (buffer == "radix");
@@ -637,9 +643,9 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     getOptionValue(options.eCutOff, parser, "e-value");
 
     getOptionValue(options.xDropOff, parser, "x-drop");
-    if ((!isSet(parser, "x-drop")) &&
-        (options.blastProg == BlastFormatProgram::BLASTN))
-        options.xDropOff = 16;
+//     if ((!isSet(parser, "x-drop")) &&
+//         (options.blastProg == BlastFormatProgram::BLASTN))
+//         options.xDropOff = 16;
 
     getOptionValue(options.band, parser, "band");
 
@@ -708,6 +714,15 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     getOptionValue(buffer, parser, "filter-putative-abundant");
     options.filterPutativeAbundant = (buffer == "on");
+
+    getOptionValue(options.preScoring, parser, "pre-scoring");
+    if ((!isSet(parser, "pre-scoring")) &&
+        (options.alphReduction == 0))
+        options.preScoring = 0;
+
+    getOptionValue(options.preScoringThresh, parser, "pre-scoring-threshold");
+    if (options.preScoring == 0)
+        options.preScoringThresh = 0;
 
     return seqan::ArgumentParser::PARSE_OK;
 }
@@ -961,9 +976,6 @@ printOptions(LambdaOptions const & options)
               << "  seeds ungapped:           " << uint(options.hammingOnly) << "\n"
               << "  seed gravity:             " << uint(options.seedGravity) << "\n"
               << "  min seed length:          " << uint(options.minSeedLength) << "\n"
-              << "  min seed score:           " << uint(options.minSeedScore) << "\n"
-//               << "  min seed e-value:         " << uint(options.minSeedEVal) << "\n"
-//               << "MinSeedBitS:   " << options.minSeedBitS << "\n"
               << " SCORING\n"
               << "  scoring scheme:           " << options.scoringMethod << "\n"
               << "  score-match:              " << (options.scoringMethod
