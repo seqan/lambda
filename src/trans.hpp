@@ -312,7 +312,7 @@ qryIsReverseComplemented(TId const & qryId,
                                      BlastFormatProgram::BLASTN,
                                      g>         const & /*tag*/)
 {
-    return (options.revComp) ? (qryId % 2 == 0) : false;
+    return (options.revComp) ? (qryId % 2 == 1) : false;
 }
 
 template <typename TId,
