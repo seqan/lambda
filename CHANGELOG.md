@@ -3,13 +3,14 @@
 
 ## Version 0.4 [???]
 
-### performance change in comparison to published version (0.2)
+### performance changes in comparison to published version (0.2)
  * TODO
 
 ### changes in command line interface
- * renamed many parameters and changed some defaults (see --help!)
- * please look at `lambda --help` to see all the changes
+ * renamed many parameters and changed some defaults
+ * please look at `lambda --help` to see all the changes!!
  * better control of verbosity with `-v` parameter
+ * threads now controlled with `-t` instead of environment variable
 
 ### new features
  * BlastN mode now usable again and proper parameter-handling added for it
@@ -28,7 +29,7 @@
 
 ## Version 0.3 [2014/09/06]
 
-### performance change in comparison to published version (0.2)
+### performance changes in comparison to published version (0.2)
  * Speed increased by ~20%
  * Suffix-Array index memory consumption reduced from 16x to 6x input database size
  * experimental support for FM-index as index (instead of SA) [not widely tested, yet]
