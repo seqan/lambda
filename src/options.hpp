@@ -65,11 +65,11 @@ struct SAValue<StringSet<String<AminoAcid, TSpec2>, TSpec3> >
     typedef Pair<uint32_t, uint16_t, Pack> Type;
 };
 
-// Dna Sequences might be longer TODO REALLY?
+// Dna Sequences might be longer (chromosomes, genomes)
 template<typename TSpec1, typename TSpec2>
 struct SAValue<StringSet<String<Dna5, TSpec1>, TSpec2> >
 {
-    typedef Pair<uint32_t, uint16_t, Pack> Type;
+    typedef Pair<uint32_t, uint32_t, Pack> Type;
 };
 
 }
