@@ -177,8 +177,8 @@ public:
     TTransSeqs          subjSeqs;
 
     // reduced query sequences if using reduction, otherwise & = transSeqs
-    TRedSeqsACT         redQrySeqs = qrySeqs;
-    TRedSeqsACT         redSubjSeqs = subjSeqs;
+    TRedSeqsACT         redQrySeqs;
+    TRedSeqsACT         redSubjSeqs;
 
     // INDECES AND THEIR TYPE //
     using TIndexSpec    = TIndexSpec_;
@@ -189,8 +189,8 @@ public:
 
     // TODO maybe remove these for other specs?
     using TPositions    = typename StringSetLimits<TTransSeqs>::Type;
-    TPositions          untransQrySeqLengths; // used iff qHasFrames(p)
-    TPositions          untransSubjSeqLengths; // used iff sHasFrames(p)
+    TPositions          untransQrySeqLengths; // used iff qIsTranslated(p)
+    TPositions          untransSubjSeqLengths; // used iff sIsTranslated(p)
 
     using TMasking      = StringSet<String<unsigned>, Owner<ConcatDirect<>>>;
     TMasking            segIntStarts;
@@ -204,7 +204,11 @@ public:
     TScoreScheme                scoreScheme;
     TBlastScoringAdapter        blastScoringAdapter;
 
-    StatsHolder                 stats = StatsHolder();
+    StatsHolder                 stats;
+
+    GlobalDataHolder() :
+        redQrySeqs(qrySeqs), redSubjSeqs(subjSeqs), stats()
+    {}
 };
 
 // ----------------------------------------------------------------------------
