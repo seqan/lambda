@@ -85,20 +85,6 @@ using PackSpec = Alloc<>;
 template <typename TAlph>
 using TCDStringSet = StringSet<String<TAlph, PackSpec>, Owner<ConcatDirect<> > >;
 
-
-template <BlastFormatProgram p>
-struct UnreducedStringSet
-{
-    typedef TCDStringSet<AminoAcid> Type;
-};
-
-template <>
-struct UnreducedStringSet<BlastFormatProgram::BLASTN>
-{
-    typedef TCDStringSet<Dna5> Type;
-};
-
-
 template <BlastFormatProgram p>
 using OrigQryAlph = typename std::conditional<
                                            (p == BlastFormatProgram::BLASTN) ||
