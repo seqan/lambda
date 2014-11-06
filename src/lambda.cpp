@@ -26,7 +26,7 @@
 
 //#undef SEQAN_HAS_ZLIB
 
-// #define FASTBUILD
+#define FASTBUILD
 
 // #define SEQAN_DEBUG_INDEX
 
@@ -551,7 +551,6 @@ realMain(LambdaOptions      const & options,
         printOptions<TLocalHolder>(options);
 
     TGlobalHolder globalHolder;
-    globalHolder.stats.clear();
 
     int ret = prepareScoring(globalHolder, options);
     if (ret)
