@@ -714,7 +714,11 @@ search(TLocalHolder & lH)
     if (lH.options.hammingOnly)
         __search<Backtracking<HammingDistance>>(lH);
     else
+#if 0 // reactivate if edit-distance seeding is readded
         __search<Backtracking<EditDistance>>(lH);
+#else
+        return;
+#endif
 }
 
 // --------------------------------------------------------------------------
@@ -1185,11 +1189,14 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
 
                         uint64_t before = record.matches.size();
                         record.matches.sort();
-                        record.matches.unique();
-                        lH.stats.hitsDuplicate += before -
-                                                  record.matches.size();
+                        if (!lH.options.filterPutativeDuplicates)
+                        {
+                            record.matches.unique();
+                            lH.stats.hitsDuplicate += before -
+                                                      record.matches.size();
 
-                        before = record.matches.size();
+                            before = record.matches.size();
+                        }
                         record.matches.resize(lH.options.maxMatches + 1);
                         // +1 so as not to trigger % == 0 in the next run
                         lH.stats.hitsAbundant += before -
@@ -1373,8 +1380,11 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
             // sort and remove duplicates -> STL, yeah!
             auto const before = record.matches.size();
             record.matches.sort();
-            record.matches.unique();
-            lH.stats.hitsDuplicate += before - record.matches.size();
+            if (!lH.options.filterPutativeDuplicates)
+            {
+                record.matches.unique();
+                lH.stats.hitsDuplicate += before - record.matches.size();
+            }
             if (record.matches.size() > lH.options.maxMatches)
             {
                 lH.stats.hitsAbundant += record.matches.size() -
