@@ -14,15 +14,17 @@
 
 ### new features
  * BlastN mode now usable again and proper parameter-handling added for it
- * added percent identity cutoff in addition to e-value cutoff
- * added a limit for maximum number of matches per query sequence
- * added abundancy heuristic and priorization of hits to not look at all hits if number of hits >> chosen limit
+ * added percent identity cutoff in addition to e-value cutoff (`-id`)
+ * added a limit for maximum number of matches per query sequence (`-nm`)
+ * added abundancy heuristic (`-pa`) and priorization of hits to not look at all hits if number of hits >> chosen limit
+ * single-indexing mode which has huge memory advantages (`-qi none`)
+ * removed Lambda-Alphabets, since they currently provide little benefit over Murphy10
 
 ### bug-fixes and minor changes
  * indeces with different settings (index type, alphabet) can now be created on the same fasta file without conflicts between them
- * changed pre-scoring heuristic to include region around match
+ * changed pre-scoring heuristic to include region around match (`-ps` and `-pt`)
  * fixed build issues with gcc-4.8.x
- * fastq support fixed
+ * FastQ support fixed
 
 ### availability
  * TODO
@@ -38,10 +40,8 @@
  * small bugs in BLAST output formats corrected
 
 ### availability
- * [source-code .tar.gz]
-(http://www.seqan.de/wp-content/plugins/download-monitor/download.php?id=53)
- * [source-code git]
-(https://github.com/h-2/seqan.git commit d41b4b58749282dbca838a7f8506c0b378767b1b)
+ * [source-code .tar.gz](http://www.seqan.de/wp-content/plugins/download-monitor/download.php?id=53)
+ * [source-code git](https://github.com/h-2/seqan.git commit d41b4b58749282dbca838a7f8506c0b378767b1b)
 
 ## Version 0.2 [2014/04/07] *published version*
 
@@ -50,10 +50,8 @@
  * added overlapping seeds capability
 
 ### availability
- * [source-code .tar.gz]
-(http://www.seqan.de/wp-content/plugins/download-monitor/download.php?id=48)
- * [source-code git]
-(https://github.com/h-2/seqan.git commit b8ca36432d0530dd5d39560f8e2dc2cffb7c5d9d)
+ * [source-code .tar.gz](http://www.seqan.de/wp-content/plugins/download-monitor/download.php?id=48)
+ * [source-code git](https://github.com/h-2/seqan.git commit b8ca36432d0530dd5d39560f8e2dc2cffb7c5d9d)
 
 
 ## Version 0.1 [2014/01/15] *initial release*
