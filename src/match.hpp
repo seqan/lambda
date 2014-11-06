@@ -147,18 +147,21 @@ myHyperSortSingleIndex(std::vector<Match> & matches,
                        LambdaOptions const & options,
                        TFormat const &)
 {
+    using TId = typename Match::TQId;
+
     // regular sort
     std::sort(matches.begin(), matches.end());
 
     //                    trueQryId, begin,    end
-    std::vector<std::tuple<uint32_t, uint32_t, uint32_t>> intervals;
-    for (uint32_t i = 1; i < length(matches); ++i)
+    std::vector<std::tuple<TId, TId, TId>> intervals;
+    for (TId i = 1; i <= length(matches); ++i)
     {
-        if ((matches[i-1].qryId != matches[i].qryId) ||
+        if ((i == length(matches))                      ||
+            (matches[i-1].qryId != matches[i].qryId)    ||
             (matches[i-1].subjId / sNumFrames(TFormat()) !=
              (matches[i].subjId / sNumFrames(TFormat()))))
         {
-            if (length(intervals) == 0)
+            if (length(intervals) == 0) // first interval
                 intervals.emplace_back(std::make_tuple(matches[i-1].qryId
                                                        / qNumFrames(TFormat()),
                                                        0,
@@ -175,11 +178,11 @@ myHyperSortSingleIndex(std::vector<Match> & matches,
     {
         // sort by trueQryId, then lengths of interval
         std::sort(intervals.begin(), intervals.end(),
-                [] (std::tuple<uint32_t, uint32_t, uint32_t> const & i1,
-                    std::tuple<uint32_t, uint32_t, uint32_t> const & i2)
+                [] (std::tuple<TId, TId, TId> const & i1,
+                    std::tuple<TId, TId, TId> const & i2)
         {
             return (std::get<0>(i1) != std::get<0>(i2))
-                    ? std::get<0>(i1) < std::get<0>(i2)
+                    ? (std::get<0>(i1) < std::get<0>(i2))
                     : ((std::get<2>(i1) - std::get<1>(i1))
                      > (std::get<2>(i2) - std::get<1>(i2)));
         });
@@ -187,8 +190,8 @@ myHyperSortSingleIndex(std::vector<Match> & matches,
     {
         // sort by lengths of interval, since trueQryId is the same anyway
         std::sort(intervals.begin(), intervals.end(),
-                [] (std::tuple<uint32_t, uint32_t, uint32_t> const & i1,
-                    std::tuple<uint32_t, uint32_t, uint32_t> const & i2)
+                [] (std::tuple<TId, TId, TId> const & i1,
+                    std::tuple<TId, TId, TId> const & i2)
         {
             return (std::get<2>(i1) - std::get<1>(i1))
                 >  (std::get<2>(i2) - std::get<1>(i2));
@@ -198,11 +201,11 @@ myHyperSortSingleIndex(std::vector<Match> & matches,
     std::vector<Match> tmpVector;
     tmpVector.resize(matches.size());
 
-    uint32_t newIndex = 0;
+    TId newIndex = 0;
     for (auto const & i : intervals)
     {
-        uint32_t limit = std::get<2>(i);
-        for (uint32_t j = std::get<1>(i); j < limit; ++j)
+        TId limit = std::get<2>(i);
+        for (TId j = std::get<1>(i); j < limit; ++j)
         {
             tmpVector[newIndex] = matches[j];
             newIndex++;
