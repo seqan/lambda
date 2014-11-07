@@ -204,9 +204,6 @@ struct LambdaOptions : public SharedOptions
     LambdaOptions() :
         SharedOptions()
     {
-        #if defined(_OPENMP)
-        threads = omp_get_max_threads();
-        #endif
     }
 };
 
@@ -240,7 +237,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setShortDescription(parser, "BLAST compatible local aligner optimized for "
                                 "NGS and Metagenomics.");
     setVersion(parser, "0.4");
-    setDate(parser, "October 2014");
+    setDate(parser, "November 2014");
 
     // Define usage line and long description.
     addUsageLine(parser, "[\\fIOPTIONS\\fP] \\fI-q QUERY.fasta\\fP "
@@ -252,14 +249,14 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     addSection(parser, "Input Options");
     addOption(parser, ArgParseOption("q", "query",
-        "Query sequences (fasta).",
+        "Query sequences.",
         seqan::ArgParseArgument::INPUTFILE,
         "IN"));
     setRequired(parser, "q");
     setValidValues(parser, "query", "fasta fa fna faa fas fastq fq");
 
     addOption(parser, ArgParseOption("d", "database",
-        "Database sequences (fasta), with precomputed index (.sa).",
+        "Database sequences (fasta), with precomputed index (.sa or .fm).",
         seqan::ArgParseArgument::INPUTFILE,
         "IN"));
     setRequired(parser, "d");
@@ -271,7 +268,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         seqan::ArgParseArgument::STRING,
         "STR"));
     setValidValues(parser, "db-index-type", "sa fm");
-    setDefaultValue(parser, "db-index-type", "sa");
+    setDefaultValue(parser, "db-index-type", "fm");
 
     addSection(parser, "Output Options");
     addOption(parser, ArgParseOption("o", "output",
@@ -308,6 +305,37 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setDefaultValue(parser, "verbosity", "1");
     setMinValue(parser, "verbosity", "0");
     setMaxValue(parser, "verbosity", "2");
+
+    addSection(parser, "General Options");
+#ifdef _OPENMP
+    addOption(parser, ArgParseOption("t", "threads",
+        "number of threads to run concurrently.",
+        seqan::ArgParseArgument::INTEGER));
+    setDefaultValue(parser, "threads", omp_get_max_threads());
+#else
+    addOption(parser, ArgParseOption("t", "threads",
+        "LAMBDA BUILT WITHOUT OPENMP; setting this option has no effect.",
+        seqan::ArgParseArgument::INTEGER));
+    setDefaultValue(parser, "threads", 1);
+#endif
+
+    addOption(parser, ArgParseOption("qi", "query-index-type",
+        "controls double-indexing.",
+        seqan::ArgParseArgument::STRING));
+    setValidValues(parser, "query-index-type", "radix none");
+    setDefaultValue(parser, "query-index-type", "none");
+
+    addOption(parser, ArgParseOption("qp", "query-partitions",
+        "Divide the query into qp number of blocks before processing; should be"
+        " a multiple of the number of threads, defaults to one per thread. "
+        "Only used with double-indexing; strong influence on memory, see below.",
+        seqan::ArgParseArgument::INTEGER));
+#ifdef _OPENMP
+    setDefaultValue(parser, "query-partitions", omp_get_max_threads());
+#else
+    setDefaultValue(parser, "query-partitions", 1);
+#endif
+    hideOption(parser, "query-partitions"); // HIDDEN
 
     addSection(parser, "Alphabets and Translation");
     addOption(parser, ArgParseOption("p", "program",
@@ -354,37 +382,6 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setValidValues(parser, "alphabet-reduction", "none murphy10");
     setDefaultValue(parser, "alphabet-reduction", "murphy10");
 
-    addSection(parser, "General Options");
-
-#ifdef _OPENMP
-    addOption(parser, ArgParseOption("t", "threads",
-        "number of threads to run concurrently.",
-        seqan::ArgParseArgument::INTEGER));
-    setDefaultValue(parser, "threads", omp_get_max_threads());
-#else
-    addOption(parser, ArgParseOption("t", "threads",
-        "LAMBDA BUILT WITHOUT OPENMP; setting this option has no effect.",
-        seqan::ArgParseArgument::INTEGER));
-    setDefaultValue(parser, "threads", 1);
-#endif
-
-    addOption(parser, ArgParseOption("qi", "query-index-type",
-        "setting this to \"none\" deactivates double-indexing.",
-        seqan::ArgParseArgument::STRING));
-    setValidValues(parser, "query-index-type", "radix none");
-    setDefaultValue(parser, "query-index-type", "radix");
-
-    addOption(parser, ArgParseOption("qp", "query-partitions",
-        "Divide the query into qp number of blocks before processing; should be"
-        " a multiple of the number of threads, defaults to one per thread. "
-        "Only used with double-indexing; strong influence on memory, see below.",
-        seqan::ArgParseArgument::INTEGER));
-#ifdef _OPENMP
-    setDefaultValue(parser, "query-partitions", omp_get_max_threads());
-#else
-    setDefaultValue(parser, "query-partitions", 1);
-#endif
-
     addSection(parser, "Seeding / Filtration");
 //     addOption(parser, ArgParseOption("su",
 //                                             "ungapped-seeds",
@@ -398,7 +395,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setDefaultValue(parser, "seed-length", "10");
 
     addOption(parser, ArgParseOption("so", "seed-offset",
-        "Offset for seeding (if unset = seed-length; non-overlapping; "
+        "Offset for seeding (if unset = seed-length, non-overlapping; "
         "default = 5 for BLASTN).",
         seqan::ArgParseArgument::INTEGER));
     setDefaultValue(parser, "seed-offset", "10");
@@ -413,25 +410,26 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         "seed-length).",
         seqan::ArgParseArgument::INTEGER));
     setDefaultValue(parser, "seed-gravity", "10");
+    hideOption(parser, "seed-gravity"); // HIDDEN
 
     addOption(parser, ArgParseOption("sm", "seed-min-length",
         "after postproc shorter seeds are discarded (if unset = seed-length).",
         seqan::ArgParseArgument::INTEGER));
     setDefaultValue(parser, "seed-min-length", "10");
+    hideOption(parser, "seed-min-length"); // HIDDEN
 
     addSection(parser, "Miscellaneous Heuristics");
 
     addOption(parser, ArgParseOption("ps", "pre-scoring",
         "evaluate score of a region NUM times the size of the seed "
         "before extension (0 -> no pre-scoring, 1 -> evaluate seed, n-> area "
-        "around seed, as well).",
+        "around seed, as well; default = 0 when no alphabet reduction is used).",
         seqan::ArgParseArgument::INTEGER));
     setMinValue(parser, "pre-scoring", "0");
     setDefaultValue(parser, "pre-scoring", "2");
 
     addOption(parser, ArgParseOption("pt", "pre-scoring-threshold",
-        "minimum average score per position in pre-scoring region (default = "
-        "1 for BLASTN).",
+        "minimum average score per position in pre-scoring region.",
         seqan::ArgParseArgument::DOUBLE));
     setDefaultValue(parser, "pre-scoring-threshold", "2");
 
@@ -508,41 +506,35 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setDefaultValue(parser, "band", "-3");
     setMinValue(parser, "band", "-3");
 
-
-
-
     addTextSection(parser, "Environment Variables");
     addListItem(parser, "\\fBTMPDIR\\fP",
                         "set this to a local directory with lots of "
                         "space. If you can afford it use /dev/shm.");
 
     addTextSection(parser, "Speed VS sensitivity");
-    addText(parser, "Playing with the seeding and alphabet parameters has high "
+    addText(parser, "Tuning the seeding parameters and (de)activating alphabet "
+                    "reduction has a strong "
                     "influence on both speed and sensitivity. We recommend the "
                     "following alternative profiles for protein searches:");
-    addText(parser, "fast: \033[1m-a 0 -sl 8 -ss 26 -sd 0 -so 4\033[0m");
-    addText(parser, "sensitive: \033[1m-so 5\033[0m");
+    addText(parser, "fast (high similarity):       \033[1m-ar 0 -sl 7 -sd 0\033[0m");
+    addText(parser, "sensitive (lower similarity): \033[1m-so 5\033[0m");
 
     addTextSection(parser, "Speed VS memory requirements");
-    addText(parser, "Lambda has three main points of memory consumption:");
-    addText(parser, "1) the cache of putative hits. Since version 0.4 this is "
-                    "quite small, but grows linearly with input data when "
-                    "double-indexing is used; doubling \033[1m-qp\033[0m will "
-                    "reduce this memory by a half at a modest penalty "
-                    "to run-time; however using single-indexing might be "
-                    "better if you are memory-constrained.");
-    addText(parser, "2) the database index. This depends on the size n of the "
-                    "database and the type of index. The SA index is 6*n in "
-                    "size, while the FM index is < 2*n in size. Using the FM "
-                    "index increases total running time by about ~ 10%, though."
-                    " Choose this when creating the index, default is SA.");
-    addText(parser, "3) the sequence strings. If you define "
-                    "LAMBDA_BITCOPMRESSED_STRINGS while compiling lambda, you "
-                    "can reduce the size per character from 8 to 5/4 bit. This "
-                    "will also increase running time, by ~ 10%.");
-    addText(parser, "As a rule of thumb, if you run out of memory, add "
-                    "\033[1m-di fm\033[0m to the indexer call and \033[1m-di fm"
-                    " -qi none\033[0m to the lambda call.");
+    addText(parser, "Lambda requires approximately the following amount of RAM:"
+                    " \033[1msize(queryFile) + 3 * size(dbFile)\033[0m. "
+                    "If you have more RAM, use double indexing and SA:\n"
+                    "\033[1m-di sa -qi radix\033[0m "
+                    "which will result in an additional speed-up of up to 30% "
+                    "compared to the published version (you need to run the "
+                    "indexer with \033[1m-di sa \033[0m, as well). The amount "
+                    "of RAM required will be: "
+                    "\033[1msize(queryFile) + 7 * size(dbFile) + n\033[0m "
+                    "where n grows slowly but linearly with input size.");
+    addText(parser, "To save more RAM, you can define "
+                    "LAMBDA_BITCOPMRESSED_STRINGS while compiling lambda."
+                    "This will reduce memory usage by about:"
+                    " \033[1m0.3 * ( size(queryFile) + size(dbFile) )\033[0m,"
+                    " but slow down lambda by about 10%.");
 
     // Parse command line.
     seqan::ArgumentParser::ParseResult res = seqan::parse(parser, argc, argv);
@@ -629,6 +621,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     options.doubleIndexing = (buffer == "radix");
 
     getOptionValue(options.eCutOff, parser, "e-value");
+    getOptionValue(options.idCutOff, parser, "percent-identity");
 
     getOptionValue(options.xDropOff, parser, "x-drop");
 //     if ((!isSet(parser, "x-drop")) &&
@@ -704,11 +697,13 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     options.filterPutativeAbundant = (buffer == "on");
 
     getOptionValue(options.preScoring, parser, "pre-scoring");
+    if ((!isSet(parser, "pre-scoring")) &&
+        (options.alphReduction == 0))
+        options.preScoring = 0;
 
     getOptionValue(options.preScoringThresh, parser, "pre-scoring-threshold");
-    if ((!isSet(parser, "pre-scoring-threshold")) &&
-        (options.blastProg == BlastFormatProgram::BLASTN))
-        options.preScoringThresh = 1;
+    if (options.preScoring == 0)
+        options.preScoringThresh = 0;
 
     return seqan::ArgumentParser::PARSE_OK;
 }
@@ -722,7 +717,7 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
     // Set short description, version, and date.
     setShortDescription(parser, "Indexer for Lambda");
     setVersion(parser, "0.4");
-    setDate(parser, "October 2014");
+    setDate(parser, "November 2014");
 
     // Define usage line and long description.
     addUsageLine(parser, "[\\fIOPTIONS\\fP] \\-i DATABASE.fasta\\fP");
@@ -928,11 +923,15 @@ printOptions(LambdaOptions const & options)
               << "  db index type:            " << (TGH::indexIsFM
                                                     ? "FM-Index\n"
                                                     : "SA-Index\n")
-              << " OUTPUT\n"
+              << " OUTPUT (file)\n"
               << "  output file:              " << options.output << "\n"
-              << "  max #matches per query:   " << options.maxMatches << "\n"
               << "  minimum % identity:       " << options.idCutOff << "\n"
               << "  maximum e-value:          " << options.eCutOff << "\n"
+              << "  max #matches per query:   " << options.maxMatches << "\n"
+              << " OUTPUT (stdout)\n"
+              << "  stdout is terminal:       " << options.isTerm << "\n"
+              << "  terminal width:           " << options.terminalCols << "\n"
+              << "  verbosity:                " << options.verbosity << "\n"
               << " GENERAL\n"
               << "  double indexing:          " << options.doubleIndexing << "\n"
               << "  threads:                  " << uint(options.threads) << "\n"
@@ -962,6 +961,25 @@ printOptions(LambdaOptions const & options)
               << "  seeds ungapped:           " << uint(options.hammingOnly) << "\n"
               << "  seed gravity:             " << uint(options.seedGravity) << "\n"
               << "  min seed length:          " << uint(options.minSeedLength) << "\n"
+              << " MISCELLANEOUS HEURISTICS\n"
+              << " pre-scoring:               " << (options.preScoring
+                                                    ? std::string("on")
+                                                    : std::string("off")) << "\n"
+              << " pre-scoring-region:        " << (options.preScoring
+                                                    ? std::to_string(
+                                                        options.preScoring *
+                                                        options.seedLength)
+                                                    : std::string("n/a")) << "\n"
+              << " pre-scoring-threshold:     " << (options.preScoring
+                                                    ? std::to_string(
+                                                       options.preScoringThresh)
+                                                    : std::string("n/a")) << "\n"
+              << " putative-abundancy:        " << (options.filterPutativeAbundant
+                                                    ? std::string("on")
+                                                    : std::string("off")) << "\n"
+              << " putative-duplicates:       " << (options.filterPutativeDuplicates
+                                                    ? std::string("on")
+                                                    : std::string("off")) << "\n"
               << " SCORING\n"
               << "  scoring scheme:           " << options.scoringMethod << "\n"
               << "  score-match:              " << (options.scoringMethod
@@ -976,9 +994,6 @@ printOptions(LambdaOptions const & options)
               << "  x-drop:                   " << options.xDropOff << "\n"
               << "  band:                     " << bandStr << "\n"
               << " MISC\n"
-              << "  stdout is terminal:       " << options.isTerm << "\n"
-              << "  terminal width:           " << options.terminalCols << "\n"
-              << "  verbosity:                " << options.verbosity << "\n"
               << "  bit-compressed strings:   "
     #if defined LAMBDA_BITCOPMRESSED_STRINGS
               << "on\n"
