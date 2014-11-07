@@ -962,22 +962,22 @@ printOptions(LambdaOptions const & options)
               << "  seed gravity:             " << uint(options.seedGravity) << "\n"
               << "  min seed length:          " << uint(options.minSeedLength) << "\n"
               << " MISCELLANEOUS HEURISTICS\n"
-              << " pre-scoring:               " << (options.preScoring
+              << "  pre-scoring:              " << (options.preScoring
                                                     ? std::string("on")
                                                     : std::string("off")) << "\n"
-              << " pre-scoring-region:        " << (options.preScoring
+              << "  pre-scoring-region:       " << (options.preScoring
                                                     ? std::to_string(
                                                         options.preScoring *
                                                         options.seedLength)
                                                     : std::string("n/a")) << "\n"
-              << " pre-scoring-threshold:     " << (options.preScoring
+              << "  pre-scoring-threshold:    " << (options.preScoring
                                                     ? std::to_string(
                                                        options.preScoringThresh)
                                                     : std::string("n/a")) << "\n"
-              << " putative-abundancy:        " << (options.filterPutativeAbundant
+              << "  putative-abundancy:       " << (options.filterPutativeAbundant
                                                     ? std::string("on")
                                                     : std::string("off")) << "\n"
-              << " putative-duplicates:       " << (options.filterPutativeDuplicates
+              << "  putative-duplicates:      " << (options.filterPutativeDuplicates
                                                     ? std::string("on")
                                                     : std::string("off")) << "\n"
               << " SCORING\n"
