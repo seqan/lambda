@@ -1,10 +1,12 @@
 
 # **CHANGELOG**
 
-## Version 0.4 [???]
+## Version 0.4 [2014/11/15]
 
 ### performance changes in comparison to published version (0.2)
- * TODO
+ * new default mode with 30-80% speed gains and up to 75% memory reduction over published version
+ * double-indexing mode with speed gains > 100%
+ * sensitivity slightly increased at the same time (1-2%)
 
 ### changes in command line interface
  * renamed many parameters and changed some defaults
@@ -17,7 +19,8 @@
  * added percent identity cutoff in addition to e-value cutoff (`-id`)
  * added a limit for maximum number of matches per query sequence (`-nm`)
  * added abundancy heuristic (`-pa`) and priorization of hits to not look at all hits if number of hits >> chosen limit
- * single-indexing mode which has huge memory advantages (`-qi none`)
+ * single-indexing mode which has huge memory advantages (`-qi none`) [now default]
+ * FM-Index is now also default
  * removed Lambda-Alphabets, since they currently provide little benefit over Murphy10
 
 ### bug-fixes and minor changes
@@ -27,7 +30,7 @@
  * FastQ support fixed
 
 ### availability
- * TODO
+ * TODO post release
 
 ## Version 0.3 [2014/09/06]
 
@@ -41,7 +44,7 @@
 
 ### availability
  * [source-code .tar.gz](http://www.seqan.de/wp-content/plugins/download-monitor/download.php?id=53)
- * [source-code git](https://github.com/h-2/seqan.git commit d41b4b58749282dbca838a7f8506c0b378767b1b)
+ * [source-code git](https://github.com/h-2/seqan.git) commit d41b4b58749282dbca838a7f8506c0b378767b1b)
 
 ## Version 0.2 [2014/04/07] *published version*
 
@@ -51,7 +54,7 @@
 
 ### availability
  * [source-code .tar.gz](http://www.seqan.de/wp-content/plugins/download-monitor/download.php?id=48)
- * [source-code git](https://github.com/h-2/seqan.git commit b8ca36432d0530dd5d39560f8e2dc2cffb7c5d9d)
+ * [source-code git](https://github.com/h-2/seqan.git) commit b8ca36432d0530dd5d39560f8e2dc2cffb7c5d9d)
 
 
 ## Version 0.1 [2014/01/15] *initial release*
