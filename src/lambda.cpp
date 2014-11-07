@@ -24,29 +24,10 @@
 // lambda.cpp: Main File for Lambda
 // ==========================================================================
 
-//#undef SEQAN_HAS_ZLIB
-
-#define FASTBUILD
+// #define FASTBUILD
 
 // #define SEQAN_DEBUG_INDEX
 
-
-// #define PARALLEL_SORT 0
-// // 0 = off
-// // 1 = GCC
-// // 2 = omptl
-// 
-// #if PARALLEL_SORT == 1
-//     #include <parallel/algorithm>
-//     #define SORT __gnu_parallel::sort
-// #elif PARALLEL_SORT == 2
-//     #include <omptl/omptl_algorithm>
-//     #define SORT omptl::sort
-// #else
-//     #define SORT std::sort
-// #endif
-
-//#define SEQAN_CXX11_STANDARD
 #define _GLIBCXX_USE_C99 1
 
 #include <iostream>
