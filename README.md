@@ -6,7 +6,7 @@ and protein space.
 For more information, see
  * the [homepage](https://www.seqan.de/projects/lambda/)
  * the [publication](http://bioinformatics.oxfordjournals.org/content/30/17/i349.abstract)
- * or write to [Hannes Hauswedell](mailto:hannes.hauswedell(·)fu-berlin.de)
+ * or write to [Hannes Hauswedell](mailto:hannes.hauswedell@[molgen.mpg.de|fu-berlin.de])
 
 ## Download
 
@@ -24,10 +24,10 @@ See the LICENSE file for more information.
 
 ## Build
 
-    % tar xzf seqan-lambda-v0.3.tar.gz
+    % tar xzf seqan-lambda-v0.4.tar.gz
     % mkdir -p seqan-lambda-build/release
     % cd seqan-lambda-build/release
-    % cmake ../../seqan-lambda-v0.3 \
+    % cmake ../../seqan-lambda-v0.4 \
       -DCMAKE_BUILD_TYPE=Release \
       -DCMAKE_CXX_FLAGS:STRING="-march=native"
     % make -j2 lambda lambda_indexer
@@ -61,7 +61,7 @@ Please report bugs to the SeqAn
 [bug-tracker](https://github.com/seqan/seqan).
 
 Any other questions or feedback you can send to
-[Hannes Hauswedell](mailto:hannes.hauswedell(·)fu-berlin.de).
+[Hannes Hauswedell](mailto:hannes.hauswedell@[molgen.mpg.de|fu-berlin.de]).
 
 Thanks for using Lambda, we hope that it is useful to you! If yes, please cite
 us :)
