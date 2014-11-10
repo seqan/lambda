@@ -236,7 +236,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     // Set short description, version, and date.
     setShortDescription(parser, "BLAST compatible local aligner optimized for "
                                 "NGS and Metagenomics.");
-    setVersion(parser, "0.4");
+    setVersion(parser, "0.4.1");
     setDate(parser, "November 2014");
 
     // Define usage line and long description.
@@ -716,7 +716,7 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
     seqan::ArgumentParser parser("lambda_indexer");
     // Set short description, version, and date.
     setShortDescription(parser, "Indexer for Lambda");
-    setVersion(parser, "0.4");
+    setVersion(parser, "0.4.1");
     setDate(parser, "November 2014");
 
     // Define usage line and long description.
