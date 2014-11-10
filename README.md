@@ -24,10 +24,10 @@ See the LICENSE file for more information.
 
 ## Build
 
-    % tar xzf seqan-lambda-v0.4.tar.gz
+    % tar xzf seqan-lambda-v0.4.1.tar.gz
     % mkdir -p seqan-lambda-build/release
     % cd seqan-lambda-build/release
-    % cmake ../../seqan-lambda-v0.4 \
+    % cmake ../../seqan-lambda-v0.4.1 \
       -DCMAKE_BUILD_TYPE=Release \
       -DCMAKE_CXX_FLAGS:STRING="-march=native"
     % make -j2 lambda lambda_indexer

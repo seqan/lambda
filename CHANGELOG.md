@@ -1,7 +1,15 @@
 
 # **CHANGELOG**
 
-## Version 0.4 [2014/11/15]
+## Version 0.4.1 [2014/11/10]
+
+### bug-fixes and minor changes
+ * default index type was not set to FM in `lambda_indexer`
+
+### availability
+ * TODO post release
+
+## Version 0.4.0 [2014/11/07]
 
 ### performance changes in comparison to published version (0.2)
  * new default mode with 30-80% speed gains and up to 75% memory reduction over published version
@@ -30,7 +38,10 @@
  * FastQ support fixed
 
 ### availability
- * TODO post release
+ * [Linux Binaries 64Bit](http://www.seqan.de/wp-content/plugins/download-monitor/download.php?id=55)
+ * [Linux Binaries Sandybridge](http://www.seqan.de/wp-content/plugins/download-monitor/download.php?id=54)
+ * [Source code (tarball)](http://www.seqan.de/wp-content/plugins/download-monitor/download.php?id=56)
+ * [Source code (git)](https://github.com/h-2/seqan/releases/tag/lambda-v0.4.0)
 
 ## Version 0.3 [2014/09/06]
 
