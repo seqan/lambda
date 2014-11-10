@@ -754,7 +754,7 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
         seqan::ArgParseArgument::STRING,
         "type"));
     setValidValues(parser, "db-index-type", "sa fm");
-    setDefaultValue(parser, "db-index-type", "sa");
+    setDefaultValue(parser, "db-index-type", "fm");
 
     addSection(parser, "Alphabets and Translation");
     addOption(parser, ArgParseOption("p", "program",
@@ -779,19 +779,16 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
 
     addTextSection(parser, "Environment Variables");
     addListItem(parser, "\\fBTMPDIR\\fP",
-                        "set this to a local directory with lots of "
-                        "space. If you can afford it use /dev/shm.");
+        "set this to a local directory with lots at least 20 times the database"
+        " size. If you sufficient memory, using /dev/shm will speed things "
+        "up.");
 
     addTextSection(parser, "Memory requirements");
     addText(parser, "See \033[1mlambda --help\033[0m on details concerning the "
-                    "choice of db-index-type. Note also that during "
-                    "construction a full suffix array always needs to be built "
-                    "in memory, so if you fail to produce an fm-index, you "
-                    "could build it on another machine and still succeed "
-                    "at running lambda.");
+                    "choice of db-index-type.");
     addTextSection(parser, "Remarks");
     addText(parser, "Note that the indeces created are binary and not "
-                    "necessarily platform independant.");
+                    "compatible between different CPU endiannesses.");
 
     // Parse command line.
     seqan::ArgumentParser::ParseResult res = seqan::parse(parser, argc, argv);
