@@ -862,9 +862,9 @@ computeBlastMatch(TBlastMatch         & bm,
             if (i <row0len -1)
                 scores[i+1] = scores[i];
         }
-        if (newEnd == 0)
+        if (newEnd == 0) // no local alignment
         {
-            return PREEXTEND;
+            return OTHER_FAIL;
         }
         // backtrack
         for (unsigned i = newEnd - 1; i > 0; --i)
@@ -1063,7 +1063,7 @@ computeBlastMatch(TBlastMatch         & bm,
 
     if (scr <= 0)
     {
-        std::cout << "## LATE FAIL\n" << bm.align << '\n';
+//         std::cout << "## LATE FAIL\n" << bm.align << '\n';
 
         return OTHER_FAIL;
     }
@@ -1317,6 +1317,29 @@ iterateMatches(TStream & stream, TLocalHolder & lH)
                         ++lH.stats.hitsFailedPreExtendTest;
                         break;
                     default:
+                        std::cerr << "Unexpected Extension Failure:\n"
+                          << "qryId: " << it->qryId << "\t"
+                          << "subjId: " << it->subjId << "\t"
+                          << "seed    qry: " << infix(lH.gH.redQrySeqs,
+                                                      it->qryStart,
+                                                      it->qryStart + lH.options.seedLength)
+                          << "\n       subj: " << infix(lH.gH.redSubjSeqs,
+                                                      it->subjStart,
+                                                      it->subjStart + lH.options.seedLength)
+                          << "\nunred  qry: " << infix(lH.gH.qrySeqs,
+                                                      it->qryStart,
+                                                      it->qryStart + lH.options.seedLength)
+                          << "\n       subj: " << infix(lH.gH.subjSeqs,
+                                                      it->subjStart,
+                                                      it->subjStart + lH.options.seedLength)
+                          << "\nmatch    qry: " << infix(lH.gH.qrySeqs,
+                                                      bm.qStart,
+                                                      bm.qEnd)
+                          << "\n       subj: " << infix(lH.gH.subjSeqs,
+                                                      bm.sStart,
+                                                      bm.sEnd)
+                          << "\nalign: " << bm.align
+                          << "\n";
                         return lret;
                         break;
                 }
