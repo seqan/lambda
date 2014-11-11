@@ -7,7 +7,9 @@
  * default index type was not set to FM in `lambda_indexer`
 
 ### availability
- * TODO post release
+ * [Linux Binaries 64Bit](http://www.seqan.de/wp-content/plugins/download-monitor/download.php?id=57)
+ * [Linux Binaries Sandybridge](http://www.seqan.de/wp-content/plugins/download-monitor/download.php?id=58)
+ * [Source code](https://github.com/h-2/seqan/releases/tag/lambda-v0.4.1)
 
 ## Version 0.4.0 [2014/11/07]
 
