@@ -159,7 +159,7 @@ public:
     using TRedSeqsVirt  = StringSet<TRedSeqVirt, Owner<ConcatDirect<>>>;
 
     static bool constexpr
-    indexIsFM           = std::is_same<TIndexSpec_, FMIndex<>>::value;
+    indexIsFM           = std::is_same<TIndexSpec_, TFMIndex>::value;
     static bool constexpr
     noReduction         = std::is_same<TransAlph<p>, TRedAlph>::value;
 

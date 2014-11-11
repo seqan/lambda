@@ -241,7 +241,7 @@ mainAlphed(TRedAlph const & /**/,
 
     if (options.dbIndexType == 1)
     {
-        using TIndexSpec = FMIndex<>;
+        using TIndexSpec = TFMIndex;
         generateIndexAndDump<TIndexSpec>(translatedSeqs,
                                          options,
                                          TRedAlph(),

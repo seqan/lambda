@@ -24,7 +24,7 @@
 // lambda.cpp: Main File for Lambda
 // ==========================================================================
 
-// #define FASTBUILD
+#define FASTBUILD
 
 // #define SEQAN_DEBUG_INDEX
 
@@ -495,7 +495,7 @@ preMain(LambdaOptions      const & options,
                                    TScoreScheme(),
                                    TScoreExtension());
     else
-        return realMain<FMIndex<>>(options,
+        return realMain<TFMIndex>(options,
                                    TFormat(),
                                    TRedAlph(),
                                    TScoreScheme(),

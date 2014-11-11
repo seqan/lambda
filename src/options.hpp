@@ -112,6 +112,9 @@ using RedAlph = typename std::conditional<(p == BlastFormatProgram::BLASTN),
                                           Dna5,
                                           TRedAlph_>::type;
 
+struct SAqsSpec;
+using TFMIndex  = FMIndex<>;
+
 // ==========================================================================
 // Classes
 // ==========================================================================

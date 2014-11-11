@@ -392,7 +392,7 @@ generateIndexAndDump(StringSet<TString, TSpec> & seqs,
     using TRedSeqsVirt  = StringSet<TRedSeqVirt, Owner<ConcatDirect<>>>;
 
     static bool constexpr
-    indexIsFM           = std::is_same<TIndexSpec, FMIndex<>>::value;
+    indexIsFM           = std::is_same<TIndexSpec, TFMIndex>::value;
     static bool constexpr
     noReduction         = std::is_same<TransAlph<p>, TRedAlph>::value;
 

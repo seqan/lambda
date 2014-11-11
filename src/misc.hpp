@@ -166,6 +166,45 @@ localAlignment2(Align<TSequence, TAlignSpec> & align,
 
 
 
+template <typename TText, typename TConfig>
+inline bool indexCreate(Index<TText, FMIndex<SAqsSpec, TConfig> > & index, FibreSALF)
+{
+    typedef Index<TText, FMIndex<SAqsSpec, TConfig> >      TIndex;
+//     typedef typename Fibre<TIndex, FibreTempSA>::Type   TTempSA;
+    typedef typename Fibre<TIndex, EsaSA>::Type   TTempSA;
+    typedef typename Size<TIndex>::Type                 TSize;
+
+    TText const & text = indexText(index);
+
+    if (empty(text))
+        return false;
+
+    TTempSA tempSA;
+
+    // Create the full SA.
+    resize(tempSA, lengthSum(text), Exact());
+// #ifdef __GNUC__
+//     #define _GLIBCXX_PARALLEL 1
+// #endif
+    createSuffixArray(tempSA, text, SAQSort());
+// #ifdef __GNUC__
+//     #undef _GLIBCXX_PARALLEL
+// #endif
+    // Create the LF table.
+    createLF(indexLF(index), text, tempSA);
+
+    // Set the FMIndex LF as the CompressedSA LF.
+    setFibre(indexSA(index), indexLF(index), FibreLF());
+
+    // Create the compressed SA.
+    TSize numSentinel = countSequences(text);
+    createCompressedSa(indexSA(index), tempSA, numSentinel);
+
+    return true;
+}
+
+
+
 // ----------------------------------------------------------------------------
 // Generic Sequence loading
 // ----------------------------------------------------------------------------
