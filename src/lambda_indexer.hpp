@@ -59,7 +59,7 @@ loadSubjSeqsAndIds(TCDStringSet<TOrigAlph> & originalSeqs,
     StringSet<CharString, Owner<ConcatDirect<>>> ids;
 
     double start = sysTime();
-    std::cout << "Loading Subject Sequences and Ids…" << std::flush;
+    myPrint(options, 1, "Loading Subject Sequences and Ids…");
 
 
     if (options.fileFormat)
@@ -75,27 +75,27 @@ loadSubjSeqsAndIds(TCDStringSet<TOrigAlph> & originalSeqs,
     if (ret)
         return ret;
 
-    std::cout << " done.\n";
+    myPrint(options, 1,  " done.\n");
     double finish = sysTime() - start;
-    std::cout << "Runtime: " << finish << "s \n" << std::flush;
+    myPrint(options, 2, "Runtime: ", finish, "s \n");
 
     unsigned long maxLen = 0ul;
     for (auto const & s : originalSeqs)
         if (length(s) > maxLen)
             maxLen = length(s);
-    std::cout << "Number of sequences read: " << length(originalSeqs)
-            << "\nLongest sequence read: " << maxLen << "\n\n" << std::flush;
+    myPrint(options, 2, "Number of sequences read: ", length(originalSeqs),
+            "\nLongest sequence read: ", maxLen, "\n\n");
 
-    std::cout << "Dumping Subj Ids..." << std::flush;
+    myPrint(options, 1, "Dumping Subj Ids...");
 
     //TODO save to TMPDIR instead
     CharString _path = options.dbFile;
     append(_path, ".ids");
     save(ids, toCString(_path));
 
-    std::cout << " done.\n";
+    myPrint(options, 1, " done.\n");
     finish = sysTime() - start;
-    std::cout << "Runtime: " << finish << "s \n\n" << std::flush;
+    myPrint(options, 2, "Runtime: ", finish, "s \n\n");
 
     return 0;
 }
@@ -114,7 +114,7 @@ _saveOriginalSeqLengths(TLimits limits, // we want copy!
         limits[i] = limits[i+1] - limits[i];
     // last entry not overwritten, should be the sum of all lengths
 
-    std::cout << " dumping untranslated subject lengths..." << std::flush;
+    myPrint(options, 1, " dumping untranslated subject lengths...");
     //TODO save to TMPDIR instead
     CharString _path = options.dbFile;
     append(_path, ".untranslengths");
@@ -140,7 +140,7 @@ translateOrSwap(TCDStringSet<TTransAlph> & out,
                 LambdaIndexerOptions const & options)
 {
     //TODO more output
-    std::cout << "translating…" << std::flush;
+    myPrint(options, 1, "translating…");
     translate(out,
               in,
               SIX_FRAME,
@@ -166,15 +166,15 @@ dumpTranslatedSeqs(TCDStringSet<TTransAlph> const & translatedSeqs,
                    LambdaIndexerOptions const & options)
 {
     double start = sysTime();
-    std::cout << "Dumping unreduced Subj Sequences..." << std::flush;
+    myPrint(options, 1, "Dumping unreduced Subj Sequences...");
 
     //TODO save to TMPDIR instead
     std::string _path = options.dbFile + '.' + std::string(_alphName(TTransAlph()));
     save(translatedSeqs, _path.c_str());
 
-    std::cout << " done.\n";
+    myPrint(options, 1, " done.\n");
     double finish = sysTime() - start;
-    std::cout << "Runtime: " << finish << "s \n\n" << std::flush;
+    myPrint(options, 2, "Runtime: ", finish, "s \n\n");
 }
 
 // --------------------------------------------------------------------------
@@ -188,7 +188,7 @@ dumpTranslatedSeqs(TCDStringSet<TTransAlph> const & translatedSeqs,
 // {
 //     //TODO more output
 //     // reduce implicitly
-//     std::cout << "Reducing…" << std::flush;
+//     myPrint(options, 1, "Reducing…");
 //     out.concat = in.concat;
 //     out.limits = in.limits;
 // }
@@ -253,8 +253,7 @@ convertMaskingFile(uint64_t numberOfSeqs,
 
     if (options.segFile != "")
     {
-        std::cout << "Constructing binary seqan masking from seg-file...\n"
-                << std::flush;
+        myPrint(options, 1, "Constructing binary seqan masking from seg-file...");
 
         std::ifstream stream;
         stream.open(toCString(options.segFile));
@@ -335,8 +334,7 @@ convertMaskingFile(uint64_t numberOfSeqs,
 
     } else
     {
-        std::cout << "No Seg-File specified, no masking will take place,\n"
-                << std::flush;
+        myPrint(options, 1, "No Seg-File specified, no masking will take place.\n");
 //         resize(segIntervals, numberOfSeqs, Exact());
         resize(segIntStarts, numberOfSeqs, Exact());
         resize(segIntEnds, numberOfSeqs, Exact());
@@ -344,22 +342,21 @@ convertMaskingFile(uint64_t numberOfSeqs,
 
 //     for (unsigned u = 0; u < length(segIntStarts); ++u)
 //     {
-//         std::cout << u << ": ";
+//         myPrint(options, 1,u, ": ";
 //         for (unsigned v = 0; v < length(segIntStarts[u]); ++v)
 //         {
-//             std::cout << '(' << segIntStarts[u][v] << ", " << segIntEnds[u][v] << ")  ";
+//             myPrint(options, 1,'(', segIntStarts[u][v], ", ", segIntEnds[u][v], ")  ";
 //         }
-//         std::cout << '\n';
+//         myPrint(options, 1,'\n';
 //     }
-    std::cout << "Dumping binary seqan mask file...\n"
-                << std::flush;
+    myPrint(options, 1, "Dumping binary seqan mask file...");
     CharString _path = options.dbFile;
     append(_path, ".binseg_s");
     save(segIntStarts, toCString(_path));
     _path = options.dbFile;
     append(_path, ".binseg_e");
     save(segIntEnds, toCString(_path));
-    std::cout << "Done.\n\n" << std::flush;
+    myPrint(options, 1, " done.\n\n");
 
     return 0;
 }
@@ -392,7 +389,9 @@ generateIndexAndDump(StringSet<TString, TSpec> & seqs,
     using TRedSeqsVirt  = StringSet<TRedSeqVirt, Owner<ConcatDirect<>>>;
 
     static bool constexpr
-    indexIsFM           = std::is_same<TIndexSpec, TFMIndex>::value;
+    indexIsFM           = std::is_same<TIndexSpec,
+                                       TFMIndex<typename Spec<TIndexSpec>::Type>
+                                       >::value;
     static bool constexpr
     noReduction         = std::is_same<TransAlph<p>, TRedAlph>::value;
 
@@ -411,7 +410,7 @@ generateIndexAndDump(StringSet<TString, TSpec> & seqs,
                                                     FibreSA>::type;
 
     // Generate Index
-    std::cout << "Generating Index..." << std::flush;
+    myPrint(options, 1, "Generating Index...");
     double s = sysTime();
 
     // FM-Index needs reverse input
@@ -429,11 +428,11 @@ generateIndexAndDump(StringSet<TString, TSpec> & seqs,
         clear(redSubjSeqs.limits);
 
     double e = sysTime() - s;
-    std::cout << " done.\n" << std::flush;
-    std::cout << "Runtime: " << e << "s \n\n" << std::flush;
+    myPrint(options, 1, " done.\n");
+    myPrint(options, 2, "Runtime: ", e, "s \n\n");
 
     // Dump Index
-    std::cout << "Writing Index to disk..." << std::flush;
+    myPrint(options, 1, "Writing Index to disk...");
     s = sysTime();
     std::string path = toCString(options.dbFile);
     path += '.' + std::string(_alphName(TRedAlph()));
@@ -443,8 +442,8 @@ generateIndexAndDump(StringSet<TString, TSpec> & seqs,
         path += ".sa";
     save(dbIndex, path.c_str());
     e = sysTime() - s;
-    std::cout << " done.\n" << std::flush;
-    std::cout << "Runtime: " << e << "s \n" << std::flush;
+    myPrint(options, 1, " done.\n");
+    myPrint(options, 2, "Runtime: ", e, "s \n");
 }
 
 #endif // header guard

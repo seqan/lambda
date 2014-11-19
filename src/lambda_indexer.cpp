@@ -29,7 +29,7 @@
 
 // #define SEQAN_DEBUG_INDEX
 
-#define PARALLEL_SORT 0
+// #define PARALLEL_SORT 0
 // 0 = off
 // 1 = GCC
 // 2 = omptl
@@ -44,6 +44,9 @@
 //     #define SORT std::sort
 // #endif
 
+#if defined(__GNUG__) && defined(_OPENMP)
+    #define _GLIBCXX_PARALLEL
+#endif
 #define _GLIBCXX_USE_C99 1
 
 #include <seqan/basic.h>
@@ -77,6 +80,16 @@ mainAlphed(TRedAlph const & /**/,
            LambdaIndexerOptions const & options,
            BlastFormat<BlastFormatFile::INVALID_File, p,
                 BlastFormatGeneration::INVALID_Generation> const & /*tag*/);
+
+template <BlastFormatProgram p,
+          typename TRedAlph,
+          typename TIndexSpecSpec>
+inline int
+mainIndexTyped(TRedAlph const & /**/,
+               LambdaIndexerOptions const & options,
+               TIndexSpecSpec const & /**/,
+               BlastFormat<BlastFormatFile::INVALID_File, p,
+                 BlastFormatGeneration::INVALID_Generation> const & /*tag*/);
 
 // Program entry point.
 
@@ -150,8 +163,9 @@ int mainTyped(LambdaIndexerOptions const & options,
     using TFormat   = BlastFormat<BlastFormatFile::INVALID_File,
                                   p,
                                   BlastFormatGeneration::INVALID_Generation>;
-    std::cout << "Lambda Indexer\n"
-              << "===============\n\n";
+    myPrint(options, 1, "LAMBDA - Indexer"
+                      "\n======================================================"
+                      "\nVersion ", LAMBDA_VERSION, "\n\n");
 
     switch (options.alphReduction)
     {
@@ -191,7 +205,6 @@ int mainTyped(LambdaIndexerOptions const & options,
     return -1;
 }
 
-
 template <BlastFormatProgram p,
           typename TRedAlph>
 inline int
@@ -199,6 +212,23 @@ mainAlphed(TRedAlph const & /**/,
            LambdaIndexerOptions const & options,
            BlastFormat<BlastFormatFile::INVALID_File, p,
                 BlastFormatGeneration::INVALID_Generation> const & /*tag*/)
+{
+    using TFormat   = BlastFormat<BlastFormatFile::INVALID_File,
+                                  p,
+                                  BlastFormatGeneration::INVALID_Generation>;
+    //TODO
+    return mainIndexTyped(TRedAlph(), options, SAqsSpec<>(), TFormat());
+}
+
+template <BlastFormatProgram p,
+          typename TRedAlph,
+          typename TIndexSpecSpec>
+inline int
+mainIndexTyped(TRedAlph const & /**/,
+               LambdaIndexerOptions const & options,
+               TIndexSpecSpec const & /**/,
+               BlastFormat<BlastFormatFile::INVALID_File, p,
+                 BlastFormatGeneration::INVALID_Generation> const & /*tag*/)
 {
     using TFormat   = BlastFormat<BlastFormatFile::INVALID_File,
                                   p,
@@ -241,14 +271,14 @@ mainAlphed(TRedAlph const & /**/,
 
     if (options.dbIndexType == 1)
     {
-        using TIndexSpec = TFMIndex;
+        using TIndexSpec = TFMIndex<TIndexSpecSpec>;
         generateIndexAndDump<TIndexSpec>(translatedSeqs,
                                          options,
                                          TRedAlph(),
                                          TFormat());
     } else
     {
-        using TIndexSpec = IndexSa<>;
+        using TIndexSpec = IndexSa<TIndexSpecSpec>;
         generateIndexAndDump<TIndexSpec>(translatedSeqs,
                                          options,
                                          TRedAlph(),

@@ -495,7 +495,7 @@ preMain(LambdaOptions      const & options,
                                    TScoreScheme(),
                                    TScoreExtension());
     else
-        return realMain<TFMIndex>(options,
+        return realMain<TFMIndex<>>(options,
                                    TFormat(),
                                    TRedAlph(),
                                    TScoreScheme(),
@@ -527,6 +527,10 @@ realMain(LambdaOptions      const & options,
                                            TIndexSpec,
                                            m, p, g>;
     using TLocalHolder = LocalDataHolder<Match, TGlobalHolder, TScoreExtension>;
+
+    myPrint(options, 1, "LAMBDA - the Local Aligner for Massive Biological DatA"
+                      "\n======================================================"
+                      "\nVersion ", LAMBDA_VERSION, "\n\n");
 
     if (options.verbosity >= 2)
         printOptions<TLocalHolder>(options);
