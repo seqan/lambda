@@ -536,7 +536,7 @@ realMain(LambdaOptions      const & options,
         printOptions<TLocalHolder>(options);
 
     TGlobalHolder globalHolder;
-mis
+
     int ret = prepareScoring(globalHolder, options);
     if (ret)
         return ret;
