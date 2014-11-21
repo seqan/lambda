@@ -124,6 +124,24 @@ intervalOverlap(uint64_t const s1, uint64_t const e1,
     return std::min(e1, e2) - std::max(s1, s2);
 }
 
+inline void
+printProgressBar(uint64_t & lastPercent, uint64_t const curPerc)
+{
+    if ((lastPercent != curPerc))
+    {
+        for (uint64_t i = lastPercent + 2; i <= curPerc; i+=2)
+        {
+            if (i == 100)
+                std::cout << "|" << std::flush;
+            else if (i % 10 == 0)
+                std::cout << "*" << std::flush;
+            else
+                std::cout << "·" << std::flush;
+        }
+        lastPercent = curPerc;
+    }
+}
+
 
 template <typename TSequence, typename TAlignSpec,
           typename TScoreValue, typename TScoreSpec, typename TAlignContext>
@@ -202,7 +220,177 @@ localAlignment2(Align<TSequence, TAlignSpec> & align,
 //     return true;
 // }
 
+template <typename TText, typename TSpec>
+struct ComparisonCounter;
 
+// no counting
+template <typename TText>
+struct ComparisonCounter<TText, Nothing>
+{
+    uint64_t _comparisons = 0;
+    uint64_t _expectedComparisons = 0;
+    ComparisonCounter(TText const &,
+                      uint64_t expectedComparisons = 0u)
+    {
+        (void)expectedComparisons;
+    }
+
+    // may be constexpr in c++14
+    inline void inc() const
+    {}
+};
+
+// every thread counts
+template <typename TText>
+struct ComparisonCounter<TText, std::true_type>
+{
+    uint64_t _comparisons = 0;
+    uint64_t _expectedComparisons = 0;
+    uint64_t _twoPercent = 0;
+    uint64_t _lastPercent = 0;
+
+    int count = 0; // -1 don't count at all; 0 one thread; 1 all threads
+
+    ComparisonCounter(TText const & text,
+                      uint64_t expectedComparisons = 0u)
+    {
+        if (_expectedComparisons == 0)
+        {
+            uint64_t l = length(concat(text));
+            _expectedComparisons = 1.2 * double(l) * std::log(l) / std::log(2);
+        } else
+            _expectedComparisons = expectedComparisons;
+
+        _twoPercent = _expectedComparisons / 50;
+        _comparisons = 0;
+    }
+
+    inline void inc()
+    {
+        // progress reporting
+        if ((++_comparisons % _twoPercent) == 0)
+            printProgressBar(_lastPercent, _comparisons / _twoPercent);
+    }
+};
+
+// only one thread counts
+#ifdef _OPENMP
+template <typename TText>
+struct ComparisonCounter<TText, std::false_type>
+{
+    uint64_t _comparisons = 0;
+    uint64_t _expectedComparisons = 0;
+    uint64_t _twoPercent = 0;
+    uint64_t _lastPercent = 0;
+
+    int count = 0; // -1 don't count at all; 0 one thread; 1 all threads
+
+    ComparisonCounter(TText const & text,
+                      uint64_t expectedComparisons = 0u)
+    {
+        if (_expectedComparisons == 0)
+        {
+            uint64_t l = length(concat(text));
+            _expectedComparisons = 1.2 * double(l) * std::log(l) / std::log(2) /
+                                   omp_get_max_threads();
+        } else
+            _expectedComparisons = expectedComparisons;
+
+        _twoPercent = _expectedComparisons / 50;
+        _comparisons = 0;
+    }
+
+    inline void inc()
+    {
+        if (omp_get_thread_num() == 0) // only one thread counts
+        {
+            // progress reporting
+            if ((++_comparisons % _twoPercent) == 0)
+                printProgressBar(_lastPercent, _comparisons / _twoPercent);
+        }
+    }
+};
+#else // no _OPENMP -> every thread counts
+template <typename TText>
+struct ComparisonCounter<TText, std::false_type>
+    : public ComparisonCounter<TText, std::true_type>
+{
+};
+#endif
+
+
+template <typename TSA,
+          typename TString,
+          typename TSSetSpec,
+          typename TAlgo>
+inline void
+createSuffixArray(TSA & SA,
+                  StringSet<TString, TSSetSpec> const & s,
+                  TAlgo const &,
+                  std::function<void(void)> const &)
+{
+    return createSuffixArray(SA, s, TAlgo());
+}
+
+
+template <typename TText, typename TSpec, typename TConfig>
+inline bool indexCreate(Index<TText, FMIndex<TSpec, TConfig> > & index,
+                        TText const & text,
+                        FibreSALF,
+                        std::function<void(void)> progressCallback)
+{
+    typedef Index<TText, FMIndex<TSpec, TConfig> >      TIndex;
+    typedef typename Fibre<TIndex, FibreTempSA>::Type   TTempSA;
+    typedef typename DefaultIndexCreator<TIndex, FibreSA>::Type  TAlgo;
+    typedef typename Size<TIndex>::Type                 TSize;
+
+    indexText(index) = text;
+
+    if (empty(text))
+        return false;
+
+    TTempSA tempSA;
+
+    // Create the full SA.
+    resize(tempSA, lengthSum(text), Exact());
+    createSuffixArray(tempSA, text, TAlgo(), progressCallback);
+
+    // Create the LF table.
+    createLF(indexLF(index), text, tempSA);
+
+    // Set the FMIndex LF as the CompressedSA LF.
+    setFibre(indexSA(index), indexLF(index), FibreLF());
+
+    // Create the compressed SA.
+    TSize numSentinel = countSequences(text);
+    createCompressedSa(indexSA(index), tempSA, numSentinel);
+
+    return true;
+}
+
+template <typename TText, typename TSpec>
+inline bool indexCreate(Index<TText, IndexSa<TSpec> > & index,
+                        TText const & text,
+                        FibreSA,
+                        std::function<void(void)> progressCallback)
+{
+    typedef Index<TText, IndexSa<TSpec> >      TIndex;
+    typedef typename Fibre<TIndex, FibreSA>::Type       TSA;
+    typedef typename DefaultIndexCreator<TIndex, FibreSA>::Type  TAlgo;
+
+    indexText(index) = text;
+
+    if (empty(text))
+        return false;
+
+    TSA & sa = getFibre(index, FibreSA());
+
+    // Create the full SA.
+    resize(sa, lengthSum(text), Exact());
+    createSuffixArray(sa, text, TAlgo(), progressCallback);
+
+    return true;
+}
 
 // ----------------------------------------------------------------------------
 // Generic Sequence loading
@@ -345,23 +533,6 @@ loadIds2(StringSet<TString, TSpec > & ids,
 //         appendValue(seqs, s);
 // }
 
-inline void
-printProgressBar(unsigned & lastPercent, unsigned const curPerc)
-{
-    if ((lastPercent != curPerc))
-    {
-        for (unsigned i = lastPercent + 2; i <= curPerc; i+=2)
-        {
-            if (i == 100)
-                std::cout << "|" << std::flush;
-            else if (i % 10 == 0)
-                std::cout << "*" << std::flush;
-            else
-                std::cout << "·" << std::flush;
-        }
-        lastPercent = curPerc;
-    }
-}
 
 // ----------------------------------------------------------------------------
 // print if certain verbosity is set

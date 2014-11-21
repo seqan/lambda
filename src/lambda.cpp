@@ -536,7 +536,7 @@ realMain(LambdaOptions      const & options,
         printOptions<TLocalHolder>(options);
 
     TGlobalHolder globalHolder;
-
+mis
     int ret = prepareScoring(globalHolder, options);
     if (ret)
         return ret;
@@ -599,7 +599,7 @@ realMain(LambdaOptions      const & options,
                         ? options.queryPart
                         : length(globalHolder.qryIds));
 
-    unsigned lastPercent = 0;
+    uint64_t lastPercent = 0;
 
     SEQAN_OMP_PRAGMA(parallel)
     {

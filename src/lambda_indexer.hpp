@@ -366,6 +366,7 @@ convertMaskingFile(uint64_t numberOfSeqs,
 // --------------------------------------------------------------------------
 
 template <typename TIndexSpec,
+          typename TIndexSpecSpec,
           typename TString,
           typename TSpec,
           typename TRedAlph_,
@@ -390,7 +391,7 @@ generateIndexAndDump(StringSet<TString, TSpec> & seqs,
 
     static bool constexpr
     indexIsFM           = std::is_same<TIndexSpec,
-                                       TFMIndex<typename Spec<TIndexSpec>::Type>
+                                       TFMIndex<TIndexSpecSpec>
                                        >::value;
     static bool constexpr
     noReduction         = std::is_same<TransAlph<p>, TRedAlph>::value;
@@ -405,21 +406,47 @@ generateIndexAndDump(StringSet<TString, TSpec> & seqs,
                             TRedSeqsVirt>::type;    // modview
 
     using TDbIndex      = Index<TRedSeqs, TIndexSpec>;
-    using TFibre        = typename std::conditional<indexIsFM,
+    using TFullFibre    = typename std::conditional<indexIsFM,
                                                     FibreSALF,
                                                     FibreSA>::type;
+    static bool constexpr
+    hasProgress         = std::is_same<TIndexSpecSpec,
+                                       SaAdvancedSort<MergeSortTag>>::value ||
+                          std::is_same<TIndexSpecSpec,
+                                       SaAdvancedSort<QuickSortTag>>::value;
+
+    using TCountPartial = std::is_same<TIndexSpecSpec,
+                                       SaAdvancedSort<MergeSortTag>>;
+//TODO debug this
+//     using TProgressCounter = typename std::conditional<
+//                                 hasProgress,
+//                                 ComparisonCounter<TRedSeqs, TCountPartial>,
+//                                 ComparisonCounter<TRedSeqs, Nothing>>::type;
+    using TProgressCounter = ComparisonCounter<TRedSeqs, Nothing>;
 
     // Generate Index
     myPrint(options, 1, "Generating Index...");
     double s = sysTime();
+
+//     std::cout << "indexIsFM: " << int(indexIsFM) << std::endl;
 
     // FM-Index needs reverse input
     if (indexIsFM)
         reverse(seqs);
 
     TRedSeqsACT redSubjSeqs(seqs);
+
+    TProgressCounter counter(redSubjSeqs, 0);
+    std::cout << "ExpectedNumComparisons: " << counter._expectedComparisons
+              << std::endl;
     TDbIndex dbIndex(redSubjSeqs);
-    indexRequire(dbIndex, TFibre()); // instantiate
+    // instantiate SA
+    indexCreate(dbIndex, redSubjSeqs, TFullFibre(),
+                [&counter] () { counter.inc(); });
+    // instantiate potential rest
+    std::cout << "\nActualNumComparisons: " << counter._comparisons
+              << std::endl;
+//     indexRequire(dbIndex, TFullFibre()); // instantiate
 
     // since we dumped unreduced sequences before and reduced sequences are
     // only "virtual" we clear them before dump

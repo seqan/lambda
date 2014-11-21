@@ -216,8 +216,17 @@ mainAlphed(TRedAlph const & /**/,
     using TFormat   = BlastFormat<BlastFormatFile::INVALID_File,
                                   p,
                                   BlastFormatGeneration::INVALID_Generation>;
-    //TODO
-    return mainIndexTyped(TRedAlph(), options, SAqsSpec<>(), TFormat());
+
+    if (options.algo == "mergesort")
+        return mainIndexTyped(TRedAlph(), options, SaAdvancedSort<MergeSortTag>(), TFormat());
+    else if (options.algo == "quicksort")
+        return mainIndexTyped(TRedAlph(), options, SaAdvancedSort<QuickSortTag>(), TFormat());
+    else if (options.algo == "defsort")
+        return mainIndexTyped(TRedAlph(), options, SaAdvancedSort<std::true_type>(), TFormat());
+    else if (options.algo == "defsortsl")
+        return mainIndexTyped(TRedAlph(), options, SaAdvancedSort<std::false_type>(), TFormat());
+    else
+        return mainIndexTyped(TRedAlph(), options, Nothing(), TFormat());
 }
 
 template <BlastFormatProgram p,
@@ -272,17 +281,17 @@ mainIndexTyped(TRedAlph const & /**/,
     if (options.dbIndexType == 1)
     {
         using TIndexSpec = TFMIndex<TIndexSpecSpec>;
-        generateIndexAndDump<TIndexSpec>(translatedSeqs,
-                                         options,
-                                         TRedAlph(),
-                                         TFormat());
+        generateIndexAndDump<TIndexSpec,TIndexSpecSpec>(translatedSeqs,
+                                                        options,
+                                                        TRedAlph(),
+                                                        TFormat());
     } else
     {
         using TIndexSpec = IndexSa<TIndexSpecSpec>;
-        generateIndexAndDump<TIndexSpec>(translatedSeqs,
-                                         options,
-                                         TRedAlph(),
-                                         TFormat());
+        generateIndexAndDump<TIndexSpec,TIndexSpecSpec>(translatedSeqs,
+                                                        options,
+                                                        TRedAlph(),
+                                                        TFormat());
     }
 
     return 0;

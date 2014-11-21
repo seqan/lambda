@@ -37,7 +37,7 @@
 #include <seqan/arg_parse.h>
 #include <seqan/index.h>
 
-#include <seqan/blast.h>
+#include "index_sa_sort.h"
 
 #define LAMBDA_VERSION "0.4.5"
 
@@ -79,46 +79,53 @@ struct SAValue<StringSet<String<Dna5, TSpec1>, TSpec2> >
 using namespace seqan;
 
 // Index Specs
-template <typename TActualSpec = void>
-struct SAqsSpec {} ;
+// template <typename TActualSpec = void>
+// struct SAqsSpec {} ;
 
 template <typename TSpec = void>
 using TFMIndex = FMIndex<TSpec>;
 
 namespace SEQAN_NAMESPACE_MAIN
 {
-
 template <typename TText, typename TSpec>
-struct Fibre<Index<TText, IndexSa<SAqsSpec<TSpec> > >, FibreTempSA>
+struct Fibre<Index<TText, IndexSa<SaAdvancedSort<TSpec> > >, FibreTempSA>
 {
-    typedef Index<TText, IndexSa<SAqsSpec<TSpec> > >        TIndex_;
+    typedef Index<TText, IndexSa<SaAdvancedSort<TSpec> > >        TIndex_;
     typedef typename SAValue<TIndex_>::Type                         TSAValue_;
 
     typedef String<TSAValue_, typename DefaultIndexStringSpec<TText>::Type> Type;
 };
 
-template < typename TText, typename TSpec>
-struct DefaultIndexCreator<Index<TText,  IndexSa<SAqsSpec<TSpec> > >, FibreSA>
+template <typename TText, typename TSpec>
+struct DefaultIndexCreator<Index<TText, IndexSa<SaAdvancedSort<TSpec>> >, FibreSA>
 {
-    typedef SAQSort Type;
+    typedef SaAdvancedSort<TSpec> Type;
+//     static std::function<void(void)> progressCallback;
 };
 
+// template <typename TText, typename TSpec>
+// static std::function<void(void)>
+// DefaultIndexCreator<Index<TText, IndexSa<SaAdvancedSort<TSpec>> >, FibreSA>::progressCallback = [] () {};
+
 template <typename TText, typename TSpec, typename TConfig>
-struct Fibre<Index<TText, FMIndex<SAqsSpec<TSpec>, TConfig> >, FibreTempSA>
+struct Fibre<Index<TText, FMIndex<SaAdvancedSort<TSpec>, TConfig> >, FibreTempSA>
 {
-    typedef Index<TText, FMIndex<SAqsSpec<TSpec>, TConfig> >        TIndex_;
+    typedef Index<TText, FMIndex<SaAdvancedSort<TSpec>, TConfig> >        TIndex_;
     typedef typename SAValue<TIndex_>::Type                         TSAValue_;
 
     typedef String<TSAValue_, typename DefaultIndexStringSpec<TText>::Type> Type;
 };
 
 template < typename TText, typename TSpec, typename TConfig>
-struct DefaultIndexCreator<Index<TText, FMIndex<SAqsSpec<TSpec>, TConfig> >, FibreSA>
+struct DefaultIndexCreator<Index<TText, FMIndex<SaAdvancedSort<TSpec>, TConfig> >, FibreSA>
 {
-    typedef SAQSort Type;
+    typedef SaAdvancedSort<TSpec> Type;
+//     std::function<void(void)> progressCallback;
 };
 
-
+// template <typename TText, typename TSpec>
+// static std::function<void(void)>
+// DefaultIndexCreator<Index<TText, FMIndex<SaAdvancedSort<TSpec>, TConfig> >, FibreSA>::progressCallback = [] () {};
 
 }
 
@@ -791,8 +798,8 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
         " Requirements below!).",
         ArgParseArgument::STRING,
         "STR"));
-    setValidValues(parser, "algorithm", "quicksort skew7ext");
-    setDefaultValue(parser, "algorithm", "quicksort");
+    setValidValues(parser, "algorithm", "defsort defsortsl mergesort quicksort skew7ext");
+    setDefaultValue(parser, "algorithm", "mergesort");
 #ifdef _OPENMP
     addOption(parser, ArgParseOption("t", "threads",
         "number of threads to run concurrently (ignored if a == skew7ext).",
@@ -805,17 +812,22 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
     setDefaultValue(parser, "threads", 1);
 #endif
 
-    addTextSection(parser, "Memory requirements");
+    addTextSection(parser, "Memory requirements and Speed");
+    addText(parser, "\033[1mmergesort [RAM}:\033[0m"
+                    "\t14 * size(dbSeqs)");
     addText(parser, "\033[1mquicksort [RAM}:\033[0m"
                     "\t7 * size(dbSeqs)");
     addText(parser, "\033[1mskew7ext [RAM]:\033[0m"
                     "\t2 * size(dbSeqs)");
     addText(parser, "\033[1mskew7ext [DISK]:\033[0m"
                     "\t30 * size(dbSeqs)");
+    addText(parser, "size(dbSeqs) refers to the total "
+                    "sequence length and does not include IDs (which account "
+                    "for ~50% of the file size for proteins databases)." );
+    addText(parser, "mergesort is the fastest; quicksort comes after that; "
+                    "skew7ext is not parallelized at all");
     addText(parser, "Disk space required is in TMPDIR which you can set as "
-                    "an environment variable. size(dbSeqs) refers to the total "
-                    "sequence length and does not include IDs (so it is less "
-                    "than the size of the file)." );
+                    "an environment variable.");
     addTextSection(parser, "Remarks");
     addText(parser, "Note that the indeces created are binary and not "
                     "compatible between different CPU endiannesses.");
