@@ -666,7 +666,6 @@ realMain(LambdaOptions      const & options,
 
     if (!options.doubleIndexing)
     {
-        myPrint(options, 1, "\n");
         myPrint(options, 2, "Runtime: ", sysTime() - start, "s.\n\n");
     }
 

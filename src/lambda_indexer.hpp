@@ -365,6 +365,12 @@ convertMaskingFile(uint64_t numberOfSeqs,
 // Function loadSubj()
 // --------------------------------------------------------------------------
 
+#ifdef _OPENMP
+#define TID omp_get_thread_num()
+#else
+#define TID 0
+#endif
+
 template <typename TIndexSpec,
           typename TIndexSpecSpec,
           typename TString,
@@ -411,18 +417,16 @@ generateIndexAndDump(StringSet<TString, TSpec> & seqs,
                                                     FibreSA>::type;
     static bool constexpr
     hasProgress         = std::is_same<TIndexSpecSpec,
-                                       SaAdvancedSort<MergeSortTag>>::value ||
-                          std::is_same<TIndexSpecSpec,
-                                       SaAdvancedSort<QuickSortTag>>::value;
+                                       SaAdvancedSort<QuickSortBucketTag>>::value;
 
-    using TCountPartial = std::is_same<TIndexSpecSpec,
-                                       SaAdvancedSort<MergeSortTag>>;
-//TODO debug this
+//     using TCountPartial = std::is_same<TIndexSpecSpec,
+//                                        SaAdvancedSort<MergeSortTag>>;
+// TODO debug this
 //     using TProgressCounter = typename std::conditional<
 //                                 hasProgress,
 //                                 ComparisonCounter<TRedSeqs, TCountPartial>,
 //                                 ComparisonCounter<TRedSeqs, Nothing>>::type;
-    using TProgressCounter = ComparisonCounter<TRedSeqs, Nothing>;
+//     using TProgressCounter = ComparisonCounter<TRedSeqs, Nothing>;
 
     // Generate Index
     myPrint(options, 1, "Generating Index...");
@@ -436,16 +440,26 @@ generateIndexAndDump(StringSet<TString, TSpec> & seqs,
 
     TRedSeqsACT redSubjSeqs(seqs);
 
-    TProgressCounter counter(redSubjSeqs, 0);
-    std::cout << "ExpectedNumComparisons: " << counter._expectedComparisons
-              << std::endl;
+//     TProgressCounter counter(redSubjSeqs, 0);
+//     std::cout << "ExpectedNumComparisons: " << counter._expectedComparisons
+//               << std::endl;
+    if (hasProgress)
+        myPrint(options, 1, "progress:\n"
+                "0%  10%  20%  30%  40%  50%  60%  70%  80%  90%  100%\n|");
     TDbIndex dbIndex(redSubjSeqs);
     // instantiate SA
+    uint64_t lastPercent = 0;
     indexCreate(dbIndex, redSubjSeqs, TFullFibre(),
-                [&counter] () { counter.inc(); });
+        [&lastPercent, &options] (uint64_t curPerc)
+        {
+            if ((TID == 0) && (options.verbosity >= 1))
+                printProgressBar(lastPercent, curPerc);
+        });
+    if (hasProgress)
+        printProgressBar(lastPercent, 100);
     // instantiate potential rest
-    std::cout << "\nActualNumComparisons: " << counter._comparisons
-              << std::endl;
+//     std::cout << "\nActualNumComparisons: " << counter._comparisons
+//               << std::endl;
 //     indexRequire(dbIndex, TFullFibre()); // instantiate
 
     // since we dumped unreduced sequences before and reduced sequences are
@@ -455,7 +469,8 @@ generateIndexAndDump(StringSet<TString, TSpec> & seqs,
         clear(redSubjSeqs.limits);
 
     double e = sysTime() - s;
-    myPrint(options, 1, " done.\n");
+    if (!hasProgress)
+        myPrint(options, 1, " done.\n");
     myPrint(options, 2, "Runtime: ", e, "s \n\n");
 
     // Dump Index

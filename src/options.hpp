@@ -798,8 +798,8 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
         " Requirements below!).",
         ArgParseArgument::STRING,
         "STR"));
-    setValidValues(parser, "algorithm", "defsort defsortsl mergesort quicksort skew7ext");
-    setDefaultValue(parser, "algorithm", "mergesort");
+    setValidValues(parser, "algorithm", "quicksortbuckets mergesort quicksort skew7ext");
+    setDefaultValue(parser, "algorithm", "quicksortbuckets");
 #ifdef _OPENMP
     addOption(parser, ArgParseOption("t", "threads",
         "number of threads to run concurrently (ignored if a == skew7ext).",
@@ -822,10 +822,15 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
     addText(parser, "\033[1mskew7ext [DISK]:\033[0m"
                     "\t30 * size(dbSeqs)");
     addText(parser, "size(dbSeqs) refers to the total "
-                    "sequence length and does not include IDs (which account "
-                    "for ~50% of the file size for proteins databases)." );
-    addText(parser, "mergesort is the fastest; quicksort comes after that; "
-                    "skew7ext is not parallelized at all");
+                    "sequence length and does not include IDs (which can "
+                    "account for >50% of the file size for protein databases). "
+                    "The space is the maximum obseverved factor, for many "
+                    "databases the factor is smaller." );
+    addText(parser, "mergesort is fully parallelized and thus the fastest on "
+                    "many-core-architectures. quicksort only uses up to 2 "
+                    "threads, but is usually faster than mergesort at up to "
+                    "six threads. skew7ext is not parallelized at all, use it "
+                    "only if you are memory constrained.");
     addText(parser, "Disk space required is in TMPDIR which you can set as "
                     "an environment variable.");
     addTextSection(parser, "Remarks");

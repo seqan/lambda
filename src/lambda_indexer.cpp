@@ -221,10 +221,8 @@ mainAlphed(TRedAlph const & /**/,
         return mainIndexTyped(TRedAlph(), options, SaAdvancedSort<MergeSortTag>(), TFormat());
     else if (options.algo == "quicksort")
         return mainIndexTyped(TRedAlph(), options, SaAdvancedSort<QuickSortTag>(), TFormat());
-    else if (options.algo == "defsort")
-        return mainIndexTyped(TRedAlph(), options, SaAdvancedSort<std::true_type>(), TFormat());
-    else if (options.algo == "defsortsl")
-        return mainIndexTyped(TRedAlph(), options, SaAdvancedSort<std::false_type>(), TFormat());
+    else if (options.algo == "quicksortbuckets")
+        return mainIndexTyped(TRedAlph(), options, SaAdvancedSort<QuickSortBucketTag>(), TFormat());
     else
         return mainIndexTyped(TRedAlph(), options, Nothing(), TFormat());
 }

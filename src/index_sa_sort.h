@@ -51,6 +51,8 @@ struct QuickSortTag {};
 
 struct MergeSortTag {};
 
+struct QuickSortBucketTag {};
+
 template <typename TIndex>
 struct SaAdvancedSortAlgoTag
 {
@@ -235,7 +237,7 @@ inline void
 createSuffixArray(TSA & SA,
                   StringSet<TString, TSSetSpec> const & s,
                   SaAdvancedSort<TAlgoSpec> const &,
-                  std::function<void(void)> progressCallback = [] () {})
+                  std::function<void(uint64_t)> progressCallback = [] () {})
 {
     typedef StringSet< TString, TSSetSpec > TText;
     typedef typename Size<TSA>::Type TSize;
@@ -252,34 +254,187 @@ createSuffixArray(TSA & SA,
     }
 
     // 2. Sort suffix array with quicksort
-    if (std::is_same<TAlgoSpec, std::true_type>::value)
-    {
-        std::cout << "calling std::sort\n";
-        std::sort(
-        begin(SA, Standard()),
-        end(SA, Standard()),
-        AdvancedSuffixLess_<typename Value<TSA>::Type, TText const>(s, 0, progressCallback));
-    } else if (std::is_same<TAlgoSpec, std::false_type>::value)
-    {
-        std::sort(
-        begin(SA, Standard()),
-        end(SA, Standard()),
-        SuffixLess_<typename Value<TSA>::Type, TText const>(s));
-    } else
+    (void)progressCallback;
+//     if (std::is_same<TAlgoSpec, std::true_type>::value)
+//     {
+//         std::cout << "calling std::sort\n";
+//         std::sort(
+//         begin(SA, Standard()),
+//         end(SA, Standard()),
+//         AdvancedSuffixLess_<typename Value<TSA>::Type, TText const>(s, 0, progressCallback));
+//     } else if (std::is_same<TAlgoSpec, std::false_type>::value)
+//     {
+//         std::sort(
+//         begin(SA, Standard()),
+//         end(SA, Standard()),
+//         SuffixLess_<typename Value<TSA>::Type, TText const>(s));
+//     } else
 #ifdef _OPENMP
     __gnu_parallel::sort(
         begin(SA, Standard()),
         end(SA, Standard()),
-        AdvancedSuffixLess_<typename Value<TSA>::Type, TText const>(s, 0, progressCallback),
+        SuffixLess_<typename Value<TSA>::Type, TText const>(s, 0),
         TAlgo());
 #else
     std::sort(
         begin(SA, Standard()),
         end(SA, Standard()),
-        AdvancedSuffixLess_<typename Value<TSA>::Type, TText const>(s, 0, progressCallback));
+        SuffixLess_<typename Value<TSA>::Type, TText const>(s, 0));
 #endif
 
 }
+
+template <typename TSA,
+          typename TString,
+          typename TSSetSpec>
+inline void
+createSuffixArray(TSA & sa,
+                  StringSet<TString, TSSetSpec> const & text,
+                  SaAdvancedSort<QuickSortBucketTag> const &,
+                  std::function<void(uint64_t)> progressCallback = [] (uint64_t) {})
+{
+    typedef StringSet<TString, TSSetSpec>                   TText;
+    typedef typename Size<TText>::Type                   TTextSize;
+//     typedef uint64_t TTextSize;
+//     typedef Index<TText, TIndexSpec>                        TIndex;
+    typedef typename Value<TString>::Type                   TIndexAlphabet;
+//     typedef typename Size<TText>::Type                     TIndexSize;
+//     typedef typename Fibre<TIndex, FibreSA>::Type           TIndexSAFibre;
+    typedef typename Value<TSA>::Type             TIndexSAPos;
+    typedef typename Iterator<TSA, Standard>::Type          TIter;
+//     typedef typename Iterator<TIndex, TopDown<> >::Type     TIterator;
+
+    // we don't know the maximal seed length in advance as it depends on the query
+    // hence we choose a sufficiently large number
+//     unsigned maxSeedLength = 10000;
+
+//     // 1. create and sort q-gram buckets
+//     Shape<TIndexAlphabet, SimpleShape> shape;
+//     String<TIndexSize> dir;
+// 
+//     unsigned shapeLength;
+//     if (ValueSize<TIndexAlphabet>::VALUE <= 5)
+//         shapeLength = _min(maxSeedLength, 10u);
+//     else
+//         shapeLength = _min(maxSeedLength, 3u);
+// 
+//     TTextSize stepSize = 1;
+// //     if (IsSameType<TSpec, Exact>::VALUE)
+// //         stepSize = maxSeedLength;
+// 
+//     resize(shape, shapeLength);
+// //     resize(sa, _qgramQGramCount(text, shape, stepSize), Exact());
+//     resize(dir, _fullDirLength(shape), Exact());
+//     Nothing nothing;
+// 
+//     createQGramIndex(sa, dir, nothing, text, shape, stepSize);
+
+    uint64_t initialSortLength;
+    if (ValueSize<TIndexAlphabet>::VALUE <= 5)
+        initialSortLength = 10u;
+    else if (ValueSize<TIndexAlphabet>::VALUE < 10)
+        initialSortLength = 3u;
+    else
+        initialSortLength = 2u;
+
+    TIter it = begin(sa, Standard());
+    for(unsigned j = 0; j < length(text); ++j)
+    {
+        TTextSize len = length(text[j]);
+        for(TTextSize i = 0; i < len; ++i, ++it)
+            *it = Pair<unsigned, TTextSize>(j, i);
+    }
+
+//     if (it != end(sa, Standard()))
+//     {
+//         std::cerr << "Not all SAVs written\n" 
+//                   << "lengthSum(text) == " << lengthSum(text) << "\n"
+//                   << "length(sa) == " << length(sa) << "\n"
+//                   << "it - begin(sa) == " << (it - begin(sa, Standard())) << "\n"
+//                   << std::endl;
+//     }
+//     std::cout << "typeof(TSize) == " << typeid(TTextSize).name() << std::endl;
+    // sort up to certain depth
+#ifdef _OPENMP
+    __gnu_parallel::sort(begin(sa, Standard()),
+                         end(sa, Standard()),
+                         QGramLess_<TIndexSAPos, TText const>(text,
+                                                              initialSortLength),
+                         __gnu_parallel::quicksort_tag());
+#else
+    std::sort(begin(sa, Standard()),
+              end(sa, Standard()),
+              QGramLess_<TIndexSAPos, TText const>(text, initialSortLength));
+#endif
+
+//     std::cout << "First 20 sa" << std::endl;
+//     for (unsigned i = 0; i < 20; ++i)
+//         std::cout << suffix(text[sa[i].i1], sa[i].i2) << "\n";
+    // create dir
+    String<uint64_t> dir;
+    appendValue(dir, 0u);
+    for(unsigned j = 1; j < length(sa); ++j)
+    {
+        if (infix(text[sa[j].i1],
+                  sa[j].i2,
+                  std::min(sa[j].i2 + initialSortLength, length(text[sa[j].i1])))
+            != infix(text[sa[j-1].i1],
+                  sa[j-1].i2,
+                  std::min(sa[j-1].i2 + initialSortLength, length(text[sa[j-1].i1]))))
+        {
+//             if (j < 50)
+//             {
+//                 std::cout << "last: " << infix(text[sa[j-1].i1],
+//                   sa[j-1].i2,
+//                   sa[j-1].i2 + std::min(initialSortLength, length(text[sa[j-1].i1])))
+//                           << "\ncur:  " << infix(text[sa[j].i1],
+//                                                sa[j].i2,
+//                 sa[j].i2 + std::min(initialSortLength, length(text[sa[j].i1])))
+//                           << std::endl;
+//             }
+            appendValue(dir, j);
+        }
+    }
+    appendValue(dir, length(sa));
+
+//     std::cout << "First 20 sa[dir]" << std::endl;
+//     for (unsigned i = 0; i < 20; ++i)
+//         std::cout << suffix(text[sa[dir[i]].i1], sa[dir[i]].i2) << "\n";
+
+
+    // 2. refine q-gram buckets and sort up to their maxSeedLength prefix
+
+    TIter saBegin = begin(sa, Standard());
+
+    SEQAN_OMP_PRAGMA(parallel for schedule(dynamic,1))
+    for (int i = 1; i < (int)length(dir); ++i)
+    {
+        if (dir[i - 1] + 1 < dir[i])
+#ifdef _OPENMP
+            __gnu_parallel::sort(
+                saBegin + dir[i - 1],
+                saBegin + dir[i],
+                SuffixLess_<TIndexSAPos, TText const>(text, initialSortLength),
+                __gnu_parallel::sequential_tag()); // deactivate internal SMP
+#else
+            std::sort(
+                saBegin + dir[i - 1],
+                saBegin + dir[i],
+                SuffixLess_<TIndexSAPos, TText const>(text, initialSortLength));
+#endif
+
+        progressCallback(i*100/length(dir));
+    }
+
+//     std::cout << "POST REFINE First 20 sa" << std::endl;
+//     for (unsigned i = 0; i < 20; ++i)
+//         std::cout << suffix(text[sa[i].i1], sa[i].i2) << "\n";
+//     std::cout << "POST REFINE First 20 sa[dir]" << std::endl;
+//     for (unsigned i = 0; i < 20; ++i)
+//         std::cout << suffix(text[sa[dir[i]].i1], sa[dir[i]].i2) << "\n";
+}
+
+
 
 template <typename TInput, typename TAlgoSpec>
 struct Pipe< TInput, SaAdvancedSort<TAlgoSpec> >
