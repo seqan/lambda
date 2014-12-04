@@ -165,6 +165,30 @@ using RedAlph = typename std::conditional<(p == BlastFormatProgram::BLASTN),
                                           Dna5,
                                           TRedAlph_>::type;
 
+template <typename TString>
+void getCwd(TString & string)
+{
+    char cwd[1000];
+
+#ifdef PLATFORM_WINDOWS
+    _getcwd(cwd, 1000);
+#else
+    getcwd(cwd, 1000);
+#endif
+
+    assign(string, cwd);
+}
+
+template <typename TString, typename TValue>
+bool setEnv(TString const & key, TValue & value)
+{
+#ifdef PLATFORM_WINDOWS
+    return !_putenv_s(toCString(key), toCString(value));
+#else
+    return !setenv(toCString(key), toCString(value), true);
+#endif
+}
+
 // ==========================================================================
 // Classes
 // ==========================================================================
@@ -812,32 +836,43 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
     setDefaultValue(parser, "threads", 1);
 #endif
 
+    std::string tmpdir;
+    getCwd(tmpdir);
+    addOption(parser, ArgParseOption("td", "tmp-dir",
+        "temporary directory used by skew, defaults to working directory.",
+        ArgParseArgument::STRING,
+        "STR"));
+    setDefaultValue(parser, "tmp-dir", tmpdir);
+
     addTextSection(parser, "Memory requirements and Speed");
-    addText(parser, "\033[1mmergesort [RAM}:\033[0m"
+    addText(parser, "\033[1mmergesort [RAM]:\033[0m"
                     "\t14 * size(dbSeqs)");
-    addText(parser, "\033[1mquicksort and quicksortbuckets [RAM}:\033[0m"
+    addText(parser, "\033[1mmergesort [speed]:\033[0m"
+                    "\tup to t threads");
+    addText(parser, "\033[1mquicksort and quicksortbuckets [RAM]:\033[0m"
                     "\t7 * size(dbSeqs)");
+    addText(parser, "\033[1mquicksort [speed]:\033[0m"
+                    "\t1-2 threads");
+    addText(parser, "\033[1mquicksortbuckets [speed]:\033[0m"
+                    "\t1-2 threads for initial sort, up to t for buckets");
     addText(parser, "\033[1mskew7ext [RAM]:\033[0m"
                     "\t2 * size(dbSeqs)");
     addText(parser, "\033[1mskew7ext [DISK]:\033[0m"
                     "\t30 * size(dbSeqs)");
+    addText(parser, "\033[1mskew7ext [speed]:\033[0m"
+                    "\tnot parallelized");
     addText(parser, "size(dbSeqs) refers to the total "
                     "sequence length and does not include IDs (which can "
                     "account for >50% of the file size for protein databases). "
                     "The space is the maximum obseverved factor, for many "
                     "databases the factor is smaller." );
-    addText(parser, "mergesort is fully parallelized and thus the fastest on "
-                    "many-core-architectures. quicksort only uses up to 2 "
-                    "threads, but uses significantly less memory. "
-                    "quicksortbuckets uses up to n threads for most of the "
-                    "operations, but is still slower than mergesort for large "
-                    "files / many threads. "
-                    "skew7ext is not parallelized at all, use it "
-                    "only if you are very memory constrained. It also only "
-                    "works if size(dbSeqs) <= 4GiB! mergesort and "
-                    "quicksortbuckets provide a rough progress estimate.");
-    addText(parser, "Disk space required is in TMPDIR which you can set as "
-                    "an environment variable.");
+    addText(parser, "Use mergesort if you have enough memory! If not, you will "
+                    "probably want to use skew. For small databases and only a "
+                    "few cores the quicksorts might be a good tradeoff. "
+                    "mergesort and quicksortbuckets provide a rough progress "
+                    "estimate.");
+//     addText(parser, "Disk space required is in TMPDIR which you can set as "
+//                     "an environment variable.");
     addTextSection(parser, "Remarks");
     addText(parser, "Note that the indeces created are binary and not "
                     "compatible between different CPU endiannesses.");
@@ -857,6 +892,8 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
     // Extract option values
     getOptionValue(options.segFile, parser, "segfile");
     getOptionValue(options.algo, parser, "algorithm");
+    getOptionValue(tmpdir, parser, "tmp-dir");
+    setEnv("TMPDIR", tmpdir);
 
     return ArgumentParser::PARSE_OK;
 }
