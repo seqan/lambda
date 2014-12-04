@@ -371,6 +371,45 @@ convertMaskingFile(uint64_t numberOfSeqs,
 #define TID 0
 #endif
 
+template <typename TIndex, typename TText, typename TFibre>
+inline void
+createIndexActual(TIndex & index,
+                      TText const & text,
+                      TFibre const &,
+                      SaAdvancedSort<MergeSortTag> const &)
+{
+    ComparisonCounter<TText, std::true_type> counter(text);
+    indexCreate(index, text, TFibre(), [&counter] () { counter.inc(); });
+    printProgressBar(counter._lastPercent, 100);
+}
+
+template <typename TIndex, typename TText, typename TFibre>
+inline void
+createIndexActual(TIndex & index,
+                      TText const & text,
+                      TFibre const &,
+                      SaAdvancedSort<QuickSortBucketTag> const &)
+{
+    uint64_t _lastPercent = 0;
+    indexCreate(index, text, TFibre(),
+        [&_lastPercent] (uint64_t curPerc)
+        {
+            if (TID == 0)
+                printProgressBar(_lastPercent, curPerc);
+        });
+    printProgressBar(_lastPercent, 100);
+}
+
+template <typename TIndex, typename TText, typename TFibre, typename TAlgo>
+inline void
+createIndexActual(TIndex & index,
+                      TText const & text,
+                      TFibre const &,
+                      TAlgo const &)
+{
+    indexCreate(index, text, TFibre(), [] () {});
+}
+
 template <typename TIndexSpec,
           typename TIndexSpecSpec,
           typename TString,
@@ -417,7 +456,9 @@ generateIndexAndDump(StringSet<TString, TSpec> & seqs,
                                                     FibreSA>::type;
     static bool constexpr
     hasProgress         = std::is_same<TIndexSpecSpec,
-                                       SaAdvancedSort<QuickSortBucketTag>>::value;
+                                       SaAdvancedSort<QuickSortBucketTag>>::value
+                          || std::is_same<TIndexSpecSpec,
+                                       SaAdvancedSort<MergeSortTag>>::value;
 
 //     using TCountPartial = std::is_same<TIndexSpecSpec,
 //                                        SaAdvancedSort<MergeSortTag>>;
@@ -448,15 +489,15 @@ generateIndexAndDump(StringSet<TString, TSpec> & seqs,
                 "0%  10%  20%  30%  40%  50%  60%  70%  80%  90%  100%\n|");
     TDbIndex dbIndex(redSubjSeqs);
     // instantiate SA
-    uint64_t lastPercent = 0;
-    indexCreate(dbIndex, redSubjSeqs, TFullFibre(),
-        [&lastPercent, &options] (uint64_t curPerc)
-        {
-            if ((TID == 0) && (options.verbosity >= 1))
-                printProgressBar(lastPercent, curPerc);
-        });
-    if (hasProgress)
-        printProgressBar(lastPercent, 100);
+
+    // create SA with progressCallback function
+    if (options.verbosity >= 1)
+        createIndexActual(dbIndex, redSubjSeqs, TFullFibre(),
+                          TIndexSpecSpec());
+    else // don't print progress (independent of algo)
+        createIndexActual(dbIndex, redSubjSeqs, TFullFibre(),
+                         Nothing());
+
     // instantiate potential rest
 //     std::cout << "\nActualNumComparisons: " << counter._comparisons
 //               << std::endl;

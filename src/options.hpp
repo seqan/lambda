@@ -798,8 +798,8 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
         " Requirements below!).",
         ArgParseArgument::STRING,
         "STR"));
-    setValidValues(parser, "algorithm", "quicksortbuckets mergesort quicksort skew7ext");
-    setDefaultValue(parser, "algorithm", "quicksortbuckets");
+    setValidValues(parser, "algorithm", "mergesort quicksortbuckets quicksort skew7ext");
+    setDefaultValue(parser, "algorithm", "mergesort");
 #ifdef _OPENMP
     addOption(parser, ArgParseOption("t", "threads",
         "number of threads to run concurrently (ignored if a == skew7ext).",
@@ -815,7 +815,7 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
     addTextSection(parser, "Memory requirements and Speed");
     addText(parser, "\033[1mmergesort [RAM}:\033[0m"
                     "\t14 * size(dbSeqs)");
-    addText(parser, "\033[1mquicksort [RAM}:\033[0m"
+    addText(parser, "\033[1mquicksort and quicksortbuckets [RAM}:\033[0m"
                     "\t7 * size(dbSeqs)");
     addText(parser, "\033[1mskew7ext [RAM]:\033[0m"
                     "\t2 * size(dbSeqs)");
@@ -828,9 +828,14 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
                     "databases the factor is smaller." );
     addText(parser, "mergesort is fully parallelized and thus the fastest on "
                     "many-core-architectures. quicksort only uses up to 2 "
-                    "threads, but is usually faster than mergesort at up to "
-                    "six threads. skew7ext is not parallelized at all, use it "
-                    "only if you are memory constrained.");
+                    "threads, but uses significantly less memory. "
+                    "quicksortbuckets uses up to n threads for most of the "
+                    "operations, but is still slower than mergesort for large "
+                    "files / many threads. "
+                    "skew7ext is not parallelized at all, use it "
+                    "only if you are very memory constrained. It also only "
+                    "works if size(dbSeqs) <= 4GiB! mergesort and "
+                    "quicksortbuckets provide a rough progress estimate.");
     addText(parser, "Disk space required is in TMPDIR which you can set as "
                     "an environment variable.");
     addTextSection(parser, "Remarks");

@@ -186,135 +186,142 @@ localAlignment2(Align<TSequence, TAlignSpec> & align,
 }
 
 
-// template <typename TText, typename TSpec>
-// struct ComparisonCounter;
-// 
-// // no counting
-// template <typename TText>
-// struct ComparisonCounter<TText, Nothing>
-// {
-//     uint64_t _comparisons = 0;
-//     uint64_t _expectedComparisons = 0;
-//     uint64_t _lastPercent = 0;
-//     ComparisonCounter(TText const &,
-//                       uint64_t expectedComparisons = 0u)
-//     {
-//         (void)expectedComparisons;
-//     }
-// 
-//     // may be constexpr in c++14
-//     inline void inc() const
-//     {}
-// };
-// 
-// // every thread counts
-// #ifdef _OPENMP
-// template <typename TText>
-// struct ComparisonCounter<TText, std::false_type>
-// #else
-// template <typename TText, typename TSpec>
-// struct ComparisonCounter
-// #endif
-// {
-//     uint64_t _comparisons = 0;
-//     uint64_t _expectedComparisons = 0;
-// //     uint64_t _twoPercent = 0;
-//     uint64_t _lastPercent = 0;
-//     uint64_t _checkEveryNHits = 1;
-// 
-//     ComparisonCounter(TText const & text,
-//                       uint64_t expectedComparisons = 0u)
-//     {
-//         if (expectedComparisons == 0)
-//         {
-//             uint64_t l = length(concat(text));
-//             _expectedComparisons = 1.2 * double(l) * std::log(l) / std::log(2);
-//         } else
-//             _expectedComparisons = expectedComparisons;
-// 
-// //         _twoPercent = _expectedComparisons / 50;
+template <typename TText, typename TSpec>
+struct ComparisonCounter;
+
+// no counting
+template <typename TText>
+struct ComparisonCounter<TText, Nothing>
+{
+    uint64_t _comparisons = 0;
+    uint64_t _expectedComparisons = 0;
+    uint64_t _lastPercent = 0;
+    ComparisonCounter(TText const &,
+                      uint64_t expectedComparisons = 0u)
+    {
+        (void)expectedComparisons;
+    }
+
+    // may be constexpr in c++14
+    inline void inc() const
+    {}
+};
+
+// every thread counts
+#ifdef _OPENMP
+template <typename TText>
+struct ComparisonCounter<TText, std::false_type>
+#else
+template <typename TText, typename TSpec>
+struct ComparisonCounter
+#endif
+{
+    uint64_t _comparisons = 0;
+    uint64_t _expectedComparisons = 0;
+//     uint64_t _twoPercent = 0;
+    uint64_t _lastPercent = 0;
+    uint64_t _checkEveryNHits = 1;
+
+    ComparisonCounter(TText const & text,
+                      uint64_t expectedComparisons = 0u)
+    {
+        if (expectedComparisons == 0)
+        {
+            uint64_t l = length(concat(text));
+            _expectedComparisons = 1.2 * double(l) * std::log(l) / std::log(2);
+        } else
+            _expectedComparisons = expectedComparisons;
+
+//         _twoPercent = _expectedComparisons / 50;
+        _comparisons = 0;
+        _lastPercent = 0;
+        while ((_checkEveryNHits << 1) < (_expectedComparisons / 100))
+            _checkEveryNHits <<= 1;
+    }
+
+    inline void inc()
+    {
+        uint64_t comp = ++_comparisons;
+        // it is not important that the henceforth _comparisons be actually
+        // the same value (might not be due to SMP)
+
+        // progress reporting
+        if (comp & _checkEveryNHits)
+        {
+            uint64_t curPerc = comp * 100 / _expectedComparisons;
+            if (curPerc < 100)
+                printProgressBar(_lastPercent, curPerc);
+        }
+    }
+};
+
+// only one thread counts
+#ifdef _OPENMP
+template <typename TText>
+struct ComparisonCounter<TText, std::true_type>
+{
+    uint64_t _comparisons = 0;
+    uint64_t _expectedComparisons = 0;
+//     uint64_t _twoPercent = 0;
+    uint64_t _lastPercent = 0;
+    uint64_t _checkEveryNHits = 1;
+
+    ComparisonCounter(TText const & text,
+                      uint64_t expectedComparisons = 0u)
+    {
+        if (expectedComparisons == 0)
+        {
+            uint64_t l = length(concat(text));
+            _expectedComparisons = 1.2 * double(l) * std::log(l) / std::log(2) /
+                                   omp_get_max_threads();
+        } else
+            _expectedComparisons = expectedComparisons;
+
+//         _twoPercent = _expectedComparisons / 50;
 //         _comparisons = 0;
-//         _lastPercent = 0;
-//         while ((_checkEveryNHits << 1) < (_expectedComparisons / 100))
-//             _checkEveryNHits <<= 1;
-//     }
-// 
-//     inline void inc()
-//     {
-//         uint64_t comp = ++_comparisons;
-//         // it is not important that the henceforth _comparisons be actually
-//         // the same value (might not be due to SMP)
-// 
-//         // progress reporting
-//         if (comp & _checkEveryNHits)
-//             printProgressBar(_lastPercent,
-//                              comp * 100 / _expectedComparisons);
-//     }
-// };
-// 
-// // only one thread counts
-// #ifdef _OPENMP
-// template <typename TText>
-// struct ComparisonCounter<TText, std::true_type>
-// {
-//     uint64_t _comparisons = 0;
-//     uint64_t _expectedComparisons = 0;
-// //     uint64_t _twoPercent = 0;
-//     uint64_t _lastPercent = 0;
-//     uint64_t _checkEveryNHits = 1;
-// 
-//     ComparisonCounter(TText const & text,
-//                       uint64_t expectedComparisons = 0u)
-//     {
-//         if (expectedComparisons == 0)
-//         {
-//             uint64_t l = length(concat(text));
-//             _expectedComparisons = 1.2 * double(l) * std::log(l) / std::log(2) /
-//                                    omp_get_max_threads();
-//         } else
-//             _expectedComparisons = expectedComparisons;
-// 
-// //         _twoPercent = _expectedComparisons / 50;
-// //         _comparisons = 0;
-//         while ((_checkEveryNHits << 1) < (_expectedComparisons / 100))
-//             _checkEveryNHits <<= 1;
-//     }
-// 
-//     inline void inc()
-//     {
-//         if (omp_get_thread_num() == 0) // only one thread counts
-//         {
-//             uint64_t comp = ++_comparisons;
-// 
-//             // progress reporting
-//             if (comp & _checkEveryNHits)
-//                 printProgressBar(_lastPercent,
-//                                  comp * 100 / _expectedComparisons);
-//         }
-//     }
-// };
-// #endif
+        while ((_checkEveryNHits << 1) < (_expectedComparisons / 100))
+            _checkEveryNHits <<= 1;
+    }
+
+    inline void inc()
+    {
+        if (omp_get_thread_num() == 0) // only one thread counts
+        {
+            uint64_t comp = ++_comparisons;
+
+            // progress reporting
+            if (comp & _checkEveryNHits)
+            {
+                uint64_t curPerc = comp * 100 / _expectedComparisons;
+                if (curPerc < 100)
+                    printProgressBar(_lastPercent, curPerc);
+            }
+        }
+    }
+};
+#endif
 
 
 template <typename TSA,
           typename TString,
           typename TSSetSpec,
-          typename TAlgo>
+          typename TAlgo,
+          typename TLambda>
 inline void
 createSuffixArray(TSA & SA,
                   StringSet<TString, TSSetSpec> const & s,
                   TAlgo const &,
-                  std::function<void(uint64_t)> const &)
+                  TLambda const &)
 {
     return createSuffixArray(SA, s, TAlgo());
 }
 
 
-template <typename TText, typename TSpec, typename TConfig>
+template <typename TText, typename TSpec, typename TConfig, typename TLambda>
 inline bool indexCreate(Index<TText, FMIndex<TSpec, TConfig> > & index,
                         TText const & text,
-                        FibreSALF,
-                        std::function<void(uint64_t)> progressCallback)
+                        FibreSALF const &,
+                        TLambda const & progressCallback)
 {
     typedef Index<TText, FMIndex<TSpec, TConfig> >      TIndex;
     typedef typename Fibre<TIndex, FibreTempSA>::Type   TTempSA;
@@ -345,11 +352,11 @@ inline bool indexCreate(Index<TText, FMIndex<TSpec, TConfig> > & index,
     return true;
 }
 
-template <typename TText, typename TSpec>
+template <typename TText, typename TSpec, typename TLambda>
 inline bool indexCreate(Index<TText, IndexSa<TSpec> > & index,
                         TText const & text,
-                        FibreSA,
-                        std::function<void(uint64_t)> progressCallback)
+                        FibreSA const &,
+                        TLambda const & progressCallback)
 {
     typedef Index<TText, IndexSa<TSpec> >      TIndex;
     typedef typename Fibre<TIndex, FibreSA>::Type       TSA;

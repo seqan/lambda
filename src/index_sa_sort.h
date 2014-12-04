@@ -232,12 +232,13 @@ inline void createSuffixArray(
 template <typename TSA,
           typename TString,
           typename TSSetSpec,
-          typename TAlgoSpec>
+          typename TAlgoSpec,
+          typename TLambda>
 inline void
 createSuffixArray(TSA & SA,
                   StringSet<TString, TSSetSpec> const & s,
                   SaAdvancedSort<TAlgoSpec> const &,
-                  std::function<void(uint64_t)> progressCallback = [] () {})
+                  TLambda progressCallback = [] () {})
 {
     typedef StringSet< TString, TSSetSpec > TText;
     typedef typename Size<TSA>::Type TSize;
@@ -254,7 +255,7 @@ createSuffixArray(TSA & SA,
     }
 
     // 2. Sort suffix array with quicksort
-    (void)progressCallback;
+//     (void)progressCallback;
 //     if (std::is_same<TAlgoSpec, std::true_type>::value)
 //     {
 //         std::cout << "calling std::sort\n";
@@ -273,25 +274,38 @@ createSuffixArray(TSA & SA,
     __gnu_parallel::sort(
         begin(SA, Standard()),
         end(SA, Standard()),
-        SuffixLess_<typename Value<TSA>::Type, TText const>(s, 0),
+        AdvancedSuffixLess_<typename Value<TSA>::Type, TText const>(s, 0, progressCallback),
         TAlgo());
 #else
     std::sort(
         begin(SA, Standard()),
         end(SA, Standard()),
-        SuffixLess_<typename Value<TSA>::Type, TText const>(s, 0));
+        AdvancedSuffixLess_<typename Value<TSA>::Type, TText const>(s, 0, progressCallback));
 #endif
 
 }
 
+template <typename T>
+inline void
+progressCallbackWrapper(std::function<void(void)>, T const &)
+{
+}
+
+inline void
+progressCallbackWrapper(std::function<void(uint64_t)> const & lambda, uint64_t v)
+{
+    lambda(v);
+}
+
 template <typename TSA,
           typename TString,
-          typename TSSetSpec>
+          typename TSSetSpec,
+          typename TLambda>
 inline void
 createSuffixArray(TSA & sa,
                   StringSet<TString, TSSetSpec> const & text,
                   SaAdvancedSort<QuickSortBucketTag> const &,
-                  std::function<void(uint64_t)> progressCallback = [] (uint64_t) {})
+                  TLambda progressCallback)
 {
     typedef StringSet<TString, TSSetSpec>                   TText;
     typedef typename Size<TText>::Type                   TTextSize;
@@ -407,7 +421,7 @@ createSuffixArray(TSA & sa,
     TIter saBegin = begin(sa, Standard());
 
     SEQAN_OMP_PRAGMA(parallel for schedule(dynamic,1))
-    for (int i = 1; i < (int)length(dir); ++i)
+    for (uint64_t i = 1; i < length(dir); ++i)
     {
         if (dir[i - 1] + 1 < dir[i])
 #ifdef _OPENMP
@@ -423,7 +437,8 @@ createSuffixArray(TSA & sa,
                 SuffixLess_<TIndexSAPos, TText const>(text, initialSortLength));
 #endif
 
-        progressCallback(i*100/length(dir));
+        progressCallbackWrapper(progressCallback,
+                                uint64_t(i * 100 / length(dir)));
     }
 
 //     std::cout << "POST REFINE First 20 sa" << std::endl;
