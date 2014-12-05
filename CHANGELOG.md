@@ -1,6 +1,19 @@
 
 # **CHANGELOG**
 
+## Version 0.4.5 [2014/12/05]
+
+### bug-fixes and minor changes
+ * `lambda_indexer` now has a different suffix array construction algorithm
+ * this works on larger files (where the old algorithm sometimes failed) and is fully parallelized
+ * there is also a rough progress indication when indexing
+
+### availability
+ * [Linux Binaries 64Bit](http://www.seqan.de/wp-content/plugins/download-monitor/download.php?id=61)
+ * [Linux Binaries Sandybridge](http://www.seqan.de/wp-content/plugins/download-monitor/download.php?id=60)
+ * [Source code](https://github.com/h-2/seqan/releases/tag/lambda-v0.4.5)
+
+
 ## Version 0.4.1 [2014/11/10]
 
 ### bug-fixes and minor changes

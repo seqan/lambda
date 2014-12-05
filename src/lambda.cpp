@@ -24,7 +24,7 @@
 // lambda.cpp: Main File for Lambda
 // ==========================================================================
 
-//#define FASTBUILD
+#define FASTBUILD
 
 // #define SEQAN_DEBUG_INDEX
 
