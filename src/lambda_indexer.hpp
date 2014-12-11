@@ -86,7 +86,7 @@ loadSubjSeqsAndIds(TCDStringSet<TOrigAlph> & originalSeqs,
     myPrint(options, 2, "Number of sequences read: ", length(originalSeqs),
             "\nLongest sequence read: ", maxLen, "\n\n");
 
-    myPrint(options, 1, "Dumping Subj Ids...");
+    myPrint(options, 1, "Dumping Subj Ids…");
 
     //TODO save to TMPDIR instead
     CharString _path = options.dbFile;
@@ -114,7 +114,7 @@ _saveOriginalSeqLengths(TLimits limits, // we want copy!
         limits[i] = limits[i+1] - limits[i];
     // last entry not overwritten, should be the sum of all lengths
 
-    myPrint(options, 1, " dumping untranslated subject lengths...");
+    myPrint(options, 1, " dumping untranslated subject lengths…");
     //TODO save to TMPDIR instead
     CharString _path = options.dbFile;
     append(_path, ".untranslengths");
@@ -166,7 +166,7 @@ dumpTranslatedSeqs(TCDStringSet<TTransAlph> const & translatedSeqs,
                    LambdaIndexerOptions const & options)
 {
     double start = sysTime();
-    myPrint(options, 1, "Dumping unreduced Subj Sequences...");
+    myPrint(options, 1, "Dumping unreduced Subj Sequences…");
 
     //TODO save to TMPDIR instead
     std::string _path = options.dbFile + '.' + std::string(_alphName(TTransAlph()));
@@ -253,7 +253,7 @@ convertMaskingFile(uint64_t numberOfSeqs,
 
     if (options.segFile != "")
     {
-        myPrint(options, 1, "Constructing binary seqan masking from seg-file...");
+        myPrint(options, 1, "Constructing binary seqan masking from seg-file…");
 
         std::ifstream stream;
         stream.open(toCString(options.segFile));
@@ -349,7 +349,7 @@ convertMaskingFile(uint64_t numberOfSeqs,
 //         }
 //         myPrint(options, 1,'\n';
 //     }
-    myPrint(options, 1, "Dumping binary seqan mask file...");
+    myPrint(options, 1, "Dumping binary seqan mask file…");
     CharString _path = options.dbFile;
     append(_path, ".binseg_s");
     save(segIntStarts, toCString(_path));
@@ -470,7 +470,7 @@ generateIndexAndDump(StringSet<TString, TSpec> & seqs,
 //     using TProgressCounter = ComparisonCounter<TRedSeqs, Nothing>;
 
     // Generate Index
-    myPrint(options, 1, "Generating Index...");
+    myPrint(options, 1, "Generating Index…");
     double s = sysTime();
 
 //     std::cout << "indexIsFM: " << int(indexIsFM) << std::endl;
@@ -515,7 +515,7 @@ generateIndexAndDump(StringSet<TString, TSpec> & seqs,
     myPrint(options, 2, "Runtime: ", e, "s \n\n");
 
     // Dump Index
-    myPrint(options, 1, "Writing Index to disk...");
+    myPrint(options, 1, "Writing Index to disk…");
     s = sysTime();
     std::string path = toCString(options.dbFile);
     path += '.' + std::string(_alphName(TRedAlph()));

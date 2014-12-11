@@ -1,6 +1,18 @@
 
 # **CHANGELOG**
 
+## Version 0.4.6 [2014/12/11]
+
+### bug-fixes and minor changes
+ * fix build on Darwin / MacOS X
+
+### availability
+ * [Linux Binaries 64Bit](http://www.seqan.de/wp-content/plugins/download-monitor/download.php?id=63)
+ * [Linux Binaries Sandybridge](http://www.seqan.de/wp-content/plugins/download-monitor/download.php?id=64)
+ * [Darwin Binaries 64Bit](http://www.seqan.de/wp-content/plugins/download-monitor/download.php?id=65)
+ * [Source code](http://www.seqan.de/wp-content/plugins/download-monitor/download.php?id=66)
+
+
 ## Version 0.4.5 [2014/12/05]
 
 ### bug-fixes and minor changes

@@ -39,7 +39,7 @@
 
 #include "index_sa_sort.h"
 
-#define LAMBDA_VERSION "0.4.5"
+#define LAMBDA_VERSION "0.4.6"
 
 // ==========================================================================
 // Metafunctions
@@ -588,10 +588,10 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setDefaultValue(parser, "band", "-3");
     setMinValue(parser, "band", "-3");
 
-    addTextSection(parser, "Environment Variables");
-    addListItem(parser, "\\fBTMPDIR\\fP",
-                        "set this to a local directory with lots of "
-                        "space. If you can afford it use /dev/shm.");
+//     addTextSection(parser, "Environment Variables");
+//     addListItem(parser, "\\fBTMPDIR\\fP",
+//                         "set this to a local directory with lots of "
+//                         "space. If you can afford it use /dev/shm.");
 
     addTextSection(parser, "Speed VS sensitivity");
     addText(parser, "Tuning the seeding parameters and (de)activating alphabet "
