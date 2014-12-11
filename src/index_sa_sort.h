@@ -307,15 +307,17 @@ createSuffixArray(TSA & sa,
                   SaAdvancedSort<QuickSortBucketTag> const &,
                   TLambda progressCallback)
 {
-    typedef StringSet<TString, TSSetSpec>                   TText;
-    typedef typename Size<TText>::Type                   TTextSize;
+    typedef StringSet<TString, TSSetSpec>               TText;
+//     typedef typename Size<TText>::Type                  TTextSize;
 //     typedef uint64_t TTextSize;
 //     typedef Index<TText, TIndexSpec>                        TIndex;
-    typedef typename Value<TString>::Type                   TIndexAlphabet;
+    typedef typename Value<TString>::Type               TIndexAlphabet;
 //     typedef typename Size<TText>::Type                     TIndexSize;
 //     typedef typename Fibre<TIndex, FibreSA>::Type           TIndexSAFibre;
-    typedef typename Value<TSA>::Type             TIndexSAPos;
-    typedef typename Iterator<TSA, Standard>::Type          TIter;
+    typedef typename Value<TSA>::Type                   TIndexSAPos;
+    typedef typename Value<TIndexSAPos, 1>::Type        TSASet;
+    typedef typename Value<TIndexSAPos, 2>::Type        TSASeq;
+    typedef typename Iterator<TSA, Standard>::Type      TIter;
 //     typedef typename Iterator<TIndex, TopDown<> >::Type     TIterator;
 
     // we don't know the maximal seed length in advance as it depends on the query
@@ -343,7 +345,7 @@ createSuffixArray(TSA & sa,
 // 
 //     createQGramIndex(sa, dir, nothing, text, shape, stepSize);
 
-    uint64_t initialSortLength;
+    TSASeq initialSortLength;
     if (ValueSize<TIndexAlphabet>::VALUE <= 5)
         initialSortLength = 10u;
     else if (ValueSize<TIndexAlphabet>::VALUE < 10)
@@ -352,11 +354,12 @@ createSuffixArray(TSA & sa,
         initialSortLength = 2u;
 
     TIter it = begin(sa, Standard());
-    for(unsigned j = 0; j < length(text); ++j)
+    TSASet numSeqs = length(text);
+    for(TSASet j = 0; j < numSeqs; ++j)
     {
-        TTextSize len = length(text[j]);
-        for(TTextSize i = 0; i < len; ++i, ++it)
-            *it = Pair<unsigned, TTextSize>(j, i);
+        TSASeq seqLen = length(text[j]);
+        for(TSASeq i = 0; i < seqLen; ++i, ++it)
+            *it = Pair<TSASet, TSASeq>(j, i);
     }
 
 //     if (it != end(sa, Standard()))
@@ -387,14 +390,16 @@ createSuffixArray(TSA & sa,
     // create dir
     String<uint64_t> dir;
     appendValue(dir, 0u);
-    for(unsigned j = 1; j < length(sa); ++j)
+    for(uint64_t j = 1; j < length(sa); ++j)
     {
         if (infix(text[sa[j].i1],
                   sa[j].i2,
-                  std::min(sa[j].i2 + initialSortLength, length(text[sa[j].i1])))
-            != infix(text[sa[j-1].i1],
+                  std::min(static_cast<TSASeq>(sa[j].i2 + initialSortLength),
+                           static_cast<TSASeq>(length(text[sa[j].i1])))) !=
+            infix(text[sa[j-1].i1],
                   sa[j-1].i2,
-                  std::min(sa[j-1].i2 + initialSortLength, length(text[sa[j-1].i1]))))
+                  std::min(static_cast<TSASeq>(sa[j-1].i2 + initialSortLength),
+                           static_cast<TSASeq>(length(text[sa[j-1].i1])))))
         {
 //             if (j < 50)
 //             {
