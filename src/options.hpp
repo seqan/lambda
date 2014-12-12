@@ -39,7 +39,7 @@
 
 #include "index_sa_sort.h"
 
-#define LAMBDA_VERSION "0.4.6"
+#define LAMBDA_VERSION "0.4.7"
 
 // ==========================================================================
 // Metafunctions

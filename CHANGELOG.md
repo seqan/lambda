@@ -1,7 +1,7 @@
 
 # **CHANGELOG**
 
-## Version 0.4.6 [2014/12/11]
+## Version 0.4.7 [2014/12/12]
 
 ### bug-fixes and minor changes
  * fix build on Darwin / MacOS X
