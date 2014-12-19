@@ -734,6 +734,10 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     if (options.preScoring == 0)
         options.preScoringThresh = 0;
 
+    int numbuf;
+    getOptionValue(numbuf, parser, "num-matches");
+    options.maxMatches = static_cast<unsigned long>(numbuf);
+
     return ArgumentParser::PARSE_OK;
 }
 
