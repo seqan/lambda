@@ -82,7 +82,6 @@ length(std::forward_list<T> const & list)
     return std::distance(list.begin(), list.end());
 }
 
-
 template <typename TAlph>
 inline std::basic_ostream<char> &
 operator<<(std::basic_ostream<char> & out,
