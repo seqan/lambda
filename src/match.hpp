@@ -141,11 +141,11 @@ isSetToSkip(Match const & m)
 //     }
 // };
 
-template <typename TFormat>
+template <typename TGH>
 inline void
 myHyperSortSingleIndex(std::vector<Match> & matches,
                        LambdaOptions const & options,
-                       TFormat const &)
+                       TGH const &)
 {
     using TId = typename Match::TQId;
 
@@ -158,17 +158,17 @@ myHyperSortSingleIndex(std::vector<Match> & matches,
     {
         if ((i == length(matches))                      ||
             (matches[i-1].qryId != matches[i].qryId)    ||
-            (matches[i-1].subjId / sNumFrames(TFormat()) !=
-             (matches[i].subjId / sNumFrames(TFormat()))))
+            (matches[i-1].subjId / sNumFrames(TGH::blastProgram)) !=
+             (matches[i].subjId / sNumFrames(TGH::blastProgram)))
         {
             if (length(intervals) == 0) // first interval
                 intervals.emplace_back(std::make_tuple(matches[i-1].qryId
-                                                       / qNumFrames(TFormat()),
+                                                       / qNumFrames(TGH::blastProgram),
                                                        0,
                                                        i));
             else
                 intervals.emplace_back(std::make_tuple(matches[i-1].qryId
-                                                       / qNumFrames(TFormat()),
+                                                       / qNumFrames(TGH::blastProgram),
                                                        std::get<2>(intervals.back()),
                                                        i));
         }

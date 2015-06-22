@@ -232,18 +232,6 @@ inline void assign(AminoAcid10 & target, AminoAcid c_source)
     target.value = TranslateTableAAToAA10_<>::VALUE[c_source.value];
 }
 
-
-template <>
-struct CompareType<AminoAcid10, Unicode>
-{
-    typedef AminoAcid10 Type;
-};
-
-inline void assign(AminoAcid10 & target, Unicode c_source)
-{
-    target.value = TranslateTableAsciiToAA10_<>::VALUE[(unsigned char) c_source];
-}
-
 } // namespace seqan
 
 #endif // header guard

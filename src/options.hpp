@@ -138,30 +138,30 @@ using PackSpec = Alloc<>;
 template <typename TAlph>
 using TCDStringSet = StringSet<String<TAlph, PackSpec>, Owner<ConcatDirect<> > >;
 
-template <BlastFormatProgram p>
+template <BlastProgram p>
 using OrigQryAlph = typename std::conditional<
-                                           (p == BlastFormatProgram::BLASTN) ||
-                                           (p == BlastFormatProgram::BLASTX) ||
-                                           (p == BlastFormatProgram::TBLASTX),
+                                           (p == BlastProgram::BLASTN) ||
+                                           (p == BlastProgram::BLASTX) ||
+                                           (p == BlastProgram::TBLASTX),
                                            Dna5,
                                            AminoAcid>::type;
 
-template <BlastFormatProgram p>
+template <BlastProgram p>
 using OrigSubjAlph = typename std::conditional<
-                                           (p == BlastFormatProgram::BLASTN) ||
-                                           (p == BlastFormatProgram::TBLASTN) ||
-                                           (p == BlastFormatProgram::TBLASTX),
+                                           (p == BlastProgram::BLASTN) ||
+                                           (p == BlastProgram::TBLASTN) ||
+                                           (p == BlastProgram::TBLASTX),
                                            Dna5,
                                            AminoAcid>::type;
 
-template <BlastFormatProgram p>
-using TransAlph = typename std::conditional<(p == BlastFormatProgram::BLASTN),
+template <BlastProgram p>
+using TransAlph = typename std::conditional<(p == BlastProgram::BLASTN),
                                             Dna5,
                                             AminoAcid>::type;
 
 
-template <BlastFormatProgram p, typename TRedAlph_>
-using RedAlph = typename std::conditional<(p == BlastFormatProgram::BLASTN),
+template <BlastProgram p, typename TRedAlph_>
+using RedAlph = typename std::conditional<(p == BlastProgram::BLASTN),
                                           Dna5,
                                           TRedAlph_>::type;
 
@@ -210,13 +210,13 @@ struct SharedOptions
     // for indexer, the file format of database sequences
     // for main app, the file format of query sequences
     // 0 -- fasta, 1 -- fastq
-    int      fileFormat = 0;
+//     int      fileFormat = 0;
 
     int      alphReduction = 0;
 
     GeneticCodeSpec geneticCode = CANONICAL;
 
-    BlastFormatProgram blastProg = BlastFormatProgram::BLASTX;
+    BlastProgram blastProgram = BlastProgram::BLASTX;
 
     bool        isTerm = true;
     unsigned    terminalCols = 80;
@@ -332,14 +332,14 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     addSection(parser, "Input Options");
     addOption(parser, ArgParseOption("q", "query",
         "Query sequences.",
-        ArgParseArgument::INPUTFILE,
+        ArgParseArgument::INPUT_FILE,
         "IN"));
     setRequired(parser, "q");
     setValidValues(parser, "query", "fasta fa fna faa fas fastq fq");
 
     addOption(parser, ArgParseOption("d", "database",
         "Database sequences (fasta), with precomputed index (.sa or .fm).",
-        ArgParseArgument::INPUTFILE,
+        ArgParseArgument::INPUT_FILE,
         "IN"));
     setRequired(parser, "d");
     setValidValues(parser, "database", "fasta fa fna faa fas");
@@ -355,7 +355,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     addSection(parser, "Output Options");
     addOption(parser, ArgParseOption("o", "output",
         "File to hold reports on hits (.m8 is blastall -m8 et cetera)",
-        ArgParseArgument::OUTPUTFILE,
+        ArgParseArgument::OUTPUT_FILE,
         "OUT"));
     setValidValues(parser, "output", "m0 m8 m9");
     setDefaultValue(parser, "output", "output.m8");
@@ -636,18 +636,18 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     std::string buffer;
 
     // Extract option values.
-    getOptionValue(options.queryFile, parser, "query");
-    if (endsWith(options.queryFile, ".fastq") ||
-        endsWith(options.queryFile, ".fq"))
-        options.fileFormat = 1;
-    else
-        options.fileFormat = 0;
+//     getOptionValue(options.queryFile, parser, "query");
+//     if (endsWith(options.queryFile, ".fastq") ||
+//         endsWith(options.queryFile, ".fq"))
+//         options.fileFormat = 1;
+//     else
+//         options.fileFormat = 0;
 
     getOptionValue(options.output, parser, "output");
 
     getOptionValue(options.seedLength, parser, "seed-length");
     if ((!isSet(parser, "seed-length")) &&
-        (options.blastProg == BlastFormatProgram::BLASTN))
+        (options.blastProgram == BlastProgram::BLASTN))
         options.seedLength = 14;
 
     if (isSet(parser, "seed-offset"))
@@ -676,7 +676,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     getOptionValue(options.xDropOff, parser, "x-drop");
 //     if ((!isSet(parser, "x-drop")) &&
-//         (options.blastProg == BlastFormatProgram::BLASTN))
+//         (options.blastProgram == BlastProgram::BLASTN))
 //         options.xDropOff = 16;
 
     getOptionValue(options.band, parser, "band");
@@ -695,7 +695,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     }
 
     getOptionValue(options.scoringMethod, parser, "scoring-scheme");
-    if (options.blastProg == BlastFormatProgram::BLASTN)
+    if (options.blastProgram == BlastProgram::BLASTN)
         options.scoringMethod = 0;
     switch (options.scoringMethod)
     {
@@ -711,12 +711,12 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     getOptionValue(options.gapExtend, parser, "score-gap");
     if ((!isSet(parser, "score-gap")) &&
-        (options.blastProg == BlastFormatProgram::BLASTN))
+        (options.blastProgram == BlastProgram::BLASTN))
         options.gapExtend = -2;
 
     getOptionValue(options.gapOpen, parser, "score-gap-open");
     if ((!isSet(parser, "score-gap-open")) &&
-        (options.blastProg == BlastFormatProgram::BLASTN))
+        (options.blastProgram == BlastProgram::BLASTN))
         options.gapOpen = -5;
 
     getOptionValue(buffer, parser, "filter-putative-duplicates");
@@ -762,7 +762,7 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
     addSection(parser, "Input Options");
     addOption(parser, ArgParseOption("d", "database",
         "Database sequences (fasta).",
-        ArgParseArgument::INPUTFILE,
+        ArgParseArgument::INPUT_FILE,
         "IN"));
     setRequired(parser, "database");
     setValidValues(parser, "database", "fasta fa fna faa");
@@ -771,7 +771,7 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
         "segfile",
         "SEG intervals for database"
         "(optional).",
-        ArgParseArgument::INPUTFILE));
+        ArgParseArgument::INPUT_FILE));
 
     setValidValues(parser, "segfile", "seg");
 
@@ -780,7 +780,7 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
 //     addOption(parser, ArgParseOption("o",
 //                                             "output",
 //                                             "Index of database sequences",
-//                                             ArgParseArgument::OUTPUTFILE,
+//                                             ArgParseArgument::OUTPUT_FILE,
 //                                             "OUT"));
 //     setValidValues(parser, "output", "sa fm");
 
@@ -919,21 +919,21 @@ parseCommandLineShared(SharedOptions & options, ArgumentParser & parser)
 
     getOptionValue(buffer, parser, "program");
     if (buffer == "blastn")
-        options.blastProg = BlastFormatProgram::BLASTN;
+        options.blastProgram = BlastProgram::BLASTN;
     else if (buffer == "blastp")
-        options.blastProg = BlastFormatProgram::BLASTP;
+        options.blastProgram = BlastProgram::BLASTP;
     else if (buffer == "blastx")
-        options.blastProg = BlastFormatProgram::BLASTX;
+        options.blastProgram = BlastProgram::BLASTX;
     else if (buffer == "tblastn")
-        options.blastProg = BlastFormatProgram::TBLASTN;
+        options.blastProgram = BlastProgram::TBLASTN;
     else if (buffer == "tblastx")
-        options.blastProg = BlastFormatProgram::TBLASTX;
+        options.blastProgram = BlastProgram::TBLASTX;
     else
         return ArgumentParser::PARSE_ERROR;
 
     getOptionValue(buffer, parser, "alphabet-reduction");
     if ((buffer == "murphy10") &&
-        (options.blastProg != BlastFormatProgram::BLASTN))
+        (options.blastProgram != BlastProgram::BLASTN))
         options.alphReduction = 2;
     else
         options.alphReduction = 0;
@@ -983,23 +983,23 @@ _alphName(ReducedAminoAcid<Murphy10> const & /**/)
     return "murphy10";
 }
 
-constexpr const char *
-_alphName(ReducedAminoAcid<ClusterReduction<8>> const & /**/)
-{
-    return "lambda08";
-}
-
-constexpr const char *
-_alphName(ReducedAminoAcid<ClusterReduction<10>> const & /**/)
-{
-    return "lambda10";
-}
-
-constexpr const char *
-_alphName(ReducedAminoAcid<ClusterReduction<12>> const & /**/)
-{
-    return "lambda12";
-}
+// constexpr const char *
+// _alphName(ReducedAminoAcid<ClusterReduction<8>> const & /**/)
+// {
+//     return "lambda08";
+// }
+//
+// constexpr const char *
+// _alphName(ReducedAminoAcid<ClusterReduction<10>> const & /**/)
+// {
+//     return "lambda10";
+// }
+//
+// constexpr const char *
+// _alphName(ReducedAminoAcid<ClusterReduction<12>> const & /**/)
+// {
+//     return "lambda12";
+// }
 
 constexpr const char *
 _alphName(Dna const & /**/)
@@ -1018,8 +1018,6 @@ inline void
 printOptions(LambdaOptions const & options)
 {
     using TGH = typename TLH::TGlobalHolder;
-    using TFormat = typename TGH::TFormat;
-    auto constexpr p = getProgramType(TFormat());
 
     std::string bandStr;
     switch(options.band)
@@ -1054,17 +1052,17 @@ printOptions(LambdaOptions const & options)
                                                     : std::string("n/a")) << "\n"
               << " TRANSLATION AND ALPHABETS\n"
               << "  genetic code:             "
-              << ((p != BlastFormatProgram::BLASTN) &&
-                  (p != BlastFormatProgram::BLASTP)
+              << ((TGH::blastProgram != BlastProgram::BLASTN) &&
+                  (TGH::blastProgram != BlastProgram::BLASTP)
                  ? std::to_string(options.geneticCode)
                  : std::string("n/a")) << "\n"
-              << "  blast mode:               " << _programTagToString(TFormat())
+              << "  blast mode:               " << _programTagToString(TGH::blastProgram)
               << "\n"
-              << "  original alphabet (query):" << _alphName(OrigQryAlph<p>())
+              << "  original alphabet (query):" << _alphName(OrigQryAlph<TGH::blastProgram>())
               << "\n"
-              << "  original alphabet (subj): " << _alphName(OrigSubjAlph<p>())
+              << "  original alphabet (subj): " << _alphName(OrigSubjAlph<TGH::blastProgram>())
               << "\n"
-              << "  translated alphabet:      " << _alphName(TransAlph<p>())
+              << "  translated alphabet:      " << _alphName(TransAlph<TGH::blastProgram>())
               << "\n"
               << "  reduced alphabet:         " << _alphName(typename TGH::TRedAlph())
               << "\n"

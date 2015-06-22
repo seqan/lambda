@@ -68,12 +68,12 @@ using namespace seqan;
 // --------------------------------------------------------------------------
 
 
-template <BlastFormatProgram p>
+template <BlastProgram p>
 int mainTyped(LambdaIndexerOptions const & options,
               BlastFormat<BlastFormatFile::INVALID_File, p,
                 BlastFormatGeneration::INVALID_Generation> const & /*tag*/);
 
-template <BlastFormatProgram p,
+template <BlastProgram p,
           typename TRedAlph>
 inline int
 mainAlphed(TRedAlph const & /**/,
@@ -81,7 +81,7 @@ mainAlphed(TRedAlph const & /**/,
            BlastFormat<BlastFormatFile::INVALID_File, p,
                 BlastFormatGeneration::INVALID_Generation> const & /*tag*/);
 
-template <BlastFormatProgram p,
+template <BlastProgram p,
           typename TRedAlph,
           typename TIndexSpecSpec>
 inline int
@@ -107,43 +107,43 @@ int main(int argc, char const ** argv)
         return res == seqan::ArgumentParser::PARSE_ERROR;
 
   // CONVERT Run-time options to compile-time Format-Type
-    switch (options.blastProg)
+    switch (options.blastProgram)
     {
-        case BlastFormatProgram::BLASTN :
+        case BlastProgram::BLASTN :
             {
                 typedef BlastFormat<BlastFormatFile::INVALID_File,
-                                    BlastFormatProgram::BLASTN,
+                                    BlastProgram::BLASTN,
                                     BlastFormatGeneration::INVALID_Generation> format;
                 return mainTyped(options, format());
             }break;
-        case BlastFormatProgram::BLASTP :
+        case BlastProgram::BLASTP :
             {
                 typedef BlastFormat<BlastFormatFile::INVALID_File,
-                                    BlastFormatProgram::BLASTP,
+                                    BlastProgram::BLASTP,
                                     BlastFormatGeneration::INVALID_Generation> format;
                 return mainTyped(options, format());
             }
             break;
-        case BlastFormatProgram::BLASTX :
+        case BlastProgram::BLASTX :
             {
                 typedef BlastFormat<BlastFormatFile::INVALID_File,
-                                    BlastFormatProgram::BLASTX,
+                                    BlastProgram::BLASTX,
                                     BlastFormatGeneration::INVALID_Generation> format;
                 return mainTyped(options, format());
             }
             break;
-        case BlastFormatProgram::TBLASTN :
+        case BlastProgram::TBLASTN :
             {
                 typedef BlastFormat<BlastFormatFile::INVALID_File,
-                                    BlastFormatProgram::TBLASTN,
+                                    BlastProgram::TBLASTN,
                                     BlastFormatGeneration::INVALID_Generation> format;
                 return mainTyped(options, format());
             }
             break;
-        case BlastFormatProgram::TBLASTX :
+        case BlastProgram::TBLASTX :
             {
                 typedef BlastFormat<BlastFormatFile::INVALID_File,
-                                    BlastFormatProgram::TBLASTX,
+                                    BlastProgram::TBLASTX,
                                     BlastFormatGeneration::INVALID_Generation> format;
                 return mainTyped(options, format());
             }
@@ -155,7 +155,7 @@ int main(int argc, char const ** argv)
 }
 
 
-template <BlastFormatProgram p>
+template <BlastProgram p>
 int mainTyped(LambdaIndexerOptions const & options,
               BlastFormat<BlastFormatFile::INVALID_File, p,
                 BlastFormatGeneration::INVALID_Generation> const & /*tag*/)
@@ -205,7 +205,7 @@ int mainTyped(LambdaIndexerOptions const & options,
     return -1;
 }
 
-template <BlastFormatProgram p,
+template <BlastProgram p,
           typename TRedAlph>
 inline int
 mainAlphed(TRedAlph const & /**/,
@@ -227,7 +227,7 @@ mainAlphed(TRedAlph const & /**/,
         return mainIndexTyped(TRedAlph(), options, Nothing(), TFormat());
 }
 
-template <BlastFormatProgram p,
+template <BlastProgram p,
           typename TRedAlph,
           typename TIndexSpecSpec>
 inline int

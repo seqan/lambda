@@ -46,16 +46,15 @@ add_executable (lambda lambda.cpp
                 match.hpp
                 options.hpp
                 alph.hpp
-                holders.hpp
-                trans.hpp)
-add_executable (lambda_indexer lambda_indexer.cpp
-                lambda_indexer.hpp
-                options.hpp
-                misc.hpp)
+                holders.hpp)
+# add_executable (lambda_indexer lambda_indexer.cpp
+#                 lambda_indexer.hpp
+#                 options.hpp
+#                 misc.hpp)
 
 # Add dependencies found by find_package (SeqAn).
 target_link_libraries (lambda ${SEQAN_LIBRARIES})
-target_link_libraries (lambda_indexer ${SEQAN_LIBRARIES})
+# target_link_libraries (lambda_indexer ${SEQAN_LIBRARIES})
 
 # Add CXX flags found by find_package (SeqAn).
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN_CXX_FLAGS} ${CXX11_CXX_FLAGS} ${CXX14_CXX_FLAGS} -Wno-vla")
@@ -72,7 +71,7 @@ if (NOT SEQAN_PREFIX_SHARE_DOC)
 endif (NOT SEQAN_PREFIX_SHARE_DOC)
 
 # Install lambda in ${PREFIX}/bin directory
-install (TARGETS lambda lambda_indexer
+install (TARGETS lambda #lambda_indexer
          DESTINATION bin)
 
 # Install non-binary files for the package to "." for app builds and

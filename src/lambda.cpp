@@ -37,7 +37,7 @@
 #include <seqan/arg_parse.h>
 #include <seqan/seq_io.h>
 #include <seqan/reduced_aminoacid.h>
-#include <seqan/misc/misc_terminal.h>
+#include <seqan/misc/terminal.h>
 
 #include "options.hpp"
 #include "match.hpp"
@@ -47,83 +47,94 @@
 using namespace seqan;
 
 
-inline BlastFormatFile
-_fileType(LambdaOptions const & options)
-{
-    if (endsWith(options.output, ".m0"))
-        return BlastFormatFile::PAIRWISE;
-    else if (endsWith(options.output, ".m8"))
-        return BlastFormatFile::TABULAR;
-    else if (endsWith(options.output, ".m9"))
-        return BlastFormatFile::TABULAR_WITH_HEADER;
-    else
-        return BlastFormatFile::INVALID_File;
-}
+// inline BlastFormatFile
+// _fileType(LambdaOptions const & options)
+// {
+//     if (endsWith(options.output, ".m0"))
+//         return BlastFormatFile::PAIRWISE;
+//     else if (endsWith(options.output, ".m8"))
+//         return BlastFormatFile::TABULAR;
+//     else if (endsWith(options.output, ".m9"))
+//         return BlastFormatFile::TABULAR_WITH_COMMENTS;
+//     else
+//         return BlastFormatFile::UNKNOWN;
+// }
 
 // forwards
 
 inline int
 argConv0(LambdaOptions const & options);
 //-
-template <BlastFormatFile m,
-          BlastFormatGeneration g>
+template <typename TOutFormat,
+          BlastTabularSpec h>
 inline int
-argConv1(LambdaOptions                               const & options,
-         BlastFormat<m,BlastFormatProgram::BLASTN,g> const & /**/);
-template <BlastFormatFile m,
-          BlastFormatProgram p,
-          BlastFormatGeneration g,
-          MyEnableIf<p != BlastFormatProgram::BLASTN> = 0>
-inline int
-argConv1(LambdaOptions      const & options,
-         BlastFormat<m,p,g> const & /**/);
+argConv05(LambdaOptions                 const & options,
+          TOutFormat                    const & /**/,
+          BlastTabularSpecSelector<h>   const &);
 //-
-template <BlastFormatFile m,
-          BlastFormatProgram p,
-          BlastFormatGeneration g,
-          typename TRedAlph>
+template <typename TOutFormat,
+          BlastTabularSpec h,
+          BlastProgram p>
 inline int
-argConv2(LambdaOptions      const & options,
-         BlastFormat<m,p,g> const & /**/,
-         TRedAlph           const & /**/);
+argConv1(LambdaOptions                  const & options,
+         TOutFormat                     const & /**/,
+         BlastTabularSpecSelector<h>    const &,
+         BlastProgramSelector<p>        const &);
 //-
-template <BlastFormatFile m,
-          BlastFormatProgram p,
-          BlastFormatGeneration g,
+template <typename TOutFormat,
           typename TRedAlph,
-          typename TScoreScheme>
+          BlastTabularSpec h,
+          BlastProgram p>
 inline int
-argConv3(LambdaOptions      const & options,
-         BlastFormat<m,p,g> const & /**/,
-         TRedAlph           const & /**/,
-         TScoreScheme       const & /**/);
+argConv2(LambdaOptions                  const & options,
+         TOutFormat                     const &,
+         BlastTabularSpecSelector<h>    const &,
+         BlastProgramSelector<p>        const &,
+         TRedAlph                       const &);
 //-
-template <BlastFormatFile m,
-          BlastFormatProgram p,
-          BlastFormatGeneration g,
+template <typename TOutFormat,
           typename TRedAlph,
           typename TScoreScheme,
-          typename TScoreExtension>
+          BlastTabularSpec h,
+          BlastProgram p>
 inline int
-preMain(LambdaOptions      const & options,
-         BlastFormat<m,p,g> const & /**/,
-         TRedAlph           const & /**/,
-         TScoreScheme       const & /**/,
-         TScoreExtension    const & /**/);
+argConv3(LambdaOptions                  const & options,
+         TOutFormat                     const &,
+         BlastTabularSpecSelector<h>    const &,
+         BlastProgramSelector<p>        const &,
+         TRedAlph                       const &,
+         TScoreScheme                   const &);
+//-
+template <typename TOutFormat,
+          typename TRedAlph,
+          typename TScoreScheme,
+          typename TScoreExtension,
+          BlastTabularSpec h,
+          BlastProgram p>
+inline int
+argConv4(LambdaOptions                  const & options,
+         TOutFormat                     const & /**/,
+         BlastTabularSpecSelector<h>    const &,
+         BlastProgramSelector<p>        const &,
+         TRedAlph                       const & /**/,
+         TScoreScheme                   const & /**/,
+         TScoreExtension                const & /**/);
 //-
 template <typename TIndexSpec,
           typename TRedAlph,
           typename TScoreScheme,
           typename TScoreExtension,
-          BlastFormatFile m,
-          BlastFormatProgram p,
-          BlastFormatGeneration g>
+          typename TOutFormat,
+          BlastProgram p,
+          BlastTabularSpec h>
 inline int
-realMain(LambdaOptions      const & options,
-         BlastFormat<m,p,g> const & /**/,
-         TRedAlph           const & /**/,
-         TScoreScheme       const & /**/,
-         TScoreExtension    const & /**/);
+realMain(LambdaOptions                  const & options,
+         TOutFormat                     const & /**/,
+         BlastTabularSpecSelector<h>    const &,
+         BlastProgramSelector<p>        const &,
+         TRedAlph                       const & /**/,
+         TScoreScheme                   const & /**/,
+         TScoreExtension                const & /**/);
 
 // --------------------------------------------------------------------------
 // Function main()
@@ -158,225 +169,84 @@ int main(int argc, char const ** argv)
 inline int
 argConv0(LambdaOptions const & options)
 {
-    switch (options.blastProg)
-    {
-         case BlastFormatProgram::BLASTN :
-         {
- //             template <BlastFormatFile m>
- //             using TBF = BlastFormat<m,
- //                                 BlastFormatProgram::BLASTN,
- //                                 BlastFormatGeneration::BLAST>;
-             switch (_fileType(options))
-             {
-                 case BlastFormatFile::PAIRWISE:
-                 {
-                     typedef BlastFormat<BlastFormatFile::PAIRWISE,
-                                         BlastFormatProgram::BLASTN,
-                                         BlastFormatGeneration::BLAST> TFormat;
-                     return argConv1(options, TFormat());
-                 } break;
-                 case BlastFormatFile::TABULAR:
-                 {
-                     typedef BlastFormat<BlastFormatFile::TABULAR,
-                                         BlastFormatProgram::BLASTN,
-                                         BlastFormatGeneration::BLAST> TFormat;
-                     return argConv1(options, TFormat());
-                 } break;
-                 case BlastFormatFile::TABULAR_WITH_HEADER:
-                 {
-                     typedef BlastFormat<BlastFormatFile::TABULAR_WITH_HEADER,
-                                         BlastFormatProgram::BLASTN,
-                                         BlastFormatGeneration::BLAST> TFormat;
-                     return argConv1(options, TFormat());
-                 } break;
-                 default:
-                     break;
-             }
-         } break;
-#ifndef FASTBUILD
-        case BlastFormatProgram::BLASTP :
-        {
-//             template <BlastFormatFile m>
-//             using TBF = BlastFormat<m,
-//                                 BlastFormatProgram::BLASTP,
-//                                 BlastFormatGeneration::BLAST>;
-            switch (_fileType(options))
-            {
-                case BlastFormatFile::PAIRWISE:
-                {
-                    typedef BlastFormat<BlastFormatFile::PAIRWISE,
-                                        BlastFormatProgram::BLASTP,
-                                        BlastFormatGeneration::BLAST> TFormat;
-                    return argConv1(options, TFormat());
-                } break;
-                case BlastFormatFile::TABULAR:
-                {
-                    typedef BlastFormat<BlastFormatFile::TABULAR,
-                                        BlastFormatProgram::BLASTP,
-                                        BlastFormatGeneration::BLAST> TFormat;
-                    return argConv1(options, TFormat());
-                } break;
-                case BlastFormatFile::TABULAR_WITH_HEADER:
-                {
-                    typedef BlastFormat<BlastFormatFile::TABULAR_WITH_HEADER,
-                                        BlastFormatProgram::BLASTP,
-                                        BlastFormatGeneration::BLAST> TFormat;
-                    return argConv1(options, TFormat());
-                } break;
-                default:
-                    break;
-            }
-        } break;
-#endif
-        case BlastFormatProgram::BLASTX :
-        {
-//             template <BlastFormatFile m>
-//             using TBF = BlastFormat<m,
-//                                 BlastFormatProgram::BLASTX,
-//                                 BlastFormatGeneration::BLAST>;
-            switch (_fileType(options))
-            {
-// #ifndef FASTBUILD
-                case BlastFormatFile::PAIRWISE:
-                {
-                    typedef BlastFormat<BlastFormatFile::PAIRWISE,
-                                        BlastFormatProgram::BLASTX,
-                                        BlastFormatGeneration::BLAST> TFormat;
-                    return argConv1(options, TFormat());
-                } break;
-// #endif
-                case BlastFormatFile::TABULAR:
-                {
-                    typedef BlastFormat<BlastFormatFile::TABULAR,
-                                        BlastFormatProgram::BLASTX,
-                                        BlastFormatGeneration::BLAST> TFormat;
-                    return argConv1(options, TFormat());
-                } break;
-// #ifndef FASTBUILD
-                case BlastFormatFile::TABULAR_WITH_HEADER:
-                {
-                    typedef BlastFormat<BlastFormatFile::TABULAR_WITH_HEADER,
-                                        BlastFormatProgram::BLASTX,
-                                        BlastFormatGeneration::BLAST> TFormat;
-                    return argConv1(options, TFormat());
-                } break;
-// #endif
-                default:
-                    break;
-            }
-        } break;
-#ifndef FASTBUILD
-        case BlastFormatProgram::TBLASTN :
-        {
-//             template <BlastFormatFile m>
-//             using TBF = BlastFormat<m,
-//                                 BlastFormatProgram::TBLASTN,
-//                                 BlastFormatGeneration::BLAST>;
-            switch (_fileType(options))
-            {
-                case BlastFormatFile::PAIRWISE:
-                {
-                    typedef BlastFormat<BlastFormatFile::PAIRWISE,
-                                        BlastFormatProgram::TBLASTN,
-                                        BlastFormatGeneration::BLAST> TFormat;
-                    return argConv1(options, TFormat());
-                } break;
-                case BlastFormatFile::TABULAR:
-                {
-                    typedef BlastFormat<BlastFormatFile::TABULAR,
-                                        BlastFormatProgram::TBLASTN,
-                                        BlastFormatGeneration::BLAST> TFormat;
-                    return argConv1(options, TFormat());
-                } break;
-                case BlastFormatFile::TABULAR_WITH_HEADER:
-                {
-                    typedef BlastFormat<BlastFormatFile::TABULAR_WITH_HEADER,
-                                        BlastFormatProgram::TBLASTN,
-                                        BlastFormatGeneration::BLAST> TFormat;
-                    return argConv1(options, TFormat());
-                } break;
-                default:
-                    break;
-            }
-        } break;
+    if (endsWith(options.output, ".m0"))
+        return argConv05(options, BlastReport(), BlastTabularSpecSelector<BlastTabularSpec::NO_COMMENTS>());
+    else if (endsWith(options.output, ".m8"))
+        return argConv05(options, BlastTabular(), BlastTabularSpecSelector<BlastTabularSpec::NO_COMMENTS>());
+    else if (endsWith(options.output, ".m9"))
+        return argConv05(options, BlastTabular(), BlastTabularSpecSelector<BlastTabularSpec::COMMENTS>());
+    return -1;
+}
 
-        case BlastFormatProgram::TBLASTX :
-        {
-//             template <BlastFormatFile m>
-//             using TBF = BlastFormat<m,
-//                                 BlastFormatProgram::TBLASTX,
-//                                 BlastFormatGeneration::BLAST>;
-            switch (_fileType(options))
-            {
-                case BlastFormatFile::PAIRWISE:
-                {
-                    typedef BlastFormat<BlastFormatFile::PAIRWISE,
-                                        BlastFormatProgram::TBLASTX,
-                                        BlastFormatGeneration::BLAST> TFormat;
-                    return argConv1(options, TFormat());
-                } break;
-                case BlastFormatFile::TABULAR:
-                {
-                    typedef BlastFormat<BlastFormatFile::TABULAR,
-                                        BlastFormatProgram::TBLASTX,
-                                        BlastFormatGeneration::BLAST> TFormat;
-                    return argConv1(options, TFormat());
-                } break;
-                case BlastFormatFile::TABULAR_WITH_HEADER:
-                {
-                    typedef BlastFormat<BlastFormatFile::TABULAR_WITH_HEADER,
-                                        BlastFormatProgram::TBLASTX,
-                                        BlastFormatGeneration::BLAST> TFormat;
-                    return argConv1(options, TFormat());
-                } break;
-                default:
-                    break;
-            }
-        } break;
-#endif
+template <typename TOutFormat,
+          BlastTabularSpec h>
+inline int
+argConv05(LambdaOptions                 const & options,
+          TOutFormat                    const & /**/,
+          BlastTabularSpecSelector<h>   const &)
+{
+    switch(options.blastProgram)
+    {
+        case BlastProgram::BLASTN:
+            return argConv1(options,
+                            TOutFormat(),
+                            BlastTabularSpecSelector<h>(),
+                            BlastProgramSelector<BlastProgram::BLASTN>());
+        case BlastProgram::BLASTP:
+            return argConv1(options,
+                            TOutFormat(),
+                            BlastTabularSpecSelector<h>(),
+                            BlastProgramSelector<BlastProgram::BLASTP>());
+        case BlastProgram::BLASTX:
+            return argConv1(options,
+                            TOutFormat(),
+                            BlastTabularSpecSelector<h>(),
+                            BlastProgramSelector<BlastProgram::BLASTX>());
+        case BlastProgram::TBLASTN:
+            return argConv1(options,
+                            TOutFormat(),
+                            BlastTabularSpecSelector<h>(),
+                            BlastProgramSelector<BlastProgram::TBLASTN>());
+        case BlastProgram::TBLASTX:
+            return argConv1(options,
+                            TOutFormat(),
+                            BlastTabularSpecSelector<h>(),
+                            BlastProgramSelector<BlastProgram::TBLASTX>());
         default:
             break;
     }
     return -1;
 }
 
+
 /// Alphabet reduction
-
-template <BlastFormatFile m,
-          BlastFormatGeneration g>
+template <typename TOutFormat,
+          BlastTabularSpec h,
+          BlastProgram p>
 inline int
-argConv1(LambdaOptions                               const & options,
-         BlastFormat<m,BlastFormatProgram::BLASTN,g> const & /**/)
+argConv1(LambdaOptions                  const & options,
+         TOutFormat                     const & /**/,
+         BlastTabularSpecSelector<h>    const &,
+         BlastProgramSelector<p>        const &)
 {
-    using TFormat = BlastFormat<m,BlastFormatProgram::BLASTN,g>;
-    return argConv2(options, TFormat(), Dna5());
-}
-
-template <BlastFormatFile m,
-          BlastFormatProgram p,
-          BlastFormatGeneration g,
-          MyEnableIf<p != BlastFormatProgram::BLASTN> >
-inline int
-argConv1(LambdaOptions      const & options,
-         BlastFormat<m,p,g> const & /**/)
-{
-    using TFormat = BlastFormat<m,p,g>;
+    using TUnred = typename std::conditional<p == BlastProgram::BLASTN, Dna5, AminoAcid>::type;
+    using Th = BlastTabularSpecSelector<h>;
+    using Tp = BlastProgramSelector<p>;
     switch (options.alphReduction)
     {
-
         case 0:
-            return argConv2(options, TFormat(), AminoAcid());
+            return argConv2(options, TOutFormat(), Th(), Tp(), TUnred());
         case 2:
-            return argConv2(options, TFormat(), ReducedAminoAcid<Murphy10>());
+            return argConv2(options, TOutFormat(), Th(), Tp(), ReducedAminoAcid<Murphy10>());
 #if 0
         case 10:
-            return argConv2(options, TFormat(), ReducedAminoAcid<ClusterReduction<10>>());
+            return argConv2(options, TOutFormat(), ReducedAminoAcid<ClusterReduction<10>>());
         case 1:
-            return argConv2(options, TFormat(), AminoAcid10());
+            return argConv2(options, TOutFormat(), AminoAcid10());
         case 8:
-            return argConv2(options, TFormat(), ReducedAminoAcid<ClusterReduction<8>>());
+            return argConv2(options, TOutFormat(), ReducedAminoAcid<ClusterReduction<8>>());
         case 12:
-            return argConv2(options, TFormat(), ReducedAminoAcid<ClusterReduction<12>>());
+            return argConv2(options, TOutFormat(), ReducedAminoAcid<ClusterReduction<12>>());
 #endif
         default:
             return -1;
@@ -386,29 +256,31 @@ argConv1(LambdaOptions      const & options,
 
 /// scoring scheme
 
-template <BlastFormatFile m,
-          BlastFormatProgram p,
-          BlastFormatGeneration g,
-          typename TRedAlph>
+template <typename TOutFormat,
+          typename TRedAlph,
+          BlastTabularSpec h,
+          BlastProgram p>
 inline int
-argConv2(LambdaOptions      const & options,
-         BlastFormat<m,p,g> const & /**/,
-         TRedAlph           const & /**/)
+argConv2(LambdaOptions                  const & options,
+         TOutFormat                     const &,
+         BlastTabularSpecSelector<h>    const &,
+         BlastProgramSelector<p>        const &,
+         TRedAlph                       const &)
 {
-    using TFormat = BlastFormat<m,p,g>;
+    using Th = BlastTabularSpecSelector<h>;
+    using Tp = BlastProgramSelector<p>;
     switch (options.scoringMethod)
     {
-
         case 0:
-            return argConv3(options, TFormat(), TRedAlph(), Score<int, Simple>());
+            return argConv3(options, TOutFormat(), Th(), Tp(), TRedAlph(), Score<int, Simple>());
 #ifndef FASTBUILD
         case 45:
-            return argConv3(options, TFormat(), TRedAlph(), Blosum45());
+            return argConv3(options, TOutFormat(), Th(), Tp(), TRedAlph(), Blosum45());
         case 80:
-            return argConv3(options, TFormat(), TRedAlph(), Blosum80());
+            return argConv3(options, TOutFormat(), Th(), Tp(), TRedAlph(), Blosum80());
 #endif
         case 62:
-            return argConv3(options, TFormat(), TRedAlph(), Blosum62());
+            return argConv3(options, TOutFormat(), Th(), Tp(), TRedAlph(), Blosum62());
         default:
             std::cerr << "Unsupported Scoring Scheme selected.\n";
             break;
@@ -417,49 +289,54 @@ argConv2(LambdaOptions      const & options,
     return -1;
 }
 
-template <BlastFormatFile m,
-          BlastFormatProgram p,
-          BlastFormatGeneration g,
+template <typename TOutFormat,
           typename TRedAlph,
-          typename TScoreScheme>
+          typename TScoreScheme,
+          BlastTabularSpec h,
+          BlastProgram p>
 inline int
-argConv3(LambdaOptions      const & options,
-         BlastFormat<m,p,g> const & /**/,
-         TRedAlph           const & /**/,
-         TScoreScheme       const & /**/)
+argConv3(LambdaOptions                  const & options,
+         TOutFormat                     const &,
+         BlastTabularSpecSelector<h>    const &,
+         BlastProgramSelector<p>        const &,
+         TRedAlph                       const &,
+         TScoreScheme                   const &)
 {
-    using TFormat = BlastFormat<m,p,g>;
 #ifndef FASTBUILD
     if (options.gapOpen == 0)
-        return preMain(options,
-                        TFormat(),
+        return argConv4(options,
+                        TOutFormat(),
+                        BlastTabularSpecSelector<h>(),
+                        BlastProgramSelector<p>(),
                         TRedAlph(),
                         TScoreScheme(),
                         LinearGaps());
     else
 #endif
-        return preMain(options,
-                        TFormat(),
+        return argConv4(options,
+                        TOutFormat(),
+                        BlastTabularSpecSelector<h>(),
+                        BlastProgramSelector<p>(),
                         TRedAlph(),
                         TScoreScheme(),
                         AffineGaps());
-
 }
 
-template <BlastFormatFile m,
-          BlastFormatProgram p,
-          BlastFormatGeneration g,
+template <typename TOutFormat,
           typename TRedAlph,
           typename TScoreScheme,
-          typename TScoreExtension>
+          typename TScoreExtension,
+          BlastTabularSpec h,
+          BlastProgram p>
 inline int
-preMain(LambdaOptions      const & options,
-         BlastFormat<m,p,g> const & /**/,
-         TRedAlph           const & /**/,
-         TScoreScheme       const & /**/,
-         TScoreExtension    const & /**/)
+argConv4(LambdaOptions                  const & options,
+         TOutFormat                     const & /**/,
+         BlastTabularSpecSelector<h>    const &,
+         BlastProgramSelector<p>        const &,
+         TRedAlph                       const & /**/,
+         TScoreScheme                   const & /**/,
+         TScoreExtension                const & /**/)
 {
-    using TFormat = BlastFormat<m,p,g>;
     int indexType = options.dbIndexType;
 //     if (indexType == -1) // autodetect
 //     {
@@ -490,13 +367,17 @@ preMain(LambdaOptions      const & options,
 
     if (indexType == 0)
         return realMain<IndexSa<>>(options,
-                                   TFormat(),
+                                   TOutFormat(),
+                                   BlastTabularSpecSelector<h>(),
+                                   BlastProgramSelector<p>(),
                                    TRedAlph(),
                                    TScoreScheme(),
                                    TScoreExtension());
     else
         return realMain<TFMIndex<>>(options,
-                                   TFormat(),
+                                   TOutFormat(),
+                                   BlastTabularSpecSelector<h>(),
+                                   BlastProgramSelector<p>(),
                                    TRedAlph(),
                                    TScoreScheme(),
                                    TScoreExtension());
@@ -512,20 +393,24 @@ template <typename TIndexSpec,
           typename TRedAlph,
           typename TScoreScheme,
           typename TScoreExtension,
-          BlastFormatFile m,
-          BlastFormatProgram p,
-          BlastFormatGeneration g>
+          typename TOutFormat,
+          BlastProgram p,
+          BlastTabularSpec h>
 inline int
-realMain(LambdaOptions      const & options,
-         BlastFormat<m,p,g> const & /**/,
-         TRedAlph           const & /**/,
-         TScoreScheme       const & /**/,
-         TScoreExtension    const & /**/)
+realMain(LambdaOptions                  const & options,
+         TOutFormat                     const & /**/,
+         BlastTabularSpecSelector<h>    const &,
+         BlastProgramSelector<p>        const &,
+         TRedAlph                       const & /**/,
+         TScoreScheme                   const & /**/,
+         TScoreExtension                const & /**/)
 {
     using TGlobalHolder = GlobalDataHolder<TRedAlph,
                                            TScoreScheme,
                                            TIndexSpec,
-                                           m, p, g>;
+                                           TOutFormat,
+                                           p,
+                                           h>;
     using TLocalHolder = LocalDataHolder<Match, TGlobalHolder, TScoreExtension>;
 
     myPrint(options, 1, "LAMBDA - the Local Aligner for Massive Biological DatA"
@@ -557,19 +442,8 @@ realMain(LambdaOptions      const & options,
     if (ret)
         return ret;
 
-    std::ofstream stream;
-    stream.open(toCString(options.output));
-    if (!stream.is_open())
-    {
-        std::cerr << "Error opening output file for writing." << std::endl;
-        return -2;
-    }
-
-    ret = writeTop(stream,
-                   globalHolder.dbSpecs,
-                   typename TGlobalHolder::TFormat());
-    if (ret)
-        return ret;
+    open(globalHolder.outfile, toCString(options.output));
+    writeHeader(globalHolder.outfile);
 
     if (options.doubleIndexing)
     {
@@ -631,7 +505,7 @@ realMain(LambdaOptions      const & options,
             sortMatches(localHolder);
 
             // extend
-            res = iterateMatches(stream, localHolder);
+            res = iterateMatches(localHolder);
             if (res)
                 continue;
 
@@ -654,15 +528,10 @@ realMain(LambdaOptions      const & options,
         }
     }
 
-    ret = writeBottom(stream,
-                      globalHolder.dbSpecs,
-                      globalHolder.blastScoringAdapter,
-                      typename TGlobalHolder::TFormat());
-
-    stream.close();
-
     if (ret)
         return ret;
+
+    writeFooter(globalHolder.outfile);
 
     if (!options.doubleIndexing)
     {

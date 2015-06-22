@@ -68,7 +68,7 @@ using MyEnableIf = typename std::enable_if<condition, int>::type;
 //     target.concat._host = &source.concat;
 // }
 
-
+/*
 template <typename T>
 inline uint64_t
 length(std::deque<T> const & list)
@@ -80,7 +80,7 @@ inline uint64_t
 length(std::forward_list<T> const & list)
 {
     return std::distance(list.begin(), list.end());
-}
+}*/
 
 template <typename TAlph>
 inline std::basic_ostream<char> &
@@ -379,120 +379,120 @@ inline bool indexCreate(Index<TText, IndexSa<TSpec> > & index,
 // Generic Sequence loading
 // ----------------------------------------------------------------------------
 
-template <typename TString, typename TSpec, typename TFormat>
-inline int
-loadSequences(StringSet<TString, TSpec > & seqs,
-              CharString const & path,
-              TFormat const & /*tag*/)
-{
-    //TODO experiment with differen file types
-    std::ifstream stream;
-    stream.open(toCString(path));
-    if (!stream.is_open())
-        return -1;
-
-    typedef RecordReader<std::ifstream, DoublePass<> > TReader;
-    TReader reader(stream);
-
-    StringSet<CharString, TSpec > ids;
-
-    int res = read2(ids, seqs, reader, TFormat());
-    if (res)
-        std::cerr << "Error : " << res << "\n";
-
-    stream.close();
-    return res;
-}
-
-template <typename TString, typename TSpec, typename TFormat>
-inline int
-loadIds(StringSet<TString, TSpec > & ids,
-              CharString const & path,
-              TFormat const & /*tag*/)
-{
-    //TODO experiment with differen file types
-    std::ifstream stream;
-    stream.open(toCString(path));
-    if (!stream.is_open())
-        return -1;
-
-    typedef RecordReader<std::ifstream, DoublePass<> > TReader;
-    TReader reader(stream);
-
-    StringSet<CharString, TSpec > seqs;
-
-    int res = read2(ids, seqs, reader, TFormat());
-    if (res)
-        std::cerr << "Error : " << res << "\n";
-
-    stream.close();
-    return res;
-}
-
-template <typename TSeqs, typename TIds, typename TFormat>
-inline int
-loadSeqsAndIds(TIds             & ids,
-               TSeqs            & seqs,
-               CharString const & path,
-               TFormat    const & /*tag*/)
-{
-    //TODO experiment with differen file types
-    std::ifstream stream;
-    stream.open(toCString(path));
-    if (!stream.is_open())
-        return -1;
-
-    typedef RecordReader<std::ifstream, DoublePass<> > TReader;
-    TReader reader(stream);
-
-    int res = read2(ids, seqs, reader, TFormat());
-    if (res)
-        std::cerr << "Error : " << res << "\n";
-
-    stream.close();
-    return res;
-}
-
-
-template <typename TString, typename TSpec, typename TFormat>
-inline int
-loadIds2(StringSet<TString, TSpec > & ids,
-         CharString const & path,
-         TFormat const & /*tag*/)
-{
-    //TODO experiment with differen file types
-    std::ifstream stream;
-    stream.open(toCString(path));
-    if (!stream.is_open())
-        return -1;
-
-    typedef RecordReader<std::ifstream, SinglePass<> > TReader;
-    TReader reader(stream);
-
-    int res = 0;
-    CharString seq;
-    for (unsigned i = 0; i < length(ids); ++i)
-    {
-//         res = readRecord(ids[i], seq, reader, Fasta());
-        if (value(reader) != '>')
-            return 9;
-
-        res = goNext(reader);
-        if (res)
-            std::cerr << "Error : " << res << "\n";
-        res = skipBlanks(reader);
-        if (res)
-            std::cerr << "Error : " << res << "\n";
-        res = readLine(ids[i], reader);
-        if (res)
-            std::cerr << "Error : " << res << "\n";
-        res = skipUntilLineBeginsWithChar(reader, '>');
-        if ((res) && (res != EOF_BEFORE_SUCCESS))
-            std::cerr << "Error : " << res << "\n";
-    }
-    stream.close();
-    return 0;
-}
+// template <typename TString, typename TSpec, typename TFormat>
+// inline int
+// loadSequences(StringSet<TString, TSpec > & seqs,
+//               CharString const & path,
+//               TFormat const & /*tag*/)
+// {
+//     //TODO experiment with differen file types
+//     std::ifstream stream;
+//     stream.open(toCString(path));
+//     if (!stream.is_open())
+//         return -1;
+//
+//     typedef RecordReader<std::ifstream, DoublePass<> > TReader;
+//     TReader reader(stream);
+//
+//     StringSet<CharString, TSpec > ids;
+//
+//     int res = read2(ids, seqs, reader, TFormat());
+//     if (res)
+//         std::cerr << "Error : " << res << "\n";
+//
+//     stream.close();
+//     return res;
+// }
+//
+// template <typename TString, typename TSpec, typename TFormat>
+// inline int
+// loadIds(StringSet<TString, TSpec > & ids,
+//               CharString const & path,
+//               TFormat const & /*tag*/)
+// {
+//     //TODO experiment with differen file types
+//     std::ifstream stream;
+//     stream.open(toCString(path));
+//     if (!stream.is_open())
+//         return -1;
+//
+//     typedef RecordReader<std::ifstream, DoublePass<> > TReader;
+//     TReader reader(stream);
+//
+//     StringSet<CharString, TSpec > seqs;
+//
+//     int res = read2(ids, seqs, reader, TFormat());
+//     if (res)
+//         std::cerr << "Error : " << res << "\n";
+//
+//     stream.close();
+//     return res;
+// }
+//
+// template <typename TSeqs, typename TIds, typename TFormat>
+// inline int
+// loadSeqsAndIds(TIds             & ids,
+//                TSeqs            & seqs,
+//                CharString const & path,
+//                TFormat    const & /*tag*/)
+// {
+//     //TODO experiment with differen file types
+//     std::ifstream stream;
+//     stream.open(toCString(path));
+//     if (!stream.is_open())
+//         return -1;
+//
+//     typedef RecordReader<std::ifstream, DoublePass<> > TReader;
+//     TReader reader(stream);
+//
+//     int res = read2(ids, seqs, reader, TFormat());
+//     if (res)
+//         std::cerr << "Error : " << res << "\n";
+//
+//     stream.close();
+//     return res;
+// }
+//
+//
+// template <typename TString, typename TSpec, typename TFormat>
+// inline int
+// loadIds2(StringSet<TString, TSpec > & ids,
+//          CharString const & path,
+//          TFormat const & /*tag*/)
+// {
+//     //TODO experiment with differen file types
+//     std::ifstream stream;
+//     stream.open(toCString(path));
+//     if (!stream.is_open())
+//         return -1;
+//
+//     typedef RecordReader<std::ifstream, SinglePass<> > TReader;
+//     TReader reader(stream);
+//
+//     int res = 0;
+//     CharString seq;
+//     for (unsigned i = 0; i < length(ids); ++i)
+//     {
+// //         res = readRecord(ids[i], seq, reader, Fasta());
+//         if (value(reader) != '>')
+//             return 9;
+//
+//         res = goNext(reader);
+//         if (res)
+//             std::cerr << "Error : " << res << "\n";
+//         res = skipBlanks(reader);
+//         if (res)
+//             std::cerr << "Error : " << res << "\n";
+//         res = readLine(ids[i], reader);
+//         if (res)
+//             std::cerr << "Error : " << res << "\n";
+//         res = skipUntilLineBeginsWithChar(reader, '>');
+//         if ((res) && (res != EOF_BEFORE_SUCCESS))
+//             std::cerr << "Error : " << res << "\n";
+//     }
+//     stream.close();
+//     return 0;
+// }
 
 
 // ----------------------------------------------------------------------------

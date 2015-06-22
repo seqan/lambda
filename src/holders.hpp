@@ -140,15 +140,16 @@ struct StatsHolder
 // ----------------------------------------------------------------------------
 
 template <typename TRedAlph_,
-          typename TScoreScheme,
+          typename TScoreScheme_,
           typename TIndexSpec_,
-          BlastFormatFile m,
-          BlastFormatProgram p,
-          BlastFormatGeneration g>
+          typename TFileFormat,
+          BlastProgram p,
+          BlastTabularSpec h>
 class GlobalDataHolder
 {
 public:
-    using TFormat       = BlastFormat<m,p,g>;
+    static BlastProgram constexpr
+    blastProgram        = p;
 
     // SEQUENCES AND THEIR TYPE //
     using TTransSeqs    = TCDStringSet<TransAlph<p>>;
@@ -185,7 +186,6 @@ public:
     using TDbIndex      = Index<TRedSeqs, TIndexSpec>;
 
     TDbIndex            dbIndex;
-    BlastDbSpecs<>      dbSpecs;
 
     // TODO maybe remove these for other specs?
     using TPositions    = typename StringSetLimits<TTransSeqs>::Type;
@@ -200,9 +200,13 @@ public:
     TIds                qryIds;
     TIds                subjIds;
 
-    using TBlastScoringAdapter = BlastScoringAdapter<TScoreScheme>;
-    TScoreScheme                scoreScheme;
-    TBlastScoringAdapter        blastScoringAdapter;
+    // OUTPUT FILE //
+    using TScoreScheme  = TScoreScheme_;
+    using TIOContext    = BlastIOContext<TScoreScheme, p, h>;
+    using TFile         = typename std::conditional<std::is_same<TFileFormat, BlastTabular>::value,
+                                                    BlastTabularFileOut<TIOContext>,
+                                                    BlastReportFileOut<TIOContext>>::type;
+    TFile               outfile;
 
     StatsHolder                 stats;
 
@@ -222,14 +226,16 @@ class LocalDataHolder
 {
 public:
     using TGlobalHolder = TGlobalHolder_;
-    using TFormat       = typename TGlobalHolder::TFormat;
     using TRedQrySeq    = typename Value<typename TGlobalHolder::TRedSeqs>::Type;
     using TSeeds        = StringSet<typename Infix<TRedQrySeq const>::Type>;
     using TSeedIndex    = Index<TSeeds,IndexSa<>>;
 
+
     // references to global stuff
     LambdaOptions     const & options;
     TGlobalHolder /*const*/ & gH;
+    static BlastProgram constexpr
+    blastProgram        = TGlobalHolder::blastProgram;
 
     // this is the localHolder for the i-th part of the queries
     uint64_t            i;
@@ -253,7 +259,7 @@ public:
                 typename TGlobalHolder::TTransSeqs>::Type>::Type,
                 ArrayGaps> TAlign;
 
-    typedef DPContext<typename Value<decltype(gH.scoreScheme)>::Type,
+    typedef DPContext<typename Value<typename TGlobalHolder::TScoreScheme>::Type,
                       TScoreExtension> TDPContext;
     typedef AliExtContext_<TAlign,
                           TDPContext> TAliExtContext;
@@ -265,7 +271,7 @@ public:
     StatsHolder         stats;
 
     // progress string
-    std::stringstream         statusStr;
+    std::stringstream   statusStr;
 
     // constructor
     LocalDataHolder(LambdaOptions     const & _options,
@@ -289,12 +295,12 @@ public:
                             ? length(gH.qrySeqs) // reach until end
                             : (length(gH.qrySeqs) / options.queryPart) * (i+1);
             // make sure different frames of one sequence in same interval
-            indexBeginQry -= (indexBeginQry % qNumFrames(TFormat()));
-            indexEndQry -= (indexEndQry % qNumFrames(TFormat()));
+            indexBeginQry -= (indexBeginQry % qNumFrames(blastProgram));
+            indexEndQry -= (indexEndQry % qNumFrames(blastProgram));
         } else
         {
-            indexBeginQry = qNumFrames(TFormat()) * i;
-            indexEndQry = qNumFrames(TFormat()) * (i+1);
+            indexBeginQry = qNumFrames(blastProgram) * i;
+            indexEndQry = qNumFrames(blastProgram) * (i+1);
         }
 
         clear(seeds);
@@ -360,7 +366,7 @@ seedLooksPromising(
     // score the diagonal
     for (uint64_t i = 0; i < effectiveLength; ++i)
     {
-        scores[i] += score(lH.gH.scoreScheme, qSeq[i], sSeq[i]);
+        scores[i] += score(seqanScheme(context(lH.gH.outfile).scoringScheme), qSeq[i], sSeq[i]);
         if (scores[i] < 0)
             scores[i] = 0;
         else if (scores[i] >= maxScore)

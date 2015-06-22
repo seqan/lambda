@@ -38,7 +38,7 @@
 
 #include "misc.hpp"
 #include "options.hpp"
-#include "trans.hpp"
+// #include "trans.hpp"
 #include "alph.hpp"
 
 
@@ -415,7 +415,7 @@ template <typename TIndexSpec,
           typename TString,
           typename TSpec,
           typename TRedAlph_,
-          BlastFormatProgram p>
+          BlastProgram p>
 inline void
 generateIndexAndDump(StringSet<TString, TSpec> & seqs,
                      LambdaIndexerOptions const & options,
