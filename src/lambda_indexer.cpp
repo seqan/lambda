@@ -61,35 +61,39 @@
 using namespace seqan;
 
 // ==========================================================================
-// Functions
+// Forwards
 // ==========================================================================
-// --------------------------------------------------------------------------
-// Function main()
-// --------------------------------------------------------------------------
 
+inline int
+argConv0(LambdaIndexerOptions const & options);
 
 template <BlastProgram p>
-int mainTyped(LambdaIndexerOptions const & options,
-              BlastFormat<BlastFormatFile::INVALID_File, p,
-                BlastFormatGeneration::INVALID_Generation> const & /*tag*/);
+inline int
+argConv1(LambdaIndexerOptions           const & options,
+         BlastProgramSelector<p>        const &);
 
 template <BlastProgram p,
           typename TRedAlph>
 inline int
-mainAlphed(TRedAlph const & /**/,
-           LambdaIndexerOptions const & options,
-           BlastFormat<BlastFormatFile::INVALID_File, p,
-                BlastFormatGeneration::INVALID_Generation> const & /*tag*/);
+argConv2(LambdaIndexerOptions     const & options,
+         BlastProgramSelector<p>  const &,
+         TRedAlph                 const &);
 
 template <BlastProgram p,
           typename TRedAlph,
           typename TIndexSpecSpec>
 inline int
-mainIndexTyped(TRedAlph const & /**/,
-               LambdaIndexerOptions const & options,
-               TIndexSpecSpec const & /**/,
-               BlastFormat<BlastFormatFile::INVALID_File, p,
-                 BlastFormatGeneration::INVALID_Generation> const & /*tag*/);
+realMain(LambdaIndexerOptions     const & options,
+         BlastProgramSelector<p>  const &,
+         TRedAlph                 const &,
+         TIndexSpecSpec           const &);
+
+// ==========================================================================
+// Functions
+// ==========================================================================
+// --------------------------------------------------------------------------
+// Function main()
+// --------------------------------------------------------------------------
 
 // Program entry point.
 
@@ -106,101 +110,56 @@ int main(int argc, char const ** argv)
     if (res != seqan::ArgumentParser::PARSE_OK)
         return res == seqan::ArgumentParser::PARSE_ERROR;
 
-  // CONVERT Run-time options to compile-time Format-Type
-    switch (options.blastProgram)
+    return argConv0(options);
+}
+
+inline int
+argConv0(LambdaIndexerOptions const & options)
+{
+    switch(options.blastProgram)
     {
-        case BlastProgram::BLASTN :
-            {
-                typedef BlastFormat<BlastFormatFile::INVALID_File,
-                                    BlastProgram::BLASTN,
-                                    BlastFormatGeneration::INVALID_Generation> format;
-                return mainTyped(options, format());
-            }break;
-        case BlastProgram::BLASTP :
-            {
-                typedef BlastFormat<BlastFormatFile::INVALID_File,
-                                    BlastProgram::BLASTP,
-                                    BlastFormatGeneration::INVALID_Generation> format;
-                return mainTyped(options, format());
-            }
-            break;
-        case BlastProgram::BLASTX :
-            {
-                typedef BlastFormat<BlastFormatFile::INVALID_File,
-                                    BlastProgram::BLASTX,
-                                    BlastFormatGeneration::INVALID_Generation> format;
-                return mainTyped(options, format());
-            }
-            break;
-        case BlastProgram::TBLASTN :
-            {
-                typedef BlastFormat<BlastFormatFile::INVALID_File,
-                                    BlastProgram::TBLASTN,
-                                    BlastFormatGeneration::INVALID_Generation> format;
-                return mainTyped(options, format());
-            }
-            break;
-        case BlastProgram::TBLASTX :
-            {
-                typedef BlastFormat<BlastFormatFile::INVALID_File,
-                                    BlastProgram::TBLASTX,
-                                    BlastFormatGeneration::INVALID_Generation> format;
-                return mainTyped(options, format());
-            }
-            break;
+        case BlastProgram::BLASTN:
+            return argConv1(options, BlastProgramSelector<BlastProgram::BLASTN>());
+        case BlastProgram::BLASTP:
+            return argConv1(options, BlastProgramSelector<BlastProgram::BLASTP>());
+        case BlastProgram::BLASTX:
+            return argConv1(options, BlastProgramSelector<BlastProgram::BLASTX>());
+        case BlastProgram::TBLASTN:
+            return argConv1(options, BlastProgramSelector<BlastProgram::TBLASTN>());
+        case BlastProgram::TBLASTX:
+            return argConv1(options, BlastProgramSelector<BlastProgram::TBLASTX>());
         default:
-            return -1;
+            break;
     }
     return -1;
 }
 
-
+/// Alphabet reduction
 template <BlastProgram p>
-int mainTyped(LambdaIndexerOptions const & options,
-              BlastFormat<BlastFormatFile::INVALID_File, p,
-                BlastFormatGeneration::INVALID_Generation> const & /*tag*/)
+inline int
+argConv1(LambdaIndexerOptions           const & options,
+         BlastProgramSelector<p>        const &)
 {
-    using TFormat   = BlastFormat<BlastFormatFile::INVALID_File,
-                                  p,
-                                  BlastFormatGeneration::INVALID_Generation>;
-    myPrint(options, 1, "LAMBDA - Indexer"
-                      "\n======================================================"
-                      "\nVersion ", LAMBDA_VERSION, "\n\n");
-
+    using TUnred = typename std::conditional<p == BlastProgram::BLASTN, Dna5, AminoAcid>::type;
+    using Tp = BlastProgramSelector<p>;
     switch (options.alphReduction)
     {
         case 0:
-        {
-            typedef AminoAcid TAA;
-            return mainAlphed(TAA(), options, TFormat());
-        } break;
-//         case 1:
-//         {
-//             typedef AminoAcid10 TAA;
-//             return mainAlphed(TAA(), options, TFormat());
-//         } break;
+            return argConv2(options, Tp(), TUnred());
         case 2:
-        {
-            typedef ReducedAminoAcid<Murphy10> TAA;
-            return mainAlphed(TAA(), options, TFormat());
-        } break;
-//         case 8:
-//         {
-//             typedef ReducedAminoAcid<ClusterReduction<8>> TAA;
-//             return mainAlphed(TAA(), options, TFormat());
-//         } break;
-// 
-//         case 10:
-//         {
-//             typedef ReducedAminoAcid<ClusterReduction<10>> TAA;
-//             return mainAlphed(TAA(), options, TFormat());
-//         } break;
-// 
-//         case 12:
-//         {
-//             typedef ReducedAminoAcid<ClusterReduction<12>> TAA;
-//             return mainAlphed(TAA(), options, TFormat());
-//         } break;
+            return argConv2(options, Tp(), ReducedAminoAcid<Murphy10>());
+#if 0
+        case 10:
+            return argConv2(options, ReducedAminoAcid<ClusterReduction<10>>());
+        case 1:
+            return argConv2(options, AminoAcid10());
+        case 8:
+            return argConv2(options, ReducedAminoAcid<ClusterReduction<8>>());
+        case 12:
+            return argConv2(options, ReducedAminoAcid<ClusterReduction<12>>());
+#endif
+        default:
+            return -1;
     }
     return -1;
 }
@@ -208,39 +167,30 @@ int mainTyped(LambdaIndexerOptions const & options,
 template <BlastProgram p,
           typename TRedAlph>
 inline int
-mainAlphed(TRedAlph const & /**/,
-           LambdaIndexerOptions const & options,
-           BlastFormat<BlastFormatFile::INVALID_File, p,
-                BlastFormatGeneration::INVALID_Generation> const & /*tag*/)
+argConv2(LambdaIndexerOptions     const & options,
+         BlastProgramSelector<p>  const &,
+         TRedAlph                 const &)
 {
-    using TFormat   = BlastFormat<BlastFormatFile::INVALID_File,
-                                  p,
-                                  BlastFormatGeneration::INVALID_Generation>;
 
     if (options.algo == "mergesort")
-        return mainIndexTyped(TRedAlph(), options, SaAdvancedSort<MergeSortTag>(), TFormat());
+        return realMain(options, BlastProgramSelector<p>(), TRedAlph(), SaAdvancedSort<MergeSortTag>());
     else if (options.algo == "quicksort")
-        return mainIndexTyped(TRedAlph(), options, SaAdvancedSort<QuickSortTag>(), TFormat());
+        return realMain(options, BlastProgramSelector<p>(), TRedAlph(), SaAdvancedSort<QuickSortTag>());
     else if (options.algo == "quicksortbuckets")
-        return mainIndexTyped(TRedAlph(), options, SaAdvancedSort<QuickSortBucketTag>(), TFormat());
+        return realMain(options, BlastProgramSelector<p>(), TRedAlph(), SaAdvancedSort<QuickSortBucketTag>());
     else
-        return mainIndexTyped(TRedAlph(), options, Nothing(), TFormat());
+        return realMain(options, BlastProgramSelector<p>(), TRedAlph(), Nothing());
 }
 
 template <BlastProgram p,
           typename TRedAlph,
           typename TIndexSpecSpec>
 inline int
-mainIndexTyped(TRedAlph const & /**/,
-               LambdaIndexerOptions const & options,
-               TIndexSpecSpec const & /**/,
-               BlastFormat<BlastFormatFile::INVALID_File, p,
-                 BlastFormatGeneration::INVALID_Generation> const & /*tag*/)
+realMain(LambdaIndexerOptions     const & options,
+         BlastProgramSelector<p>  const &,
+         TRedAlph                 const &,
+         TIndexSpecSpec           const &)
 {
-    using TFormat   = BlastFormat<BlastFormatFile::INVALID_File,
-                                  p,
-                                  BlastFormatGeneration::INVALID_Generation>;
-
     using TOrigSet  = TCDStringSet<OrigSubjAlph<p>>;
     using TTransSet = TCDStringSet<TransAlph<p>>;
 
@@ -256,9 +206,8 @@ mainIndexTyped(TRedAlph const & /**/,
             return ret;
 
         // preserve lengths of untranslated sequences
-        _saveOriginalSeqLengths(originalSeqs.limits,
-                                options,
-                                SIsTranslated<TFormat>());
+        if (sIsTranslated(p))
+            _saveOriginalSeqLengths(originalSeqs.limits, options);
 
         // convert the seg file to seqan binary format
         ret = convertMaskingFile(length(originalSeqs), options);
@@ -281,15 +230,15 @@ mainIndexTyped(TRedAlph const & /**/,
         using TIndexSpec = TFMIndex<TIndexSpecSpec>;
         generateIndexAndDump<TIndexSpec,TIndexSpecSpec>(translatedSeqs,
                                                         options,
-                                                        TRedAlph(),
-                                                        TFormat());
+                                                        BlastProgramSelector<p>(),
+                                                        TRedAlph());
     } else
     {
         using TIndexSpec = IndexSa<TIndexSpecSpec>;
         generateIndexAndDump<TIndexSpec,TIndexSpecSpec>(translatedSeqs,
                                                         options,
-                                                        TRedAlph(),
-                                                        TFormat());
+                                                        BlastProgramSelector<p>(),
+                                                        TRedAlph());
     }
 
     return 0;

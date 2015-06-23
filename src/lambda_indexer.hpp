@@ -55,25 +55,13 @@ inline int
 loadSubjSeqsAndIds(TCDStringSet<TOrigAlph> & originalSeqs,
                    LambdaIndexerOptions const & options)
 {
-    int ret = 0;
     StringSet<CharString, Owner<ConcatDirect<>>> ids;
 
     double start = sysTime();
     myPrint(options, 1, "Loading Subject Sequences and Ids…");
 
-
-    if (options.fileFormat)
-        ret = loadSeqsAndIds(ids,
-                             originalSeqs,
-                             options.dbFile,
-                             Fastq());
-    else
-        ret = loadSeqsAndIds(ids,
-                             originalSeqs,
-                             options.dbFile,
-                             Fasta());
-    if (ret)
-        return ret;
+    SeqFileIn infile(toCString(options.dbFile));
+    readRecords(ids, originalSeqs, infile);
 
     myPrint(options, 1,  " done.\n");
     double finish = sysTime() - start;
@@ -107,8 +95,7 @@ loadSubjSeqsAndIds(TCDStringSet<TOrigAlph> & originalSeqs,
 template <typename TLimits>
 inline void
 _saveOriginalSeqLengths(TLimits limits, // we want copy!
-                       LambdaIndexerOptions const & options,
-                       True const & /*SHasFrames*/)
+                       LambdaIndexerOptions const & options)
 {
     for (uint32_t i = 0; i < (length(limits) - 1); ++i)
         limits[i] = limits[i+1] - limits[i];
@@ -119,14 +106,6 @@ _saveOriginalSeqLengths(TLimits limits, // we want copy!
     CharString _path = options.dbFile;
     append(_path, ".untranslengths");
     save(limits, toCString(_path));
-}
-
-template <typename TLimits>
-inline void
-_saveOriginalSeqLengths(TLimits const &/**/,
-                       LambdaIndexerOptions const & /**/,
-                       False const & /*SHasFrames*/)
-{
 }
 
 // --------------------------------------------------------------------------
@@ -246,7 +225,6 @@ convertMaskingFile(uint64_t numberOfSeqs,
                    LambdaIndexerOptions const & options)
 
 {
-    int ret = 0;
     StringSet<String<unsigned>, Owner<ConcatDirect<>>> segIntStarts;
     StringSet<String<unsigned>, Owner<ConcatDirect<>>> segIntEnds;
 //     resize(segIntervals, numberOfSeqs, Exact());
@@ -260,8 +238,7 @@ convertMaskingFile(uint64_t numberOfSeqs,
         if (!stream.is_open())
             return -1;
 
-        typedef RecordReader<std::ifstream, SinglePass<> > TReader;
-        TReader reader(stream);
+        auto reader = directionIterator(stream, Input());
 
 //         StringSet<String<Tuple<unsigned, 2>>> _segIntervals;
 //         auto & _segIntervals = segIntervals;
@@ -281,9 +258,9 @@ convertMaskingFile(uint64_t numberOfSeqs,
 //                 return -7;
             if (curSeq == numberOfSeqs)
                 return -7;
-            ret = skipLine(reader);
-            if ((ret) && (ret != EOF_BEFORE_SUCCESS))
-                return ret;
+            skipLine(reader);
+            if (atEnd(reader))
+                break;
 
             unsigned curInt = 0;
             while ((!atEnd(reader)) && (value(reader) != '>'))
@@ -291,29 +268,21 @@ convertMaskingFile(uint64_t numberOfSeqs,
                 resize(_segIntStarts[curSeq], length(_segIntStarts[curSeq])+1);
                 resize(_segIntEnds[curSeq], length(_segIntEnds[curSeq])+1);
                 clear(buf);
-                ret = readDigits(buf, reader);
-                if (ret)
-                    return ret;
+                readUntil(buf, reader, IsWhitespace());
 
 //                 std::get<0>(tup) = strtoumax(toCString(buf), 0, 10);
                 _segIntStarts[curSeq][curInt] = strtoumax(toCString(buf), 0, 10);
-                ret = skipNChars(reader, 3);
-                if (ret)
-                    return ret;
+                skipUntil(reader, IsDigit());
 
                 clear(buf);
-                ret = readDigits(buf, reader);
-                if (ret)
-                    return ret;
+                readUntil(buf, reader, IsWhitespace());
 
 //                 std::get<1>(tup) = strtoumax(toCString(buf), 0, 10);
                 _segIntEnds[curSeq][curInt] = strtoumax(toCString(buf), 0, 10);
 
 //                 appendValue(*curSeq, tup);
 
-                ret = skipLine(reader);
-                if ((ret) && (ret != EOF_BEFORE_SUCCESS))
-                    return ret;
+                skipLine(reader);
                 curInt++;
             }
             curSeq++;
@@ -417,16 +386,11 @@ template <typename TIndexSpec,
           typename TRedAlph_,
           BlastProgram p>
 inline void
-generateIndexAndDump(StringSet<TString, TSpec> & seqs,
-                     LambdaIndexerOptions const & options,
-                     TRedAlph_ const & /**/,
-                     BlastFormat<BlastFormatFile::INVALID_File,p,
-                       BlastFormatGeneration::INVALID_Generation> const & /**/)
+generateIndexAndDump(StringSet<TString, TSpec>        & seqs,
+                     LambdaIndexerOptions       const & options,
+                     BlastProgramSelector<p>    const &,
+                     TRedAlph_                  const &)
 {
-//     using TFormat   = BlastFormat<BlastFormatFile::INVALID_File,
-//                                   p,
-//                                   BlastFormatGeneration::INVALID_Generation>;
-
     using TTransSeqs    = TCDStringSet<TransAlph<p>>;
 
     using TRedAlph      = RedAlph<p, TRedAlph_>; // ensures == Dna5 for BlastN
