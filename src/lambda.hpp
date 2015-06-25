@@ -354,7 +354,7 @@ loadQueryImplTrans(TCDStringSet<TTargetAlph> & target,
            length(source.limits),
            Exact());
 
-    // TODO parallelize
+    SEQAN_OMP_PRAGMA(simd)
     for (uint32_t i = 0; i < (length(untransQrySeqLengths) - 1); ++i)
         untransQrySeqLengths[i] = source.limits[i + 1] - source.limits[i];
 
@@ -443,20 +443,20 @@ loadQueryImplTrans(TCDStringSet<TransAlph<BlastProgram::BLASTP>> & target,
 // }
 
 
-//DEBUG WARNING
-template <typename THost, typename TSpec>
-inline uint64_t
-myhost(ModifiedString<THost, TSpec> const & str)
-{
-    return uint64_t(str._host);
-}
-
-template <typename T, typename TSpec>
-inline uint64_t
-myhost(String<T, TSpec> const & str)
-{
-    return uint64_t(&str);
-}
+// //DEBUG WARNING
+// template <typename THost, typename TSpec>
+// inline uint64_t
+// myhost(ModifiedString<THost, TSpec> const & str)
+// {
+//     return uint64_t(str._host);
+// }
+//
+// template <typename T, typename TSpec>
+// inline uint64_t
+// myhost(String<T, TSpec> const & str)
+// {
+//     return uint64_t(&str);
+// }
 
 template <BlastTabularSpec h,
           BlastProgram p,
@@ -478,7 +478,15 @@ loadQuery(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, TOutFormat, p, h>
 
 //     std::cout << "FOO " <<  toCString(options.queryFile) << " BAR" << std::endl;
     SeqFileIn infile(toCString(options.queryFile));
-    readRecords(globalHolder.qryIds, origSeqs, infile);
+    if (std::is_same<OrigQryAlph<p>, Dna5>::value) //TODO only needed for qIsTranslated
+    {
+        TCDStringSet<char> tmpSeqs; //TODO replace with Iupac once that is fixed
+        readRecords(globalHolder.qryIds, tmpSeqs, infile);
+        origSeqs = tmpSeqs;
+    } else
+    {
+        readRecords(globalHolder.qryIds, origSeqs, infile);
+    }
 
     // translate
     loadQueryImplTrans(globalHolder.qrySeqs,
@@ -829,7 +837,7 @@ computeBlastMatch(TBlastMatch         & bm,
         }
         if (newEnd == 0) // no local alignment
         {
-            return OTHER_FAIL;
+            return OTHER_FAIL; // TODO change to PREEXTEND?
         }
         // backtrack
         for (unsigned i = newEnd - 1; i > 0; --i)
