@@ -636,7 +636,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     std::string buffer;
 
     // Extract option values.
-//     getOptionValue(options.queryFile, parser, "query");
+    getOptionValue(options.queryFile, parser, "query");
 //     if (endsWith(options.queryFile, ".fastq") ||
 //         endsWith(options.queryFile, ".fq"))
 //         options.fileFormat = 1;

@@ -354,6 +354,7 @@ loadQueryImplTrans(TCDStringSet<TTargetAlph> & target,
            length(source.limits),
            Exact());
 
+    // TODO parallelize
     for (uint32_t i = 0; i < (length(untransQrySeqLengths) - 1); ++i)
         untransQrySeqLengths[i] = source.limits[i + 1] - source.limits[i];
 
@@ -475,6 +476,7 @@ loadQuery(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, TOutFormat, p, h>
 
     TCDStringSet<OrigQryAlph<p>> origSeqs;
 
+//     std::cout << "FOO " <<  toCString(options.queryFile) << " BAR" << std::endl;
     SeqFileIn infile(toCString(options.queryFile));
     readRecords(globalHolder.qryIds, origSeqs, infile);
 
@@ -699,8 +701,6 @@ template <typename TLocalHolder>
 inline void
 sortMatches(TLocalHolder & lH)
 {
-    using TGH       = typename TLocalHolder::TGlobalHolder;
-
     if (lH.options.doubleIndexing)
     {
         appendToStatus(lH.statusStr, lH.options, 1, "Sorting hits…");
@@ -743,8 +743,6 @@ computeBlastMatch(TBlastMatch         & bm,
                   Match         const & m,
                   TLocalHolder        & lH)
 {
-    using TGH       = typename TLocalHolder::TGlobalHolder;
-
     const unsigned long qryLength = length(value(lH.gH.qrySeqs, m.qryId));
 
     auto const &   curQry = lH.gH.qrySeqs[m.qryId];
@@ -1201,6 +1199,11 @@ iterateMatches(TLocalHolder & lH)
                 bm.sStart    = it->subjStart;
                 bm.sEnd      = it->subjStart + lH.options.seedLength;
 
+                bm.qLength = record.qLength;
+                bm.sLength = sIsTranslated(lH.gH.blastProgram)
+                                ? lH.gH.untransSubjSeqLengths[trueSubjId]
+                                : length(lH.gH.subjSeqs[it->subjId]);
+
                 // MERGE PUTATIVE SIBLINGS INTO THIS MATCH
                 for (auto it2 = itN;
                      (it2 != itEnd) &&
@@ -1253,12 +1256,6 @@ iterateMatches(TLocalHolder & lH)
                 switch (lret)
                 {
                     case COMPUTERESULT_::SUCCESS:
-                        // set remaining unset members of match
-                        bm.sLength = sIsTranslated(lH.gH.blastProgram)
-                                    ? lH.gH.untransSubjSeqLengths[trueSubjId]
-                                    : length(lH.gH.subjSeqs[it->subjId]);
-                        bm.qLength = record.qLength;
-    //                     lastMatch = ma;
     //                     ++lH.stats.goodMatches;
                         break;
                     case EVALUE:
@@ -1306,8 +1303,8 @@ iterateMatches(TLocalHolder & lH)
                     // PUTATIVE DUBLICATES CHECK
                     for (auto it2 = itN;
                          (it2 != itEnd) &&
-                         (trueQryId == it2->qryId % qNumFrames(lH.gH.blastProgram)) &&
-                         (trueSubjId == it2->subjId % sNumFrames(lH.gH.blastProgram));
+                         (trueQryId == it2->qryId / qNumFrames(lH.gH.blastProgram)) &&
+                         (trueSubjId == it2->subjId / sNumFrames(lH.gH.blastProgram));
                          ++it2)
                     {
                         // same frame and same range
@@ -1343,7 +1340,7 @@ iterateMatches(TLocalHolder & lH)
 
             // last item or new TrueQryId
             if ((itN == itEnd) ||
-                (trueQryId != itN->qryId % qNumFrames(lH.gH.blastProgram)))
+                (trueQryId != itN->qryId / qNumFrames(lH.gH.blastProgram)))
                 break;
         }
 

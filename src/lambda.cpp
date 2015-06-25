@@ -202,6 +202,7 @@ argConv05(LambdaOptions                 const & options,
                             TOutFormat(),
                             BlastTabularSpecSelector<h>(),
                             BlastProgramSelector<BlastProgram::BLASTX>());
+#ifndef FASTBUILD
         case BlastProgram::TBLASTN:
             return argConv1(options,
                             TOutFormat(),
@@ -212,6 +213,7 @@ argConv05(LambdaOptions                 const & options,
                             TOutFormat(),
                             BlastTabularSpecSelector<h>(),
                             BlastProgramSelector<BlastProgram::TBLASTX>());
+#endif
         default:
             break;
     }
@@ -441,6 +443,22 @@ realMain(LambdaOptions                  const & options,
     ret = loadQuery(globalHolder, options);
     if (ret)
         return ret;
+
+//     std::cout << "1st Query:\n"
+//               << front(globalHolder.qrySeqs) << "\n"
+//               << front(globalHolder.redQrySeqs) << "\n";
+//
+//     std::cout << "last Query:\n"
+//               << back(globalHolder.qrySeqs) << "\n"
+//               << back(globalHolder.redQrySeqs) << "\n";
+//
+//     std::cout << "1st Subject:\n"
+//               << front(globalHolder.subjSeqs) << "\n"
+//               << front(globalHolder.redSubjSeqs) << "\n";
+//
+//     std::cout << "last Subject:\n"
+//               << back(globalHolder.subjSeqs) << "\n"
+//               << back(globalHolder.redSubjSeqs) << "\n";
 
     open(globalHolder.outfile, toCString(options.output));
     writeHeader(globalHolder.outfile);

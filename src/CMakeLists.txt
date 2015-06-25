@@ -7,8 +7,8 @@
 # ===========================================================================
 
 cmake_minimum_required (VERSION 2.8.2)
-project (seqan_sandbox_h4nn3s_apps_lambda)
-message (STATUS "Configuring extras/apps/lambda")
+project (lambda)
+message (STATUS "Configuring lambda")
 
 # ----------------------------------------------------------------------------
 # Dependencies
