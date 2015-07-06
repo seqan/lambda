@@ -15,7 +15,7 @@ message (STATUS "Configuring lambda")
 # ----------------------------------------------------------------------------
 
 # Search SeqAn and select dependencies.
-set (SEQAN_FIND_DEPENDENCIES OpenMP)
+set (SEQAN_FIND_DEPENDENCIES OpenMP ZLIB BZip2)
 find_package(SeqAn REQUIRED)
 find_package(CXX11 REQUIRED)
 find_package(CXX14)

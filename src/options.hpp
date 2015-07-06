@@ -310,6 +310,40 @@ struct LambdaIndexerOptions : public SharedOptions
 ArgumentParser::ParseResult
 parseCommandLineShared(SharedOptions & options, ArgumentParser & parser);
 
+template <typename TFile>
+CharString getAllExtensions(TFile const &)
+{
+    CharString ret;
+    std::vector<std::string> extensions;
+    TFile file;
+    _getCompressionExtensions(extensions,
+                              typename TFile::TFileFormats(),
+                              typename FileFormat<typename TFile::TStream>::Type(),
+                              false);
+    unsigned l = length(extensions);
+// //     ret = concat(extensions, ' ');
+// #if (SEQAN_HAS_ZLIB == 1)
+// // this gets too much
+// //     _getCompressionExtensions(extensions,
+// //                               typename TFile::TFileFormats(),
+// //                               GZFile(),
+// //                               false);
+//     for(unsigned i = 0; i < l; ++i)
+//         appendValue(extensions, extensions[i] + std::string(".gz"));
+// #endif
+//
+// #if (SEQAN_HAS_BZIP2 == 1)
+// //     _getCompressionExtensions(extensions,
+// //                               typename TFile::TFileFormats(),
+// //                               BZ2File(),
+// //                               false);
+//     for(unsigned i = 0; i < l; ++i)
+//         appendValue(extensions, extensions[i] + std::string(".bz2"));
+// #endif
+    ret = concat(extensions, ' ');
+    return ret;
+}
+
 ArgumentParser::ParseResult
 parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 {
@@ -335,7 +369,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         ArgParseArgument::INPUT_FILE,
         "IN"));
     setRequired(parser, "q");
-    setValidValues(parser, "query", "fasta fa fna faa fas fastq fq");
+    setValidValues(parser, "query", toCString(getAllExtensions(SeqFileIn())));
 
     addOption(parser, ArgParseOption("d", "database",
         "Database sequences (fasta), with precomputed index (.sa or .fm).",
@@ -357,7 +391,11 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         "File to hold reports on hits (.m8 is blastall -m8 et cetera)",
         ArgParseArgument::OUTPUT_FILE,
         "OUT"));
-    setValidValues(parser, "output", "m0 m8 m9");
+    CharString exts = getAllExtensions(BlastTabularFileOut<>());
+    appendValue(exts, ' ');
+    append(exts, getAllExtensions(BlastReportFileOut<>()));
+//     write(std::cout, exts);
+    setValidValues(parser, "output", toCString(exts));
     setDefaultValue(parser, "output", "output.m8");
 
     addOption(parser, ArgParseOption("id", "percent-identity",
@@ -502,6 +540,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     addSection(parser, "Miscellaneous Heuristics");
 
+    //TODO make min == 1 also for noreduction
     addOption(parser, ArgParseOption("ps", "pre-scoring",
         "evaluate score of a region NUM times the size of the seed "
         "before extension (0 -> no pre-scoring, 1 -> evaluate seed, n-> area "
@@ -725,6 +764,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     getOptionValue(buffer, parser, "filter-putative-abundant");
     options.filterPutativeAbundant = (buffer == "on");
 
+    // TODO always prescore 1
     getOptionValue(options.preScoring, parser, "pre-scoring");
     if ((!isSet(parser, "pre-scoring")) &&
         (options.alphReduction == 0))
