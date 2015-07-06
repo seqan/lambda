@@ -816,7 +816,7 @@ computeBlastMatch(TBlastMatch         & bm,
     // fast local alignment without DP-stuff
     if (maxDist == 0)
     {
-        int scores[row0len]; // C99, C++14, -Wno-vla before that
+        int scores[row0len+1]; // C99, C++14, -Wno-vla before that
         scores[0] = 0;
         unsigned newEnd = 0;
         unsigned newBeg = 0;
@@ -832,8 +832,8 @@ computeBlastMatch(TBlastMatch         & bm,
                 scr = scores[i];
                 newEnd = i + 1;
             }
-            if (i <row0len -1)
-                scores[i+1] = scores[i];
+//             if (i <row0len -1)
+            scores[i+1] = scores[i];
         }
         if (newEnd == 0) // no local alignment
         {
