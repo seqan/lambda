@@ -326,6 +326,16 @@ seedLooksPromising(
             LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> const & lH,
             TMatch const & m)
 {
+    // no pre-scoring, but still filter out XXX and NNN hits
+//     if (!lH.options.preScoring))
+//     {
+//         for (unsigned i = m.qryStart, count = 0; i < m.qryStart + lH.options.seedLength; ++i)
+//             if (lH.gH.qrySeqs[m.qryId][i] == unkownValue<typename TGlobalHolder::TRedAlph>())
+//                 if (++count > lH.options.maxSeedDist)
+//                     return false;
+//         return true;
+//     }
+
     int64_t effectiveQBegin = m.qryStart;
     int64_t effectiveSBegin = m.subjStart;
     uint64_t effectiveLength = lH.options.seedLength * lH.options.preScoring;
@@ -341,7 +351,7 @@ seedLooksPromising(
         {
             effectiveQBegin -= min;
             effectiveSBegin -= min;
-            effectiveLength += min;
+            effectiveLength += min; //TODO this should be -= as well
         }
 
         effectiveLength = std::min({
@@ -360,7 +370,7 @@ seedLooksPromising(
                               effectiveSBegin + effectiveLength);
     int maxScore = 0;
 
-    int scores[effectiveLength]; // C99, C++14, -Wno-vla before that
+    int scores[effectiveLength+1]; // C99, C++14, -Wno-vla before that
     scores[0] = 0;
 
     // score the diagonal
@@ -369,11 +379,11 @@ seedLooksPromising(
         scores[i] += score(seqanScheme(context(lH.gH.outfile).scoringScheme), qSeq[i], sSeq[i]);
         if (scores[i] < 0)
             scores[i] = 0;
-        else if (scores[i] >= maxScore)
+        else if (scores[i] > maxScore)
             maxScore = scores[i];
 
-        if (i < static_cast<uint64_t>(effectiveLength - 1))
-            scores[i+1] = scores[i];
+//         if (i < static_cast<uint64_t>(effectiveLength - 1)) // TODO remove
+        scores[i+1] = scores[i];
     }
 
     return (maxScore >= int(lH.options.preScoringThresh * effectiveLength));
@@ -403,23 +413,25 @@ onFindImpl(LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> & lH,
     bool discarded = false;
     auto const halfSubjL = lH.options.seedLength /  2;
 
-    for (unsigned k = 0; k < length(lH.gH.segIntStarts[m.subjId]); ++k)
+    if (!sIsTranslated(lH.gH.blastProgram))
     {
-        // more than half of the seed falls into masked interval
-        if (intervalOverlap(m.subjStart,
-                            m.subjStart + lH.options.seedLength,
-                            lH.gH.segIntStarts[m.subjId][k],
-                            lH.gH.segIntEnds[m.subjId][k])
-                >= halfSubjL)
+        for (unsigned k = 0; k < length(lH.gH.segIntStarts[m.subjId]); ++k)
         {
-            ++lH.stats.hitsMasked;
-            discarded = true;
-            break;
+            // more than half of the seed falls into masked interval
+            if (intervalOverlap(m.subjStart,
+                                m.subjStart + lH.options.seedLength,
+                                lH.gH.segIntStarts[m.subjId][k],
+                                lH.gH.segIntEnds[m.subjId][k])
+                    >= halfSubjL)
+            {
+                ++lH.stats.hitsMasked;
+                discarded = true;
+                break;
+            }
         }
     }
 
-     if ((lH.options.preScoring) && (!discarded) &&
-         (!seedLooksPromising(lH, m)))
+     if ((!discarded) && (!seedLooksPromising(lH, m)))
      {
          discarded = true;
          ++lH.stats.hitsFailedPreExtendTest;
