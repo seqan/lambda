@@ -21,13 +21,51 @@ find_package(CXX11 REQUIRED)
 find_package(CXX14)
 
 if (NOT CXX11_FOUND)
-    message (STATUS "  C++11 not found: Not building lambda.")
+    message (FATAL_ERROR "  C++11 not found: Not building lambda.")
     return ()
 endif (NOT CXX11_FOUND)
 
-if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+# Warn if OpenMP was not found.
+if (NOT SEQAN_HAS_OPENMP)
+    message (WARNING "WARNING: OpenMP not found. Lambda will be built without multi-threading! This is probably not what you want!")
+endif (NOT SEQAN_HAS_OPENMP)
+
+# Warn if Zlib was not found.
+if (NOT SEQAN_HAS_ZLIB)
+  message (WARNING "WARNING: Zlib not found. Building lambda without gzipped input and output.")
+endif (NOT SEQAN_HAS_ZLIB)
+
+# Warn if BZip2 was not found.
+if (NOT SEQAN_HAS_BZIP2)
+  message (WARNING "WARNING: BZip2 not found. Building lambda without bzipped input and output.")
+endif (NOT SEQAN_HAS_BZIP2)
+
+if (COMPILER_IS_CLANG)
     set (CXX14_CXX_FLAGS "${CXX14_CXX_FLAGS} -ftemplate-depth-1024")
-endif (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+endif (COMPILER_IS_CLANG)
+
+if(CMAKE_COMPILER_IS_GNUCXX)
+  if (491 GREATER _GCC_VERSION)
+    message (FATAL_ERROR "Your GCC version is too old. Minimum version is GCC-4.9.1!")
+    return ()
+  endif(491 GREATER _GCC_VERSION)
+endif(CMAKE_COMPILER_IS_GNUCXX)
+
+# ----------------------------------------------------------------------------
+# App-Level Configuration
+# ----------------------------------------------------------------------------
+
+set (SEQAN_APP_VERSION "0.9.0")
+
+option (FASTBUILD "Set to ON to skip certain rarely used codepaths (speeds up build)." OFF)
+if (FASTBUILD)
+    add_definitions (-DFASTBUILD=1)
+endif (FASTBUILD)
+
+option (ARCH_NATIVE "Set to OFF to disable architecture-specific optimizations, e.g. g++ -march=native." ON)
+if (ARCH_NATIVE)
+    set (SEQAN_CXX_FLAGS "${SEQAN_CXX_FLAGS} -march=native")
+endif (ARCH_NATIVE)
 
 # ----------------------------------------------------------------------------
 # Build Setup
@@ -38,6 +76,11 @@ include_directories (${SEQAN_INCLUDE_DIRS})
 
 # Add definitions set by find_package (SeqAn).
 add_definitions (${SEQAN_DEFINITIONS})
+
+# Add definitions set by the build system.
+add_definitions (-DSEQAN_REVISION="${SEQAN_REVISION}")
+add_definitions (-DSEQAN_DATE="${SEQAN_DATE}")
+add_definitions (-DSEQAN_APP_VERSION="${SEQAN_APP_VERSION}")
 
 # Update the list of file names below if you add source files to your application.
 add_executable (lambda lambda.cpp
@@ -76,8 +119,9 @@ install (TARGETS lambda lambda_indexer
 
 # Install non-binary files for the package to "." for app builds and
 # ${PREFIX}/share/doc/lambda for SeqAn release builds.
-install (FILES LICENSE
-               README
+install (FILES ../LICENSE
+               ../README.md
+               ../CHANGELOG.md
          DESTINATION ${SEQAN_PREFIX_SHARE_DOC})
 # install (FILES example/fasta1.fa
 #               example/fasta2.fa

@@ -63,6 +63,7 @@ enum COMPUTERESULT_
     OTHER_FAIL
 };
 
+//TODO replace with lambda
 // comparison operator to sort SA-Values based on the strings in the SA they refer to
 template <typename TSav, typename TStringSet>
 struct Comp :

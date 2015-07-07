@@ -25,7 +25,7 @@
 // ==========================================================================
 
 // why is this neccessary?
-#undef SEQAN_HAS_ZLIB
+// #undef SEQAN_HAS_ZLIB
 
 // #define SEQAN_DEBUG_INDEX
 

@@ -320,7 +320,7 @@ CharString getAllExtensions(TFile const &)
                               typename TFile::TFileFormats(),
                               typename FileFormat<typename TFile::TStream>::Type(),
                               false);
-    unsigned l = length(extensions);
+//    unsigned l = length(extensions);
 // //     ret = concat(extensions, ' ');
 // #if (SEQAN_HAS_ZLIB == 1)
 // // this gets too much
@@ -352,8 +352,8 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     // Set short description, version, and date.
     setShortDescription(parser, "the Local Aligner for Massive Biological "
     "DatA");
-    setVersion(parser, LAMBDA_VERSION);
-    setDate(parser, __DATE__);
+    setVersion(parser, SEQAN_APP_VERSION);
+    setDate(parser, SEQAN_DATE);
 
     // Define usage line and long description.
     addUsageLine(parser, "[\\fIOPTIONS\\fP] \\fI-q QUERY.fasta\\fP "

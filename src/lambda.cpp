@@ -24,11 +24,11 @@
 // lambda.cpp: Main File for Lambda
 // ==========================================================================
 
-#define FASTBUILD
+// #define FASTBUILD
 
 // #define SEQAN_DEBUG_INDEX
 
-#define _GLIBCXX_USE_C99 1
+// #define _GLIBCXX_USE_C99 1
 
 #include <iostream>
 
