@@ -243,7 +243,6 @@ createSuffixArray(TSA & SA,
     typedef StringSet< TString, TSSetSpec > TText;
     typedef typename Size<TSA>::Type TSize;
     typedef typename Iterator<TSA, Standard>::Type TIter;
-    typedef typename SaAdvancedSortAlgoTag<TAlgoSpec>::Type TAlgo;
 
     // 1. Fill suffix array with a permutation (the identity)
     TIter it = begin(SA, Standard());
@@ -271,6 +270,7 @@ createSuffixArray(TSA & SA,
 //         SuffixLess_<typename Value<TSA>::Type, TText const>(s));
 //     } else
 #ifdef _OPENMP
+    typedef typename SaAdvancedSortAlgoTag<TAlgoSpec>::Type TAlgo;
     __gnu_parallel::sort(
         begin(SA, Standard()),
         end(SA, Standard()),
