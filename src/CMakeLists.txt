@@ -57,15 +57,15 @@ endif(CMAKE_COMPILER_IS_GNUCXX)
 
 set (SEQAN_APP_VERSION "0.9.0")
 
-option (FASTBUILD "Set to ON to skip certain rarely used codepaths (speeds up build)." OFF)
-if (FASTBUILD)
+option (LAMBDA_FASTBUILD "Set to ON to skip certain rarely used codepaths (speeds up build)." OFF)
+if (LAMBDA_FASTBUILD)
     add_definitions (-DFASTBUILD=1)
-endif (FASTBUILD)
+endif (LAMBDA_FASTBUILD)
 
-option (ARCH_NATIVE "Set to OFF to disable architecture-specific optimizations, e.g. g++ -march=native." ON)
-if (ARCH_NATIVE)
+option (LAMBDA_NATIVE_BUILD "Set to OFF to disable architecture-specific optimizations, e.g. g++ -march=native." ON)
+if (LAMBDA_NATIVE_BUILD)
     set (SEQAN_CXX_FLAGS "${SEQAN_CXX_FLAGS} -march=native")
-endif (ARCH_NATIVE)
+endif (LAMBDA_NATIVE_BUILD)
 
 # ----------------------------------------------------------------------------
 # Build Setup

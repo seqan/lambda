@@ -187,11 +187,13 @@ argConv05(LambdaOptions                 const & options,
 {
     switch(options.blastProgram)
     {
+#ifndef FASTBUILD
         case BlastProgram::BLASTN:
             return argConv1(options,
                             TOutFormat(),
                             BlastTabularSpecSelector<h>(),
                             BlastProgramSelector<BlastProgram::BLASTN>());
+#endif
         case BlastProgram::BLASTP:
             return argConv1(options,
                             TOutFormat(),
@@ -273,9 +275,9 @@ argConv2(LambdaOptions                  const & options,
     using Tp = BlastProgramSelector<p>;
     switch (options.scoringMethod)
     {
+#ifndef FASTBUILD
         case 0:
             return argConv3(options, TOutFormat(), Th(), Tp(), TRedAlph(), Score<int, Simple>());
-#ifndef FASTBUILD
         case 45:
             return argConv3(options, TOutFormat(), Th(), Tp(), TRedAlph(), Blosum45());
         case 80:
