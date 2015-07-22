@@ -633,7 +633,9 @@ __searchDoubleIndex(TLocalHolder & lH)
 
     using LambdaFinder = Finder_<decltype(lH.gH.dbIndex),
                                  decltype(lH.seedIndex),
-                                 BackSpec>;
+                                 typename std::conditional<std::is_same<BackSpec, Backtracking<Exact>>::value,
+                                                           Backtracking<HammingDistance>,
+                                                           BackSpec>::type >;
 
     LambdaFinder finder;
 
@@ -691,7 +693,9 @@ template <typename TLocalHolder>
 inline void
 search(TLocalHolder & lH)
 {
-    if (lH.options.hammingOnly)
+    if (lH.options.maxSeedDist == 0)
+        __search<Backtracking<Exact>>(lH);
+    else if (lH.options.hammingOnly)
         __search<Backtracking<HammingDistance>>(lH);
     else
 #if 0 // reactivate if edit-distance seeding is readded
