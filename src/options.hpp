@@ -39,8 +39,6 @@
 
 #include "index_sa_sort.h"
 
-#define LAMBDA_VERSION "0.4.7"
-
 // ==========================================================================
 // Metafunctions
 // ==========================================================================
@@ -79,11 +77,17 @@ struct SAValue<StringSet<String<Dna5, TSpec1>, TSpec2> >
 using namespace seqan;
 
 // Index Specs
-// template <typename TActualSpec = void>
-// struct SAqsSpec {} ;
+struct LambdaFMIndexConfig
+{
+    typedef size_t                                                 LengthSum;
+    typedef WaveletTree<void, WTRDConfig<LengthSum> >              Bwt;
+    typedef Levels<void, LevelsRDConfig<LengthSum, Alloc<>, 2> >   Sentinels;
+
+    static const unsigned SAMPLING = 10;
+};
 
 template <typename TSpec = void>
-using TFMIndex = FMIndex<TSpec>;
+using TFMIndex = FMIndex<TSpec, LambdaFMIndexConfig>;
 
 namespace SEQAN_NAMESPACE_MAIN
 {
@@ -352,8 +356,11 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     // Set short description, version, and date.
     setShortDescription(parser, "the Local Aligner for Massive Biological "
     "DatA");
-    setVersion(parser, SEQAN_APP_VERSION);
-    setDate(parser, SEQAN_DATE);
+    // Set short description, version, and date.
+    std::string versionString = std::string(SEQAN_APP_VERSION) + " (SeqAn " +
+                                std::string(SEQAN_REVISION) + ")";
+    setVersion(parser, versionString);
+    setDate(parser, __DATE__);
 
     // Define usage line and long description.
     addUsageLine(parser, "[\\fIOPTIONS\\fP] \\fI-q QUERY.fasta\\fP "
@@ -790,7 +797,9 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
     setShortDescription(parser, "the Local Aligner for Massive Biological "
     "DatA");
     // Set short description, version, and date.
-    setVersion(parser, LAMBDA_VERSION);
+    std::string versionString = std::string(SEQAN_APP_VERSION) + " (SeqAn " +
+                                std::string(SEQAN_REVISION) + ")";
+    setVersion(parser, versionString);
     setDate(parser, __DATE__);
 
     // Define usage line and long description.

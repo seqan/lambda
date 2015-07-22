@@ -419,7 +419,7 @@ realMain(LambdaOptions                  const & options,
 
     myPrint(options, 1, "LAMBDA - the Local Aligner for Massive Biological DatA"
                       "\n======================================================"
-                      "\nVersion ", LAMBDA_VERSION, "\n\n");
+                      "\nVersion ", SEQAN_APP_VERSION, "\n\n");
 
     if (options.verbosity >= 2)
         printOptions<TLocalHolder>(options);
