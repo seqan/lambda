@@ -136,9 +136,9 @@ printProgressBar(uint64_t & lastPercent, uint64_t curPerc)
             if (i == 100)
                 std::cout << "|\n" << std::flush;
             else if (i % 10 == 0)
-                std::cout << "*" << std::flush;
+                std::cout << ":" << std::flush;
             else
-                std::cout << "·" << std::flush;
+                std::cout << "." << std::flush;
         }
         lastPercent = curPerc;
     }
@@ -379,121 +379,76 @@ inline bool indexCreate(Index<TText, IndexSa<TSpec> > & index,
 // Generic Sequence loading
 // ----------------------------------------------------------------------------
 
-// template <typename TString, typename TSpec, typename TFormat>
-// inline int
-// loadSequences(StringSet<TString, TSpec > & seqs,
-//               CharString const & path,
-//               TFormat const & /*tag*/)
-// {
-//     //TODO experiment with differen file types
-//     std::ifstream stream;
-//     stream.open(toCString(path));
-//     if (!stream.is_open())
-//         return -1;
-//
-//     typedef RecordReader<std::ifstream, DoublePass<> > TReader;
-//     TReader reader(stream);
-//
-//     StringSet<CharString, TSpec > ids;
-//
-//     int res = read2(ids, seqs, reader, TFormat());
-//     if (res)
-//         std::cerr << "Error : " << res << "\n";
-//
-//     stream.close();
-//     return res;
-// }
-//
-// template <typename TString, typename TSpec, typename TFormat>
-// inline int
-// loadIds(StringSet<TString, TSpec > & ids,
-//               CharString const & path,
-//               TFormat const & /*tag*/)
-// {
-//     //TODO experiment with differen file types
-//     std::ifstream stream;
-//     stream.open(toCString(path));
-//     if (!stream.is_open())
-//         return -1;
-//
-//     typedef RecordReader<std::ifstream, DoublePass<> > TReader;
-//     TReader reader(stream);
-//
-//     StringSet<CharString, TSpec > seqs;
-//
-//     int res = read2(ids, seqs, reader, TFormat());
-//     if (res)
-//         std::cerr << "Error : " << res << "\n";
-//
-//     stream.close();
-//     return res;
-// }
-//
-// template <typename TSeqs, typename TIds, typename TFormat>
-// inline int
-// loadSeqsAndIds(TIds             & ids,
-//                TSeqs            & seqs,
-//                CharString const & path,
-//                TFormat    const & /*tag*/)
-// {
-//     //TODO experiment with differen file types
-//     std::ifstream stream;
-//     stream.open(toCString(path));
-//     if (!stream.is_open())
-//         return -1;
-//
-//     typedef RecordReader<std::ifstream, DoublePass<> > TReader;
-//     TReader reader(stream);
-//
-//     int res = read2(ids, seqs, reader, TFormat());
-//     if (res)
-//         std::cerr << "Error : " << res << "\n";
-//
-//     stream.close();
-//     return res;
-// }
-//
-//
-// template <typename TString, typename TSpec, typename TFormat>
-// inline int
-// loadIds2(StringSet<TString, TSpec > & ids,
-//          CharString const & path,
-//          TFormat const & /*tag*/)
-// {
-//     //TODO experiment with differen file types
-//     std::ifstream stream;
-//     stream.open(toCString(path));
-//     if (!stream.is_open())
-//         return -1;
-//
-//     typedef RecordReader<std::ifstream, SinglePass<> > TReader;
-//     TReader reader(stream);
-//
-//     int res = 0;
-//     CharString seq;
-//     for (unsigned i = 0; i < length(ids); ++i)
-//     {
-// //         res = readRecord(ids[i], seq, reader, Fasta());
-//         if (value(reader) != '>')
-//             return 9;
-//
-//         res = goNext(reader);
-//         if (res)
-//             std::cerr << "Error : " << res << "\n";
-//         res = skipBlanks(reader);
-//         if (res)
-//             std::cerr << "Error : " << res << "\n";
-//         res = readLine(ids[i], reader);
-//         if (res)
-//             std::cerr << "Error : " << res << "\n";
-//         res = skipUntilLineBeginsWithChar(reader, '>');
-//         if ((res) && (res != EOF_BEFORE_SUCCESS))
-//             std::cerr << "Error : " << res << "\n";
-//     }
-//     stream.close();
-//     return 0;
-// }
+template <typename TFile>
+int myReadRecords(TCDStringSet<char> & ids, TCDStringSet<Dna5> & seqs, TFile & file)
+{
+    TCDStringSet<Iupac> tmpSeqs; // all IUPAC nucleic acid characters are valid input
+    try
+    {
+        readRecords(ids, tmpSeqs, file);
+    }
+    catch(ParseError const & e)
+    {
+        std::cerr << "\nParseError thrown: " << e.what() << '\n'
+                  << "Make sure that the file is standards compliant. If you get an unknown character warning "
+                  << "make sure you have set the right program parameter (-p) -> "
+                  << "Lambda expected nucleic acid alphabet, maybe the file was protein?\n";
+        return -1;
+    }
+    //TODO catching this or the following global don't work, DEBUG this!
+    catch(IOError const & e)
+    {
+        std::cerr << "\nIOError thrown: " << e.what() << '\n'
+                  << "Could not read the query file, make sure it exists and is readable.\n";
+        return -1;
+    }
+    catch(...)
+    {
+        std::cerr << "FOO\n";
+        return -2;
+    }
 
+    seqs = tmpSeqs; // convert IUPAC alphabet to Dna5
+
+    return 0;
+}
+
+template <typename TFile>
+int myReadRecords(TCDStringSet<char> & ids, TCDStringSet<AminoAcid> & seqs, TFile & file)
+{
+    try
+    {
+        readRecords(ids, seqs, file);
+    }
+    catch(ParseError const & e)
+    {
+        std::cerr << "\nParseError thrown: " << e.what() << '\n'
+                  << "Make sure that the file is standards compliant.\n";
+        return -1;
+    }
+    //TODO catching this or the following global don't work, DEBUG this!
+    catch(IOError const & e)
+    {
+        std::cerr << "\nIOError thrown: " << e.what() << '\n'
+                  << "Could not read the query file, make sure it exists and is readable.\n";
+        return -1;
+    }
+    catch(...)
+    {
+        std::cerr << "FOO\n";
+        return -2;
+    }
+
+    if (length(seqs) > 0)
+    {
+        // warn if sequences look like DNA
+        if (CharString(String<Dna5>(CharString(seqs[0]))) == CharString(seqs[0]))
+            std::cout << "\nWarning: The first query sequence looks like nucleic acid, but amino acid is expected.\n"
+                         "           Make sure you have set the right program parameter (-p).\n";
+    }
+
+    return 0;
+}
 
 // ----------------------------------------------------------------------------
 // truncate sequences

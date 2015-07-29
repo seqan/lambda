@@ -158,7 +158,7 @@ loadSubjects(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, TOutFormat, p,
     using TGH = GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, TOutFormat, p, h>;
 
     double start = sysTime();
-    std::string strIdent = "Loading Subj Sequences…";
+    std::string strIdent = "Loading Subj Sequences...";
     myPrint(options, 1, strIdent);
 
     CharString _dbSeqs = options.dbFile;
@@ -183,7 +183,7 @@ loadSubjects(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, TOutFormat, p,
 
 
     start = sysTime();
-    strIdent = "Loading Subj Ids…";
+    strIdent = "Loading Subj Ids...";
     myPrint(options, 1, strIdent);
 
     _dbSeqs = options.dbFile;
@@ -206,7 +206,7 @@ loadSubjects(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, TOutFormat, p,
     if (sIsTranslated(p))
     {
         start = sysTime();
-        std::string strIdent = "Loading Lengths of untranslated Subj sequences…";
+        std::string strIdent = "Loading Lengths of untranslated Subj sequences...";
         myPrint(options, 1, strIdent);
 
         _dbSeqs = options.dbFile;
@@ -244,7 +244,7 @@ inline int
 loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
                     LambdaOptions const & options)
 {
-    std::string strIdent = "Reading Database Index from disk…";
+    std::string strIdent = "Reading Database Index from disk...";
     myPrint(options, 1, strIdent);
     double start = sysTime();
     std::string path = toCString(options.dbFile);
@@ -291,7 +291,7 @@ loadSegintervals(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, TOutFormat
 {
 
     double start = sysTime();
-    std::string strIdent = "Loading Database Masking file…";
+    std::string strIdent = "Loading Database Masking file...";
     myPrint(options, 1, strIdent);
 
     CharString segFileS = options.dbFile;
@@ -343,7 +343,7 @@ loadQueryImplTrans(TCDStringSet<TTargetAlph> & target,
                    TUntransLengths           & untransQrySeqLengths,
                    LambdaOptions       const & options)
 {
-    myPrint(options, 1, "translating…");
+    myPrint(options, 1, "translating...");
     // translate
     translate(target,
               source,
@@ -374,7 +374,7 @@ loadQueryImplTrans(TCDStringSet<TransAlph<BlastProgram::BLASTN>> & target,
     using TAlph = TransAlph<BlastProgram::BLASTN>;
 //     using TReverseCompl =  ModifiedString<ModifiedString<String<TAlph>,
 //                             ModView<FunctorComplement<TAlph>>>, ModReverse>;
-    myPrint(options, 1, " generating reverse complements…");
+    myPrint(options, 1, " generating reverse complements...");
     // no need for translation, but we need reverse complements
     resize(target.concat, length(source.concat) * 2);
     resize(target.limits, length(source) * 2 + 1);
@@ -426,7 +426,7 @@ loadQueryImplTrans(TCDStringSet<TransAlph<BlastProgram::BLASTP>> & target,
 //                     LambdaOptions const & options)
 // {
 //     // reduce implicitly
-//     myPrint(options, 1, "reducing…");
+//     myPrint(options, 1, "reducing...");
 // //     target.concat._host = &source.concat;
 //     target.limits = source.limits;
 // //     target(source);
@@ -472,22 +472,16 @@ loadQuery(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, TOutFormat, p, h>
     using TGH = GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, TOutFormat, p, h>;
     double start = sysTime();
 
-    std::string strIdent = "Loading Query Sequences and Ids…";
+    std::string strIdent = "Loading Query Sequences and Ids...";
     myPrint(options, 1, strIdent);
 
     TCDStringSet<OrigQryAlph<p>> origSeqs;
 
 //     std::cout << "FOO " <<  toCString(options.queryFile) << " BAR" << std::endl;
     SeqFileIn infile(toCString(options.queryFile));
-    if (std::is_same<OrigQryAlph<p>, Dna5>::value) //TODO only needed for qIsTranslated
-    {
-        TCDStringSet<char> tmpSeqs; //TODO replace with Iupac once that is fixed
-        readRecords(globalHolder.qryIds, tmpSeqs, infile);
-        origSeqs = tmpSeqs;
-    } else
-    {
-        readRecords(globalHolder.qryIds, origSeqs, infile);
-    }
+    int ret = myReadRecords(globalHolder.qryIds, origSeqs, infile);
+    if (ret)
+        return ret;
 
     // translate
     loadQueryImplTrans(globalHolder.qrySeqs,
@@ -536,7 +530,7 @@ generateSeeds(TLocalHolder & lH)
     if (lH.options.doubleIndexing)
     {
         appendToStatus(lH.statusStr, lH.options, 1, "Block ", std::setw(4), 
-                       lH.i, ": Generating Seeds…");
+                       lH.i, ": Generating Seeds...");
         if (lH.options.isTerm)
             myPrint(lH.options, 1, lH.statusStr);
     }
@@ -584,7 +578,7 @@ generateTrieOverSeeds(TLocalHolder & lH)
 {
     if (lH.options.doubleIndexing)
     {
-        appendToStatus(lH.statusStr, lH.options, 1, "Generating Query-Index…");
+        appendToStatus(lH.statusStr, lH.options, 1, "Generating Query-Index...");
         if (lH.options.isTerm)
             myPrint(lH.options, 1, lH.statusStr);
     }
@@ -625,7 +619,7 @@ template <typename BackSpec, typename TLocalHolder>
 inline void
 __searchDoubleIndex(TLocalHolder & lH)
 {
-    appendToStatus(lH.statusStr, lH.options, 1, "Seeding…");
+    appendToStatus(lH.statusStr, lH.options, 1, "Seeding...");
     if (lH.options.isTerm)
         myPrint(lH.options, 1, lH.statusStr);
 
@@ -716,7 +710,7 @@ sortMatches(TLocalHolder & lH)
 {
     if (lH.options.doubleIndexing)
     {
-        appendToStatus(lH.statusStr, lH.options, 1, "Sorting hits…");
+        appendToStatus(lH.statusStr, lH.options, 1, "Sorting hits...");
         if (lH.options.isTerm)
             myPrint(lH.options, 1, lH.statusStr);
     }
@@ -1100,7 +1094,7 @@ iterateMatches(TLocalHolder & lH)
     if (lH.options.doubleIndexing)
     {
         appendToStatus(lH.statusStr, lH.options, 1,
-                       "Extending and writing hits…");
+                       "Extending and writing hits...");
         myPrint(lH.options, 1, lH.statusStr);
     }
 
