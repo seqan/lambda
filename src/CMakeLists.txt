@@ -27,7 +27,8 @@ endif (NOT CXX11_FOUND)
 
 # Warn if OpenMP was not found.
 if (NOT SEQAN_HAS_OPENMP)
-    message (WARNING "WARNING: OpenMP not found. Lambda will be built without multi-threading! This is probably not what you want!")
+    message (WARNING "WARNING WARNING WARNING\nWARNING: OpenMP not found. Lambda will be built without multi-threading! "
+    "This is probably not what you want! Use GCC or a very, very recent version of Clang.\nWARNING WARNING WARNING")
 endif (NOT SEQAN_HAS_OPENMP)
 
 # Warn if Zlib was not found.
@@ -62,7 +63,7 @@ if (LAMBDA_FASTBUILD)
     add_definitions (-DFASTBUILD=1)
 endif (LAMBDA_FASTBUILD)
 
-option (LAMBDA_NATIVE_BUILD "Set to OFF to disable architecture-specific optimizations, e.g. g++ -march=native." ON)
+option (LAMBDA_NATIVE_BUILD "Set to OFF to disable architecture-specific optimizations, i.e. g++ -march=native." ON)
 if (LAMBDA_NATIVE_BUILD)
     set (SEQAN_CXX_FLAGS "${SEQAN_CXX_FLAGS} -march=native")
 endif (LAMBDA_NATIVE_BUILD)
@@ -78,6 +79,7 @@ include_directories (${SEQAN_INCLUDE_DIRS})
 add_definitions (${SEQAN_DEFINITIONS})
 
 # Add definitions set by the build system.
+add_definitions (-DSEQAN_VERSION_STRING="${SEQAN_VERSION_STRING}")
 add_definitions (-DSEQAN_REVISION="${SEQAN_REVISION}")
 add_definitions (-DSEQAN_DATE="${SEQAN_DATE}")
 add_definitions (-DSEQAN_APP_VERSION="${SEQAN_APP_VERSION}")
@@ -100,7 +102,7 @@ target_link_libraries (lambda ${SEQAN_LIBRARIES})
 target_link_libraries (lambda_indexer ${SEQAN_LIBRARIES})
 
 # Add CXX flags found by find_package (SeqAn).
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN_CXX_FLAGS} ${CXX11_CXX_FLAGS} ${CXX14_CXX_FLAGS} -Wno-vla")
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN_CXX_FLAGS} ${CXX11_CXX_FLAGS} -Wno-vla")
 
 set(BUILD_SHARED_LIBS OFF)
 

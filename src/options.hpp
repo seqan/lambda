@@ -358,6 +358,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     "DatA");
     // Set short description, version, and date.
     std::string versionString = std::string(SEQAN_APP_VERSION) + " (SeqAn " +
+                                std::string(SEQAN_VERSION_STRING) + ", Revision " +
                                 std::string(SEQAN_REVISION) + ")";
     setVersion(parser, versionString);
     setDate(parser, __DATE__);
@@ -644,7 +645,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
                     "reduction has a strong "
                     "influence on both speed and sensitivity. We recommend the "
                     "following alternative profiles for protein searches:");
-    addText(parser, "fast (high similarity):       \033[1m-ar 0 -sl 7 -sd 0\033[0m");
+    addText(parser, "fast (high similarity):       \033[1m-ar none -sl 7 -sd 0\033[0m");
     addText(parser, "sensitive (lower similarity): \033[1m-so 5\033[0m");
 
     addTextSection(parser, "Speed VS memory requirements");
