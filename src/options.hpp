@@ -314,40 +314,6 @@ struct LambdaIndexerOptions : public SharedOptions
 ArgumentParser::ParseResult
 parseCommandLineShared(SharedOptions & options, ArgumentParser & parser);
 
-template <typename TFile>
-CharString getAllExtensions(TFile const &)
-{
-    CharString ret;
-    std::vector<std::string> extensions;
-    TFile file;
-    _getCompressionExtensions(extensions,
-                              typename TFile::TFileFormats(),
-                              typename FileFormat<typename TFile::TStream>::Type(),
-                              false);
-//    unsigned l = length(extensions);
-// //     ret = concat(extensions, ' ');
-// #if (SEQAN_HAS_ZLIB == 1)
-// // this gets too much
-// //     _getCompressionExtensions(extensions,
-// //                               typename TFile::TFileFormats(),
-// //                               GZFile(),
-// //                               false);
-//     for(unsigned i = 0; i < l; ++i)
-//         appendValue(extensions, extensions[i] + std::string(".gz"));
-// #endif
-//
-// #if (SEQAN_HAS_BZIP2 == 1)
-// //     _getCompressionExtensions(extensions,
-// //                               typename TFile::TFileFormats(),
-// //                               BZ2File(),
-// //                               false);
-//     for(unsigned i = 0; i < l; ++i)
-//         appendValue(extensions, extensions[i] + std::string(".bz2"));
-// #endif
-    ret = concat(extensions, ' ');
-    return ret;
-}
-
 ArgumentParser::ParseResult
 parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 {
@@ -377,7 +343,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         ArgParseArgument::INPUT_FILE,
         "IN"));
     setRequired(parser, "q");
-    setValidValues(parser, "query", toCString(getAllExtensions(SeqFileIn())));
+    setValidValues(parser, "query", toCString(concat(getFileExtensions(SeqFileIn()), ' ')));
 
     addOption(parser, ArgParseOption("d", "database",
         "Database sequences (fasta), with precomputed index (.sa or .fm).",
@@ -399,10 +365,10 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         "File to hold reports on hits (.m8 is blastall -m8 et cetera)",
         ArgParseArgument::OUTPUT_FILE,
         "OUT"));
-    CharString exts = getAllExtensions(BlastTabularFileOut<>());
+    CharString exts = concat(getFileExtensions(BlastTabularFileOut<>()), ' ');
     appendValue(exts, ' ');
-    append(exts, getAllExtensions(BlastReportFileOut<>()));
-//     write(std::cout, exts);
+    append(exts, concat(getFileExtensions(BlastReportFileOut<>()), ' '));
+
     setValidValues(parser, "output", toCString(exts));
     setDefaultValue(parser, "output", "output.m8");
 
