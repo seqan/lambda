@@ -323,9 +323,9 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setShortDescription(parser, "the Local Aligner for Massive Biological "
     "DatA");
     // Set short description, version, and date.
-    std::string versionString = std::string(SEQAN_APP_VERSION) + " (SeqAn " +
-                                std::string(SEQAN_VERSION_STRING) + ", Revision " +
-                                std::string(SEQAN_REVISION) + ")";
+    std::string versionString = std::string(SEQAN_APP_VERSION) + " (Git commit " +
+                                std::string(SEQAN_REVISION) + "),\t SeqAn version: " +
+                                std::string(SEQAN_VERSION_STRING);
     setVersion(parser, versionString);
     setDate(parser, __DATE__);
 
@@ -346,11 +346,11 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setValidValues(parser, "query", toCString(concat(getFileExtensions(SeqFileIn()), ' ')));
 
     addOption(parser, ArgParseOption("d", "database",
-        "Database sequences (fasta), with precomputed index (.sa or .fm).",
+        "Path to original database sequences (a precomputed index with .sa or .fm needs to exist!).",
         ArgParseArgument::INPUT_FILE,
         "IN"));
     setRequired(parser, "d");
-    setValidValues(parser, "database", "fasta fa fna faa fas");
+    setValidValues(parser, "database", toCString(concat(getFileExtensions(SeqFileIn()), ' ')));
 
     addOption(parser, ArgParseOption("di", "db-index-type",
         "database index is in this format.",
@@ -362,7 +362,8 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     addSection(parser, "Output Options");
     addOption(parser, ArgParseOption("o", "output",
-        "File to hold reports on hits (.m8 is blastall -m8 et cetera)",
+        "File to hold reports on hits (.m* are blastall -m* formats; .m8 is tab-seperated, .m9 is tab-seperated with "
+        "with comments, .m0 is pairwise format)",
         ArgParseArgument::OUTPUT_FILE,
         "OUT"));
     CharString exts = concat(getFileExtensions(BlastTabularFileOut<>()), ' ');
@@ -764,8 +765,10 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
     setShortDescription(parser, "the Local Aligner for Massive Biological "
     "DatA");
     // Set short description, version, and date.
-    std::string versionString = std::string(SEQAN_APP_VERSION) + " (SeqAn " +
-                                std::string(SEQAN_REVISION) + ")";
+    std::string versionString = std::string(SEQAN_APP_VERSION) + " (Git commit " +
+                                std::string(SEQAN_REVISION) + "),\t SeqAn version: " +
+                                std::string(SEQAN_VERSION_STRING);
+
     setVersion(parser, versionString);
     setDate(parser, __DATE__);
 
@@ -777,11 +780,11 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
 
     addSection(parser, "Input Options");
     addOption(parser, ArgParseOption("d", "database",
-        "Database sequences (fasta).",
+        "Database sequences.",
         ArgParseArgument::INPUT_FILE,
         "IN"));
     setRequired(parser, "database");
-    setValidValues(parser, "database", "fasta fa fna faa");
+    setValidValues(parser, "database", toCString(concat(getFileExtensions(SeqFileIn()), ' ')));
 
     addOption(parser, ArgParseOption("s",
         "segfile",
