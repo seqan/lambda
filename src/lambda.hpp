@@ -478,10 +478,19 @@ loadQuery(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, TOutFormat, p, h>
     TCDStringSet<OrigQryAlph<p>> origSeqs;
 
 //     std::cout << "FOO " <<  toCString(options.queryFile) << " BAR" << std::endl;
-    SeqFileIn infile(toCString(options.queryFile));
-    int ret = myReadRecords(globalHolder.qryIds, origSeqs, infile);
-    if (ret)
-        return ret;
+    try
+    {
+        SeqFileIn infile(toCString(options.queryFile));
+        int ret = myReadRecords(globalHolder.qryIds, origSeqs, infile);
+        if (ret)
+            return ret;
+    }
+    catch(IOError const & e)
+    {
+        std::cerr << "\nIOError thrown: " << e.what() << '\n'
+                  << "Could not read the query file, make sure it exists and is readable.\n";
+        return -1;
+    }
 
     // translate
     loadQueryImplTrans(globalHolder.qrySeqs,

@@ -24,12 +24,6 @@
 // lambda.cpp: Main File for Lambda
 // ==========================================================================
 
-// #define FASTBUILD
-
-// #define SEQAN_DEBUG_INDEX
-
-// #define _GLIBCXX_USE_C99 1
-
 #include <iostream>
 
 #include <seqan/basic.h>
@@ -169,11 +163,17 @@ int main(int argc, char const ** argv)
 inline int
 argConv0(LambdaOptions const & options)
 {
-    if (endsWith(options.output, ".m0"))
+    CharString output = options.output;
+    if (endsWith(output, ".gz"))
+        output = prefix(output, length(output) - 3);
+    else if (endsWith(output, ".bz2"))
+        output = prefix(output, length(output) - 4);
+
+    if (endsWith(output, ".m0"))
         return argConv05(options, BlastReport(), BlastTabularSpecSelector<BlastTabularSpec::NO_COMMENTS>());
-    else if (endsWith(options.output, ".m8"))
+    else if (endsWith(output, ".m8"))
         return argConv05(options, BlastTabular(), BlastTabularSpecSelector<BlastTabularSpec::NO_COMMENTS>());
-    else if (endsWith(options.output, ".m9"))
+    else if (endsWith(output, ".m9"))
         return argConv05(options, BlastTabular(), BlastTabularSpecSelector<BlastTabularSpec::COMMENTS>());
     return -1;
 }

@@ -390,22 +390,10 @@ int myReadRecords(TCDStringSet<char> & ids, TCDStringSet<Dna5> & seqs, TFile & f
     catch(ParseError const & e)
     {
         std::cerr << "\nParseError thrown: " << e.what() << '\n'
-                  << "Make sure that the file is standards compliant. If you get an unknown character warning "
-                  << "make sure you have set the right program parameter (-p) -> "
+                  << "Make sure that the file is standards compliant. If you get an unexpected character warning "
+                  << "make sure you have set the right program parameter (-p), i.e. "
                   << "Lambda expected nucleic acid alphabet, maybe the file was protein?\n";
         return -1;
-    }
-    //TODO catching this or the following global don't work, DEBUG this!
-    catch(IOError const & e)
-    {
-        std::cerr << "\nIOError thrown: " << e.what() << '\n'
-                  << "Could not read the query file, make sure it exists and is readable.\n";
-        return -1;
-    }
-    catch(...)
-    {
-        std::cerr << "FOO\n";
-        return -2;
     }
 
     seqs = tmpSeqs; // convert IUPAC alphabet to Dna5
@@ -425,18 +413,6 @@ int myReadRecords(TCDStringSet<char> & ids, TCDStringSet<AminoAcid> & seqs, TFil
         std::cerr << "\nParseError thrown: " << e.what() << '\n'
                   << "Make sure that the file is standards compliant.\n";
         return -1;
-    }
-    //TODO catching this or the following global don't work, DEBUG this!
-    catch(IOError const & e)
-    {
-        std::cerr << "\nIOError thrown: " << e.what() << '\n'
-                  << "Could not read the query file, make sure it exists and is readable.\n";
-        return -1;
-    }
-    catch(...)
-    {
-        std::cerr << "FOO\n";
-        return -2;
     }
 
     if (length(seqs) > 0)
