@@ -246,6 +246,7 @@ struct LambdaOptions : public SharedOptions
     bool            revComp     = true;
 
     std::string     output;
+    std::vector<BlastMatchField<>::Enum> columns;
 
     unsigned        queryPart = 0;
 
@@ -372,6 +373,12 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     setValidValues(parser, "output", toCString(exts));
     setDefaultValue(parser, "output", "output.m8");
+
+    addOption(parser, ArgParseOption("oc", "output-columns",
+        "Print specified column combination and/or order (.m8 and .m9 outputs only); call -oc help for more details.",
+        ArgParseArgument::STRING,
+        "STR"));
+    setDefaultValue(parser, "output-columns", "std");
 
     addOption(parser, ArgParseOption("id", "percent-identity",
         "Output only matches above this threshold (checked before e-value "
@@ -658,6 +665,48 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 //         options.fileFormat = 0;
 
     getOptionValue(options.output, parser, "output");
+
+    getOptionValue(buffer, parser, "output-columns");
+    if (buffer == "help")
+    {
+        std::cout << "Please specify the columns in this format -oc 'column1 column2', i.e. space-seperated and "
+                  << "enclosed in single quotes.\nThe specifiers are the same as in NCBI Blast, currently "
+                  << "the following are supported:\n";
+        for (unsigned i = 0; i < BlastMatchField<>::numFields; ++i)
+        {
+            if (BlastMatchField<>::implemented[i])
+            {
+                std::cout << "\t" << BlastMatchField<>::optionLabels[i]
+                          << (length(BlastMatchField<>::optionLabels[i]) >= 8 ? "\t" : "\t\t")
+                          << BlastMatchField<>::descriptions[i] << "\n";
+            }
+        }
+        return ArgumentParser::PARSE_HELP;
+    }
+    else
+    {
+        StringSet<CharString> fields;
+        strSplit(fields, buffer, IsSpace(), false);
+        for (auto str : fields)
+        {
+            bool resolved = false;
+            for (unsigned i = 0; i < BlastMatchField<>::numFields; ++i)
+            {
+                if (BlastMatchField<>::optionLabels[i] == str)
+                {
+                    appendValue(options.columns, static_cast<BlastMatchField<>::Enum>(i));
+                    resolved = true;
+                    break;
+                }
+            }
+            if (!resolved)
+            {
+                std::cerr << "Unknown column specifier \"" << str << "\". Please see -oc help for valid options.\n";
+                return ArgumentParser::PARSE_ERROR;
+            }
+        }
+    }
+    clear(buffer);
 
     getOptionValue(options.seedLength, parser, "seed-length");
     if ((!isSet(parser, "seed-length")) &&

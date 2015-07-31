@@ -463,6 +463,7 @@ realMain(LambdaOptions                  const & options,
 //               << back(globalHolder.redSubjSeqs) << "\n";
 
     open(globalHolder.outfile, toCString(options.output));
+    context(globalHolder.outfile).fields = options.columns;
     writeHeader(globalHolder.outfile);
 
     if (options.doubleIndexing)
