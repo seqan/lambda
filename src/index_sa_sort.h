@@ -36,10 +36,10 @@
 #define LAMBDA_INDEX_SA_SORT_H
 
 #include <atomic>
-#ifdef _OPENMP
+#if defined(_OPENMP) && defined(__GNUC__) && !defined(__clang__)
+#define GNUOMP
 #include <parallel/algorithm>
 #endif
-
 
 namespace SEQAN_NAMESPACE_MAIN
 {
@@ -56,7 +56,7 @@ struct QuickSortBucketTag {};
 template <typename TIndex>
 struct SaAdvancedSortAlgoTag
 {
-#ifdef _OPENMP
+#ifdef GNUOMP
     typedef __gnu_parallel::default_parallel_tag Type;
 #else
     typedef void Type;
@@ -66,7 +66,7 @@ struct SaAdvancedSortAlgoTag
 template <>
 struct SaAdvancedSortAlgoTag<MergeSortTag>
 {
-#ifdef _OPENMP
+#ifdef GNUOMP
     typedef __gnu_parallel::multiway_mergesort_tag Type;
 #else
     typedef void Type;
@@ -76,7 +76,7 @@ struct SaAdvancedSortAlgoTag<MergeSortTag>
 template <>
 struct SaAdvancedSortAlgoTag<QuickSortTag>
 {
-#ifdef _OPENMP
+#ifdef GNUOMP
     typedef __gnu_parallel::quicksort_tag Type;
 #else
     typedef void Type;
@@ -269,7 +269,7 @@ createSuffixArray(TSA & SA,
 //         end(SA, Standard()),
 //         SuffixLess_<typename Value<TSA>::Type, TText const>(s));
 //     } else
-#ifdef _OPENMP
+#ifdef GNUOMP
     typedef typename SaAdvancedSortAlgoTag<TAlgoSpec>::Type TAlgo;
     __gnu_parallel::sort(
         begin(SA, Standard()),
@@ -372,7 +372,7 @@ createSuffixArray(TSA & sa,
 //     }
 //     std::cout << "typeof(TSize) == " << typeid(TTextSize).name() << std::endl;
     // sort up to certain depth
-#ifdef _OPENMP
+#ifdef GNUOMP
     __gnu_parallel::sort(begin(sa, Standard()),
                          end(sa, Standard()),
                          QGramLess_<TIndexSAPos, TText const>(text,
@@ -429,7 +429,7 @@ createSuffixArray(TSA & sa,
     for (uint64_t i = 1; i < length(dir); ++i)
     {
         if (dir[i - 1] + 1 < dir[i])
-#ifdef _OPENMP
+#ifdef GNUOMP
             __gnu_parallel::sort(
                 saBegin + dir[i - 1],
                 saBegin + dir[i],
