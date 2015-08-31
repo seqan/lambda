@@ -351,7 +351,7 @@ seedLooksPromising(
         {
             effectiveQBegin -= min;
             effectiveSBegin -= min;
-            effectiveLength += min; //TODO this should be -= as well
+            effectiveLength += min;
         }
 
         effectiveLength = std::min({
