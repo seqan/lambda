@@ -1070,13 +1070,35 @@ computeBlastMatch(TBlastMatch         & bm,
         return EVALUE;
     }
 
-    bm.qFrameShift = (m.qryId % 3) + 1;
-    if (m.qryId % 6 > 2)
-        bm.qFrameShift = -bm.qFrameShift;
+    if (qIsTranslated(TLocalHolder::TGlobalHolder::blastProgram))
+    {
+        bm.qFrameShift = (m.qryId % 3) + 1;
+        if (m.qryId % 6 > 2)
+            bm.qFrameShift = -bm.qFrameShift;
+    } else if (qHasRevComp(TLocalHolder::TGlobalHolder::blastProgram))
+    {
+        bm.qFrameShift = 1;
+        if (m.qryId % 2)
+            bm.qFrameShift = -bm.qFrameShift;
+    } else
+    {
+        bm.qFrameShift = 0;
+    }
 
-    bm.sFrameShift = (m.subjId % 3) + 1;
-    if (m.subjId % 6 > 2)
-        bm.sFrameShift = -bm.sFrameShift;
+    if (sIsTranslated(TLocalHolder::TGlobalHolder::blastProgram))
+    {
+        bm.sFrameShift = (m.subjId % 3) + 1;
+        if (m.subjId % 6 > 2)
+            bm.sFrameShift = -bm.sFrameShift;
+    } else if (sHasRevComp(TLocalHolder::TGlobalHolder::blastProgram))
+    {
+        bm.sFrameShift = 1;
+        if (m.subjId % 2)
+            bm.sFrameShift = -bm.sFrameShift;
+    } else
+    {
+        bm.sFrameShift = 0;
+    }
 
     return 0;
 }
@@ -1165,18 +1187,16 @@ iterateMatches(TLocalHolder & lH)
 
                         uint64_t before = record.matches.size();
                         record.matches.sort();
-                        if (!lH.options.filterPutativeDuplicates)
-                        {
-                            record.matches.unique();
-                            lH.stats.hitsDuplicate += before -
-                                                      record.matches.size();
-
-                            before = record.matches.size();
-                        }
-                        record.matches.resize(lH.options.maxMatches + 1);
+//                         if (!lH.options.filterPutativeDuplicates)
+//                         {
+                        record.matches.unique();
+                        lH.stats.hitsDuplicate += before - record.matches.size();
+                        before = record.matches.size();
+//                         }
+                        if (record.matches.size() > (lH.options.maxMatches + 1))
+                            record.matches.resize(lH.options.maxMatches + 1);
                         // +1 so as not to trigger % == 0 in the next run
-                        lH.stats.hitsAbundant += before -
-                                                 record.matches.size();
+                        lH.stats.hitsAbundant += before - record.matches.size();
 
                         if (lH.options.filterPutativeAbundant)
                         {
@@ -1187,11 +1207,11 @@ iterateMatches(TLocalHolder & lH)
                             if (int(medianTopNMatchesAfter) <=
                                 int(medianTopNMatchesBefore))
                             {
-                                // declare all the rest as putative duplicates
+                                // declare all the rest as putative abundant
                                 while ((it != itEnd) &&
                                        (trueQryId == it->qryId / qNumFrames(lH.gH.blastProgram)))
                                 {
-                                    // not already marked as duplicate or merged
+                                    // not already marked as abundant, duplicate or merged
                                     if (!isSetToSkip(*it))
                                         ++lH.stats.hitsPutativeAbundant;
                                     ++it;
