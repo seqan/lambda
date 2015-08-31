@@ -316,7 +316,7 @@ ArgumentParser::ParseResult
 parseCommandLineShared(SharedOptions & options, ArgumentParser & parser);
 
 ArgumentParser::ParseResult
-parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
+parseCommandLine(LambdaOptions & options, int argc, char const ** argv, bool fullHelp = false)
 {
     // Setup ArgumentParser.
     ArgumentParser parser("lambda");
@@ -338,19 +338,36 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     "sequences and searches in protein space. It is compatible to BLAST, but "
     "much faster than BLAST and many other comparable tools.");
 
+    addDescription(parser, "(c) 2013-2015 Hannes Hauswedell, redistributable under the terms of the GNU General Public "
+        "License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any"
+        " later version.");
+
+    addOption(parser, ArgParseOption("hh", "full-help",
+        "Display help with advanced command line options."));
+
+    addOption(parser, ArgParseOption("v", "verbosity",
+        "Display more/less diagnostic output during operation: 0 [only errors]; 1 [default]; 2 "
+        "[+run-time, options and statistics].",
+        ArgParseArgument::INTEGER));
+    setDefaultValue(parser, "verbosity", "1");
+    setMinValue(parser, "verbosity", "0");
+    setMaxValue(parser, "verbosity", "2");
+
     addSection(parser, "Input Options");
     addOption(parser, ArgParseOption("q", "query",
         "Query sequences.",
         ArgParseArgument::INPUT_FILE,
         "IN"));
-    setRequired(parser, "q");
+    if (!fullHelp)
+        setRequired(parser, "q");
     setValidValues(parser, "query", toCString(concat(getFileExtensions(SeqFileIn()), ' ')));
 
     addOption(parser, ArgParseOption("d", "database",
         "Path to original database sequences (a precomputed index with .sa or .fm needs to exist!).",
         ArgParseArgument::INPUT_FILE,
         "IN"));
-    setRequired(parser, "d");
+    if (!fullHelp)
+        setRequired(parser, "d");
     setValidValues(parser, "database", toCString(concat(getFileExtensions(SeqFileIn()), ' ')));
 
     addOption(parser, ArgParseOption("di", "db-index-type",
@@ -364,7 +381,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     addSection(parser, "Output Options");
     addOption(parser, ArgParseOption("o", "output",
         "File to hold reports on hits (.m* are blastall -m* formats; .m8 is tab-seperated, .m9 is tab-seperated with "
-        "with comments, .m0 is pairwise format)",
+        "with comments, .m0 is pairwise format).",
         ArgParseArgument::OUTPUT_FILE,
         "OUT"));
     CharString exts = concat(getFileExtensions(BlastTabularFileOut<>()), ' ');
@@ -400,15 +417,8 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setDefaultValue(parser, "num-matches", "500");
     setMinValue(parser, "num-matches", "1");
 
-    addOption(parser, ArgParseOption("v", "verbosity",
-        "The amount of terminal output printed; 0 [only errors]; 1 [default]; 2 "
-        "[+run-time, options and statistics].",
-        ArgParseArgument::INTEGER));
-    setDefaultValue(parser, "verbosity", "1");
-    setMinValue(parser, "verbosity", "0");
-    setMaxValue(parser, "verbosity", "2");
-
-    addSection(parser, "General Options");
+    if (fullHelp)
+        addSection(parser, "General Options");
 #ifdef _OPENMP
     addOption(parser, ArgParseOption("t", "threads",
         "number of threads to run concurrently.",
@@ -484,7 +494,8 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setValidValues(parser, "alphabet-reduction", "none murphy10");
     setDefaultValue(parser, "alphabet-reduction", "murphy10");
 
-    addSection(parser, "Seeding / Filtration");
+    if (fullHelp)
+        addSection(parser, "Seeding / Filtration");
 //     addOption(parser, ArgParseOption("su",
 //                                             "ungapped-seeds",
 //                                             "allow only mismatches in seeds.",
@@ -520,7 +531,8 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setDefaultValue(parser, "seed-min-length", "10");
     hideOption(parser, "seed-min-length"); // HIDDEN
 
-    addSection(parser, "Miscellaneous Heuristics");
+    if (fullHelp)
+        addSection(parser, "Miscellaneous Heuristics");
 
     //TODO make min == 1 also for noreduction
     addOption(parser, ArgParseOption("ps", "pre-scoring",
@@ -563,8 +575,8 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 //                                             "(-1 -> off).",
 //                                             ArgParseArgument::DOUBLE));
 //     setDefaultValue(parser, "seedminbits", "-1");
-
-    addSection(parser, "Scoring");
+    if (fullHelp)
+        addSection(parser, "Scoring");
 
     addOption(parser, ArgParseOption("sc", "scoring-scheme",
         "'62' for Blosum62 (default); '50' for Blosum50; '0' for manual "
@@ -592,7 +604,8 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         ArgParseArgument::INTEGER));
     setDefaultValue(parser, "score-mismatch", "-3");
 
-    addSection(parser, "Extension");
+    if (fullHelp)
+        addSection(parser, "Extension");
 
     addOption(parser, ArgParseOption("x", "x-drop",
         "Stop Banded extension if score x below the maximum seen (-1 means no "
@@ -622,28 +635,70 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     addText(parser, "fast (high similarity):       \033[1m-ar none -sl 7 -sd 0\033[0m");
     addText(parser, "sensitive (lower similarity): \033[1m-so 5\033[0m");
 
-    addTextSection(parser, "Speed VS memory requirements");
-    addText(parser, "Lambda requires approximately the following amount of RAM:"
-                    " \033[1msize(queryFile) + size(dbIDs) + 2 * size(dbSeqs)\033[0m. "
-                    "If you have more RAM, use double indexing and SA:\n"
-                    "\033[1m-di sa -qi radix\033[0m "
-                    "which will result in an additional speed-up of up to 30% "
-                    "compared to the published version (you need to run the "
-                    "indexer with \033[1m-di sa \033[0m, as well). The amount "
-                    "of RAM required will be: "
-                    "\033[1msize(queryFile) + size(dbIDs) + 7 * size(dbSeqs) + n\033[0m "
-                    "where n grows slowly but linearly with input size. "
-                    "Note that size(dbSeqs) refers to the total "
-                    "sequence length and does not include IDs (so it is less "
-                    "than the size of the file).");
-    addText(parser, "To save more RAM, you can define "
-                    "LAMBDA_BITCOPMRESSED_STRINGS while compiling lambda. "
-                    "This will reduce memory usage by about:"
-                    " \033[1m0.3 * ( size(queryFile) + size(dbSeqs) )\033[0m,"
-                    " but slow down lambda by about 10%.");
+    if (fullHelp)
+    {
+        addTextSection(parser, "Speed VS memory requirements");
+        addText(parser, "Lambda requires approximately the following amount of RAM:"
+                        " \033[1msize(queryFile) + size(dbIDs) + 2 * size(dbSeqs)\033[0m. "
+                        "If you have more RAM, use double indexing and SA:\n"
+                        "\033[1m-di sa -qi radix\033[0m "
+                        "which will result in an additional speed-up of up to 30% "
+                        "compared to the published version (you need to run the "
+                        "indexer with \033[1m-di sa \033[0m, as well). The amount "
+                        "of RAM required will be: "
+                        "\033[1msize(queryFile) + size(dbIDs) + 7 * size(dbSeqs) + n\033[0m "
+                        "where n grows slowly but linearly with input size. "
+                        "Note that size(dbSeqs) refers to the total "
+                        "sequence length and does not include IDs (so it is less "
+                        "than the size of the file).");
+        addText(parser, "To save more RAM, you can define "
+                        "LAMBDA_BITCOPMRESSED_STRINGS while compiling lambda. "
+                        "This will reduce memory usage by about:"
+                        " \033[1m0.3 * ( size(queryFile) + size(dbSeqs) )\033[0m,"
+                        " but slow down lambda by about 10%.");
+    }
+
+    if (fullHelp)
+    {
+        printHelp(parser, std::cout);
+        return ArgumentParser::PARSE_HELP;
+    } else
+    {
+        hideOption(parser, "db-index-type");
+        hideOption(parser, "threads");
+        hideOption(parser, "query-index-type");
+
+        hideOption(parser, "output-columns");
+
+        hideOption(parser, "seed-length");
+        hideOption(parser, "seed-offset");
+        hideOption(parser, "seed-delta");
+
+        hideOption(parser, "pre-scoring");
+        hideOption(parser, "pre-scoring-threshold");
+        hideOption(parser, "filter-putative-duplicates");
+        hideOption(parser, "filter-putative-abundant");
+
+        hideOption(parser, "genetic-code");
+
+        hideOption(parser, "scoring-scheme");
+        hideOption(parser, "score-gap");
+        hideOption(parser, "score-gap-open");
+        hideOption(parser, "score-match");
+        hideOption(parser, "score-mismatch");
+
+        hideOption(parser, "x-drop");
+        hideOption(parser, "band");
+    }
 
     // Parse command line.
     ArgumentParser::ParseResult res = parse(parser, argc, argv);
+
+    if (isSet(parser, "full-help"))
+    {
+        // recursively call this function
+        return parseCommandLine(options, argc, argv, true);
+    }
 
     // Only extract  options if the program will continue after parseCommandLine()
     if (res != ArgumentParser::PARSE_OK)
@@ -672,7 +727,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         std::cout << "Please specify the columns in this format -oc 'column1 column2', i.e. space-seperated and "
                   << "enclosed in single quotes.\nThe specifiers are the same as in NCBI Blast, currently "
                   << "the following are supported:\n";
-        for (unsigned i = 0; i < BlastMatchField<>::numFields; ++i)
+        for (unsigned i = 0; i < length(BlastMatchField<>::implemented); ++i)
         {
             if (BlastMatchField<>::implemented[i])
             {
@@ -690,7 +745,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         for (auto str : fields)
         {
             bool resolved = false;
-            for (unsigned i = 0; i < BlastMatchField<>::numFields; ++i)
+            for (unsigned i = 0; i < length(BlastMatchField<>::optionLabels); ++i)
             {
                 if (BlastMatchField<>::optionLabels[i] == str)
                 {
