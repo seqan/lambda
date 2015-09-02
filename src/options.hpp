@@ -520,7 +520,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setDefaultValue(parser, "alphabet-reduction", "murphy10");
     setAdvanced(parser, "alphabet-reduction");
 
-        addSection(parser, "Seeding / Filtration");
+    addSection(parser, "Seeding / Filtration");
 //     addOption(parser, ArgParseOption("su",
 //                                             "ungapped-seeds",
 //                                             "allow only mismatches in seeds.",
@@ -607,8 +607,8 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 //                                             "(-1 -> off).",
 //                                             ArgParseArgument::DOUBLE));
 //     setDefaultValue(parser, "seedminbits", "-1");
-//     if (fullHelp)
-        addSection(parser, "Scoring");
+
+    addSection(parser, "Scoring");
 
     addOption(parser, ArgParseOption("sc", "scoring-scheme",
         "'62' for Blosum62 (default); '50' for Blosum50; '0' for manual "
@@ -641,8 +641,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setDefaultValue(parser, "score-mismatch", "-3");
     setAdvanced(parser, "score-mismatch");
 
-//     if (fullHelp)
-        addSection(parser, "Extension");
+    addSection(parser, "Extension");
 
     addOption(parser, ArgParseOption("x", "x-drop",
         "Stop Banded extension if score x below the maximum seen (-1 means no "
@@ -666,8 +665,8 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
                     "reduction has a strong "
                     "influence on both speed and sensitivity. We recommend the "
                     "following alternative profiles for protein searches:");
-    addText(parser, "fast (high similarity):       \033[1m-ar none -sl 7 -sd 0\033[0m");
-    addText(parser, "sensitive (lower similarity): \033[1m-so 5\033[0m");
+    addText(parser, "fast (high similarity):       -ar none -sl 7 -sd 0");
+    addText(parser, "sensitive (lower similarity): -so 5");
 
     addText(parser, "For further information see the MANUAL distributed with Lambda and available online.");
 //         addTextSection(parser, "Speed VS memory requirements");
