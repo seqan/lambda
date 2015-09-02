@@ -1,0 +1,111 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>Lambda by seqan</title>
+
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/github-light.css">
+    <script src="javascripts/scale.fix.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1 class="header">Lambda</h1>
+        <p class="header">the Local Aligner for Massive Biological DatA </p>
+
+        <ul>
+          <li class="download"><a class="buttons" href="https://github.com/seqan/lambda/zipball/master">Download ZIP</a></li>
+          <li class="download"><a class="buttons" href="https://github.com/seqan/lambda/tarball/master">Download TAR</a></li>
+          <li><a class="buttons github" href="https://github.com/seqan/lambda">View On GitHub</a></li>
+        </ul>
+
+        <p class="header">This project is maintained by <a class="header name" href="https://github.com/seqan">seqan</a></p>
+
+
+      </header>
+      <section>
+        <h2>
+<a id="lambda-the-local-aligner-for-massive-biological-data" class="anchor" href="#lambda-the-local-aligner-for-massive-biological-data" aria-hidden="true"><span class="octicon octicon-link"></span></a>Lambda: the Local Aligner for Massive Biological DatA</h2>
+
+<p>Lambda is a local aligner optimized for many query sequences and searches in protein space. It is compatible to
+ BLAST, but much faster than BLAST and many other comparable tools.</p>
+
+<p>For the scientific background, see <a href="http://bioinformatics.oxfordjournals.org/content/30/17/i349.abstract">publication</a>.</p>
+
+<p>The latest stable version is available in the <a href="https://github.com/seqan/lambda/releases">releases</a>. Lambda is Free and open source software, so you can use it for any purpose, free of charge. However certain conditions apply when you (re-)distribute or modify Lambda, please respect the license. Also, <strong>please cite the publication</strong> if you use Lambda anywhere in your academic work. Thank you!</p>
+
+<h2>
+<a id="further-links" class="anchor" href="#further-links" aria-hidden="true"><span class="octicon octicon-link"></span></a>Further links</h2>
+
+<ul>
+<li>contact the author, <a href="mailto:hannes.hauswedell@%5Bmolgen.mpg.de%7Cfu-berlin.de%5D">Hannes Hauswedell</a>
+</li>
+<li>subscribe to the lambda-users mailinglist to receive news on new versions (contact the author for this!)</li>
+<li>report a bug on the <a href="https://github.com/seqan/lambda/issues">tracker</a>
+</li>
+</ul>
+
+<h2>
+<a id="instructions" class="anchor" href="#instructions" aria-hidden="true"><span class="octicon octicon-link"></span></a>Instructions</h2>
+
+<p>Run the indexer:</p>
+
+<pre><code>% bin/lambda_indexer -d db.fasta [-s db.seg]
+</code></pre>
+
+<p>Run lambda:</p>
+
+<pre><code>% bin/lambda -q query.fasta -d db.fasta
+</code></pre>
+
+<p>For a full list of options, see the help page:</p>
+
+<pre><code>% bin/lambda --help
+</code></pre>
+
+<p>or look at MANUAL.rst</p>
+
+<h2>
+<a id="frequently-asked-questions" class="anchor" href="#frequently-asked-questions" aria-hidden="true"><span class="octicon octicon-link"></span></a>Frequently Asked Questions</h2>
+
+<h3>
+<a id="what-kind-of-data-can-i-use-lambda-with" class="anchor" href="#what-kind-of-data-can-i-use-lambda-with" aria-hidden="true"><span class="octicon octicon-link"></span></a>What kind of data can I use Lambda with?</h3>
+
+<p>Lambda is optimized for searches in protein space, so whenever your reads / query sequences represent proteins (transcriptome, exome, rna data ...) and/or your database is a protein database (uniprot, ncbi nr ...) Lambda will perform very well.</p>
+
+<h3>
+<a id="does-that-mean-i-cannot-use-it-to-replace-blastn-oder-megablast" class="anchor" href="#does-that-mean-i-cannot-use-it-to-replace-blastn-oder-megablast" aria-hidden="true"><span class="octicon octicon-link"></span></a>Does that mean I cannot use it to replace BlastN oder Megablast?</h3>
+
+<p>Lambda has a BlastN mode that shares many features of the protein searches (BlastP, BlastX, TBlastN, TBlastX), but that does not benefit from some optimizations that are specific for these modes. Our tests show that Lambda is still a big improvement over BlastN while being in a comparable sensitivity range below e-values of 0.1. Since less time has been spent on tuning the BlastN default parameters we recommend you try it on one of your data sets and compare it to BlastN before you use it with the same confidence. And we are interested in hearing your feedback on this mode and whether we should invest more resources into it!</p>
+
+<h3>
+<a id="what-kind-of-speed-ups-can-i-expect-over-ncbi-blast" class="anchor" href="#what-kind-of-speed-ups-can-i-expect-over-ncbi-blast" aria-hidden="true"><span class="octicon octicon-link"></span></a>What kind of speed-ups can I expect over NCBI Blast?</h3>
+
+<p>For protein modes we have measured speed-ups of 150-300x over NCBI Blast. Different options are available to increase speed further (at the cost of system memory or sensitivity of the results); the recommended fast mode has speed-ups over 2000x. The speed-up also depends on the data and is higher if the dataset is bigger.</p>
+
+<h3>
+<a id="what-kind-of-sensitivity-can-i-expect-compared-ncbi-blast" class="anchor" href="#what-kind-of-sensitivity-can-i-expect-compared-ncbi-blast" aria-hidden="true"><span class="octicon octicon-link"></span></a>What kind of sensitivity can I expect compared NCBI Blast?</h3>
+
+<p>For short reads sensitivity was measured to be over 96%. For reads of length over 900 the sensitivity dropped to a little over 80% in the default mode -- but this is still better than with other Blast-competitors. There are different parameters to increase sensitivity at the cost of speed.</p>
+
+<h3>
+<a id="how-much-memory-does-lambda-require" class="anchor" href="#how-much-memory-does-lambda-require" aria-hidden="true"><span class="octicon octicon-link"></span></a>How much memory does Lambda require?</h3>
+
+<p>In its default mode Lambda requires approximately the following amount of RAM
+size(queryFile) + 2 * size(dbFile)
+The indexer has additional memory requirements, please see <code>lambda_indexer --help</code>. Future releases will contain algorithms with much lower requirements and higher speed.</p>
+      </section>
+      <footer>
+        <p><small>Hosted on <a href="https://pages.github.com">GitHub Pages</a> using the Dinky theme</small></p>
+      </footer>
+    </div>
+    <!--[if !IE]><script>fixScale(document);</script><![endif]-->
+		
+  </body>
+</html>
