@@ -1,7 +1,7 @@
 // ==========================================================================
 //                                  lambda
 // ==========================================================================
-// Copyright (c) 2013, Hannes Hauswedell, FU Berlin
+// Copyright (c) 2013-2015, Hannes Hauswedell, FU Berlin
 // All rights reserved.
 //
 // This file is part of Lambda.
@@ -19,7 +19,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Lambda.  If not, see <http://www.gnu.org/licenses/>.*/
 // ==========================================================================
-// Author: Hannes Hauswedell <hauswedell@mi.fu-berlin.de>
+// Author: Hannes Hauswedell <hannes.hauswedell @ fu-berlin.de>
 // ==========================================================================
 // lambda.cpp: Main File for the main application
 // ==========================================================================
