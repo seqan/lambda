@@ -349,6 +349,9 @@ sharedSetup(ArgumentParser & parser)
     addDescription(parser, "Lambda is a local aligner optimized for many query "
         "sequences and searches in protein space. It is compatible to BLAST, but "
         "much faster than BLAST and many other comparable tools.");
+
+    addDescription(parser, "Detailed information is available in the wiki: "
+        "<https://github.com/seqan/lambda/wiki>");
 }
 
 // --------------------------------------------------------------------------
@@ -668,7 +671,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     addText(parser, "fast (high similarity):       -ar none -sl 7 -sd 0");
     addText(parser, "sensitive (lower similarity): -so 5");
 
-    addText(parser, "For further information see the MANUAL distributed with Lambda and available online.");
+    addText(parser, "For further information see the wiki: <https://github.com/seqan/lambda/wiki>");
 //         addTextSection(parser, "Speed VS memory requirements");
 //         addText(parser, "Lambda requires approximately the following amount of RAM:"
 //                         " \033[1msize(queryFile) + size(dbIDs) + 2 * size(dbSeqs)\033[0m. "
@@ -985,7 +988,10 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
 // //                     "an environment variable.");
 
     addTextSection(parser, "Remarks");
-    addText(parser, "Note that the indeces created are binary and not compatible between different CPU endiannesses. "
+    addText(parser, "Please see the wiki (<https://github.com/seqan/lambda/wiki>) for more information on which indexes"
+        " to chose and which algorithms to pick.");
+
+    addText(parser, "Note that the indexes created are binary and not compatible between different CPU endiannesses. "
         "Also the on-disk format is still subject to change between Lambda versions.");
 
     // Parse command line.

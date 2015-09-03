@@ -13,12 +13,15 @@ but **without any warranty**; without even the implied warranty of
 **merchantability** or **fitness for a particular purpose**. See the
 GNU General Public License for more details.
 
-See the file ``LICENSE-GPL3.rst`` or http://www.gnu.org/licenses/ for 
-a full text of the license and the rights and obligations implied.
+See the file `LICENSE-GPL3.rst <./LICENSE-GPL3.rst>`__ or
+http://www.gnu.org/licenses/ for a full text of the license and the
+rights and obligations implied.
 
 SeqAn copyright
 ===============
-Lambda contains code of the SeqAn project in the folder ``include/seqan``.
-See ``include/seqan/LICENSE`` for the terms. Please note that due to 
-technical reasons the repository contains other SeqAn applications, as well,
-that might be distributed under different terms.
+Lambda contains code of the SeqAn project in the folder
+`include/seqan <./include/seqan>`__. See
+`include/seqan/LICENSE <./include/seqan/LICENSE>`__  for the terms.
+Please note that due to technical reasons the repository contains
+other SeqAn applications, as well, that might be distributed under
+different terms.

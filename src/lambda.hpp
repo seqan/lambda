@@ -244,7 +244,7 @@ inline int
 loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
                     LambdaOptions const & options)
 {
-    std::string strIdent = "Reading Database Index from disk...";
+    std::string strIdent = "Loading Database Index...";
     myPrint(options, 1, strIdent);
     double start = sysTime();
     std::string path = toCString(options.dbFile);
