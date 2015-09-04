@@ -37,7 +37,7 @@
 
 #include <atomic>
 #if defined(_OPENMP) && defined(__GNUC__) && !defined(__clang__)
-#define GNUOMP
+#define GNUOMP 1
 #include <parallel/algorithm>
 #endif
 
