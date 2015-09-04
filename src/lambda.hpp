@@ -1168,7 +1168,7 @@ iterateMatches(TLocalHolder & lH)
             if (!isSetToSkip(*it))
             {
                 // ABUNDANCY and PUTATIVE ABUNDANCY CHECKS
-                if (record.matches.size() % lH.options.maxMatches == 0)
+                if ((lH.options.filterPutativeAbundant) && (record.matches.size() % lH.options.maxMatches == 0))
                 {
                     if (record.matches.size() / lH.options.maxMatches == 1)
                     {
@@ -1178,7 +1178,7 @@ iterateMatches(TLocalHolder & lH)
                     else if (record.matches.size() / lH.options.maxMatches > 1)
                     {
                         double medianTopNMatchesBefore = 0.0;
-                        if (lH.options.filterPutativeAbundant)
+//                         if (lH.options.filterPutativeAbundant)
                         {
                             medianTopNMatchesBefore =
                             (std::next(record.matches.begin(),
@@ -1187,18 +1187,20 @@ iterateMatches(TLocalHolder & lH)
 
                         uint64_t before = record.matches.size();
                         record.matches.sort();
-//                         if (!lH.options.filterPutativeDuplicates)
-//                         {
-                        record.matches.unique();
-                        lH.stats.hitsDuplicate += before - record.matches.size();
-                        before = record.matches.size();
-//                         }
+                        // if we filter putative duplicates we never need to check for real duplicates
+                        if (!lH.options.filterPutativeDuplicates)
+                        {
+                            record.matches.unique();
+                            lH.stats.hitsDuplicate += before - record.matches.size();
+                            before = record.matches.size();
+                        }
                         if (record.matches.size() > (lH.options.maxMatches + 1))
+                            // +1 so as not to trigger % == 0 in the next run
                             record.matches.resize(lH.options.maxMatches + 1);
-                        // +1 so as not to trigger % == 0 in the next run
+
                         lH.stats.hitsAbundant += before - record.matches.size();
 
-                        if (lH.options.filterPutativeAbundant)
+//                         if (lH.options.filterPutativeAbundant)
                         {
                             double medianTopNMatchesAfter =
                             (std::next(record.matches.begin(),
