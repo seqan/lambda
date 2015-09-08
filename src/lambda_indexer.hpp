@@ -38,7 +38,6 @@
 
 #include "misc.hpp"
 #include "options.hpp"
-// #include "trans.hpp"
 #include "alph.hpp"
 
 using namespace seqan;
