@@ -61,11 +61,14 @@ set (SEQAN_APP_VERSION "0.9.0")
 option (LAMBDA_FASTBUILD "Set to ON to skip certain rarely used codepaths (speeds up build)." OFF)
 if (LAMBDA_FASTBUILD)
     add_definitions (-DFASTBUILD=1)
+    message (STATUS "FASTBUILD defined, not all command line options available.")
 endif (LAMBDA_FASTBUILD)
 
 option (LAMBDA_NATIVE_BUILD "Set to OFF to disable architecture-specific optimizations, i.e. g++ -march=native." ON)
 if (LAMBDA_NATIVE_BUILD)
     set (SEQAN_CXX_FLAGS "${SEQAN_CXX_FLAGS} -march=native")
+    message (STATUS "NATIVE_BUILD activated, binaries will be optimized for this CPU (and might not work on others).")
+    message (STATUS "To deactivate, pass -DLAMBDA_NATIVE_BUILD=0 to cmake.")
 endif (LAMBDA_NATIVE_BUILD)
 
 # ----------------------------------------------------------------------------
