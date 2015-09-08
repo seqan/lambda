@@ -77,17 +77,17 @@ struct SAValue<StringSet<String<Dna5, TSpec1>, TSpec2> >
 using namespace seqan;
 
 // Index Specs
-struct LambdaFMIndexConfig
-{
-    typedef size_t                                                 LengthSum;
-    typedef WaveletTree<void, WTRDConfig<LengthSum> >              Bwt;
-    typedef Levels<void, LevelsRDConfig<LengthSum, Alloc<>, 2> >   Sentinels;
-
-    static const unsigned SAMPLING = 10;
-};
+// struct LambdaFMIndexConfig
+// {
+//     typedef size_t                                                 LengthSum;
+//     typedef WaveletTree<void, WTRDConfig<LengthSum> >              Bwt;
+//     typedef Levels<void, LevelsRDConfig<LengthSum, Alloc<>, 1> >   Sentinels;
+//
+//     static const unsigned SAMPLING = 10;
+// };
 
 template <typename TSpec = void>
-using TFMIndex = FMIndex<TSpec, LambdaFMIndexConfig>;
+using TFMIndex = FMIndex<TSpec>;//, LambdaFMIndexConfig>;
 
 namespace SEQAN_NAMESPACE_MAIN
 {
@@ -564,13 +564,12 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     addSection(parser, "Miscellaneous Heuristics");
 
-    //TODO make min == 1 also for noreduction
     addOption(parser, ArgParseOption("ps", "pre-scoring",
         "evaluate score of a region NUM times the size of the seed "
         "before extension (0 -> no pre-scoring, 1 -> evaluate seed, n-> area "
-        "around seed, as well; default = 0 when no alphabet reduction is used).",
+        "around seed, as well; default = 1 if no reduction is used).",
         ArgParseArgument::INTEGER));
-    setMinValue(parser, "pre-scoring", "0");
+    setMinValue(parser, "pre-scoring", "1");
     setDefaultValue(parser, "pre-scoring", "2");
     setAdvanced(parser, "pre-scoring");
 
@@ -842,11 +841,11 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     getOptionValue(options.preScoring, parser, "pre-scoring");
     if ((!isSet(parser, "pre-scoring")) &&
         (options.alphReduction == 0))
-        options.preScoring = 0;
+        options.preScoring = 1;
 
     getOptionValue(options.preScoringThresh, parser, "pre-scoring-threshold");
-    if (options.preScoring == 0)
-        options.preScoringThresh = 0;
+//     if (options.preScoring == 0)
+//         options.preScoringThresh = 4;
 
     int numbuf;
     getOptionValue(numbuf, parser, "num-matches");
