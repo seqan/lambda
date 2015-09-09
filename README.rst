@@ -4,30 +4,33 @@ Lambda: the Local Aligner for Massive Biological DatA
 Lambda is a local aligner optimized for many query sequences and searches in protein space.
 It is compatible to BLAST, but much faster than BLAST and many other comparable tools.
 
-For more information, see 
- * the `homepage <http://seqan.github.io/lambda/>`__
- * the `wiki <https://github.com/seqan/lambda/wiki>`__
- * the `publication <http://bioinformatics.oxfordjournals.org/content/30/17/i349.abstract>`__
- * or write to `Hannes Hauswedell <mailto:hannes.hauswedell@[molgen.mpg.de|fu-berlin.de]>`__
+cite
+----------
 
-Download
+Please cite the following if you use Lambda anywhere in your academic work, also as part of pipelines
+or comparisons:
+
+*Lambda: the local aligner for massive biological data*;
+Hannes Hauswedell, Jochen Singer, Knut Reinert;
+`Bioinformatics 2014 30 (17): i349-i355 <http://bioinformatics.oxfordjournals.org/content/30/17/i349.abstract>`__;
+doi: 10.1093/bioinformatics/btu439
+
+download
 --------
 
 The latest version is available 
 `here <https://github.com/seqan/lambda/releases>`__. Versions prior to 0.9.0 are available 
 `here <https://github.com/h-2/seqan/releases>`__.
 
-Lambda is Free Software: you may use it for any purpose and you can
-redistribute it and/or modify it under the terms of the GNU General
-Public License as published by the Free Software Foundation, either
-version 3 of the License, or (at your option) any later version. See the
-`COPYING.rst <./COPYING.rst>`__ file for more information.
+Lambda is Free and open source software, so you can use it for any purpose, free of charge.
+However certain conditions apply when you (re-)distribute or modify Lambda, please respect the
+`license <./COPYING.rst>`__.
 
 You can also build lambda from source which will result in binaries optimized for your
 specific system (and thus faster). For instructions, please see the
 `wiki <https://github.com/seqan/lambda/wiki>`__.
 
-Run
+run
 ---
 
 Optionally mask the database:
@@ -57,7 +60,7 @@ For a list of options, see the help pages:
 
 Or visit the Tuning-guide in the `wiki <https://github.com/seqan/lambda/wiki>`__.
 
-Give feedback
+give feedback
 -------------
 
 Please report bugs to the `bug-tracker <https://github.com/seqan/lambda/issues>`__.
@@ -65,5 +68,4 @@ Please report bugs to the `bug-tracker <https://github.com/seqan/lambda/issues>`
 Any other questions or feedback you can send to 
 `Hannes Hauswedell <mailto:hannes.hauswedell@[molgen.mpg.de|fu-berlin.de]>`__.
 
-Thanks for using Lambda, we hope that it is useful to you! If yes,
-please cite us :)
+Thank you for using Lambda, we hope that it is useful to you!
