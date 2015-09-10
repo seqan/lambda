@@ -39,24 +39,24 @@ Optionally mask the database:
 
     % /path/to/segmasker -infmt fasta -in db.fasta -outfmt interval -out db.seg
 
-Run the indexer:
+Run the indexer (or check the `wiki <https://github.com/seqan/lambda/wiki>`__ for pre-built indexes!):
 
 ::
 
-    % ./lambda_indexer -d db.fasta [-s db.seg]
+    % bin/lambda_indexer -d db.fasta [-s db.seg]
 
 Run lambda:
 
 ::
 
-    % ./lambda -q query.fasta -d db.fasta
+    % bin/lambda -q query.fasta -d db.fasta
 
 For a list of options, see the help pages:
 
 ::
 
-    % ./lambda --help
-    % ./lambda --full-help
+    % bin/lambda --help
+    % bin/lambda --full-help
 
 Or visit the Tuning-guide in the `wiki <https://github.com/seqan/lambda/wiki>`__.
 
