@@ -72,12 +72,11 @@ if (LAMBDA_NATIVE_BUILD)
 endif (LAMBDA_NATIVE_BUILD)
 
 if (CMAKE_COMPILER_IS_GNUCXX OR COMPILER_IS_CLANG AND NOT MINGW)
-    option (LAMBDA_STATIC_BUILD "Include all libraries in the binaries." ON)
+    option (LAMBDA_STATIC_BUILD "Include all libraries in the binaries." OFF)
     if (LAMBDA_STATIC_BUILD)
         set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
         set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++ -static")
         message (STATUS "STATIC_BUILD activated, binaries built with all libs included.")
-        message (STATUS "To deactivate, pass -DLAMBDA_STATIC_BUILD=0 to cmake.")
     endif (LAMBDA_STATIC_BUILD)
 endif ()
 
