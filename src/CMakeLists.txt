@@ -42,7 +42,7 @@ if (NOT SEQAN_HAS_BZIP2)
 endif (NOT SEQAN_HAS_BZIP2)
 
 if (COMPILER_IS_CLANG)
-    set (CXX14_CXX_FLAGS "${CXX14_CXX_FLAGS} -ftemplate-depth-1024")
+    set (CXX11_CXX_FLAGS "${CXX11_CXX_FLAGS} -ftemplate-depth-1024")
 endif (COMPILER_IS_CLANG)
 
 if(CMAKE_COMPILER_IS_GNUCXX)
@@ -58,22 +58,35 @@ endif(CMAKE_COMPILER_IS_GNUCXX)
 
 set (SEQAN_APP_VERSION "0.9.0")
 
-option (LAMBDA_FASTBUILD "Set to ON to skip certain rarely used codepaths (speeds up build)." OFF)
+option (LAMBDA_FASTBUILD "Skip certain rarely used codepaths (speeds up build)." OFF)
 if (LAMBDA_FASTBUILD)
     add_definitions (-DFASTBUILD=1)
     message (STATUS "FASTBUILD defined, not all command line options available.")
 endif (LAMBDA_FASTBUILD)
 
-option (LAMBDA_NATIVE_BUILD "Set to OFF to disable architecture-specific optimizations, i.e. g++ -march=native." ON)
+option (LAMBDA_NATIVE_BUILD "Architecture-specific optimizations, i.e. g++ -march=native." ON)
 if (LAMBDA_NATIVE_BUILD)
     set (SEQAN_CXX_FLAGS "${SEQAN_CXX_FLAGS} -march=native")
     message (STATUS "NATIVE_BUILD activated, binaries will be optimized for this CPU (and might not work on others).")
     message (STATUS "To deactivate, pass -DLAMBDA_NATIVE_BUILD=0 to cmake.")
 endif (LAMBDA_NATIVE_BUILD)
 
+if (CMAKE_COMPILER_IS_GNUCXX OR COMPILER_IS_CLANG AND NOT MINGW)
+    option (LAMBDA_STATIC_BUILD "Include all libraries in the binaries." ON)
+    if (LAMBDA_STATIC_BUILD)
+        set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+        set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++ -static")
+        message (STATUS "STATIC_BUILD activated, binaries built with all libs included.")
+        message (STATUS "To deactivate, pass -DLAMBDA_STATIC_BUILD=0 to cmake.")
+    endif (LAMBDA_STATIC_BUILD)
+endif ()
+
 # ----------------------------------------------------------------------------
 # Build Setup
 # ----------------------------------------------------------------------------
+
+# Enable global exception handler for all seqan apps.
+set (SEQAN_DEFINITIONS "${SEQAN_DEFINITIONS} -DSEQAN_GLOBAL_EXCEPTION_HANDLER")
 
 # Add include directories.
 include_directories (${SEQAN_INCLUDE_DIRS})
