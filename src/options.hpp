@@ -77,17 +77,17 @@ struct SAValue<StringSet<String<Dna5, TSpec1>, TSpec2> >
 using namespace seqan;
 
 // Index Specs
-// struct LambdaFMIndexConfig
-// {
-//     typedef size_t                                                 LengthSum;
-//     typedef WaveletTree<void, WTRDConfig<LengthSum> >              Bwt;
-//     typedef Levels<void, LevelsRDConfig<LengthSum, Alloc<>, 1> >   Sentinels;
-//
-//     static const unsigned SAMPLING = 10;
-// };
+struct LambdaFMIndexConfig
+{
+    typedef size_t                                                 LengthSum;
+    typedef WaveletTree<void, WTRDConfig<LengthSum> >              Bwt;
+    typedef Levels<void, LevelsRDConfig<LengthSum, Alloc<>, 1> >   Sentinels;
+
+    static const unsigned SAMPLING = 10;
+};
 
 template <typename TSpec = void>
-using TFMIndex = FMIndex<TSpec>;//, LambdaFMIndexConfig>;
+using TFMIndex = FMIndex<TSpec, LambdaFMIndexConfig>;
 
 namespace SEQAN_NAMESPACE_MAIN
 {
