@@ -271,7 +271,7 @@ struct ComparisonCounter<TText, std::true_type>
         if (expectedComparisons == 0)
         {
             uint64_t l = length(concat(text));
-            _expectedComparisons = 1.2 * double(l) * std::log(l) / std::log(2) /
+            _expectedComparisons = 1.5 * double(l) * std::log(l) / std::log(2) /
                                    omp_get_max_threads();
         } else
             _expectedComparisons = expectedComparisons;
