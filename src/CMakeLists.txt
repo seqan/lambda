@@ -140,9 +140,9 @@ install (TARGETS lambda lambda_indexer
 
 # Install non-binary files for the package to "." for app builds and
 # ${PREFIX}/share/doc/lambda for SeqAn release builds.
-install (FILES ../LICENSE
-               ../README.md
-               ../CHANGELOG.md
+install (FILES ../LICENSE-GPL3.rst
+               ../README.rst
+               ../COPYING.rst
          DESTINATION ${SEQAN_PREFIX_SHARE_DOC})
 # install (FILES example/fasta1.fa
 #               example/fasta2.fa
