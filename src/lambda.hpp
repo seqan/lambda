@@ -1062,7 +1062,12 @@ computeBlastMatch(TBlastMatch         & bm,
 
 //     const unsigned long qryLength = length(row0);
     computeBitScore(bm, context(lH.gH.outfile));
-    computeEValue(bm, context(lH.gH.outfile));
+
+    // the length adjustment cache must no be written to by multiple threads
+    SEQAN_OMP_PRAGMA(critical(evalue_length_adj_cache))
+    {
+        computeEValue(bm, context(lH.gH.outfile));
+    }
 
     if (bm.eValue > lH.options.eCutOff)
     {
