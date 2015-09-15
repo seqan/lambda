@@ -332,7 +332,8 @@ footer {
   float:left;
   position:fixed;
   bottom:10px;
-	padding-left: 50px;
+  padding-left: 50px;
+  overflow: hidden;
 }
 
 @media print, screen and (max-width: 960px) {
