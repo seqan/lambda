@@ -17,17 +17,18 @@
     <div class="wrapper">
       <header>
         <h1 class="header">Lambda</h1>
-        <p class="header">Download v0.9.0</p>
+        <p class="header">Version 0.9.0</p>
 
         <ul>
           <li class="download"><a class="buttons" href="https://github.com/seqan/lambda/releases/download/lambda-v0.9.0/lambda-v0.9.0-linux_x86-64.tar.gz">Linux 64bit</a></li>
-          <li class="download"><a class="buttons" href="https://github.com/seqan/lambda/releases/download/lambda-v0.9.0/lambda-v0.9.0-linux_sandybridge.tar.gz">Linux AVX</a></li>
-          <li class="download"><a class="buttons" href="https://github.com/seqan/lambda/releases/download/lambda-v0.9.0/lambda-v0.9.0-freebsd_x86-64.tar.gz">FreeBSD 64bit</a></li>
+<!--          <li class="download"><a class="buttons" href="https://github.com/seqan/lambda/releases/download/lambda-v0.9.0/lambda-v0.9.0-linux_sandybridge.tar.gz">Linux AVX</a></li>
+          <li class="download"><a class="buttons" href="https://github.com/seqan/lambda/releases/download/lambda-v0.9.0/lambda-v0.9.0-freebsd_x86-64.tar.gz">FreeBSD 64bit</a></li>-->
           <li class="download"><a class="buttons" href="https://github.com/seqan/lambda/releases/download/lambda-v0.9.0/lambda-v0.9.0-darwin_x86-64.tar.gz">MacOS X 64bit</a></li>
-	</ul>
-	
-	<p class="header">View on Github</p>
-	<ul>
+          <li><a class="buttons download" href="https://github.com/seqan/lambda/releases/tag/lambda-v0.9.0">All Downloads</a></li>
+        </ul>
+
+        <p class="header">View on Github</p>
+        <ul>
           <li><a class="buttons github" href="https://github.com/seqan/lambda">Lambda</a></li>
           <li><a class="buttons github" href="https://github.com/seqan/seqan">SeqAn library</a></li>
         </ul>
@@ -57,23 +58,24 @@
 <p>I am pleased to announce the availability of <code>lambda-0.9.0</code>. This is the first release based off SeqAn 2.0 with many bug-fixes and new features. See the <a href="https://github.com/seqan/lambda/wiki/changelog">Changelog</a> for details. <em>Please note that the indexes created with older versions are not compatible.</em></p>
       </section>
       <footer>
-      <css>
-      img.grayscale
-      {
-  	filter: url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\'><filter id=\'grayscale\'><feColorMatrix type=\'matrix\' values=\'0.3333 0.3333 0.3333 0 0 0.3333 0.3333 0.3333 0 0 0.3333 0.3333 0.3333 0 0 0 0 0 1 0\'/></filter></svg>#grayscale"); /* Firefox 3.5+ */
-  	filter: gray; /* IE6-9 */
-  	-webkit-filter: grayscale(100%); /* Chrome 19+ & Safari 6+ */
-      }
-      img.grayscale:hover
-      {
-  	filter: none;
-  	-webkit-filter: grayscale(0%);
-      }
-      </css>
-      	<a href="http://seqan.de"><img border="0" alt="www.seqan.de" width=150 src="http://www.seqan.de/wp-content/uploads/2012/02/seqan_logo_167x110.png"></a>
-        <a href="http://fu-berlin.de"><img border="0" alt="www.fu-berlin.de" width=150 src="http://www.fu-berlin.de/assets/fu-berlin/fu_logo-b4e18d5be56a4d4c9a6e3d4e9c25f352.gif"></a>
-        <a href="http://molgen.mpg.de"><img border="0" alt="molgen.mpg.de" width=150 src="http://www.fu-berlin.de/assets/fu-berlin/fu_logo-b4e18d5be56a4d4c9a6e3d4e9c25f352.gif"></a>
+        <style>
+            img {
+                filter: url("data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\'><filter id=\'grayscale\'><feColorMatrix type=\'matrix\' values=\'0.3333 0.3333 0.3333 0 0 0.3333 0.3333 0.3333 0 0 0.3333 0.3333 0.3333 0 0 0 0 0 1 0\'/></filter></svg>#grayscale"); /* Firefox 3.5+ */
+                filter: gray; /* IE6-9 */
+                -webkit-filter: grayscale(100%); /* Chrome 19+ & Safari 6+ */
+            }
+
+            img:hover {
+                filter: none;
+                -webkit-filter: grayscale(0%);
+            }
+        </style>
+        <div align="center">
+        <a href="http://seqan.de"><img border="0" src="images/logo_seqan.png"></a>
+        <a href="http://fu-berlin.de"><img border="0" width=150 src="images/logo_fub.png"></a>
+        <a href="http://molgen.mpg.de"><img border="0" src="images/logo_mpimg.png"></a>
         <p><small>Hosted on <a href="https://pages.github.com">GitHub Pages</a> using the Dinky theme</small></p>
+        </div>
       </footer>
     </div>
     <!--[if !IE]><script>fixScale(document);</script><![endif]-->
