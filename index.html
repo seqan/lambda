@@ -77,12 +77,31 @@
                 filter: none;
                 -webkit-filter: grayscale(0%);
             }
-            
+            @media print, screen and (max-height: 600px) {
+            footer {
+                display: none;
+            }
+            }
+            @media print, screen and (max-height: 720px) {
+            #seqanlogo {
+                display: none;
+            }
+            }
+            @media print, screen and (max-height: 820px) {
+            #fublogo {
+                display: none;
+            }
+            }
+            @media print, screen and (max-height: 1040px) {
+            #mpimglogo {
+                display: none;
+            }
+            }
         </style>
         <div align="center">
-        <a href="http://seqan.de"><img src="images/logo_seqan.png"></a>
-        <a href="http://fu-berlin.de"><img width=150 src="images/logo_fub.png"></a>
-        <a href="http://molgen.mpg.de"><img src="images/logo_mpimg.png"></a>
+        <a id="seqanlogo" href="http://seqan.de"><img src="images/logo_seqan.png"></a>
+        <a id="fublogo" href="http://fu-berlin.de"><img width=150 src="images/logo_fub.png"></a>
+        <a id="mpimglogo" href="http://molgen.mpg.de"><img src="images/logo_mpimg.png"></a>
         <p><small>Hosted on <a href="https://pages.github.com">GitHub Pages</a> using the Dinky theme</small></p>
         </div>
       </footer>
