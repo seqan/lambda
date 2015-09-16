@@ -172,7 +172,7 @@ loadSubjects(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, TOutFormat, p,
         return 1;
     }
 
-    if (!TGH::noReduction)
+    if (TGH::alphReduction)
         globalHolder.redSubjSeqs.limits = globalHolder.subjSeqs.limits;
 
     double finish = sysTime() - start;
@@ -332,15 +332,15 @@ loadSegintervals(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, TOutFormat
 // Function loadQuery()
 // --------------------------------------------------------------------------
 
-template <typename TSourceAlph,
-          typename TTargetAlph,
+template <typename TSourceAlph, typename TSpec1,
+          typename TTargetAlph, typename TSpec2,
           typename TUntransLengths,
           MyEnableIf<!std::is_same<TSourceAlph, TTargetAlph>::value> = 0>
 inline void
-loadQueryImplTrans(TCDStringSet<TTargetAlph> & target,
-                   TCDStringSet<TSourceAlph> & source,
-                   TUntransLengths           & untransQrySeqLengths,
-                   LambdaOptions       const & options)
+loadQueryImplTrans(TCDStringSet2<String<TTargetAlph, TSpec1>> & target,
+                   TCDStringSet2<String<TSourceAlph, TSpec2>> & source,
+                   TUntransLengths                            & untransQrySeqLengths,
+                   LambdaOptions                        const & options)
 {
     myPrint(options, 1, "translating...");
     // translate
@@ -363,12 +363,14 @@ loadQueryImplTrans(TCDStringSet<TTargetAlph> & target,
 }
 
 // BLASTN
-template <typename TUntransLengths>
+template <typename TSpec1,
+          typename TSpec2,
+          typename TUntransLengths>
 inline void
-loadQueryImplTrans(TCDStringSet<TransAlph<BlastProgram::BLASTN>> & target,
-                   TCDStringSet<TransAlph<BlastProgram::BLASTN>> & source,
-                   TUntransLengths                               & /**/,
-                   LambdaOptions                           const & options)
+loadQueryImplTrans(TCDStringSet2<String<TransAlph<BlastProgram::BLASTN>, TSpec1>> & target,
+                   TCDStringSet2<String<TransAlph<BlastProgram::BLASTN>, TSpec2>> & source,
+                   TUntransLengths                                                & /**/,
+                   LambdaOptions                                            const & options)
 {
     using TAlph = TransAlph<BlastProgram::BLASTN>;
 //     using TReverseCompl =  ModifiedString<ModifiedString<String<TAlph>,
@@ -404,11 +406,27 @@ loadQueryImplTrans(TCDStringSet<TransAlph<BlastProgram::BLASTN>> & target,
     }
 }
 
-// BLASTP
-template <typename TUntransLengths>
+// // BLASTP (mmapped special case)
+// template <typename TSpec1,
+//           typename TSpec2,
+//           typename TUntransLengths>
+// inline void
+// loadQueryImplTrans(TCDStringSet2<String<TransAlph<BlastProgram::BLASTP>, MMap<>>> & target,
+//                    TCDStringSet2<String<TransAlph<BlastProgram::BLASTP>, MMap<>>> & source,
+//                    TUntransLengths           & /**/,
+//                    LambdaOptions       const & /**/)
+// {
+//     // no need for translation, but target needs to point to same file
+//     target = source;
+// }
+
+// BLASTP (general case)
+template <typename TSpec1,
+          typename TSpec2,
+          typename TUntransLengths>
 inline void
-loadQueryImplTrans(TCDStringSet<TransAlph<BlastProgram::BLASTP>> & target,
-                   TCDStringSet<TransAlph<BlastProgram::BLASTP>> & source,
+loadQueryImplTrans(TCDStringSet2<String<TransAlph<BlastProgram::BLASTP>, TSpec1>> & target,
+                   TCDStringSet2<String<TransAlph<BlastProgram::BLASTP>, TSpec2>> & source,
                    TUntransLengths           & /**/,
                    LambdaOptions       const & /**/)
 {
@@ -466,7 +484,7 @@ template <BlastTabularSpec h,
           typename TOutFormat>
 inline int
 loadQuery(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, TOutFormat, p, h> & globalHolder,
-          LambdaOptions                                        const & options)
+          LambdaOptions                                                    const & options)
 {
     using TGH = GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, TOutFormat, p, h>;
     double start = sysTime();
@@ -474,7 +492,7 @@ loadQuery(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, TOutFormat, p, h>
     std::string strIdent = "Loading Query Sequences and Ids...";
     myPrint(options, 1, strIdent);
 
-    TCDStringSet<OrigQryAlph<p>> origSeqs;
+    TCDStringSet2<String<OrigQryAlph<p>, typename TGH::TQryTag>> origSeqs;
 
 //     std::cout << "FOO " <<  toCString(options.queryFile) << " BAR" << std::endl;
     try
@@ -501,7 +519,7 @@ loadQuery(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, TOutFormat, p, h>
 //     loadQueryImplReduce(globalHolder.redQrySeqs,
 //                         globalHolder.qrySeqs,
 //                         options);
-    if (!TGH::noReduction)
+    if (TGH::alphReduction)
         globalHolder.redQrySeqs.limits = globalHolder.qrySeqs.limits;
 
     double finish = sysTime() - start;
@@ -1116,8 +1134,8 @@ iterateMatches(TLocalHolder & lH)
     using TBlastMatch   = BlastMatch<
                            typename TLocalHolder::TAlign,
                            TPos,
-                           typename Value<typename TGlobalHolder::TIds>::Type,// const &,
-                           typename Value<typename TGlobalHolder::TIds>::Type// const &,
+                           typename Value<typename TGlobalHolder::TQryIds>::Type,// const &,
+                           typename Value<typename TGlobalHolder::TSubjIds>::Type// const &,
                            >;
     using TBlastRecord  = BlastRecord<TBlastMatch>;
 

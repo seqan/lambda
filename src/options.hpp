@@ -133,14 +133,20 @@ struct DefaultIndexCreator<Index<TText, FMIndex<SaAdvancedSort<TSpec>, TConfig> 
 
 }
 
-#if defined LAMBDA_BITCOPMRESSED_STRINGS
+#if defined(LAMBDA_BITCOPMRESSED_STRINGS)
 using PackSpec = Packed<>;
+#elif defined(LAMBDA_MMAPPED_STRINGS)
+using PackSpec = MMap<>;
 #else
 using PackSpec = Alloc<>;
 #endif
 
 template <typename TAlph>
 using TCDStringSet = StringSet<String<TAlph, PackSpec>, Owner<ConcatDirect<> > >;
+
+template <typename TString>
+using TCDStringSet2 = StringSet<TString, Owner<ConcatDirect<> > >;
+
 
 template <BlastProgram p>
 using OrigQryAlph = typename std::conditional<

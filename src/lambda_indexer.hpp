@@ -401,14 +401,14 @@ generateIndexAndDump(StringSet<TString, TSpec>        & seqs,
                                        TFMIndex<TIndexSpecSpec>
                                        >::value;
     static bool constexpr
-    noReduction         = std::is_same<TransAlph<p>, TRedAlph>::value;
+    alphReduction       = !std::is_same<TransAlph<p>, TRedAlph>::value;
 
     using TRedSeqs      = typename std::conditional<
-                            noReduction,
+                            !alphReduction,
                             TTransSeqs,             // owner
                             TRedSeqsVirt>::type;    // modview
     using TRedSeqsACT   = typename std::conditional<
-                            noReduction,
+                            !alphReduction,
                             TTransSeqs &,           // reference to owner
                             TRedSeqsVirt>::type;    // modview
 
@@ -468,7 +468,7 @@ generateIndexAndDump(StringSet<TString, TSpec>        & seqs,
     // since we dumped unreduced sequences before and reduced sequences are
     // only "virtual" we clear them before dump
     clear(seqs);
-    if (!noReduction)
+    if (alphReduction)
         clear(redSubjSeqs.limits);
 
     double e = sysTime() - s;

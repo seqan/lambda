@@ -148,47 +148,57 @@ template <typename TRedAlph_,
 class GlobalDataHolder
 {
 public:
-    static BlastProgram constexpr
-    blastProgram        = p;
+    static constexpr BlastProgram blastProgram = p;
 
-    // SEQUENCES AND THEIR TYPE //
-    using TTransSeqs    = TCDStringSet<TransAlph<p>>;
+    /* Sequence storage types */
+    using TStringTag    = Alloc<>;
+#if defined(LAMBDA_MMAPPED_STRINGS)
+    using TDirectStringTag = MMap<>;
+#else
+    using TDirectStringTag = TStringTag;
+#endif
+    using TQryTag  = TStringTag;//typename std::conditional<qNumFrames(p) == 1, TStringTag, TDirectStringTag>::type;
+    using TSubjTag = TDirectStringTag; // even if subjects were translated they are now loaded from disk
 
-    using TRedAlph      = RedAlph<p, TRedAlph_>; // ensures == Dna5 for BlastN
-    using TRedSeqVirt   = ModifiedString<String<TransAlph<p>, PackSpec>,
-                                ModView<FunctorConvert<TransAlph<p>,TRedAlph>>>;
-    using TRedSeqsVirt  = StringSet<TRedSeqVirt, Owner<ConcatDirect<>>>;
+    /* Possibly translated but yet unreduced sequences */
+    template <typename TSpec>
+    using TTransSeqs     = StringSet<String<TransAlph<p>, TSpec>, Owner<ConcatDirect<>>>;
+    using TTransQrySeqs  = TTransSeqs<TQryTag>;
+    using TTransSubjSeqs = TTransSeqs<TSubjTag>;
 
-    static bool constexpr
+    TTransQrySeqs       qrySeqs;
+    TTransSubjSeqs      subjSeqs;
+
+    /* Reduced sequence objects, either as modstrings or as references to trans-strings */
+    using TRedAlph       = RedAlph<p, TRedAlph_>; // ensures == Dna5 for BlastN
+    template <typename TSpec>
+    using TRedAlphModString = ModifiedString<String<TransAlph<p>, TSpec>,
+                                ModView<FunctorConvert<TransAlph<p>, TRedAlph>>>;
+
+    static constexpr bool alphReduction = !std::is_same<TransAlph<p>, TRedAlph>::value;
+
+    using TRedQrySeqs   = typename std::conditional<
+                            alphReduction,
+                            StringSet<TRedAlphModString<TQryTag>, Owner<ConcatDirect<>>>, // modview
+                            TTransQrySeqs &>::type;                                       // reference to owner
+    using TRedSubjSeqs  = typename std::conditional<
+                            alphReduction,
+                            StringSet<TRedAlphModString<TSubjTag>, Owner<ConcatDirect<>>>, // modview
+                            TTransSubjSeqs &>::type;                                       // reference to owner
+
+    TRedQrySeqs         redQrySeqs;
+    TRedSubjSeqs        redSubjSeqs;
+
+    /* INDECES AND THEIR TYPE */
+    static constexpr bool
     indexIsFM           = std::is_same<TIndexSpec_, TFMIndex<>>::value;
-    static bool constexpr
-    noReduction         = std::is_same<TransAlph<p>, TRedAlph>::value;
-
-    using TRedSeqs      = typename std::conditional<
-                            noReduction,
-                            TTransSeqs,             // owner
-                            TRedSeqsVirt>::type;    // modview
-    using TRedSeqsACT   = typename std::conditional<
-                            noReduction,
-                            TTransSeqs &,           // reference to owner
-                            TRedSeqsVirt>::type;    // modview
-
-    // these are the sequences in *unreduced space*
-    TTransSeqs          qrySeqs;
-    TTransSeqs          subjSeqs;
-
-    // reduced query sequences if using reduction, otherwise & = transSeqs
-    TRedSeqsACT         redQrySeqs;
-    TRedSeqsACT         redSubjSeqs;
-
-    // INDECES AND THEIR TYPE //
     using TIndexSpec    = TIndexSpec_;
-    using TDbIndex      = Index<TRedSeqs, TIndexSpec>;
+    using TDbIndex      = Index<typename std::remove_reference<TRedSubjSeqs>::type, TIndexSpec>;
 
     TDbIndex            dbIndex;
 
     // TODO maybe remove these for other specs?
-    using TPositions    = typename StringSetLimits<TTransSeqs>::Type;
+    using TPositions    = typename StringSetLimits<TTransQrySeqs>::Type;
     TPositions          untransQrySeqLengths; // used iff qIsTranslated(p)
     TPositions          untransSubjSeqLengths; // used iff sIsTranslated(p)
 
@@ -196,9 +206,12 @@ public:
     TMasking            segIntStarts;
     TMasking            segIntEnds;
 
-    using TIds          = StringSet<CharString, Owner<ConcatDirect<>>>;
-    TIds                qryIds;
-    TIds                subjIds;
+    template <typename TSpec>
+    using TIds          = StringSet<String<char, TSpec>, Owner<ConcatDirect<>>>;
+    using TQryIds       = TIds<TQryTag>;
+    using TSubjIds      = TIds<TSubjTag>;
+    TQryIds             qryIds;
+    TSubjIds            subjIds;
 
     // OUTPUT FILE //
     using TScoreScheme  = TScoreScheme_;
@@ -226,9 +239,9 @@ class LocalDataHolder
 {
 public:
     using TGlobalHolder = TGlobalHolder_;
-    using TRedQrySeq    = typename Value<typename TGlobalHolder::TRedSeqs>::Type;
+    using TRedQrySeq    = typename Value<typename std::remove_reference<typename TGlobalHolder::TRedQrySeqs>::type>::Type;
     using TSeeds        = StringSet<typename Infix<TRedQrySeq const>::Type>;
-    using TSeedIndex    = Index<TSeeds,IndexSa<>>;
+    using TSeedIndex    = Index<TSeeds, IndexSa<>>;
 
 
     // references to global stuff
@@ -256,7 +269,7 @@ public:
     typedef Align<
         typename Infix<
             typename Value<
-                typename TGlobalHolder::TTransSeqs>::Type>::Type,
+                typename TGlobalHolder::TTransQrySeqs>::Type>::Type,
                 ArrayGaps> TAlign;
 
     typedef DPContext<typename Value<typename TGlobalHolder::TScoreScheme>::Type,

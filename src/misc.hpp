@@ -379,8 +379,13 @@ inline bool indexCreate(Index<TText, IndexSa<TSpec> > & index,
 // Generic Sequence loading
 // ----------------------------------------------------------------------------
 
-template <typename TFile>
-int myReadRecords(TCDStringSet<char> & ids, TCDStringSet<Dna5> & seqs, TFile & file)
+template <typename TSpec1,
+          typename TSpec2,
+          typename TFile>
+inline int
+myReadRecords(TCDStringSet2<String<char, TSpec1>> & ids,
+              TCDStringSet2<String<Dna5, TSpec2>> & seqs,
+              TFile                               & file)
 {
     TCDStringSet<Iupac> tmpSeqs; // all IUPAC nucleic acid characters are valid input
     try
@@ -401,8 +406,13 @@ int myReadRecords(TCDStringSet<char> & ids, TCDStringSet<Dna5> & seqs, TFile & f
     return 0;
 }
 
-template <typename TFile>
-int myReadRecords(TCDStringSet<char> & ids, TCDStringSet<AminoAcid> & seqs, TFile & file)
+template <typename TSpec1,
+          typename TSpec2,
+          typename TFile>
+inline int
+myReadRecords(TCDStringSet2<String<char, TSpec1>>       & ids,
+              TCDStringSet2<String<AminoAcid, TSpec2>>  & seqs,
+              TFile                                     & file)
 {
     try
     {

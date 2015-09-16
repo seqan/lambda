@@ -33,6 +33,8 @@
 #include <seqan/reduced_aminoacid.h>
 #include <seqan/misc/terminal.h>
 
+// #define LAMBDA_MMAPPED_STRINGS 1
+
 #include "options.hpp"
 #include "match.hpp"
 #include "lambda.hpp"
