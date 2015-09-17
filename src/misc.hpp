@@ -145,22 +145,18 @@ printProgressBar(uint64_t & lastPercent, uint64_t curPerc)
 }
 
 
-template <typename TSequence, typename TAlignSpec,
-          typename TScoreValue, typename TScoreSpec, typename TAlignContext>
+template <typename TSource0, typename TGapsSpec0,
+          typename TSource1, typename TGapsSpec1,
+          typename TScoreValue, typename TScoreSpec,
+          typename TAlignContext>
 inline TScoreValue
-localAlignment2(Align<TSequence, TAlignSpec> & align,
+localAlignment2(Gaps<TSource0, TGapsSpec0> & row0,
+                Gaps<TSource1, TGapsSpec1> & row1,
                 Score<TScoreValue, TScoreSpec> const & scoringScheme,
-                int lowerDiag,
-                int upperDiag,
+                int const lowerDiag,
+                int const upperDiag,
                 TAlignContext & alignContext)
 {
-//     typedef Align<TSequence, TAlignSpec> TAlign;
-//     typedef typename Size<TAlign>::Type TSize;
-//     typedef typename Position<TAlign>::Type TPosition;
-//     typedef TraceSegment_<TPosition, TSize> TTraceSegment;
-
-    SEQAN_ASSERT_EQ(length(rows(align)), 2u);
-
     clear(alignContext.traceSegment);
 
     typedef FreeEndGaps_<True, True, True, True> TFreeEndGaps;
@@ -175,12 +171,12 @@ localAlignment2(Align<TSequence, TAlignSpec> & align,
     score = _setUpAndRunAlignment(alignContext.dpContext,
                                   alignContext.traceSegment,
                                   scoutState,
-                                  source(row(align, 0)),
-                                  source(row(align, 1)),
+                                  row0,
+                                  row1,
                                   scoringScheme,
                                   TAlignConfig(lowerDiag, upperDiag));
 
-    _adaptTraceSegmentsTo(row(align, 0), row(align, 1), alignContext.traceSegment);
+    _adaptTraceSegmentsTo(row0, row1, alignContext.traceSegment);
     return score;
 }
 
@@ -383,11 +379,11 @@ template <typename TSpec1,
           typename TSpec2,
           typename TFile>
 inline int
-myReadRecords(TCDStringSet2<String<char, TSpec1>> & ids,
-              TCDStringSet2<String<Dna5, TSpec2>> & seqs,
+myReadRecords(TCDStringSet<String<char, TSpec1>> & ids,
+              TCDStringSet<String<Dna5, TSpec2>> & seqs,
               TFile                               & file)
 {
-    TCDStringSet<Iupac> tmpSeqs; // all IUPAC nucleic acid characters are valid input
+    TCDStringSet<String<Iupac>> tmpSeqs; // all IUPAC nucleic acid characters are valid input
     try
     {
         readRecords(ids, tmpSeqs, file);
@@ -410,8 +406,8 @@ template <typename TSpec1,
           typename TSpec2,
           typename TFile>
 inline int
-myReadRecords(TCDStringSet2<String<char, TSpec1>>       & ids,
-              TCDStringSet2<String<AminoAcid, TSpec2>>  & seqs,
+myReadRecords(TCDStringSet<String<char, TSpec1>>       & ids,
+              TCDStringSet<String<AminoAcid, TSpec2>>  & seqs,
               TFile                                     & file)
 {
     try

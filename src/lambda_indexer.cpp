@@ -191,8 +191,8 @@ realMain(LambdaIndexerOptions     const & options,
          TRedAlph                 const &,
          TIndexSpecSpec           const &)
 {
-    using TOrigSet  = TCDStringSet<OrigSubjAlph<p>>;
-    using TTransSet = TCDStringSet<TransAlph<p>>;
+    using TOrigSet  = TCDStringSet<String<OrigSubjAlph<p>>>;
+    using TTransSet = TCDStringSet<String<TransAlph<p>>>;
 
     TTransSet translatedSeqs;
 

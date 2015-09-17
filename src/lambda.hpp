@@ -337,8 +337,8 @@ template <typename TSourceAlph, typename TSpec1,
           typename TUntransLengths,
           MyEnableIf<!std::is_same<TSourceAlph, TTargetAlph>::value> = 0>
 inline void
-loadQueryImplTrans(TCDStringSet2<String<TTargetAlph, TSpec1>> & target,
-                   TCDStringSet2<String<TSourceAlph, TSpec2>> & source,
+loadQueryImplTrans(TCDStringSet<String<TTargetAlph, TSpec1>> & target,
+                   TCDStringSet<String<TSourceAlph, TSpec2>> & source,
                    TUntransLengths                            & untransQrySeqLengths,
                    LambdaOptions                        const & options)
 {
@@ -367,8 +367,8 @@ template <typename TSpec1,
           typename TSpec2,
           typename TUntransLengths>
 inline void
-loadQueryImplTrans(TCDStringSet2<String<TransAlph<BlastProgram::BLASTN>, TSpec1>> & target,
-                   TCDStringSet2<String<TransAlph<BlastProgram::BLASTN>, TSpec2>> & source,
+loadQueryImplTrans(TCDStringSet<String<TransAlph<BlastProgram::BLASTN>, TSpec1>> & target,
+                   TCDStringSet<String<TransAlph<BlastProgram::BLASTN>, TSpec2>> & source,
                    TUntransLengths                                                & /**/,
                    LambdaOptions                                            const & options)
 {
@@ -411,8 +411,8 @@ loadQueryImplTrans(TCDStringSet2<String<TransAlph<BlastProgram::BLASTN>, TSpec1>
 //           typename TSpec2,
 //           typename TUntransLengths>
 // inline void
-// loadQueryImplTrans(TCDStringSet2<String<TransAlph<BlastProgram::BLASTP>, MMap<>>> & target,
-//                    TCDStringSet2<String<TransAlph<BlastProgram::BLASTP>, MMap<>>> & source,
+// loadQueryImplTrans(TCDStringSet<String<TransAlph<BlastProgram::BLASTP>, MMap<>>> & target,
+//                    TCDStringSet<String<TransAlph<BlastProgram::BLASTP>, MMap<>>> & source,
 //                    TUntransLengths           & /**/,
 //                    LambdaOptions       const & /**/)
 // {
@@ -425,8 +425,8 @@ template <typename TSpec1,
           typename TSpec2,
           typename TUntransLengths>
 inline void
-loadQueryImplTrans(TCDStringSet2<String<TransAlph<BlastProgram::BLASTP>, TSpec1>> & target,
-                   TCDStringSet2<String<TransAlph<BlastProgram::BLASTP>, TSpec2>> & source,
+loadQueryImplTrans(TCDStringSet<String<TransAlph<BlastProgram::BLASTP>, TSpec1>> & target,
+                   TCDStringSet<String<TransAlph<BlastProgram::BLASTP>, TSpec2>> & source,
                    TUntransLengths           & /**/,
                    LambdaOptions       const & /**/)
 {
@@ -492,7 +492,7 @@ loadQuery(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, TOutFormat, p, h>
     std::string strIdent = "Loading Query Sequences and Ids...";
     myPrint(options, 1, strIdent);
 
-    TCDStringSet2<String<OrigQryAlph<p>, typename TGH::TQryTag>> origSeqs;
+    TCDStringSet<String<OrigQryAlph<p>, typename TGH::TQryTag>> origSeqs;
 
 //     std::cout << "FOO " <<  toCString(options.queryFile) << " BAR" << std::endl;
     try
@@ -778,9 +778,6 @@ computeBlastMatch(TBlastMatch         & bm,
 {
     const unsigned long qryLength = length(value(lH.gH.qrySeqs, m.qryId));
 
-    auto const &   curQry = lH.gH.qrySeqs[m.qryId];
-    auto const &  curSubj = lH.gH.subjSeqs[m.subjId];
-
     SEQAN_ASSERT_LEQ(bm.qStart, bm.qEnd);
     SEQAN_ASSERT_LEQ(bm.sStart, bm.sEnd);
 
@@ -798,12 +795,8 @@ computeBlastMatch(TBlastMatch         & bm,
 //               << "\t TrueSubjId: " << getTrueSubjId(bm.m, lH.options, lH.gH.blastProgram)
 //               << "\t length(subjIds): " << length(subjIds) << "\n\n";
 
-    resize(rows(bm.align), 2);
-    auto & row0  = row(bm.align, 0);
-    auto & row1  = row(bm.align, 1);
-
-    assignSource(row0, infix(curQry, bm.qStart, bm.qEnd));
-    assignSource(row1, infix(curSubj,bm.sStart, bm.sEnd));
+    assignSource(bm.alignRow0, infix(lH.gH.qrySeqs[m.qryId], bm.qStart, bm.qEnd));
+    assignSource(bm.alignRow1, infix(lH.gH.subjSeqs[m.subjId],bm.sStart, bm.sEnd));
 
 //     std::cout << "== Positions\n";
 //     std::cout << "   " <<  bm.qStart << " - " << bm.qEnd << " [before ali]\n";
@@ -848,7 +841,9 @@ computeBlastMatch(TBlastMatch         & bm,
         // score the diagonal
         for (unsigned i = 0; i < row0len; ++i)
         {
-            scores[i] += score(seqanScheme(context(lH.gH.outfile).scoringScheme), source(row0)[i], source(row1)[i]);
+            scores[i] += score(seqanScheme(context(lH.gH.outfile).scoringScheme),
+                               source(bm.alignRow0)[i],
+                               source(bm.alignRow1)[i]);
             if (scores[i] < 0)
             {
                 scores[i] = 0;
@@ -873,16 +868,17 @@ computeBlastMatch(TBlastMatch         & bm,
                 break;
             }
         }
-        setEndPosition(row0, newEnd);
-        setEndPosition(row1, newEnd);
-        setBeginPosition(row0, newBeg);
-        setBeginPosition(row1, newBeg);
+        setEndPosition(bm.alignRow0, newEnd);
+        setEndPosition(bm.alignRow1, newEnd);
+        setBeginPosition(bm.alignRow0, newBeg);
+        setBeginPosition(bm.alignRow1, newBeg);
 
     } else
     {
         // compute with DP-code
 //         scr = localAlignment(bm.align, seqanScheme(context(lH.gH.outfile).scoringScheme), -maxDist, +maxDist);
-        scr = localAlignment2(bm.align,
+        scr = localAlignment2(bm.alignRow0,
+                              bm.alignRow1,
                               seqanScheme(context(lH.gH.outfile).scoringScheme),
                               -maxDist,
                               +maxDist,
@@ -890,11 +886,11 @@ computeBlastMatch(TBlastMatch         & bm,
     }
 
     // save new bounds of alignment
-    bm.qEnd    =  bm.qStart  + endPosition(row0);
-    bm.qStart  += beginPosition(row0);
+    bm.qEnd    =  bm.qStart  + endPosition(bm.alignRow0);
+    bm.qStart  += beginPosition(bm.alignRow0);
 
-    bm.sEnd   =  bm.sStart + endPosition(row1);
-    bm.sStart += beginPosition(row1);
+    bm.sEnd   =  bm.sStart + endPosition(bm.alignRow1);
+    bm.sStart += beginPosition(bm.alignRow1);
 
 //     if (scr < lH.options.minSeedScore)
 //         return PREEXTEND;
@@ -988,7 +984,7 @@ computeBlastMatch(TBlastMatch         & bm,
     }
 #endif
     if (((bm.qStart > 0) && (bm.sStart > 0)) ||
-        ((bm.qEnd < qryLength - 1) && (bm.sEnd < length(curSubj) -1)))
+        ((bm.qEnd < qryLength - 1) && (bm.sEnd < length(lH.gH.subjSeqs[m.subjId]) -1)))
     {
         // we want to allow more gaps in longer query sequences
         switch (lH.options.band)
@@ -1006,57 +1002,77 @@ computeBlastMatch(TBlastMatch         & bm,
         {
             if (lH.options.xDropOff != -1)
             {
-                scr = extendAlignment(bm.align,
-                                        lH.alignContext,
-                                    scr,
-                                    curQry,
-                                    curSubj,
-                                    positions,
-                                    EXTEND_BOTH,
-                                    -maxDist,
-                                    +maxDist,
-                                    lH.options.xDropOff,
-                                    seqanScheme(context(lH.gH.outfile).scoringScheme));
+                scr = _extendAlignmentImpl(bm.alignRow0,
+                                           bm.alignRow1,
+                                           scr,
+                                           lH.gH.qrySeqs[m.qryId],
+                                           lH.gH.subjSeqs[m.subjId],
+                                           positions,
+                                           EXTEND_BOTH,
+                                           -maxDist,
+                                           +maxDist,
+                                           lH.options.xDropOff,
+                                           seqanScheme(context(lH.gH.outfile).scoringScheme),
+                                           True(),
+                                           True(),
+                                           lH.alignContext);
             } else
             {
-                //TODO add alignContext to other calls
-                scr = extendAlignment(bm.align,
-                                    scr,
-                                    curQry,
-                                    curSubj,
-                                    positions,
-                                    EXTEND_BOTH,
-                                    -maxDist,
-                                    +maxDist,
-                                    seqanScheme(context(lH.gH.outfile).scoringScheme));
+                scr = _extendAlignmentImpl(bm.alignRow0,
+                                           bm.alignRow1,
+                                           scr,
+                                           lH.gH.qrySeqs[m.qryId],
+                                           lH.gH.subjSeqs[m.subjId],
+                                           positions,
+                                           EXTEND_BOTH,
+                                           -maxDist,
+                                           +maxDist,
+                                           lH.options.xDropOff,
+                                           seqanScheme(context(lH.gH.outfile).scoringScheme),
+                                           True(),
+                                           False(),
+                                           lH.alignContext);
             }
         } else
         {
             if (lH.options.xDropOff != -1)
             {
-                scr = extendAlignment(bm.align,
-                                    scr,
-                                    curQry,
-                                    curSubj,
-                                    positions,
-                                    EXTEND_BOTH,
-                                    lH.options.xDropOff,
-                                    seqanScheme(context(lH.gH.outfile).scoringScheme));
+                scr = _extendAlignmentImpl(bm.alignRow0,
+                                           bm.alignRow1,
+                                           scr,
+                                           lH.gH.qrySeqs[m.qryId],
+                                           lH.gH.subjSeqs[m.subjId],
+                                           positions,
+                                           EXTEND_BOTH,
+                                           -maxDist,
+                                           +maxDist,
+                                           lH.options.xDropOff,
+                                           seqanScheme(context(lH.gH.outfile).scoringScheme),
+                                           False(),
+                                           True(),
+                                           lH.alignContext);
             } else
             {
-                scr = extendAlignment(bm.align,
-                                    scr,
-                                    curQry,
-                                    curSubj,
-                                    positions,
-                                    EXTEND_BOTH,
-                                    seqanScheme(context(lH.gH.outfile).scoringScheme));
+                scr = _extendAlignmentImpl(bm.alignRow0,
+                                           bm.alignRow1,
+                                           scr,
+                                           lH.gH.qrySeqs[m.qryId],
+                                           lH.gH.subjSeqs[m.subjId],
+                                           positions,
+                                           EXTEND_BOTH,
+                                           -maxDist,
+                                           +maxDist,
+                                           lH.options.xDropOff,
+                                           seqanScheme(context(lH.gH.outfile).scoringScheme),
+                                           False(),
+                                           False(),
+                                           lH.alignContext);
             }
         }
-        bm.sStart = beginPosition(row1);
-        bm.qStart = beginPosition(row0);
-        bm.sEnd   = endPosition(row1);
-        bm.qEnd   = endPosition(row0);
+        bm.sStart = beginPosition(bm.alignRow1);
+        bm.qStart = beginPosition(bm.alignRow0);
+        bm.sEnd   = endPosition(bm.alignRow1);
+        bm.qEnd   = endPosition(bm.alignRow0);
 
 //         std::cout << "AFTER:\n" << bm.align << "\n";
     }
@@ -1132,7 +1148,8 @@ iterateMatches(TLocalHolder & lH)
     using TGlobalHolder = typename TLocalHolder::TGlobalHolder;
     using TPos          = uint32_t; //typename Match::TPos;
     using TBlastMatch   = BlastMatch<
-                           typename TLocalHolder::TAlign,
+                           typename TLocalHolder::TAlignRow0,
+                           typename TLocalHolder::TAlignRow1,
                            TPos,
                            typename Value<typename TGlobalHolder::TQryIds>::Type,// const &,
                            typename Value<typename TGlobalHolder::TSubjIds>::Type// const &,
@@ -1349,7 +1366,7 @@ iterateMatches(TLocalHolder & lH)
                           << "\n       subj: " << infix(lH.gH.subjSeqs,
                                                       bm.sStart,
                                                       bm.sEnd)
-                          << "\nalign: " << bm.align
+                          << "\nalign: " << bm.alignRow0 << "\n       " << bm.alignRow1
                           << "\n";
                         return lret;
                         break;

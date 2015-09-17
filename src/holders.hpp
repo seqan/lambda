@@ -247,8 +247,7 @@ public:
     // references to global stuff
     LambdaOptions     const & options;
     TGlobalHolder /*const*/ & gH;
-    static BlastProgram constexpr
-    blastProgram        = TGlobalHolder::blastProgram;
+    static constexpr BlastProgram blastProgram = TGlobalHolder::blastProgram;
 
     // this is the localHolder for the i-th part of the queries
     uint64_t            i;
@@ -266,16 +265,12 @@ public:
     std::vector<uint16_t>               seedRanks; // mapping seed -> relative rank
 
     // regarding extension
-    typedef Align<
-        typename Infix<
-            typename Value<
-                typename TGlobalHolder::TTransQrySeqs>::Type>::Type,
-                ArrayGaps> TAlign;
-
-    typedef DPContext<typename Value<typename TGlobalHolder::TScoreScheme>::Type,
-                      TScoreExtension> TDPContext;
-    typedef AliExtContext_<TAlign,
-                          TDPContext> TAliExtContext;
+    using TAlignRow0 = Gaps<typename Infix<typename Value<typename TGlobalHolder::TTransQrySeqs>::Type>::Type,
+                            ArrayGaps>;
+    using TAlignRow1 = Gaps<typename Infix<typename Value<typename TGlobalHolder::TTransSubjSeqs>::Type>::Type,
+                            ArrayGaps>;
+    using TDPContext = DPContext<typename Value<typename TGlobalHolder::TScoreScheme>::Type, TScoreExtension>;
+    using TAliExtContext = AliExtContext_<TAlignRow0, TAlignRow1, TDPContext>;
 
     TAliExtContext      alignContext;
 

@@ -133,20 +133,9 @@ struct DefaultIndexCreator<Index<TText, FMIndex<SaAdvancedSort<TSpec>, TConfig> 
 
 }
 
-#if defined(LAMBDA_BITCOPMRESSED_STRINGS)
-using PackSpec = Packed<>;
-#elif defined(LAMBDA_MMAPPED_STRINGS)
-using PackSpec = MMap<>;
-#else
-using PackSpec = Alloc<>;
-#endif
-
-template <typename TAlph>
-using TCDStringSet = StringSet<String<TAlph, PackSpec>, Owner<ConcatDirect<> > >;
-
+// lazy...
 template <typename TString>
-using TCDStringSet2 = StringSet<TString, Owner<ConcatDirect<> > >;
-
+using TCDStringSet = StringSet<TString, Owner<ConcatDirect<> > >;
 
 template <BlastProgram p>
 using OrigQryAlph = typename std::conditional<
@@ -1223,9 +1212,27 @@ printOptions(LambdaOptions const & options)
               << " EXTENSION\n"
               << "  x-drop:                   " << options.xDropOff << "\n"
               << "  band:                     " << bandStr << "\n"
-              << " MISC\n"
-              << "  bit-compressed strings:   "
-    #if defined LAMBDA_BITCOPMRESSED_STRINGS
+              << " BUILD FLAGS:\n"
+              << "  fastbuild:                "
+    #if defined(FASTBUILD)
+              << "on\n"
+    #else
+              << "off\n"
+    #endif
+              << "  native_build:             "
+    #if defined(LAMBDA_NATIVE_BUILD)
+              << "on\n"
+    #else
+              << "off\n"
+    #endif
+              << "  static_build:             "
+    #if defined(LAMBDA_STATIC_BUILD)
+              << "on\n"
+    #else
+              << "off\n"
+    #endif
+              << "  mmapped_strings:          "
+    #if defined(LAMBDA_MMAPPED_STRINGS)
               << "on\n"
     #else
               << "off\n"

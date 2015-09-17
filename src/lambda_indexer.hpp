@@ -48,7 +48,7 @@ using namespace seqan;
 
 template <typename TOrigAlph>
 inline int
-loadSubjSeqsAndIds(TCDStringSet<TOrigAlph> & originalSeqs,
+loadSubjSeqsAndIds(TCDStringSet<String<TOrigAlph>> & originalSeqs,
                    LambdaIndexerOptions const & options)
 {
     StringSet<CharString, Owner<ConcatDirect<>>> ids;
@@ -112,8 +112,8 @@ _saveOriginalSeqLengths(TLimits limits, // we want copy!
 
 template <typename TTransAlph, typename TOrigAlph>
 inline void
-translateOrSwap(TCDStringSet<TTransAlph> & out,
-                TCDStringSet<TOrigAlph> & in,
+translateOrSwap(TCDStringSet<String<TTransAlph>> & out,
+                TCDStringSet<String<TOrigAlph>> & in,
                 LambdaIndexerOptions const & options)
 {
     //TODO more output
@@ -126,8 +126,8 @@ translateOrSwap(TCDStringSet<TTransAlph> & out,
 
 template <typename TSameAlph>
 inline void
-translateOrSwap(TCDStringSet<TSameAlph> & out,
-                TCDStringSet<TSameAlph> & in,
+translateOrSwap(TCDStringSet<String<TSameAlph>> & out,
+                TCDStringSet<String<TSameAlph>> & in,
                 LambdaIndexerOptions const & /**/)
 {
     swap(out, in);
@@ -139,7 +139,7 @@ translateOrSwap(TCDStringSet<TSameAlph> & out,
 
 template <typename TTransAlph>
 inline void
-dumpTranslatedSeqs(TCDStringSet<TTransAlph> const & translatedSeqs,
+dumpTranslatedSeqs(TCDStringSet<String<TTransAlph>> const & translatedSeqs,
                    LambdaIndexerOptions const & options)
 {
     double start = sysTime();
@@ -160,8 +160,8 @@ dumpTranslatedSeqs(TCDStringSet<TTransAlph> const & translatedSeqs,
 
 // template <typename TTransAlph, typename TRedAlph>
 // inline void
-// reduceOrSwap(TCDStringSet<TRedAlph> & out,
-//              TCDStringSet<TTransAlph> & in)
+// reduceOrSwap(TCDStringSet<String<TRedAlph>> & out,
+//              TCDStringSet<String<TTransAlph>> & in)
 // {
 //     //TODO more output
 //     // reduce implicitly
@@ -172,8 +172,8 @@ dumpTranslatedSeqs(TCDStringSet<TTransAlph> const & translatedSeqs,
 // 
 // template <typename TSameAlph>
 // inline void
-// reduceOrSwap(TCDStringSet<TSameAlph> & out,
-//              TCDStringSet<TSameAlph> & in)
+// reduceOrSwap(TCDStringSet<String<TSameAlph>> & out,
+//              TCDStringSet<String<TSameAlph>> & in)
 // {
 //     swap(out, in);
 // }
@@ -184,9 +184,9 @@ dumpTranslatedSeqs(TCDStringSet<TTransAlph> const & translatedSeqs,
 
 template <typename TRedAlph>
 inline bool
-checkIndexSize(TCDStringSet<TRedAlph> const & seqs)
+checkIndexSize(TCDStringSet<String<TRedAlph>> const & seqs)
 {
-    using SAV = typename SAValue<TCDStringSet<TRedAlph>>::Type;
+    using SAV = typename SAValue<TCDStringSet<String<TRedAlph>>>::Type;
     uint64_t curNumSeq = length(seqs);
     uint64_t maxNumSeq = std::numeric_limits<typename Value<SAV, 1>::Type>::max();
 
@@ -389,10 +389,10 @@ generateIndexAndDump(StringSet<TString, TSpec>        & seqs,
                      BlastProgramSelector<p>    const &,
                      TRedAlph_                  const &)
 {
-    using TTransSeqs    = TCDStringSet<TransAlph<p>>;
+    using TTransSeqs    = TCDStringSet<String<TransAlph<p>>>;
 
     using TRedAlph      = RedAlph<p, TRedAlph_>; // ensures == Dna5 for BlastN
-    using TRedSeqVirt   = ModifiedString<String<TransAlph<p>, PackSpec>,
+    using TRedSeqVirt   = ModifiedString<String<TransAlph<p>, Alloc<>>,
                             ModView<FunctorConvert<TransAlph<p>,TRedAlph>>>;
     using TRedSeqsVirt  = StringSet<TRedSeqVirt, Owner<ConcatDirect<>>>;
 
