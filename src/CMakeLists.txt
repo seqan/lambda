@@ -86,12 +86,12 @@ if ((CMAKE_COMPILER_IS_GNUCXX OR COMPILER_IS_CLANG) AND NOT APPLE)
     endif (LAMBDA_STATIC_BUILD)
 endif ()
 
-option (LAMBDA_MMAPPED_STRINGS "Use mmapped storage for the database." ON)
-if (LAMBDA_MMAPPED_STRINGS)
-    add_definitions (-DLAMBDA_MMAPPED_STRINGS=1)
-    message (STATUS "MMAPPED_STRINGS set, better memory usage, but slightly slower search.")
-    message (STATUS "To deactivate, pass -DLAMBDA_MMAPPED_STRINGS=0 to cmake.")
-endif (LAMBDA_MMAPPED_STRINGS)
+option (LAMBDA_MMAPPED_DB "Use mmapped access to the database." ON)
+if (LAMBDA_MMAPPED_DB)
+    add_definitions (-DLAMBDA_MMAPPED_DB=1)
+    message (STATUS "MMAPPED_DB set, using memory-mapped IO to access the database.")
+    message (STATUS "To deactivate, pass -DLAMBDA_MMAPPED_DB=0 to cmake.")
+endif (LAMBDA_MMAPPED_DB)
 
 # ----------------------------------------------------------------------------
 # Build Setup

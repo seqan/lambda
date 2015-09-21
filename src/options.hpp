@@ -73,7 +73,7 @@ struct SAValue<StringSet<String<Dna5, TSpec1>, TSpec2> >
 template <typename TString, typename TSpec>
 struct DefaultIndexStringSpec<StringSet<TString, TSpec>>
 {
-#if !defined(LAMBDA_INDEXER) && defined(LAMBDA_MMAPPED_STRINGS)
+#if !defined(LAMBDA_INDEXER) && defined(LAMBDA_MMAPPED_DB)
     using Type    = MMap<>;
 #else
     using Type    = Alloc<>;
@@ -88,7 +88,7 @@ using namespace seqan;
 struct LambdaFMIndexConfig
 {
     using LengthSum = size_t;
-#if !defined(LAMBDA_INDEXER) && defined(LAMBDA_MMAPPED_STRINGS)
+#if !defined(LAMBDA_INDEXER) && defined(LAMBDA_MMAPPED_DB)
     using TAlloc    = MMap<>;
 #else
     using TAlloc    = Alloc<>;
@@ -1201,7 +1201,7 @@ printOptions(LambdaOptions const & options)
               << "off\n"
     #endif
               << "  mmapped_strings:          "
-    #if defined(LAMBDA_MMAPPED_STRINGS)
+    #if defined(LAMBDA_MMAPPED_DB)
               << "on\n"
     #else
               << "off\n"

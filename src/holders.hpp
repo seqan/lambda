@@ -152,7 +152,7 @@ public:
 
     /* Sequence storage types */
     using TStringTag    = Alloc<>;
-#if defined(LAMBDA_MMAPPED_STRINGS)
+#if defined(LAMBDA_MMAPPED_DB)
     using TDirectStringTag = MMap<>;
 #else
     using TDirectStringTag = TStringTag;
