@@ -70,6 +70,16 @@ struct SAValue<StringSet<String<Dna5, TSpec1>, TSpec2> >
     typedef Pair<uint32_t, uint32_t, Pack> Type;
 };
 
+template <typename TString, typename TSpec>
+struct DefaultIndexStringSpec<StringSet<TString, TSpec>>
+{
+#if !defined(LAMBDA_INDEXER) && defined(LAMBDA_MMAPPED_STRINGS)
+    using Type    = MMap<>;
+#else
+    using Type    = Alloc<>;
+#endif
+};
+
 }
 
 using namespace seqan;
