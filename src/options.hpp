@@ -37,8 +37,6 @@
 #include <seqan/arg_parse.h>
 #include <seqan/index.h>
 
-#include "index_sa_sort.h"
-
 // ==========================================================================
 // Metafunctions
 // ==========================================================================
@@ -93,50 +91,6 @@ struct LambdaFMIndexConfig
 
 template <typename TSpec = void>
 using TFMIndex = FMIndex<TSpec, LambdaFMIndexConfig>;
-
-namespace SEQAN_NAMESPACE_MAIN
-{
-template <typename TText, typename TSpec>
-struct Fibre<Index<TText, IndexSa<SaAdvancedSort<TSpec> > >, FibreTempSA>
-{
-    typedef Index<TText, IndexSa<SaAdvancedSort<TSpec> > >        TIndex_;
-    typedef typename SAValue<TIndex_>::Type                         TSAValue_;
-
-    typedef String<TSAValue_, typename DefaultIndexStringSpec<TText>::Type> Type;
-};
-
-template <typename TText, typename TSpec>
-struct DefaultIndexCreator<Index<TText, IndexSa<SaAdvancedSort<TSpec>> >, FibreSA>
-{
-    typedef SaAdvancedSort<TSpec> Type;
-//     static std::function<void(void)> progressCallback;
-};
-
-// template <typename TText, typename TSpec>
-// static std::function<void(void)>
-// DefaultIndexCreator<Index<TText, IndexSa<SaAdvancedSort<TSpec>> >, FibreSA>::progressCallback = [] () {};
-
-template <typename TText, typename TSpec, typename TConfig>
-struct Fibre<Index<TText, FMIndex<SaAdvancedSort<TSpec>, TConfig> >, FibreTempSA>
-{
-    typedef Index<TText, FMIndex<SaAdvancedSort<TSpec>, TConfig> >        TIndex_;
-    typedef typename SAValue<TIndex_>::Type                         TSAValue_;
-
-    typedef String<TSAValue_, typename DefaultIndexStringSpec<TText>::Type> Type;
-};
-
-template < typename TText, typename TSpec, typename TConfig>
-struct DefaultIndexCreator<Index<TText, FMIndex<SaAdvancedSort<TSpec>, TConfig> >, FibreSA>
-{
-    typedef SaAdvancedSort<TSpec> Type;
-//     std::function<void(void)> progressCallback;
-};
-
-// template <typename TText, typename TSpec>
-// static std::function<void(void)>
-// DefaultIndexCreator<Index<TText, FMIndex<SaAdvancedSort<TSpec>, TConfig> >, FibreSA>::progressCallback = [] () {};
-
-}
 
 // lazy...
 template <typename TString>

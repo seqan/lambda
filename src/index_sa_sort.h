@@ -1,7 +1,7 @@
 // ==========================================================================
 //                 SeqAn - The Library for Sequence Analysis
 // ==========================================================================
-// Copyright (c) 2006-2013, Knut Reinert, FU Berlin
+// Copyright (c) 2006-2015, Knut Reinert, FU Berlin
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -41,8 +41,12 @@
 #include <parallel/algorithm>
 #endif
 
-namespace SEQAN_NAMESPACE_MAIN
+namespace seqan
 {
+
+// ==========================================================================
+// Tags
+// ==========================================================================
 
 template <typename TAlgoSpec>
 struct SaAdvancedSort {};
@@ -83,6 +87,64 @@ struct SaAdvancedSortAlgoTag<QuickSortTag>
 #endif
 };
 
+// ==========================================================================
+// Forwards
+// ==========================================================================
+
+template <typename TSA, typename TText, typename TAlgo>
+inline void
+createSuffixArray(TSA &SA, TText const &s, SaAdvancedSort<TAlgo> const &);
+
+} // namespace seqan
+
+// ==========================================================================
+// Metafunctions
+// ==========================================================================
+
+namespace SEQAN_NAMESPACE_MAIN
+{
+template <typename TText, typename TSpec>
+struct Fibre<Index<TText, IndexSa<SaAdvancedSort<TSpec> > >, FibreTempSA>
+{
+    typedef Index<TText, IndexSa<SaAdvancedSort<TSpec> > >          TIndex_;
+    typedef typename SAValue<TIndex_>::Type                         TSAValue_;
+
+    typedef String<TSAValue_, typename DefaultIndexStringSpec<TText>::Type> Type;
+};
+
+template <typename TText, typename TSpec>
+struct DefaultIndexCreator<Index<TText, IndexSa<SaAdvancedSort<TSpec>> >, FibreSA>
+{
+    typedef SaAdvancedSort<TSpec> Type;
+};
+
+template <typename TText, typename TSpec, typename TConfig>
+struct Fibre<Index<TText, FMIndex<SaAdvancedSort<TSpec>, TConfig> >, FibreTempSA>
+{
+    typedef Index<TText, FMIndex<SaAdvancedSort<TSpec>, TConfig> >  TIndex_;
+    typedef typename SAValue<TIndex_>::Type                         TSAValue_;
+
+    typedef String<TSAValue_, typename DefaultIndexStringSpec<TText>::Type> Type;
+};
+
+template < typename TText, typename TSpec, typename TConfig>
+struct DefaultIndexCreator<Index<TText, FMIndex<SaAdvancedSort<TSpec>, TConfig> >, FibreSA>
+{
+    typedef SaAdvancedSort<TSpec> Type;
+};
+
+} // SEQAN_NAMESPACE_MAIN
+
+// ==========================================================================
+// Classes
+// ==========================================================================
+
+namespace seqan
+{
+
+// ----------------------------------------------------------------------------
+// Class AdvancedSuffixLess_
+// ----------------------------------------------------------------------------
 
 // compare two suffices of a given text
 template < typename TSAValue, typename TText >
@@ -189,16 +251,61 @@ struct AdvancedSuffixLess_<TSAValue, StringSet<TString, TSetSpec> const> :
     }
 };
 
+// ----------------------------------------------------------------------------
+// Class Pipe
+// ----------------------------------------------------------------------------
+
+template <typename TInput, typename TAlgoSpec>
+struct Pipe< TInput, SaAdvancedSort<TAlgoSpec> >
+{
+    typedef typename Value<TInput>::Type    TValue;
+    typedef typename SAValue<TInput>::Type    TSAValue;
+
+    typedef String<TValue, Alloc<> >        TText;
+    typedef String<TSAValue, Alloc<> >        TSA;
+    typedef Pipe<TSA, Source<> >            TSource;
+
+    TSA        sa;
+    TSource    in;
+
+    Pipe(TInput &_textIn):
+        in(sa)
+    {
+        TText text;
+        text << _textIn;
+
+        resize(sa, length(_textIn), Exact());
+        createSuffixArray(sa, text, SaAdvancedSort<TAlgoSpec>());
+    }
+
+    inline typename Value<TSource>::Type const & operator*()
+    {
+        return *in;
+    }
+
+    inline Pipe& operator++()
+    {
+        ++in;
+        return *this;
+    }
+};
+
 // template < typename TSAValue, typename TString, typename TSetSpec >
 // std::atomic<uint64_t> AdvancedSuffixLess_<TSAValue, StringSet<TString, TSetSpec> const >::_comparisons;
 
-template < typename TSA, 
-        typename TText,
-        typename TSize>
-void _sortBucketAdvancedSort(
-    TSA &sa,
-    TText &text,
-    TSize lcp)
+// ==========================================================================
+// Functions
+// ==========================================================================
+
+// ----------------------------------------------------------------------------
+// Helper Functions
+// ----------------------------------------------------------------------------
+
+template <typename TSA,
+         typename TText,
+         typename TSize>
+inline void
+_sortBucketAdvancedSort(TSA &sa, TText &text, TSize lcp)
 {
     // sort bucket with quicksort
     ::std::sort(
@@ -207,11 +314,28 @@ void _sortBucketAdvancedSort(
         AdvancedSuffixLess_<typename Value<TSA>::Type, TText>(text, lcp));
 }
 
+template <typename T>
+inline void
+progressCallbackWrapper(std::function<void(void)>, T const &)
+{
+}
+
+inline void
+progressCallbackWrapper(std::function<void(uint64_t)> const & lambda, uint64_t v)
+{
+    lambda(v);
+}
+
+// ----------------------------------------------------------------------------
+// Function createSuffixArray
+// ----------------------------------------------------------------------------
+
+// no callback implies that algo is discarded as well (TODO do we want that?)
 template <typename TSA, typename TText, typename TAlgo>
-inline void createSuffixArray(
-    TSA &SA,
-    TText const &s,
-    SaAdvancedSort<TAlgo> const &)
+inline void
+createSuffixArray(TSA &SA,
+                  TText const &s,
+                  SaAdvancedSort<TAlgo> const &)
 {
     typedef typename Size<TSA>::Type TSize;
     typedef typename Iterator<TSA, Standard>::Type TIter;
@@ -229,6 +353,7 @@ inline void createSuffixArray(
         SuffixLess_<typename Value<TSA>::Type, TText const>(s));
 }
 
+// different Algos with callback
 template <typename TSA,
           typename TString,
           typename TSSetSpec,
@@ -253,22 +378,7 @@ createSuffixArray(TSA & SA,
             *it = Pair<unsigned, TSize>(j, i);
     }
 
-    // 2. Sort suffix array with quicksort
-//     (void)progressCallback;
-//     if (std::is_same<TAlgoSpec, std::true_type>::value)
-//     {
-//         std::cout << "calling std::sort\n";
-//         std::sort(
-//         begin(SA, Standard()),
-//         end(SA, Standard()),
-//         AdvancedSuffixLess_<typename Value<TSA>::Type, TText const>(s, 0, progressCallback));
-//     } else if (std::is_same<TAlgoSpec, std::false_type>::value)
-//     {
-//         std::sort(
-//         begin(SA, Standard()),
-//         end(SA, Standard()),
-//         SuffixLess_<typename Value<TSA>::Type, TText const>(s));
-//     } else
+    // 2. Sort suffix array with algo
 #ifdef GNUOMP
     typedef typename SaAdvancedSortAlgoTag<TAlgoSpec>::Type TAlgo;
     __gnu_parallel::sort(
@@ -285,18 +395,7 @@ createSuffixArray(TSA & SA,
 
 }
 
-template <typename T>
-inline void
-progressCallbackWrapper(std::function<void(void)>, T const &)
-{
-}
-
-inline void
-progressCallbackWrapper(std::function<void(uint64_t)> const & lambda, uint64_t v)
-{
-    lambda(v);
-}
-
+// QuicksortBucket with callback
 template <typename TSA,
           typename TString,
           typename TSSetSpec,
@@ -454,43 +553,84 @@ createSuffixArray(TSA & sa,
 //         std::cout << suffix(text[sa[dir[i]].i1], sa[dir[i]].i2) << "\n";
 }
 
-
-
-template <typename TInput, typename TAlgoSpec>
-struct Pipe< TInput, SaAdvancedSort<TAlgoSpec> >
+// general case discards the callback
+template <typename TSA,
+          typename TString,
+          typename TSSetSpec,
+          typename TAlgo,
+          typename TLambda>
+inline void
+createSuffixArray(TSA & SA,
+                  StringSet<TString, TSSetSpec> const & s,
+                  TAlgo const &,
+                  TLambda const &)
 {
-    typedef typename Value<TInput>::Type    TValue;
-    typedef typename SAValue<TInput>::Type    TSAValue;
-
-    typedef String<TValue, Alloc<> >        TText;
-    typedef String<TSAValue, Alloc<> >        TSA;
-    typedef Pipe<TSA, Source<> >            TSource;
-
-    TSA        sa;
-    TSource    in;
-
-    Pipe(TInput &_textIn):
-        in(sa)
-    {
-        TText text;
-        text << _textIn;
-
-        resize(sa, length(_textIn), Exact());
-        createSuffixArray(sa, text, SaAdvancedSort<TAlgoSpec>());
-    }
-
-    inline typename Value<TSource>::Type const & operator*()
-    {
-        return *in;
-    }
-
-    inline Pipe& operator++()
-    {
-        ++in;
-        return *this;
-    }
-};
-
+    return createSuffixArray(SA, s, TAlgo());
 }
+
+// ----------------------------------------------------------------------------
+// Function indexCreate
+// ----------------------------------------------------------------------------
+
+template <typename TText, typename TSpec, typename TConfig, typename TLambda>
+inline bool indexCreate(Index<TText, FMIndex<TSpec, TConfig> > & index,
+                        TText const & text,
+                        FibreSALF const &,
+                        TLambda const & progressCallback)
+{
+    typedef Index<TText, FMIndex<TSpec, TConfig> >      TIndex;
+    typedef typename Fibre<TIndex, FibreTempSA>::Type   TTempSA;
+    typedef typename DefaultIndexCreator<TIndex, FibreSA>::Type  TAlgo;
+    typedef typename Size<TIndex>::Type                 TSize;
+
+    indexText(index) = text;
+
+    if (empty(text))
+        return false;
+
+    TTempSA tempSA;
+
+    // Create the full SA.
+    resize(tempSA, lengthSum(text), Exact());
+    createSuffixArray(tempSA, text, TAlgo(), progressCallback);
+
+    // Create the LF table.
+    createLF(indexLF(index), text, tempSA);
+
+    // Set the FMIndex LF as the CompressedSA LF.
+    setFibre(indexSA(index), indexLF(index), FibreLF());
+
+    // Create the compressed SA.
+    TSize numSentinel = countSequences(text);
+    createCompressedSa(indexSA(index), tempSA, numSentinel);
+
+    return true;
+}
+
+template <typename TText, typename TSpec, typename TLambda>
+inline bool indexCreate(Index<TText, IndexSa<TSpec> > & index,
+                        TText const & text,
+                        FibreSA const &,
+                        TLambda const & progressCallback)
+{
+    typedef Index<TText, IndexSa<TSpec> >      TIndex;
+    typedef typename Fibre<TIndex, FibreSA>::Type       TSA;
+    typedef typename DefaultIndexCreator<TIndex, FibreSA>::Type  TAlgo;
+
+    indexText(index) = text;
+
+    if (empty(text))
+        return false;
+
+    TSA & sa = getFibre(index, FibreSA());
+
+    // Create the full SA.
+    resize(sa, lengthSum(text), Exact());
+    createSuffixArray(sa, text, TAlgo(), progressCallback);
+
+    return true;
+}
+
+} // namespace seqan
 
 #endif
