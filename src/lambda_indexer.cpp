@@ -56,6 +56,8 @@
 
 #include <iostream>
 
+#define LAMBDA_INDEXER 1 // some things are different for the indexer binary
+
 #include "lambda_indexer.hpp"
 
 using namespace seqan;

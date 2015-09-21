@@ -79,9 +79,14 @@ using namespace seqan;
 // Index Specs
 struct LambdaFMIndexConfig
 {
-    typedef size_t                                                 LengthSum;
-    typedef WaveletTree<void, WTRDConfig<LengthSum> >              Bwt;
-    typedef Levels<void, LevelsRDConfig<LengthSum, Alloc<>, 1> >   Sentinels;
+    using LengthSum = size_t;
+#if !defined(LAMBDA_INDEXER) && defined(LAMBDA_MMAPPED_STRINGS)
+    using TAlloc    = MMap<>;
+#else
+    using TAlloc    = Alloc<>;
+#endif
+    using Bwt       = WaveletTree<void, WTRDConfig<LengthSum, TAlloc> >;
+    using Sentinels = Levels<void, LevelsRDConfig<LengthSum, TAlloc> >;
 
     static const unsigned SAMPLING = 10;
 };
