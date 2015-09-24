@@ -40,7 +40,7 @@
 #include "options.hpp"
 #include "alph.hpp"
 #include "index_sa_sort.h"
-#include "lambda_indexer_misc.h"
+#include "lambda_indexer_misc.hpp"
 
 using namespace seqan;
 

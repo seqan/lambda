@@ -123,7 +123,8 @@ add_executable (lambda lambda.cpp
 add_executable (lambda_indexer lambda_indexer.cpp
                 lambda_indexer.hpp
                 options.hpp
-                misc.hpp)
+                lambda_indexer_misc.hpp
+                index_sa_sort.h)
 
 # Add dependencies found by find_package (SeqAn).
 target_link_libraries (lambda ${SEQAN_LIBRARIES})
