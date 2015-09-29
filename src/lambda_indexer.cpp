@@ -180,6 +180,8 @@ argConv2(LambdaIndexerOptions     const & options,
         return realMain(options, BlastProgramSelector<p>(), TRedAlph(), SaAdvancedSort<QuickSortTag>());
     else if (options.algo == "quicksortbuckets")
         return realMain(options, BlastProgramSelector<p>(), TRedAlph(), SaAdvancedSort<QuickSortBucketTag>());
+    else if (options.algo == "radixsort")
+        return realMain(options, BlastProgramSelector<p>(), TRedAlph(), SaAdvancedSort<InPlaceRadixTag>());
     else
         return realMain(options, BlastProgramSelector<p>(), TRedAlph(), Nothing());
 }

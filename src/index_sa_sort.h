@@ -41,6 +41,8 @@
 #include <parallel/algorithm>
 #endif
 
+#include "radix_inplace.h"
+
 namespace seqan
 {
 
@@ -56,6 +58,8 @@ struct QuickSortTag {};
 struct MergeSortTag {};
 
 struct QuickSortBucketTag {};
+
+struct InPlaceRadixTag {};
 
 template <typename TIndex>
 struct SaAdvancedSortAlgoTag
@@ -551,6 +555,45 @@ createSuffixArray(TSA & sa,
 //     std::cout << "POST REFINE First 20 sa[dir]" << std::endl;
 //     for (unsigned i = 0; i < 20; ++i)
 //         std::cout << suffix(text[sa[dir[i]].i1], sa[dir[i]].i2) << "\n";
+}
+
+inline std::function<void(unsigned)>
+progressWrapper2(std::function<void(void)> const &)
+{
+    return [] (unsigned) {};
+}
+
+inline std::function<void(unsigned)>
+progressWrapper2(std::function<void(unsigned)> const & l)
+{
+    return l;
+}
+
+template <typename TSA,
+          typename TString,
+          typename TSSetSpec,
+          typename TLambda>
+inline void
+createSuffixArray(TSA & SA,
+                  StringSet<TString, TSSetSpec> const & s,
+                  SaAdvancedSort<InPlaceRadixTag> const &,
+                  TLambda const & progressCallback = [] (unsigned) {})
+{
+    typedef typename Size<TSA>::Type TSize;
+    typedef typename Iterator<TSA, Standard>::Type TIter;
+
+    // 1. Fill suffix array with a permutation (the identity)
+    TIter it = begin(SA, Standard());
+    for(unsigned j = 0; j < length(s); ++j)
+    {
+        TSize len = length(s[j]);
+        for(TSize i = 0; i < len; ++i, ++it)
+            *it = Pair<unsigned, TSize>(j, i);
+    }
+
+    // 2. Sort suffix array with inplace radix Sort
+//     std::cerr << "I am really in radix sort" << std::endl;
+    inPlaceRadixSort(SA, s, progressWrapper2(progressCallback));
 }
 
 // general case discards the callback

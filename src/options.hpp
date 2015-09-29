@@ -893,7 +893,7 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
         " Requirements below!).",
         ArgParseArgument::STRING,
         "STR"));
-    setValidValues(parser, "algorithm", "mergesort quicksortbuckets quicksort skew7ext");
+    setValidValues(parser, "algorithm", "mergesort quicksortbuckets quicksort radixsort skew7ext");
     setDefaultValue(parser, "algorithm", "mergesort");
     setAdvanced(parser, "algorithm");
 

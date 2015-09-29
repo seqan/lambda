@@ -129,7 +129,7 @@ printProgressBar(uint64_t & lastPercent, uint64_t curPerc)
     //round down to even
     curPerc = curPerc & ~1;
 //     #pragma omp critical(stdout)
-    if ((lastPercent != curPerc) && (curPerc <= 100))
+    if ((curPerc > lastPercent) && (curPerc <= 100))
     {
         for (uint64_t i = lastPercent + 2; i <= curPerc; i+=2)
         {
