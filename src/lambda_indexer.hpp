@@ -402,8 +402,8 @@ createIndexActual(TIndex & index,
         indexCreate(index, text, TFibre(),
                     [&_lastPercent] (uint64_t curPerc)
                     {
-//                         SEQAN_OMP_PRAGMA(critical(progressBar))
-                        if (TID == 0)
+                        SEQAN_OMP_PRAGMA(critical(progressBar))
+//                         if (TID == 0)
                         printProgressBar(_lastPercent, curPerc);
                     });
         printProgressBar(_lastPercent, 100);

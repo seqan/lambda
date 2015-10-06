@@ -41,6 +41,14 @@
 #ifndef CORE_INCLUDE_SEQAN_INDEX_RADIX_INPLACE_H_
 #define CORE_INCLUDE_SEQAN_INDEX_RADIX_INPLACE_H_
 
+#if defined(_OPENMP) && defined(__GNUC__) && !defined(__clang__)
+#include <parallel/algorithm>
+#define SORT __gnu_parallel::sort
+#else
+#define SORT std::sort
+#endif
+//TODO(h-2): for clang use std::experimenta::parallel if available
+
 namespace SEQAN_NAMESPACE_MAIN
 {
 
@@ -161,52 +169,55 @@ struct _ZeroBucketComparator<TSAValue, Nothing const>
 // struct RadixSortContext_
 // ----------------------------------------------------------------------------
 
-template <typename TAccessFunctor,                // text accessor
-          typename TOrderFunctor,                 // For seperate sort of the 0 bucket.
+template <typename TSAValue,
+          typename TText,
           typename TSize,                         // type of depth and bucketCount a.s.o
           unsigned Q>                             // alph size = ValueSize + 1
 struct RadixSortContext_
 {
-    static_assert(Q < 256, "Alphabet size must be smaller 256!"); //TODO really?
-    typedef typename TAccessFunctor::argument_type      TSAValue;
-    typedef typename TAccessFunctor::result_type        TOrdValue; // unsigned
+    typedef typename StringSetLimits<TText const>::Type     TLimitsString; // "Nothing" for Strings
+    typedef RadixTextAccessor<TSAValue, TText>              TAccessFunctor;
+    typedef _ZeroBucketComparator<TSAValue, TLimitsString>  TOrderFunctor;
+    typedef typename TAccessFunctor::result_type            TOrdValue;
 
+    static_assert(Q < 256, "Alphabet size must be smaller 256!"); //TODO really?
     static const unsigned ORACLESIZE = 256;
-    TAccessFunctor     textAccess;
-    TOrderFunctor      comp;
+
+    TText const &       text;
+    TAccessFunctor      textAccess;
+    TOrderFunctor       comp;
 
     TSize bucketSize[Q];
     std::array<TSAValue*,Q> bucketEnd;
 
-    RadixSortContext_(TAccessFunctor const & f, TOrderFunctor const & c) :
-        textAccess(f), comp(c)
+    RadixSortContext_(TText const & t) :
+        text(t), textAccess(t), comp(stringSetLimits(t))
     {}
 };
 
-template <typename TAccessFunctor,
-          typename TOrderFunctor,
+template <typename TSAValue,
+          typename TText,
           typename TSize,
           unsigned Q>
 inline void
-clear(RadixSortContext_<TAccessFunctor, TOrderFunctor, TSize, Q> & context)
+clear(RadixSortContext_<TSAValue, TText, TSize, Q> & context)
 {
     memset(context.bucketSize, 0, sizeof(TSize)*Q);
 }
 
 // ----------------------------------------------------------------------------
-// Function radixSort()
+// Function _radixSort()
 // ----------------------------------------------------------------------------
 
 template <typename TSAValue, typename TSize,
-          typename TAccessFunctor, typename TOrderFunctor, unsigned Q>
+          typename TText, unsigned Q>
 inline void
-radixSort(std::vector<std::tuple<TSAValue*, TSAValue*, TSize> > & stack,
-          RadixSortContext_<TAccessFunctor, TOrderFunctor, TSize, Q> & context,
-          std::tuple<TSAValue*, TSAValue*, TSize> const & item)
+_radixSort(std::vector<std::tuple<TSAValue*, TSAValue*, TSize> > & stack,
+           RadixSortContext_<TSAValue, TText, TSize, Q> & context,
+           std::tuple<TSAValue*, TSAValue*, TSize> const & item)
 {
-    typedef RadixSortContext_<TAccessFunctor, TOrderFunctor, TSize, Q> TContext;
+    typedef RadixSortContext_<TSAValue, TText, TSize, Q> TContext;
     typedef typename TContext::TOrdValue TOrdValue;
-    static_assert(std::is_same<TSAValue, typename TContext::TSAValue>::value, "TSAValue mismatch!");
 
     clear(context);
 
@@ -261,85 +272,121 @@ radixSort(std::vector<std::tuple<TSAValue*, TSAValue*, TSize> > & stack,
 }
 
 // ----------------------------------------------------------------------------
+// Function _radixSortWrapper()
+// ----------------------------------------------------------------------------
+// switch to quicksort if the interval is sufficiently small
+
+//TODO: play with this value
+#ifndef _RADIX_SORT_SWITCH_TO_QUICKSORT_AT
+#define _RADIX_SORT_SWITCH_TO_QUICKSORT_AT 100
+#endif
+
+template <typename TSAValue, typename TSize,
+          typename TText, unsigned Q>
+inline void
+_radixSortWrapper(std::vector<std::tuple<TSAValue*, TSAValue*, TSize> > & stack,
+                  RadixSortContext_<TSAValue, TText, TSize, Q> & context,
+                  std::tuple<TSAValue*, TSAValue*, TSize> const & i)
+{
+    if (std::get<1>(i) - std::get<0>(i) < _RADIX_SORT_SWITCH_TO_QUICKSORT_AT)
+        std::sort(std::get<0>(i), std::get<1>(i), SuffixLess_<TSAValue, TText const>(context.text, std::get<2>(i)));
+    else if (std::get<1>(i) - std::get<0>(i) >= 2)
+        _radixSort(stack, context, i);
+}
+
+// ----------------------------------------------------------------------------
 // Function inplaceFullRadixSort()                                    [default]
 // ----------------------------------------------------------------------------
 
-//TODO: play with this value
-#define _RADIX_SORT_SWITCH_TO_QUICKSORT_AT 100
-
 #ifdef _OPENMP
-#define N_THREADS omp_get_max_threads()
-#define I_THREAD omp_get_thread_num()
+#define N_THREADS   omp_get_max_threads()
+#define I_THREAD    omp_get_thread_num()
+#define MIN_BUCKETS 512
 #else
-#define N_THREADS 1
-#define I_THREAD 0
+#define N_THREADS   1
+#define I_THREAD    0
+#define MIN_BUCKETS 100 // for somewhat decent progress reporting
 #endif
 
 // TODO: serial version
 // TODO: possibly do multiple runs of "secondStep" if alphabet size to small
 // TODO: possibly quicksort directly on buckets in third steps, if buckets have been made small enough
+// TODO: double-check the effects of the new "secondStep"
 
 template <typename TSA, typename TText, typename TLambda>
-void inPlaceRadixSort(TSA & sa, TText const & str, TLambda const & progressCallback = [] (unsigned) {})
+void inPlaceRadixSort(TSA & sa, TText const & text, TLambda const & progressCallback = [] (unsigned) {})
 {
-    typedef typename Value<typename Concatenator<TText>::Type>::Type TAlphabet;
-    typedef typename Value<TSA>::Type                             TSAValue;
-    typedef typename Size<TText>::Type                            TSize;
-    typedef std::tuple<TSAValue*, TSAValue*, TSize>               TItem;
-    typedef typename StringSetLimits<TText const>::Type           TLimitsString; // "Nothing" for Strings
-
-    typedef RadixTextAccessor<TSAValue, TText>                    TAccessor;
-    typedef _ZeroBucketComparator<TSAValue,TLimitsString>         TZeroComp;
+    typedef typename Value<typename Concatenator<TText>::Type>::Type    TAlphabet;
+    typedef typename Value<TSA>::Type                                   TSAValue;
+    typedef typename Size<TText>::Type                                  TSize;
+    typedef std::tuple<TSAValue*, TSAValue*, TSize>                     TItem;
 
     static const unsigned SIGMA = static_cast<unsigned>(ValueSize<TAlphabet>::VALUE) + 1;
     SEQAN_ASSERT_LT_MSG(SIGMA, 1000u, "Attention: inplace radix sort is not suited for large alphabets");
 
-    typedef RadixSortContext_<TAccessor, TZeroComp, TSize, SIGMA>   TContext;
+    typedef RadixSortContext_<TSAValue, TText, TSize, SIGMA>            TContext;
 
-    if (empty(sa)) return; // otherwise access sa[0] fails
+    if (empty(sa))
+        return; // otherwise access sa[0] fails
 
     /* stacks */
     std::vector<TItem> firstStack;
     firstStack.reserve(SIGMA);
     std::vector<TItem> secondStack;
-    secondStack.reserve(SIGMA*SIGMA);
+    secondStack.reserve(1000);
     std::vector<std::vector<TItem>> lStack(N_THREADS); // one per thread
     // reduce memory allocations in threads by reserving space
     for (auto & stack : lStack)
         stack.reserve(length(sa) / 1000);
 
     /* contexts */
-    TContext firstSecondContext{TAccessor(str), TZeroComp(stringSetLimits(str))};
-    std::vector<TContext> lContext(N_THREADS, TContext{TAccessor(str), TZeroComp(stringSetLimits(str))});
+    TContext firstSecondContext{text};
+    std::vector<TContext> lContext(N_THREADS, TContext{text});
 
+    // FIRST STEP
     // sort by the first character
-    radixSort(firstStack, firstSecondContext, TItem(&sa[0], &sa[0]+length(sa), 0));
-
+    _radixSortWrapper(firstStack, firstSecondContext, TItem(&sa[0], &sa[0]+length(sa), 0));
     progressCallback(5); // 5% progress guess after first char
 
-    // sort by second character
-    SEQAN_OMP_PRAGMA(parallel for schedule(dynamic))
-    for (unsigned j = 0; j < length(firstStack); ++j)
+    // SECOND STEP
+    // sort by next n characters until the stack has reached a good size for distinct parallelization
+    // NOTE that for small alphabets in combination with small texts, this step might sort the entire SA
+    while (!firstStack.empty())
     {
-        TItem & i = firstStack[j];
-        if (std::get<1>(i) - std::get<0>(i) < _RADIX_SORT_SWITCH_TO_QUICKSORT_AT)
-            std::sort(std::get<0>(i),
-                      std::get<1>(i),
-                      SuffixLess_<TSAValue, TText const>(str, std::get<2>(i)));
-        else if (std::get<1>(i) - std::get<0>(i) >= 2)
-            radixSort(lStack[I_THREAD], lContext[I_THREAD], i);
+        SEQAN_OMP_PRAGMA(parallel for schedule(dynamic))
+        for (unsigned j = 0; j < length(firstStack); ++j)
+            _radixSortWrapper(lStack[I_THREAD], lContext[I_THREAD], firstStack[j]);
+
+        // merge local stacks and clear for next round or next step
+        for (auto & stack : lStack)
+        {
+            secondStack.insert(secondStack.end(), stack.begin(), stack.end());
+            stack.clear();
+        }
+
+        // sort the stack by interval size so that large intervals are moved to front
+        // this improves parallelization of dynamic schedule
+        SORT(secondStack.begin(), secondStack.end(),
+             [] (TItem const & l, TItem const & r)
+             {
+                 return (std::get<1>(l) - std::get<0>(l)) > (std::get<1>(r) - std::get<0>(r));
+             });
+
+        // check if largest interval "fits" in one thread efficiently
+        // this works independently of alphabet size and just depends on the data
+        // MIN_BUCKETS check additionally guarantees a degree of granularity
+        if ((uint64_t(std::get<1>(secondStack.front()) - std::get<0>(secondStack.front())) <= (length(sa) / N_THREADS))
+            && (secondStack.size() >= MIN_BUCKETS))
+            break;
+
+        // switch buffers for next round
+        firstStack.clear();
+        std::swap(firstStack, secondStack);
     }
+    progressCallback(10); // 10% progress guess after second step
 
-    // merge local stacks and clear for next round
-    for (auto & stack : lStack)
-    {
-        secondStack.insert(secondStack.end(), stack.begin(), stack.end());
-        stack.clear();
-    }
-
-    progressCallback(10); // 10% progress guess after second char
-
-    // sort rest
+    // THIRD STEP
+    // sort the remaining intervals distinctly; here no locking and syncing is required anymore
     SEQAN_OMP_PRAGMA(parallel for schedule(dynamic))
     for (unsigned j = 0; j < secondStack.size(); ++j)
     {
@@ -349,13 +396,7 @@ void inPlaceRadixSort(TSA & sa, TText const & str, TLambda const & progressCallb
         {
             TItem i = lStack[I_THREAD].back();
             lStack[I_THREAD].pop_back();
-
-            if (std::get<1>(i) - std::get<0>(i) < _RADIX_SORT_SWITCH_TO_QUICKSORT_AT)
-                std::sort(std::get<0>(i),
-                          std::get<1>(i),
-                          SuffixLess_<TSAValue, TText const>(str, std::get<2>(i)));
-            else if (std::get<1>(i) - std::get<0>(i) >= 2)
-                radixSort(lStack[I_THREAD], lContext[I_THREAD], i);
+            _radixSortWrapper(lStack[I_THREAD], lContext[I_THREAD], i);
         }
 
         // progressCallback must be thread safe and cope with smaller numbers after big numbers
@@ -363,7 +404,7 @@ void inPlaceRadixSort(TSA & sa, TText const & str, TLambda const & progressCallb
         progressCallback(10 + (j * 90) / secondStack.size());
     }
 
-    progressCallback(100); // done
+//     progressCallback(100); // done
 }
 
 }
