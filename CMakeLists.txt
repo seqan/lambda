@@ -16,6 +16,12 @@ set (CMAKE_MODULE_PATH
     ${CMAKE_CURRENT_SOURCE_DIR}/include/seqan/util/cmake
     ${CMAKE_MODULE_PATH})
 include (SeqAnContribs)
+
+# Build in release mode by default
+if (CMAKE_BUILD_TYPE STREQUAL "")
+    set(CMAKE_BUILD_TYPE "Release")
+endif()
+
 set (SEQAN_USE_SEQAN_BUILD_SYSTEM TRUE CACHE INTERNAL "Use SeqAn build system." FORCE)
 include (SeqAnBuildSystem)
 set (SEQAN_ROOT_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include/seqan/" CACHE INTERNAL "Root source directory." FORCE)
