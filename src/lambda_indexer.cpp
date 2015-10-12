@@ -24,31 +24,6 @@
 // lambda.cpp: Main File for the main application
 // ==========================================================================
 
-// why is this neccessary?
-// #undef SEQAN_HAS_ZLIB
-
-// #define SEQAN_DEBUG_INDEX
-
-// #define PARALLEL_SORT 0
-// 0 = off
-// 1 = GCC
-// 2 = omptl
-
-// #if PARALLEL_SORT == 1
-//     #include <parallel/algorithm>
-//     #define SORT __gnu_parallel::sort
-// #elif PARALLEL_SORT == 2
-//     #include <omptl/omptl_algorithm>
-//     #define SORT omptl::sort
-// #else
-//     #define SORT std::sort
-// #endif
-
-#if defined(__GNUG__) && defined(_OPENMP)
-    #define _GLIBCXX_PARALLEL
-#endif
-#define _GLIBCXX_USE_C99 1
-
 #include <seqan/basic.h>
 
 #include <seqan/arg_parse.h>
@@ -173,15 +148,8 @@ argConv2(LambdaIndexerOptions     const & options,
          BlastProgramSelector<p>  const &,
          TRedAlph                 const &)
 {
-
-    if (options.algo == "mergesort")
-        return realMain(options, BlastProgramSelector<p>(), TRedAlph(), SaAdvancedSort<MergeSortTag>());
-    else if (options.algo == "quicksort")
-        return realMain(options, BlastProgramSelector<p>(), TRedAlph(), SaAdvancedSort<QuickSortTag>());
-    else if (options.algo == "quicksortbuckets")
-        return realMain(options, BlastProgramSelector<p>(), TRedAlph(), SaAdvancedSort<QuickSortBucketTag>());
-    else if (options.algo == "radixsort")
-        return realMain(options, BlastProgramSelector<p>(), TRedAlph(), SaAdvancedSort<InPlaceRadixTag>());
+    if (options.algo == "radixsort")
+        return realMain(options, BlastProgramSelector<p>(), TRedAlph(), RadixSortSACreateTag());
     else
         return realMain(options, BlastProgramSelector<p>(), TRedAlph(), Nothing());
 }

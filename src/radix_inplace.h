@@ -309,7 +309,6 @@ _radixSortWrapper(std::vector<std::tuple<TSAValue*, TSAValue*, TSize> > & stack,
 #endif
 
 // TODO: serial version
-// TODO: possibly do multiple runs of "secondStep" if alphabet size to small
 // TODO: possibly quicksort directly on buckets in third steps, if buckets have been made small enough
 // TODO: double-check the effects of the new "secondStep"
 

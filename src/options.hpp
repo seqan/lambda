@@ -972,6 +972,13 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
     // Extract option values
     getOptionValue(options.segFile, parser, "segfile");
     getOptionValue(options.algo, parser, "algorithm");
+    if ((options.algo == "mergesort") || (options.algo == "quicksort") || (options.algo == "quicksortbuckets"))
+    {
+        std::cerr << "WARNING: " << options.algo << " tag is deprecated and superseded by \"radixsort\", please "
+                  << "adapt your program calls.\n";
+        options.algo = "radixsort";
+    }
+
     getOptionValue(tmpdir, parser, "tmp-dir");
     setEnv("TMPDIR", tmpdir);
 

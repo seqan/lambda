@@ -340,91 +340,6 @@ convertMaskingFile(uint64_t numberOfSeqs,
 #define TID 0
 #endif
 
-template <typename TIndex, typename TText, typename TFibre>
-inline void
-createIndexActual(TIndex & index,
-                  TText const & text,
-                  TFibre const &,
-                  SaAdvancedSort<MergeSortTag> const &,
-                  bool print)
-{
-    ComparisonCounter<TText, std::true_type> counter(text);
-
-    if (print)
-    {
-        indexCreate(index, text, TFibre(), [&counter] () { counter.inc(); });
-        printProgressBar(counter._lastPercent, 100);
-    }
-    else
-    {
-        indexCreate(index, text, TFibre(), [] () {});
-    }
-}
-
-template <typename TIndex, typename TText, typename TFibre>
-inline void
-createIndexActual(TIndex & index,
-                  TText const & text,
-                  TFibre const &,
-                  SaAdvancedSort<QuickSortBucketTag> const &,
-                  bool print)
-{
-    if (print)
-    {
-        uint64_t _lastPercent = 0;
-
-        indexCreate(index, text, TFibre(),
-                    [&_lastPercent] (uint64_t curPerc)
-                    {
-                        SEQAN_OMP_PRAGMA(critical(progressBar))
-                        printProgressBar(_lastPercent, curPerc);
-                    });
-        printProgressBar(_lastPercent, 100);
-    }
-    else
-    {
-        indexCreate(index, text, TFibre(), [] (uint64_t) {});
-    }
-}
-
-// same as above, TODO templatize more intelligently
-template <typename TIndex, typename TText, typename TFibre>
-inline void
-createIndexActual(TIndex & index,
-                  TText const & text,
-                  TFibre const &,
-                  SaAdvancedSort<InPlaceRadixTag> const &,
-                  bool print)
-{
-    if (print)
-    {
-        uint64_t _lastPercent = 0;
-        indexCreate(index, text, TFibre(),
-                    [&_lastPercent] (uint64_t curPerc)
-                    {
-                        SEQAN_OMP_PRAGMA(critical(progressBar))
-//                         if (TID == 0)
-                        printProgressBar(_lastPercent, curPerc);
-                    });
-        printProgressBar(_lastPercent, 100);
-    }
-    else
-    {
-        indexCreate(index, text, TFibre(), [] (uint64_t) {});
-    }
-}
-
-template <typename TIndex, typename TText, typename TFibre, typename TAlgo>
-inline void
-createIndexActual(TIndex & index,
-                  TText const & text,
-                  TFibre const &,
-                  TAlgo const &,
-                  bool) // default can't print progress anyway
-{
-    indexCreate(index, text, TFibre(), [] () {});
-}
-
 template <typename TIndexSpec,
           typename TIndexSpecSpec,
           typename TString,
@@ -465,18 +380,7 @@ generateIndexAndDump(StringSet<TString, TSpec>        & seqs,
                                                     FibreSALF,
                                                     FibreSA>::type;
     static bool constexpr
-    hasProgress         = std::is_same<TIndexSpecSpec, SaAdvancedSort<QuickSortBucketTag>>::value ||
-                          std::is_same<TIndexSpecSpec, SaAdvancedSort<MergeSortTag>>::value ||
-                          std::is_same<TIndexSpecSpec, SaAdvancedSort<InPlaceRadixTag>>::value;
-
-//     using TCountPartial = std::is_same<TIndexSpecSpec,
-//                                        SaAdvancedSort<MergeSortTag>>;
-// TODO debug this
-//     using TProgressCounter = typename std::conditional<
-//                                 hasProgress,
-//                                 ComparisonCounter<TRedSeqs, TCountPartial>,
-//                                 ComparisonCounter<TRedSeqs, Nothing>>::type;
-//     using TProgressCounter = ComparisonCounter<TRedSeqs, Nothing>;
+    hasProgress         = std::is_same<TIndexSpecSpec, RadixSortSACreateTag>::value;
 
     // Generate Index
     myPrint(options, 1, "Generating Index...");
@@ -490,22 +394,28 @@ generateIndexAndDump(StringSet<TString, TSpec>        & seqs,
 
     TRedSeqsACT redSubjSeqs(seqs);
 
-//     TProgressCounter counter(redSubjSeqs, 0);
-//     std::cout << "ExpectedNumComparisons: " << counter._expectedComparisons
-//               << std::endl;
     if (hasProgress)
         myPrint(options, 1, "progress:\n"
                 "0%  10%  20%  30%  40%  50%  60%  70%  80%  90%  100%\n|");
     TDbIndex dbIndex(redSubjSeqs);
     // instantiate SA
 
-    // create SA with progressCallback function
-    createIndexActual(dbIndex, redSubjSeqs, TFullFibre(), TIndexSpecSpec(), (options.verbosity >= 1));
-
-    // instantiate potential rest
-//     std::cout << "\nActualNumComparisons: " << counter._comparisons
-//               << std::endl;
-//     indexRequire(dbIndex, TFullFibre()); // instantiate
+    if (hasProgress && (options.verbosity >= 1))
+    {
+        uint64_t _lastPercent = 0;
+        indexCreate(dbIndex, redSubjSeqs, TFullFibre(),
+                    [&_lastPercent] (uint64_t curPerc)
+                    {
+                        SEQAN_OMP_PRAGMA(critical(progressBar))
+//                         if (TID == 0)
+                        printProgressBar(_lastPercent, curPerc);
+                    });
+        printProgressBar(_lastPercent, 100);
+    }
+    else
+    {
+        indexCreate(dbIndex, redSubjSeqs, TFullFibre(), [] (unsigned) {});
+    }
 
     // since we dumped unreduced sequences before and reduced sequences are
     // only "virtual" we clear them before dump
