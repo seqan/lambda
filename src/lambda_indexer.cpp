@@ -87,6 +87,8 @@ int main(int argc, char const ** argv)
     if (res != seqan::ArgumentParser::PARSE_OK)
         return res == seqan::ArgumentParser::PARSE_ERROR;
 
+    if (std::string(CMAKE_BUILD_TYPE) != "Release")
+        std::cerr << "WARNING: This binary is not built in release mode and will be much slower than it should be!\n";
     return argConv0(options);
 }
 

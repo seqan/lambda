@@ -111,6 +111,7 @@ add_definitions (-DSEQAN_VERSION_STRING="${SEQAN_VERSION_STRING}")
 add_definitions (-DSEQAN_REVISION="${SEQAN_REVISION}")
 add_definitions (-DSEQAN_DATE="${SEQAN_DATE}")
 add_definitions (-DSEQAN_APP_VERSION="${SEQAN_APP_VERSION}")
+add_definitions (-DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}")
 
 # Update the list of file names below if you add source files to your application.
 add_executable (lambda lambda.cpp

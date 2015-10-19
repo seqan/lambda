@@ -155,9 +155,10 @@ int main(int argc, char const ** argv)
 // //               << "\ntrivially_copy: " << std::is_trivially_copyable<Match>::value
 //               << "\n";
 
+    if (std::string(CMAKE_BUILD_TYPE) != "Release")
+        std::cerr << "WARNING: This binary is not built in release mode and will be much slower than it should be!\n";
     return argConv0(options);
 }
-
 
 // CONVERT Run-time options to compile-time Format-Type
 inline int

@@ -894,7 +894,7 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
         ArgParseArgument::STRING,
         "STR"));
     setValidValues(parser, "algorithm", "mergesort quicksortbuckets quicksort radixsort skew7ext");
-    setDefaultValue(parser, "algorithm", "mergesort");
+    setDefaultValue(parser, "algorithm", "radixsort");
     setAdvanced(parser, "algorithm");
 
 #ifdef _OPENMP
@@ -1188,7 +1188,8 @@ printOptions(LambdaOptions const & options)
               << " EXTENSION\n"
               << "  x-drop:                   " << options.xDropOff << "\n"
               << "  band:                     " << bandStr << "\n"
-              << " BUILD FLAGS:\n"
+              << " BUILD OPTIONS:\n"
+              << "  cmake_build_type:         " << std::string(CMAKE_BUILD_TYPE) << "\n"
               << "  fastbuild:                "
     #if defined(FASTBUILD)
               << "on\n"
@@ -1207,7 +1208,7 @@ printOptions(LambdaOptions const & options)
     #else
               << "off\n"
     #endif
-              << "  mmapped_strings:          "
+              << "  mmapped_db:               "
     #if defined(LAMBDA_MMAPPED_DB)
               << "on\n"
     #else
