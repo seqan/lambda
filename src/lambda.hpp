@@ -252,6 +252,17 @@ loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
         path += ".fm";
     else
         path += ".sa";
+
+    // Check if the index is of the old format (pre 0.9.0)
+    if (fileExists(toCString(path + ".txt.concat"))) // these files are not written anymore
+    {
+        std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
+                  << " failed.\n"
+                  << "It appears you tried to open an old index (created before 0.9.0) which "
+                  << "is not supported. Please remove the old files and create a new index with lambda_indexer!\n";
+        return 1;
+    }
+
     int ret = open(globalHolder.dbIndex, path.c_str());
     if (ret != true)
     {
