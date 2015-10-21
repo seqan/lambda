@@ -149,12 +149,6 @@ int main(int argc, char const ** argv)
     if (res != seqan::ArgumentParser::PARSE_OK)
         return res == seqan::ArgumentParser::PARSE_ERROR;
 
-//     std::cout <<   "Match  sizeof : " << sizeof(Match)
-//               << "\n       alignof: " << alignof(Match)
-//               << "\n    is_trivial: " << std::is_trivial<Match>::value
-// //               << "\ntrivially_copy: " << std::is_trivially_copyable<Match>::value
-//               << "\n";
-
     if (std::string(CMAKE_BUILD_TYPE) != "Release")
         std::cerr << "WARNING: This binary is not built in release mode and will be much slower than it should be!\n";
     return argConv0(options);

@@ -52,9 +52,53 @@
 namespace SEQAN_NAMESPACE_MAIN
 {
 
+// ==========================================================================
+// Tags
+// ==========================================================================
+
+struct RadixSortSACreateTag {};
+
+// ==========================================================================
+// Metafunctions
+// ==========================================================================
+
+template <typename TText>
+struct Fibre<Index<TText, IndexSa<RadixSortSACreateTag > >, FibreTempSA>
+{
+    typedef Index<TText, IndexSa<RadixSortSACreateTag > >          TIndex_;
+    typedef typename SAValue<TIndex_>::Type                         TSAValue_;
+
+    typedef String<TSAValue_, typename DefaultIndexStringSpec<TText>::Type> Type;
+};
+
+template <typename TText>
+struct DefaultIndexCreator<Index<TText, IndexSa<RadixSortSACreateTag> >, FibreSA>
+{
+    typedef RadixSortSACreateTag Type;
+};
+
+template <typename TText, typename TConfig>
+struct Fibre<Index<TText, FMIndex<RadixSortSACreateTag, TConfig> >, FibreTempSA>
+{
+    typedef Index<TText, FMIndex<RadixSortSACreateTag, TConfig> >  TIndex_;
+    typedef typename SAValue<TIndex_>::Type                         TSAValue_;
+
+    typedef String<TSAValue_, typename DefaultIndexStringSpec<TText>::Type> Type;
+};
+
+template < typename TText, typename TConfig>
+struct DefaultIndexCreator<Index<TText, FMIndex<RadixSortSACreateTag, TConfig> >, FibreSA>
+{
+    typedef RadixSortSACreateTag Type;
+};
+
 // ============================================================================
-// struct RadixTextAccessor
+// Classes
 // ============================================================================
+
+// ----------------------------------------------------------------------------
+// struct RadixTextAccessor                                            [String]
+// ----------------------------------------------------------------------------
 
 template <
     typename TSAValue,          // input
@@ -71,9 +115,6 @@ struct RadixTextAccessor;
  * sort function on the 0 buckets.
  */
 
-// ----------------------------------------------------------------------------
-// struct RadixTextAccessor                                            [String]
-// ----------------------------------------------------------------------------
 
 template <typename TSAValue, typename TString, typename TSize>
 struct RadixTextAccessor<TSAValue, TString, void, TSize> :
@@ -204,6 +245,10 @@ clear(RadixSortContext_<TSAValue, TText, TSize, Q> & context)
 {
     memset(context.bucketSize, 0, sizeof(TSize)*Q);
 }
+
+// ==========================================================================
+// Functions
+// ==========================================================================
 
 // ----------------------------------------------------------------------------
 // Function _radixSort()
@@ -403,7 +448,48 @@ void inPlaceRadixSort(TSA & sa, TText const & text, TLambda const & progressCall
         progressCallback(10 + (j * 90) / secondStack.size());
     }
 
-//     progressCallback(100); // done
+    progressCallback(100); // done
+}
+
+// ----------------------------------------------------------------------------
+// Function createSuffixArray
+// ----------------------------------------------------------------------------
+
+template <typename TSA,
+          typename TString,
+          typename TSSetSpec,
+          typename TLambda>
+inline void
+createSuffixArray(TSA & SA,
+                  StringSet<TString, TSSetSpec> const & s,
+                  RadixSortSACreateTag const &,
+                  TLambda const & progressCallback)
+{
+    typedef typename Size<TSA>::Type TSize;
+    typedef typename Iterator<TSA, Standard>::Type TIter;
+
+    // 1. Fill suffix array with a permutation (the identity)
+    TIter it = begin(SA, Standard());
+    for(unsigned j = 0; j < length(s); ++j)
+    {
+        TSize len = length(s[j]);
+        for(TSize i = 0; i < len; ++i, ++it)
+            *it = Pair<unsigned, TSize>(j, i);
+    }
+
+    // 2. Sort suffix array with inplace radix Sort
+    inPlaceRadixSort(SA, s, progressCallback);
+}
+
+template <typename TSA,
+          typename TString,
+          typename TSSetSpec>
+inline void
+createSuffixArray(TSA & SA,
+                  StringSet<TString, TSSetSpec> const & s,
+                  RadixSortSACreateTag const &)
+{
+    createSuffixArray(SA, s, RadixSortSACreateTag(), [] (unsigned) {});
 }
 
 }

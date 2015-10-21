@@ -39,7 +39,7 @@
 #include "misc.hpp"
 #include "options.hpp"
 #include "alph.hpp"
-#include "index_sa_sort.h"
+#include "radix_inplace.h"
 #include "lambda_indexer_misc.hpp"
 
 using namespace seqan;
@@ -331,7 +331,94 @@ convertMaskingFile(uint64_t numberOfSeqs,
 }
 
 // --------------------------------------------------------------------------
-// Function loadSubj()
+// Function createSuffixArray()
+// --------------------------------------------------------------------------
+
+// If there is no overload with progress function, then strip it
+template <typename TSA,
+          typename TString,
+          typename TSSetSpec,
+          typename TAlgo,
+          typename TLambda>
+inline void
+createSuffixArray(TSA & SA,
+                  StringSet<TString, TSSetSpec> const & s,
+                  TAlgo const &,
+                  TLambda const &)
+{
+    return createSuffixArray(SA, s, TAlgo());
+}
+
+// ----------------------------------------------------------------------------
+// Function indexCreate
+// ----------------------------------------------------------------------------
+
+template <typename TText, typename TSpec, typename TConfig, typename TLambda>
+inline bool
+indexCreateProgress(Index<TText, FMIndex<TSpec, TConfig> > & index,
+                    FibreSALF const &,
+                    TLambda const & progressCallback)
+{
+    typedef Index<TText, FMIndex<TSpec, TConfig> >               TIndex;
+    typedef typename Fibre<TIndex, FibreTempSA>::Type            TTempSA;
+    typedef typename Size<TIndex>::Type                          TSize;
+    typedef typename DefaultIndexCreator<TIndex, FibreSA>::Type  TAlgo;
+
+    TText const & text = indexText(index);
+
+    if (empty(text))
+        return false;
+
+    TTempSA tempSA;
+
+    std::cout << "Generating       0%  10%  20%  30%  40%  50%  60%  70%  80%  90%  100%\n"
+                 " (1) SuffixArray |" << std::flush;
+    // Create the full SA.
+    resize(tempSA, lengthSum(text), Exact());
+    createSuffixArray(tempSA, text, TAlgo(), progressCallback);
+
+    std::cout << " (2) FM-Index..." << std::flush;
+    // Create the LF table.
+    createLF(indexLF(index), text, tempSA);
+
+    // Set the FMIndex LF as the CompressedSA LF.
+    setFibre(indexSA(index), indexLF(index), FibreLF());
+
+    // Create the compressed SA.
+    TSize numSentinel = countSequences(text);
+    createCompressedSa(indexSA(index), tempSA, numSentinel);
+    std::cout << " done.\n" << std::flush;
+    return true;
+}
+
+template <typename TText, typename TSpec, typename TLambda>
+inline bool
+indexCreateProgress(Index<TText, IndexSa<TSpec> > & index,
+                    FibreSA const &,
+                    TLambda const & progressCallback)
+{
+    typedef Index<TText, IndexSa<TSpec> >                        TIndex;
+    typedef typename Fibre<TIndex, FibreSA>::Type                TSA;
+    typedef typename DefaultIndexCreator<TIndex, FibreSA>::Type  TAlgo;
+
+    TText const & text = indexText(index);
+
+    if (empty(text))
+        return false;
+
+    TSA & sa = getFibre(index, FibreSA());
+
+    std::cout << "Generating       0%  10%  20%  30%  40%  50%  60%  70%  80%  90%  100%\n"
+                 "  SuffixArray    |" << std::flush;
+    // Create the full SA.
+    resize(sa, lengthSum(text), Exact());
+    createSuffixArray(sa, text, TAlgo(), progressCallback);
+
+    return true;
+}
+
+// --------------------------------------------------------------------------
+// Function generateIndexAndDump()
 // --------------------------------------------------------------------------
 
 #ifdef _OPENMP
@@ -383,7 +470,9 @@ generateIndexAndDump(StringSet<TString, TSpec>        & seqs,
     hasProgress         = std::is_same<TIndexSpecSpec, RadixSortSACreateTag>::value;
 
     // Generate Index
-    myPrint(options, 1, "Generating Index...");
+    if (!hasProgress)
+        myPrint(options, 1, "Generating Index...");
+
     double s = sysTime();
 
 //     std::cout << "indexIsFM: " << int(indexIsFM) << std::endl;
@@ -394,27 +483,23 @@ generateIndexAndDump(StringSet<TString, TSpec>        & seqs,
 
     TRedSeqsACT redSubjSeqs(seqs);
 
-    if (hasProgress)
-        myPrint(options, 1, "progress:\n"
-                "0%  10%  20%  30%  40%  50%  60%  70%  80%  90%  100%\n|");
     TDbIndex dbIndex(redSubjSeqs);
-    // instantiate SA
 
+    // instantiate SA
     if (hasProgress && (options.verbosity >= 1))
     {
         uint64_t _lastPercent = 0;
-        indexCreate(dbIndex, redSubjSeqs, TFullFibre(),
-                    [&_lastPercent] (uint64_t curPerc)
-                    {
-                        SEQAN_OMP_PRAGMA(critical(progressBar))
-//                         if (TID == 0)
-                        printProgressBar(_lastPercent, curPerc);
-                    });
-        printProgressBar(_lastPercent, 100);
+        indexCreateProgress(dbIndex, TFullFibre(),
+                            [&_lastPercent] (uint64_t curPerc)
+                            {
+                                SEQAN_OMP_PRAGMA(critical(progressBar))
+        //                         if (TID == 0)
+                                printProgressBar(_lastPercent, curPerc);
+                            });
     }
     else
     {
-        indexCreate(dbIndex, redSubjSeqs, TFullFibre(), [] (unsigned) {});
+        indexCreate(dbIndex, TFullFibre());
     }
 
     // since we dumped unreduced sequences before and reduced sequences are
