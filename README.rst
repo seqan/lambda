@@ -51,6 +51,9 @@ Run lambda:
 
     % bin/lambda -q query.fasta -d db.fasta
 
+*Please note that if you downloaded the binaries from the web-site, you might also have* ``bin/lambda-avx`` *which is
+measurably faster, so try that first!*
+
 For a list of options, see the help pages:
 
 ::
