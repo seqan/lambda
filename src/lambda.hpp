@@ -253,8 +253,9 @@ loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
     else
         path += ".sa";
 
-    // Check if the index is of the old format (pre 0.9.0)
-    if (fileExists(toCString(path + ".txt.concat"))) // these files are not written anymore
+    // Check if the index is of the old format (pre 0.9.0) by looking for different files
+    if ((TGlobalHolder::alphReduction && fileExists(toCString(path + ".txt.concat"))) ||
+        (!TGlobalHolder::alphReduction && TGlobalHolder::indexIsFM && !fileExists(toCString(path + ".lf.drv.wtc.24"))))
     {
         std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
                   << " failed.\n"
