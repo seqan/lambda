@@ -236,7 +236,10 @@ convertMaskingFile(uint64_t numberOfSeqs,
         std::ifstream stream;
         stream.open(toCString(options.segFile));
         if (!stream.is_open())
+        {
+            std::cerr << "ERROR: could not open seg file.\n";
             return -1;
+        }
 
         auto reader = directionIterator(stream, Input());
 
@@ -252,12 +255,15 @@ convertMaskingFile(uint64_t numberOfSeqs,
 
 //         auto curSeq = begin(_segIntervals);
         unsigned curSeq = 0;
-        while ((!atEnd(reader)) && (value(reader) == '>'))
+        while (value(reader) == '>')
         {
 //             if (curSeq == end(_segIntervals))
 //                 return -7;
             if (curSeq == numberOfSeqs)
+            {
+                std::cerr << "ERROR: seg file has more entries then database.\n";
                 return -7;
+            }
             skipLine(reader);
             if (atEnd(reader))
                 break;
@@ -285,12 +291,19 @@ convertMaskingFile(uint64_t numberOfSeqs,
                 skipLine(reader);
                 curInt++;
             }
-            curSeq++;
+            if (atEnd(reader))
+                break;
+            else
+                curSeq++;
         }
 //         if (curSeq != end(_segIntervals))
 //             return -9;
-        if (curSeq != numberOfSeqs)
+        if (curSeq != (numberOfSeqs - 1))
+        {
+            std::cerr << "ERROR: seg file has less entries (" << curSeq + 1
+                      << ") than database (" << numberOfSeqs << ").\n";
             return -9;
+        }
 
         segIntStarts.concat = concat(_segIntStarts);
         segIntStarts.limits = stringSetLimits(_segIntStarts);
