@@ -80,6 +80,15 @@ struct DefaultIndexStringSpec<StringSet<TString, TSpec>>
 #endif
 };
 
+// our custom Bam Overload
+template <typename TDirection, typename TStorageSpec>
+struct FormattedFileContext<FormattedFile<Bam, TDirection, BlastTabular>, TStorageSpec>
+{
+    typedef StringSet<Segment<String<char, MMap<> >, InfixSegment> >   TNameStore;
+    typedef NameStoreCache<TNameStore>                                  TNameStoreCache;
+    typedef BamIOContext<TNameStore, TNameStoreCache, TStorageSpec>     Type;
+};
+
 }
 
 using namespace seqan;
@@ -172,6 +181,8 @@ struct SharedOptions
     // Verbosity level.  0 -- quiet, 1 -- normal, 2 -- verbose, 3 -- very verbose.
     int verbosity = 1;
 
+    std::string commandLine;
+
     std::string dbFile;
 
     int      dbIndexType = 0;
@@ -211,6 +222,9 @@ struct LambdaOptions : public SharedOptions
 
     std::string     output;
     std::vector<BlastMatchField<>::Enum> columns;
+    std::string     outputBam;
+    int             outFileFormat; // 0 = BLAST, 1 = SAM, 2 = BAM
+    bool            samWithRefHeader;
 
     unsigned        queryPart = 0;
 
@@ -329,6 +343,11 @@ parseCommandLineShared(SharedOptions & options, ArgumentParser & parser);
 ArgumentParser::ParseResult
 parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 {
+    // save commandLine
+    for (int i = 0; i < argc; ++i)
+        options.commandLine += std::string(argv[i]) + " ";
+    eraseBack(options.commandLine);
+
     // Setup ArgumentParser.
     ArgumentParser parser("lambda");
     // Set short description, version, and date.
@@ -375,6 +394,9 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     CharString exts = concat(getFileExtensions(BlastTabularFileOut<>()), ' ');
     appendValue(exts, ' ');
     append(exts, concat(getFileExtensions(BlastReportFileOut<>()), ' '));
+    appendValue(exts, ' ');
+    append(exts, concat(getFileExtensions(BamFileOut()), ' '));
+    //TODO remove .sam.bam, .sam.vcf.gz, .sam.tbi
 
     setValidValues(parser, "output", toCString(exts));
     setDefaultValue(parser, "output", "output.m8");
@@ -385,6 +407,28 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         "STR"));
     setDefaultValue(parser, "output-columns", "std");
     setAdvanced(parser, "output-columns");
+
+    addOption(parser, ArgParseOption("", "sam-with-refheader",
+        "BAM files require all subject names to be written to the header. For SAM this is not required, so Lambda does "
+        "not automatically do it to save space (especially for proteine database this is a lot!). If you still want "
+        "them with SAM, e.g. for better BAM compatability, use this option.",
+        ArgParseArgument::STRING,
+        "STR"));
+    setValidValues(parser, "sam-with-refheader", "on off");
+    setDefaultValue(parser, "sam-with-refheader", "off");
+    setAdvanced(parser, "sam-with-refheader");
+    //TODO connect
+
+    addOption(parser, ArgParseOption("", "sam-bam-with-seq",
+        "Write the matching subsequence of the read into the SAM/BAM file. On by default for SAM which supports DNA "
+        "and AminoAcid sequences, off by default for BAM and proteine searches. If explicitly turned on for BAM, "
+        "the proteine sequence will be added as an extra field.",
+        ArgParseArgument::STRING,
+        "STR"));
+    setValidValues(parser, "sam-bam-with-seq", "on off");
+    setDefaultValue(parser, "sam-bam-with-seq", "on");
+    setAdvanced(parser, "sam-bam-with-seq");
+    //TODO connect
 
     addOption(parser, ArgParseOption("id", "percent-identity",
         "Output only matches above this threshold (checked before e-value "
@@ -678,7 +722,24 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 //         options.fileFormat = 0;
 
     getOptionValue(options.output, parser, "output");
+    buffer = options.output;
+    if (endsWith(buffer, ".gz"))
+        buffer.resize(length(buffer) - 3);
+    else if (endsWith(buffer, ".bz2"))
+        buffer.resize(length(buffer) - 4);
 
+    if (endsWith(buffer, ".sam"))
+        options.outFileFormat = 1;
+    else if (endsWith(buffer, ".bam"))
+        options.outFileFormat = 2;
+    else
+        options.outFileFormat = 0;
+
+    clear(buffer);
+    getOptionValue(buffer, parser, "sam-with-refheader");
+    options.samWithRefHeader = (buffer == "on");
+
+    clear(buffer);
     getOptionValue(buffer, parser, "output-columns");
     if (buffer == "help")
     {
@@ -1123,6 +1184,7 @@ printOptions(LambdaOptions const & options)
               << "  minimum % identity:       " << options.idCutOff << "\n"
               << "  maximum e-value:          " << options.eCutOff << "\n"
               << "  max #matches per query:   " << options.maxMatches << "\n"
+              << "  include subj names in sam:" << options.samWithRefHeader << "\n"
               << " OUTPUT (stdout)\n"
               << "  stdout is terminal:       " << options.isTerm << "\n"
               << "  terminal width:           " << options.terminalCols << "\n"

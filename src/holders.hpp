@@ -216,10 +216,13 @@ public:
     // OUTPUT FILE //
     using TScoreScheme  = TScoreScheme_;
     using TIOContext    = BlastIOContext<TScoreScheme, p, h>;
-    using TFile         = typename std::conditional<std::is_same<TFileFormat, BlastTabular>::value,
-                                                    BlastTabularFileOut<TIOContext>,
-                                                    BlastReportFileOut<TIOContext>>::type;
+    using TFile         = FormattedFile<TFileFormat, Output, TIOContext>;
     TFile               outfile;
+
+    using TBamFile      = FormattedFile<Bam, Output, BlastTabular>;
+//     using TBamContext   = FormattedFileContext<TBamFile, void>;
+//     using TNameStoreCache = typename TBamContext::TNameStorCache;
+    TBamFile            outfileBam;
 
     StatsHolder                 stats;
 

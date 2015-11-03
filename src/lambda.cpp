@@ -170,6 +170,9 @@ argConv0(LambdaOptions const & options)
         return argConv05(options, BlastTabular(), BlastTabularSpecSelector<BlastTabularSpec::NO_COMMENTS>());
     else if (endsWith(output, ".m9"))
         return argConv05(options, BlastTabular(), BlastTabularSpecSelector<BlastTabularSpec::COMMENTS>());
+    else if (endsWith(output, ".sam") || endsWith(output, ".sam")) // handled elsewhere
+        return argConv05(options, BlastTabular(), BlastTabularSpecSelector<BlastTabularSpec::COMMENTS>());
+
     return -1;
 }
 
@@ -457,9 +460,7 @@ realMain(LambdaOptions                  const & options,
 //               << back(globalHolder.subjSeqs) << "\n"
 //               << back(globalHolder.redSubjSeqs) << "\n";
 
-    open(globalHolder.outfile, toCString(options.output));
-    context(globalHolder.outfile).fields = options.columns;
-    writeHeader(globalHolder.outfile);
+    myWriteHeader(globalHolder, options);
 
     if (options.doubleIndexing)
     {
@@ -547,7 +548,7 @@ realMain(LambdaOptions                  const & options,
     if (ret)
         return ret;
 
-    writeFooter(globalHolder.outfile);
+    myWriteFooter(globalHolder, options);
 
     if (!options.doubleIndexing)
     {

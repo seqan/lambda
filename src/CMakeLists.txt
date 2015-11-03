@@ -82,6 +82,8 @@ if (LAMBDA_STATIC_BUILD)
     # apple does not support fully static builds
     if (NOT APPLE)
         set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
+    else (NOT APPLE)
+        message (WARNING "WARNING: Builds on Mac are never fully static.")
     endif (NOT APPLE)
     message (STATUS "STATIC_BUILD set, binaries built with all libs included.")
 endif (LAMBDA_STATIC_BUILD)

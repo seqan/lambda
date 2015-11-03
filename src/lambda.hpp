@@ -38,8 +38,6 @@
 
 #include <seqan/index.h>
 
-#include <seqan/blast.h>
-
 #include <seqan/translation.h>
 #include <seqan/reduced_aminoacid.h>
 
@@ -50,6 +48,7 @@
 #include "misc.hpp"
 #include "alph.hpp"
 #include "holders.hpp"
+#include "output.hpp"
 
 using namespace seqan;
 
@@ -1153,6 +1152,7 @@ computeBlastMatch(TBlastMatch         & bm,
     return 0;
 }
 
+
 template <typename TLocalHolder>
 inline int
 iterateMatches(TLocalHolder & lH)
@@ -1452,10 +1452,7 @@ iterateMatches(TLocalHolder & lH)
             }
             lH.stats.hitsFinal += record.matches.size();
 
-            SEQAN_OMP_PRAGMA(critical(filewrite))
-            {
-                writeRecord(lH.gH.outfile, record);
-            }
+            myWriteRecord(lH, record);
         }
 
     }
