@@ -33,21 +33,81 @@
 using namespace seqan;
 
 // ----------------------------------------------------------------------------
+// Function _untranslatedClipPositions()
+// ----------------------------------------------------------------------------
+
+// similar to _untranslatePositions() from the blast module
+template <typename TSequence1, typename TSequence2, typename TBlastMatch>
+inline void
+_untranslateSequence(TSequence1                     & target,
+                     TSequence2               const & source,
+                     TBlastMatch              const & m)
+{
+    if (m.qFrameShift >= 0)
+    {
+        target = infix(source,
+                       3 * m.qStart + std::abs(m.qFrameShift) - 1,
+                       3 * m.qEnd + std::abs(m.qFrameShift) - 1);
+    }
+    else
+    {
+        static thread_local Dna5String buf;
+        buf = source;
+        reverseComplement(buf);
+        target = infix(buf,
+                       3 * m.qStart + std::abs(m.qFrameShift) - 1,
+                       3 * m.qEnd + std::abs(m.qFrameShift) - 1);
+    }
+}
+
+// ----------------------------------------------------------------------------
+// Function _untranslatedClipPositions()
+// ----------------------------------------------------------------------------
+
+// similar to _untranslatePositions() from the blast module
+template <BlastProgram p>
+inline void
+_untranslatedClipPositions(unsigned & leftClip,         // should start with qStart
+                           unsigned & rightClip,        // should start with qEnd
+                           int const frameShift,
+                           unsigned const realLength,   // untranslated Length if translated
+                           BlastProgramSelector<p> const & selector)
+{
+    if (qIsTranslated(selector))
+    {
+        leftClip  = leftClip * 3 + std::abs(frameShift) - 1;
+        rightClip = rightClip * 3 + std::abs(frameShift) - 1;
+    }
+
+    rightClip = realLength - rightClip;
+
+    if (frameShift < 0)
+        std::swap(leftClip, rightClip);
+}
+
+// ----------------------------------------------------------------------------
 // Function blastMatchToCigar() convert seqan align to cigar
 // ----------------------------------------------------------------------------
 
 //TODO this could be done nicer, I guess
-template <typename TCigar, typename TBlastMatch>
+template <typename TCigar, typename TBlastMatch, typename TLocalHolder>
 inline void
-blastMatchToCigar(TCigar & cigar, TBlastMatch const & m)
+blastMatchToDnaCigar(TCigar & cigar, TBlastMatch const & m, unsigned const untransMatchLength, TLocalHolder const & lH)
 {
     using TCElem = typename Value<TCigar>::Type;
 
-    // hard clipping
-    if (m.qStart > 0)
-        appendValue(cigar, TCElem('H', m.qStart));
-
     SEQAN_ASSERT_EQ(length(m.alignRow0), length(m.alignRow1));
+
+    // hard clipping
+    unsigned leftClip   = m.qStart;
+    unsigned rightClip  = m.qEnd;
+    _untranslatedClipPositions(leftClip,
+                               rightClip,
+                               m.qFrameShift,
+                               untransMatchLength,
+                               context(lH.gH.outfile).blastProgram);
+    if (leftClip > 0)
+        appendValue(cigar, TCElem('H', leftClip));
 
     unsigned count = 0;
     for (unsigned i = 0; i < length(m.alignRow0); ++i)
@@ -60,7 +120,7 @@ blastMatchToCigar(TCigar & cigar, TBlastMatch const & m)
             ++i;
         }
         if (count > 0)
-            appendValue(cigar, TCElem('D', count));
+            appendValue(cigar, TCElem('D', qIsTranslated(lH.gH.blastProgram) ? count * 3 : count));
 
         // insertion in query
         count = 0;
@@ -70,7 +130,7 @@ blastMatchToCigar(TCigar & cigar, TBlastMatch const & m)
             ++i;
         }
         if (count > 0)
-            appendValue(cigar, TCElem('I', count));
+            appendValue(cigar, TCElem('I', qIsTranslated(lH.gH.blastProgram) ? count * 3 : count));
 
         // match or mismatch
         count = 0;
@@ -80,12 +140,11 @@ blastMatchToCigar(TCigar & cigar, TBlastMatch const & m)
             ++i;
         }
         if (count > 0)
-            appendValue(cigar, TCElem('M', count));
+            appendValue(cigar, TCElem('M', qIsTranslated(lH.gH.blastProgram) ? count * 3 : count));
     }
 
-    // hard clipping
-    if (m.qEnd != m.qLength)
-        appendValue(cigar, TCElem('H', m.qLength - m.qEnd));
+    if (rightClip > 0)
+        appendValue(cigar, TCElem('H', rightClip));
 }
 
 // ----------------------------------------------------------------------------
@@ -111,14 +170,15 @@ myWriteHeader(TGH & globalHolder, LambdaOptions const & options)
         // set sequence lengths
         if (sIsTranslated(globalHolder.blastProgram))
         {
+            //TODO can we get around a copy?
             subjSeqLengths = globalHolder.untransSubjSeqLengths;
         } else
         {
             // compute lengths ultra-fast
-            subjSeqLengths = suffix(globalHolder.subjSeqs.limits, 1);
+            resize(subjSeqLengths, length(globalHolder.subjSeqs));
             SEQAN_OMP_PRAGMA(parallel for simd)
-            for (unsigned i = 1; i < length(subjSeqLengths); ++i)
-                subjSeqLengths[i] -= globalHolder.subjSeqs.limits[i];
+            for (unsigned i = 0; i < length(subjSeqLengths); ++i)
+                subjSeqLengths[i] = globalHolder.subjSeqs.limits[i+1] - globalHolder.subjSeqs.limits[i];
         }
         // set namestore
         resize(subjIds, length(globalHolder.subjIds));
@@ -203,23 +263,31 @@ myWriteRecord(TLH & lH, TRecord const & record)
                                                end(mIt->qId, Standard()),
                                                ' ')
                                      - begin(mIt->qId, Standard()));
-            // TODO retransform to nucleotide
-            if (lH.options.outFileFormat == 1) // SAM copes with protein sequences
-                bamR.seq        = infix(source(mIt->alignRow0),
-                                        beginPosition(mIt->alignRow0),
-                                        endPosition(mIt->alignRow0));
-            else // BAM does not
-                bamR.seq    = "*";
             // reference ID TODO figure out how to do this
-            bamR.rID        = 0;
+            bamR.rID        = mIt->_n_sId;
             // compute cigar
-            blastMatchToCigar(bamR.cigar, *mIt);
+            blastMatchToDnaCigar(bamR.cigar, *mIt, record.qLength, lH);
+            // Only dna sequences are supported
+            if (lH.gH.blastProgram == BlastProgram::BLASTN)
+            {
+                bamR.seq = infix(source(mIt->alignRow0), beginPosition(mIt->alignRow0), endPosition(mIt->alignRow0));
+            }
+            else if (qIsTranslated(lH.gH.blastProgram))
+            {
+                 _untranslateSequence(bamR.seq,
+                                      lH.gH.untranslatedQrySeqs[mIt->_n_qId],
+                                      *mIt);
+            }
+            else // no sequence can be given
+            {
+                bamR.seq    = "*";
+            }
             // custom tags? TODO
 //             appendValue(bamR.tags, TTag("AS", mIt->bitScore));
 //             appendValue(bamR.tags, TTag("ZR", mIt->alignStats.alignmentScore));
 //             appendValue(bamR.tags, TTag("ZI", mIt->alignStats.alignmentIdentity));
 //             appendValue(bamR.tags, TTag("ZF", mIt->qFrameShift));
-            //TODO possibly add more
+            //TODO also add protein sequence and protein cigar if != BLASTN
             // goto next match
             ++mIt;
         }

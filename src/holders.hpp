@@ -160,6 +160,10 @@ public:
     using TQryTag  = TStringTag;//typename std::conditional<qNumFrames(p) == 1, TStringTag, TDirectStringTag>::type;
     using TSubjTag = TDirectStringTag; // even if subjects were translated they are now loaded from disk
 
+    /* untranslated query sequences (ONLY USED FOR SAM/BAM OUTPUT) */
+    using TUntransQrySeqs = StringSet<String<OrigQryAlph<p>, TQryTag>, Owner<ConcatDirect<>>>;
+    TUntransQrySeqs     untranslatedQrySeqs;
+
     /* Possibly translated but yet unreduced sequences */
     template <typename TSpec>
     using TTransSeqs     = StringSet<String<TransAlph<p>, TSpec>, Owner<ConcatDirect<>>>;
@@ -224,7 +228,7 @@ public:
 //     using TNameStoreCache = typename TBamContext::TNameStorCache;
     TBamFile            outfileBam;
 
-    StatsHolder                 stats;
+    StatsHolder         stats;
 
     GlobalDataHolder() :
         redQrySeqs(qrySeqs), redSubjSeqs(subjSeqs), stats()

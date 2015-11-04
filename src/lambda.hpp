@@ -343,6 +343,7 @@ loadSegintervals(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, TOutFormat
 // Function loadQuery()
 // --------------------------------------------------------------------------
 
+// BLASTX, TBLASTX
 template <typename TSourceAlph, typename TSpec1,
           typename TTargetAlph, typename TSpec2,
           typename TUntransLengths,
@@ -365,7 +366,7 @@ loadQueryImplTrans(TCDStringSet<String<TTargetAlph, TSpec1>> & target,
            length(source.limits),
            Exact());
 
-    SEQAN_OMP_PRAGMA(simd)
+    SEQAN_OMP_PRAGMA(parallel for simd)
     for (uint32_t i = 0; i < (length(untransQrySeqLengths) - 1); ++i)
         untransQrySeqLengths[i] = source.limits[i + 1] - source.limits[i];
 
@@ -417,21 +418,7 @@ loadQueryImplTrans(TCDStringSet<String<TransAlph<BlastProgram::BLASTN>, TSpec1>>
     }
 }
 
-// // BLASTP (mmapped special case)
-// template <typename TSpec1,
-//           typename TSpec2,
-//           typename TUntransLengths>
-// inline void
-// loadQueryImplTrans(TCDStringSet<String<TransAlph<BlastProgram::BLASTP>, MMap<>>> & target,
-//                    TCDStringSet<String<TransAlph<BlastProgram::BLASTP>, MMap<>>> & source,
-//                    TUntransLengths           & /**/,
-//                    LambdaOptions       const & /**/)
-// {
-//     // no need for translation, but target needs to point to same file
-//     target = source;
-// }
-
-// BLASTP (general case)
+// BLASTP, TBLASTN
 template <typename TSpec1,
           typename TSpec2,
           typename TUntransLengths>
@@ -444,48 +431,6 @@ loadQueryImplTrans(TCDStringSet<String<TransAlph<BlastProgram::BLASTP>, TSpec1>>
     // no need for translation, but sequences have to be in right place
     swap(target, source);
 }
-
-// template <typename TSourceSet,
-//           typename TTargetSet,
-//           MyEnableIf<!std::is_same<TSourceSet, TTargetSet>::value> = 0>
-// inline void
-// loadQueryImplReduce(TSourceSet          & target,
-//                     TTargetSet          & source,
-//                     LambdaOptions const & options)
-// {
-//     // reduce implicitly
-//     myPrint(options, 1, "reducing...");
-// //     target.concat._host = &source.concat;
-//     target.limits = source.limits;
-// //     target(source);
-// }
-// 
-// template <typename TSourceSet,
-//           typename TTargetSet,
-//           MyEnableIf<std::is_same<TSourceSet, TTargetSet>::value> = 0>
-// inline void
-// loadQueryImplReduce(TSourceSet          & /**/,
-//                     TTargetSet          & /**/,
-//                     LambdaOptions const & /**/)
-// {
-//     // no-op, since target already references source
-// }
-
-
-// //DEBUG WARNING
-// template <typename THost, typename TSpec>
-// inline uint64_t
-// myhost(ModifiedString<THost, TSpec> const & str)
-// {
-//     return uint64_t(str._host);
-// }
-//
-// template <typename T, typename TSpec>
-// inline uint64_t
-// myhost(String<T, TSpec> const & str)
-// {
-//     return uint64_t(&str);
-// }
 
 template <BlastTabularSpec h,
           BlastProgram p,
@@ -526,10 +471,10 @@ loadQuery(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, TOutFormat, p, h>
                        globalHolder.untransQrySeqLengths,
                        options);
 
-    // reduce
-//     loadQueryImplReduce(globalHolder.redQrySeqs,
-//                         globalHolder.qrySeqs,
-//                         options);
+    // sam and bam need original sequences if translation happened
+    if (qIsTranslated(globalHolder.blastProgram) && (options.outFileFormat > 0))
+        std::swap(origSeqs, globalHolder.untranslatedQrySeqs);
+
     if (TGH::alphReduction)
         globalHolder.redQrySeqs.limits = globalHolder.qrySeqs.limits;
 
@@ -1346,6 +1291,11 @@ iterateMatches(TLocalHolder & lH)
                 {
                     case COMPUTERESULT_::SUCCESS:
     //                     ++lH.stats.goodMatches;
+                        if (lH.options.outFileFormat > 0)
+                        {
+                            bm._n_qId = it->qryId / qNumFrames(lH.gH.blastProgram);
+                            bm._n_sId = it->subjId / sNumFrames(lH.gH.blastProgram);
+                        }
                         break;
                     case EVALUE:
                         ++lH.stats.hitsFailedExtendEValueTest;

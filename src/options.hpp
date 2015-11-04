@@ -419,15 +419,15 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setAdvanced(parser, "sam-with-refheader");
     //TODO connect
 
-    addOption(parser, ArgParseOption("", "sam-bam-with-seq",
-        "Write the matching subsequence of the read into the SAM/BAM file. On by default for SAM which supports DNA "
-        "and AminoAcid sequences, off by default for BAM and proteine searches. If explicitly turned on for BAM, "
-        "the proteine sequence will be added as an extra field.",
+    addOption(parser, ArgParseOption("", "sam-bam-seq",
+        "Write matching DNA subsequence into SAM/BAM file (BLASTN). For BLASTX and TBLASTX the matching proteine "
+        "sequence is \"untranslated\" and positions retransformed to the original sequence. For BLASTP and TBLASTN "
+        "there is no DNA sequence so this option has no effect. [see also --sam-bam-columns].",
         ArgParseArgument::STRING,
         "STR"));
-    setValidValues(parser, "sam-bam-with-seq", "on off");
-    setDefaultValue(parser, "sam-bam-with-seq", "on");
-    setAdvanced(parser, "sam-bam-with-seq");
+    setValidValues(parser, "sam-bam-seq", "on off");
+    setDefaultValue(parser, "sam-bam-seq", "on");
+    setAdvanced(parser, "sam-bam-seq");
     //TODO connect
 
     addOption(parser, ArgParseOption("id", "percent-identity",
