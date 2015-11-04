@@ -170,7 +170,7 @@ argConv0(LambdaOptions const & options)
         return argConv05(options, BlastTabular(), BlastTabularSpecSelector<BlastTabularSpec::NO_COMMENTS>());
     else if (endsWith(output, ".m9"))
         return argConv05(options, BlastTabular(), BlastTabularSpecSelector<BlastTabularSpec::COMMENTS>());
-    else if (endsWith(output, ".sam") || endsWith(output, ".sam")) // handled elsewhere
+    else if (endsWith(output, ".sam") || endsWith(output, ".bam")) // handled elsewhere
         return argConv05(options, BlastTabular(), BlastTabularSpecSelector<BlastTabularSpec::COMMENTS>());
 
     return -1;

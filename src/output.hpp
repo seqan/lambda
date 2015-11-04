@@ -109,28 +109,27 @@ blastMatchToDnaCigar(TCigar & cigar, TBlastMatch const & m, unsigned const untra
     if (leftClip > 0)
         appendValue(cigar, TCElem('H', leftClip));
 
-    unsigned count = 0;
-    for (unsigned i = 0; i < length(m.alignRow0); ++i)
+    for (unsigned i = 0, count = 0; i < length(m.alignRow0); /* incremented below */)
     {
         // deletion in query
         count = 0;
-        while (isGap(m.alignRow0, i) && i < length(m.alignRow0))
+        while (isGap(m.alignRow0, i) && (i < length(m.alignRow0)))
         {
             ++count;
             ++i;
         }
         if (count > 0)
-            appendValue(cigar, TCElem('D', qIsTranslated(lH.gH.blastProgram) ? count * 3 : count));
+            appendValue(cigar, TCElem('D', (qIsTranslated(lH.gH.blastProgram) ? count * 3 : count)));
 
         // insertion in query
         count = 0;
-        while (isGap(m.alignRow1, i) && i < length(m.alignRow0))
+        while (isGap(m.alignRow1, i) && (i < length(m.alignRow0)))
         {
             ++count;
             ++i;
         }
         if (count > 0)
-            appendValue(cigar, TCElem('I', qIsTranslated(lH.gH.blastProgram) ? count * 3 : count));
+            appendValue(cigar, TCElem('I', (qIsTranslated(lH.gH.blastProgram) ? count * 3 : count)));
 
         // match or mismatch
         count = 0;
@@ -140,7 +139,7 @@ blastMatchToDnaCigar(TCigar & cigar, TBlastMatch const & m, unsigned const untra
             ++i;
         }
         if (count > 0)
-            appendValue(cigar, TCElem('M', qIsTranslated(lH.gH.blastProgram) ? count * 3 : count));
+            appendValue(cigar, TCElem('M', (qIsTranslated(lH.gH.blastProgram) ? count * 3 : count)));
     }
 
     if (rightClip > 0)
@@ -280,7 +279,7 @@ myWriteRecord(TLH & lH, TRecord const & record)
             }
             else // no sequence can be given
             {
-                bamR.seq    = "*";
+                // sequence remains empty
             }
             // custom tags? TODO
 //             appendValue(bamR.tags, TTag("AS", mIt->bitScore));
