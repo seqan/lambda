@@ -225,6 +225,7 @@ struct LambdaOptions : public SharedOptions
     std::string     outputBam;
     int             outFileFormat; // 0 = BLAST, 1 = SAM, 2 = BAM
     bool            samWithRefHeader;
+    bool            samBamSeq;
 
     unsigned        queryPart = 0;
 
@@ -417,7 +418,6 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setValidValues(parser, "sam-with-refheader", "on off");
     setDefaultValue(parser, "sam-with-refheader", "off");
     setAdvanced(parser, "sam-with-refheader");
-    //TODO connect
 
     addOption(parser, ArgParseOption("", "sam-bam-seq",
         "Write matching DNA subsequence into SAM/BAM file (BLASTN). For BLASTX and TBLASTX the matching proteine "
@@ -738,6 +738,12 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     clear(buffer);
     getOptionValue(buffer, parser, "sam-with-refheader");
     options.samWithRefHeader = (buffer == "on");
+
+    clear(buffer);
+    getOptionValue(buffer, parser, "sam-bam-seq");
+    options.samBamSeq = (buffer == "on");
+    if ((options.blastProgram == BlastProgram::BLASTP) || (options.blastProgram == BlastProgram::TBLASTN))
+        options.samBamSeq = false;
 
     clear(buffer);
     getOptionValue(buffer, parser, "output-columns");
@@ -1185,6 +1191,7 @@ printOptions(LambdaOptions const & options)
               << "  maximum e-value:          " << options.eCutOff << "\n"
               << "  max #matches per query:   " << options.maxMatches << "\n"
               << "  include subj names in sam:" << options.samWithRefHeader << "\n"
+              << "  include seq in sam/bam:   " << options.samBamSeq << "\n"
               << " OUTPUT (stdout)\n"
               << "  stdout is terminal:       " << options.isTerm << "\n"
               << "  terminal width:           " << options.terminalCols << "\n"
