@@ -338,8 +338,8 @@ convertMaskingFile(uint64_t numberOfSeqs,
     _path = options.dbFile;
     append(_path, ".binseg_e");
     save(segIntEnds, toCString(_path));
-    myPrint(options, 1, " done.\n\n");
-
+    myPrint(options, 1, " done.\n");
+    myPrint(options, 2, "\n");
     return 0;
 }
 
