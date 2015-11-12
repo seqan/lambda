@@ -32,117 +32,49 @@
 
 using namespace seqan;
 
-//TODO redo this, use own ids
-// like blastmatchfield, but adapted for SAM/BAM
 template <typename TVoidSpec = void>
-class BlastMatchFieldSam
+struct SamBamExtraTags
 {
-    static constexpr const std::array<char const *, 45> tagLabels
+    enum class Enum : uint8_t
     {
-      {
-        "std",            //  STD,
-        "qseqid",         //  Q_SEQ_ID,
-        "qgi",            //  Q_GI,
-        "qacc",           //  Q_ACC,
-        "qaccver",        //  Q_ACCVER,
-        "qlen",           //  Q_LEN,
-        "sseqid",         //  S_SEQ_ID,
-        "sallseqid",      //  S_ALL_SEQ_ID,
-        "sgi",            //  S_GI,
-        "sallgi",         //  S_ALL_GI,
-        "sacc",           //  S_ACC,
-        "saccver",        //  S_ACCVER,
-        "sallacc",        //  S_ALLACC,
-        "slen",           //  S_LEN,
-        "ZS",             //  Q_START,
-        "qend",           //  Q_END,
-        "YS",             //  S_START,
-        "send",           //  S_END,
-        "qseq",           //  Q_SEQ,
-        "sseq",           //  S_SEQ,
-        "ZE",             //  E_VALUE,
-        "AS",             //  BIT_SCORE,
-        "ZR",             //  SCORE,
-        "length",         //  LENGTH,
-        "ZI",             //  P_IDENT,
-        "nident",         //  N_IDENT,
-        "mismatch",       //  MISMATCH,
-        "positive",       //  POSITIVE,
-        "gapopen",        //  GAP_OPEN,
-        "gaps",           //  GAPS,
-        "ZP",             //  P_POS,
-        "frames",         //  FRAMES,
-        "ZF",             //  Q_FRAME,
-        "YF",             //  S_FRAME,
-        "btop",           //  BTOP,
-        "staxids",        //  S_TAX_IDS,
-        "sscinames",      //  S_SCI_NAMES,
-        "scomnames",      //  S_COM_NAMES,
-        "sblastnames",    //  S_BLAST_NAMES,
-        "sskingdoms",     //  S_S_KINGDOMS,
-        "stitle",         //  S_TITLE,
-        "salltitles",     //  S_ALL_TITLES,
-        "sstrand",        //  S_STRAND,
-        "qcovs",          //  Q_COV_S,
-        "qcovhsp"         //  Q_COV_HSP
-      }
+        Q_START,
+//         S_START,
+        E_VALUE,
+        BIT_SCORE,
+        SCORE,
+        P_IDENT,
+        P_POS,
+        Q_FRAME,
+        S_FRAME,
+        Q_AA_SEQ,
+        Q_AA_CIGAR,
+        EDIT_DISTANCE,
+        MATCH_COUNT
     };
-    
-    static constexpr const std::array<bool, 45> implemented
+
+    static constexpr const std::array<std::pair<const char*, const char*>, 12> keyDescPairs
     {
-      {
-        true,             //  STD,
-        true,             //  Q_SEQ_ID,
-        false,            //  Q_GI,
-        false,            //  Q_ACC,
-        false,            //  Q_ACCVER,
-        true,             //  Q_LEN,
-        true,             //  S_SEQ_ID,
-        false,            //  S_ALL_SEQ_ID,
-        false,            //  S_GI,
-        false,            //  S_ALL_GI,
-        false,            //  S_ACC,
-        false,            //  S_ACCVER,
-        false,            //  S_ALLACC,
-        true,             //  S_LEN,
-        true,             //  Q_START,
-        true,             //  Q_END,
-        true,             //  S_START,
-        true,             //  S_END,
-        false,            //  Q_SEQ,
-        false,            //  S_SEQ,
-        true,             //  E_VALUE,
-        true,             //  BIT_SCORE,
-        true,             //  SCORE,
-        true,             //  LENGTH,
-        true,             //  P_IDENT,
-        true,             //  N_IDENT,
-        true,             //  MISMATCH,
-        true,             //  POSITIVE,
-        true,             //  GAP_OPEN,
-        true,             //  GAPS,
-        true,             //  P_POS,
-        true,             //  FRAMES,
-        true,             //  Q_FRAME,
-        true,             //  S_FRAME,
-        false,            //  BTOP,
-        false,            //  S_TAX_IDS,
-        false,            //  S_SCI_NAMES,
-        false,            //  S_COM_NAMES,
-        false,            //  S_BLAST_NAMES,
-        false,            //  S_S_KINGDOMS,
-        false,            //  S_TITLE,
-        false,            //  S_ALL_TITLES,
-        false,            //  S_STRAND,
-        false,            //  Q_COV_S,
-        false             //  Q_COV_HSP
-      }
+        {
+            { "ZS", "query start (in DNA if original was DNA)" },       //  Q_START,
+//             { "YS", "subject start (in DNA if original was DNA)" },  //  S_START,
+            { "ZE", "expect value" },                                   //  E_VALUE,
+            { "AS", "bit score" },                                      //  BIT_SCORE,
+            { "ZR", "raw score" },                                      //  SCORE,
+            { "ZI", "% identity (in proteine space unless BLASTN) " },  //  P_IDENT,
+            { "ZP", "% positive (in proteine space unless BLASTN)"},     //  P_POS,
+            { "ZF", "query frame" },                                    //  Q_FRAME,
+            { "YF", "subject frame" },                                  //  S_FRAME,
+            { "ZQ", "query proteine sequence (* for BLASTN)"},          //  Q_AA_SEQ,
+            { "ZC", "query proteine cigar (* for BLASTN)"},             //  Q_AA_CIGAR,
+            { "NM", "edit distance (in proteine space unless BLASTN)"}, //  EDIT_DISTANCE
+            { "IH", "number of matches this query has"},                //  MATCH_COUNT
+        }
     };
-    
-    
-    
+
 };
 
+template <typename TVoidSpec>
+constexpr const std::array<std::pair<const char*, const char*>, 12> SamBamExtraTags<TVoidSpec>::keyDescPairs;
 
 // ----------------------------------------------------------------------------
 // Function _untranslatedClipPositions()
@@ -262,9 +194,9 @@ blastMatchToDnaCigar(TCigar & cigar, TBlastMatch const & m, unsigned const untra
 // Function myWriteHeader()
 // ----------------------------------------------------------------------------
 
-template <typename TGH>
+template <typename TGH, typename TLambdaOptions>
 inline void
-myWriteHeader(TGH & globalHolder, LambdaOptions const & options)
+myWriteHeader(TGH & globalHolder, TLambdaOptions const & options)
 {
     if (options.outFileFormat == 0) // BLAST
     {
@@ -394,54 +326,98 @@ myWriteRecord(TLH & lH, TRecord const & record)
                 // else no sequence is available
             }
 
-            // custom tags? TODO
-            
-            for (auto const & tag : lH.options.samBamExtraTags)
+            // custom tags
+
+            std::vector<SamBamExtraTags<>::Enum> tags;
+            appendValue(tags, SamBamExtraTags<>::Enum::BIT_SCORE);
+            appendValue(tags, SamBamExtraTags<>::Enum::EDIT_DISTANCE);
+            appendValue(tags, SamBamExtraTags<>::Enum::E_VALUE);
+            appendValue(tags, SamBamExtraTags<>::Enum::P_IDENT);
+            appendValue(tags, SamBamExtraTags<>::Enum::P_POS);
+            appendValue(tags, SamBamExtraTags<>::Enum::Q_FRAME);
+
+            for (auto const & tag : lH.options.samBamColumns)
             {
                 switch (tag)
                 {
-        S_LEN,
-        Q_START,
-        Q_END,
-        S_START,
-        S_END,
-        Q_SEQ,
-        S_SEQ,
-        E_VALUE,
-        //             appendTagValue(bamR.tags, "ZE", mIt->eValue, 'f');
-        BIT_SCORE,
-        appendTagValue(bamR.tags, "AS", uint16_t(mIt->bitScore), 'S');
-        SCORE,
-        appendTagValue(bamR.tags, "ZR", uint8_t(mIt->alignStats.alignmentScore), 'C');
-        LENGTH,
-        P_IDENT,
-        appendTagValue(bamR.tags, "ZI", uint8_t(mIt->alignStats.alignmentIdentity), 'C');
-        N_IDENT,
-        MISMATCH,
-        POSITIVE,
-        GAP_OPEN,
-        GAPS,
-        P_POS,
-        FRAMES,
-        Q_FRAME,
-                    appendTagValue(bamR.tags, "ZF", int8_t(mIt->qFrameShift), 'c');
-        S_FRAME,
-
-                   
-
-            appendTagValue(bamR.tags, "NM",
-                           uint32_t(mIt->alignStats.alignmentLength - mIt->alignStats.numMatches),
-                           'I');
-
-            
-            
-
-            //TODO also add protein sequence and protein cigar if != BLASTN
+                    case SamBamExtraTags<>::Enum::Q_START:
+                        // TODO untranslate
+                        appendTagValue(bamR.tags,
+                                       std::get<0>(SamBamExtraTags<>::keyDescPairs[(uint8_t)tag]),
+                                       uint32_t(mIt->qLength), 'I');
+                        break;
+            //      case    S_START:
+                    case SamBamExtraTags<>::Enum::E_VALUE:
+                        appendTagValue(bamR.tags,
+                                       std::get<0>(SamBamExtraTags<>::keyDescPairs[(uint8_t)tag]),
+                                       float(mIt->eValue), 'f');
+                        break;
+                    case SamBamExtraTags<>::Enum::BIT_SCORE:
+                        appendTagValue(bamR.tags,
+                                       std::get<0>(SamBamExtraTags<>::keyDescPairs[(uint8_t)tag]),
+                                       uint16_t(mIt->bitScore), 'S');
+                        break;
+                    case SamBamExtraTags<>::Enum::SCORE:
+                        appendTagValue(bamR.tags,
+                                       std::get<0>(SamBamExtraTags<>::keyDescPairs[(uint8_t)tag]),
+                                       uint8_t(mIt->alignStats.alignmentScore), 'C');
+                        break;
+                    case SamBamExtraTags<>::Enum::P_IDENT:
+                        appendTagValue(bamR.tags,
+                                       std::get<0>(SamBamExtraTags<>::keyDescPairs[(uint8_t)tag]),
+                                       uint8_t(mIt->alignStats.alignmentIdentity), 'C');
+                        break;
+                    case SamBamExtraTags<>::Enum::P_POS:
+                        appendTagValue(bamR.tags,
+                                       std::get<0>(SamBamExtraTags<>::keyDescPairs[(uint8_t)tag]),
+                                       uint16_t(mIt->alignStats.alignmentSimilarity), 'S');
+                        break;
+                    case SamBamExtraTags<>::Enum::Q_FRAME:
+                        appendTagValue(bamR.tags,
+                                       std::get<0>(SamBamExtraTags<>::keyDescPairs[(uint8_t)tag]),
+                                       int8_t(mIt->qFrameShift), 'c');
+                        break;
+                    case SamBamExtraTags<>::Enum::S_FRAME:
+                        appendTagValue(bamR.tags,
+                                       std::get<0>(SamBamExtraTags<>::keyDescPairs[(uint8_t)tag]),
+                                       int8_t(mIt->sFrameShift), 'c');
+                        break;
+                    case SamBamExtraTags<>::Enum::Q_AA_SEQ:
+                        if (lH.gH.blastProgram == BlastProgram::BLASTN)
+                            appendTagValue(bamR.tags,
+                                           std::get<0>(SamBamExtraTags<>::keyDescPairs[(uint8_t)tag]),
+                                           "*", 'Z');
+                        else
+                            appendTagValue(bamR.tags,
+                                           std::get<0>(SamBamExtraTags<>::keyDescPairs[(uint8_t)tag]),
+                                           infix(source(mIt->alignRow0),
+                                                 beginPosition(mIt->alignRow0),
+                                                 endPosition(mIt->alignRow0)),
+                                           'Z');
+                        break;
+                    case SamBamExtraTags<>::Enum::Q_AA_CIGAR:
+                        //TODO
+                        appendTagValue(bamR.tags,
+                                       std::get<0>(SamBamExtraTags<>::keyDescPairs[(uint8_t)tag]),
+                                       "*", 'Z');
+                        break;
+                    case SamBamExtraTags<>::Enum::EDIT_DISTANCE:
+                        appendTagValue(bamR.tags,
+                                       std::get<0>(SamBamExtraTags<>::keyDescPairs[(uint8_t)tag]),
+                                       uint32_t(mIt->alignStats.alignmentLength - mIt->alignStats.numMatches), 'I');
+                        break;
+                    case SamBamExtraTags<>::Enum::MATCH_COUNT:
+                        appendTagValue(bamR.tags,
+                                       std::get<0>(SamBamExtraTags<>::keyDescPairs[(uint8_t)tag]),
+                                       uint32_t(length(record.matches)), 'I');
+                        break;
+                }
+            }
             // goto next match
             ++mIt;
         }
 
-        bamRecords.front().flag = 0; // remove BAM_FLAG_SECONDARY for first
+        bamRecords.front().flag -= BAM_FLAG_SECONDARY; // remove BAM_FLAG_SECONDARY for first
 
         SEQAN_OMP_PRAGMA(critical(filewrite))
         {
@@ -455,9 +431,9 @@ myWriteRecord(TLH & lH, TRecord const & record)
 // Function myWriteFooter()
 // ----------------------------------------------------------------------------
 
-template <typename TGH>
+template <typename TGH, typename TLambdaOptions>
 inline void
-myWriteFooter(TGH & globalHolder, LambdaOptions const & options)
+myWriteFooter(TGH & globalHolder, TLambdaOptions const & options)
 {
     if (options.outFileFormat == 0) // BLAST
     {

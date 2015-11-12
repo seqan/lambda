@@ -33,9 +33,9 @@
 
 #include <seqan/basic.h>
 #include <seqan/translation.h>
-#include <seqan/blast.h>
 #include <seqan/arg_parse.h>
 #include <seqan/index.h>
+#include "output.hpp"
 
 // ==========================================================================
 // Metafunctions
@@ -220,10 +220,11 @@ struct LambdaOptions : public SharedOptions
     std::string     queryFile;
     bool            revComp     = true;
 
+    int             outFileFormat; // 0 = BLAST, 1 = SAM, 2 = BAM
     std::string     output;
     std::vector<BlastMatchField<>::Enum> columns;
     std::string     outputBam;
-    int             outFileFormat; // 0 = BLAST, 1 = SAM, 2 = BAM
+    std::vector<SamBamExtraTags<>::Enum> samBamColumns;
     bool            samWithRefHeader;
     bool            samBamSeq;
 
@@ -409,27 +410,6 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setDefaultValue(parser, "output-columns", "std");
     setAdvanced(parser, "output-columns");
 
-    addOption(parser, ArgParseOption("", "sam-with-refheader",
-        "BAM files require all subject names to be written to the header. For SAM this is not required, so Lambda does "
-        "not automatically do it to save space (especially for proteine database this is a lot!). If you still want "
-        "them with SAM, e.g. for better BAM compatability, use this option.",
-        ArgParseArgument::STRING,
-        "STR"));
-    setValidValues(parser, "sam-with-refheader", "on off");
-    setDefaultValue(parser, "sam-with-refheader", "off");
-    setAdvanced(parser, "sam-with-refheader");
-
-    addOption(parser, ArgParseOption("", "sam-bam-seq",
-        "Write matching DNA subsequence into SAM/BAM file (BLASTN). For BLASTX and TBLASTX the matching proteine "
-        "sequence is \"untranslated\" and positions retransformed to the original sequence. For BLASTP and TBLASTN "
-        "there is no DNA sequence so this option has no effect. [see also --sam-bam-columns].",
-        ArgParseArgument::STRING,
-        "STR"));
-    setValidValues(parser, "sam-bam-seq", "on off");
-    setDefaultValue(parser, "sam-bam-seq", "on");
-    setAdvanced(parser, "sam-bam-seq");
-    //TODO connect
-
     addOption(parser, ArgParseOption("id", "percent-identity",
         "Output only matches above this threshold (checked before e-value "
         "check).",
@@ -450,7 +430,33 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setDefaultValue(parser, "num-matches", "500");
     setMinValue(parser, "num-matches", "1");
 
-//     if (fullHelp)
+    addOption(parser, ArgParseOption("", "sam-with-refheader",
+        "BAM files require all subject names to be written to the header. For SAM this is not required, so Lambda does "
+        "not automatically do it to save space (especially for proteine database this is a lot!). If you still want "
+        "them with SAM, e.g. for better BAM compatability, use this option.",
+        ArgParseArgument::STRING,
+        "STR"));
+    setValidValues(parser, "sam-with-refheader", "on off");
+    setDefaultValue(parser, "sam-with-refheader", "off");
+    setAdvanced(parser, "sam-with-refheader");
+
+    addOption(parser, ArgParseOption("", "sam-bam-seq",
+        "Write matching DNA subsequence into SAM/BAM file (BLASTN). For BLASTX and TBLASTX the matching proteine "
+        "sequence is \"untranslated\" and positions retransformed to the original sequence. For BLASTP and TBLASTN "
+        "there is no DNA sequence so this option has no effect. [see also --sam-bam-columns].",
+        ArgParseArgument::STRING,
+        "STR"));
+    setValidValues(parser, "sam-bam-seq", "on off");
+    setDefaultValue(parser, "sam-bam-seq", "on");
+    setAdvanced(parser, "sam-bam-seq");
+
+    addOption(parser, ArgParseOption("", "sam-bam-columns",
+        "Write the the specified optional columns to the SAM/BAM file. Call --sam-bam-columns help for more details.",
+        ArgParseArgument::STRING,
+        "STR"));
+    setDefaultValue(parser, "sam-bam-columns", "AS NM ZE ZI ZF");
+    setAdvanced(parser, "sam-bam-columns");
+
         addSection(parser, "General Options");
 #ifdef _OPENMP
     addOption(parser, ArgParseOption("t", "threads",
@@ -782,6 +788,43 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
             if (!resolved)
             {
                 std::cerr << "Unknown column specifier \"" << str << "\". Please see -oc help for valid options.\n";
+                return ArgumentParser::PARSE_ERROR;
+            }
+        }
+    }
+    clear(buffer);
+
+    getOptionValue(buffer, parser, "sam-bam-columns");
+    if (buffer == "help")
+    {
+        std::cout << "Please specify the columns in this format -oc 'column1 column2', i.e. space-seperated and "
+                  << "enclosed in single quotes.\nThe following specifiers are supported:\n";
+
+        for (auto const & c : SamBamExtraTags<>::keyDescPairs)
+            std::cout << "\t" << std::get<0>(c) << "\t" << std::get<1>(c) << "\n";
+
+        return ArgumentParser::PARSE_HELP;
+    }
+    else
+    {
+        StringSet<CharString> fields;
+        strSplit(fields, buffer, IsSpace(), false);
+        for (auto str : fields)
+        {
+            bool resolved = false;
+            for (unsigned i = 0; i < length(SamBamExtraTags<>::keyDescPairs); ++i)
+            {
+                if (std::get<0>(SamBamExtraTags<>::keyDescPairs[i]) == str)
+                {
+                    appendValue(options.samBamColumns, static_cast<SamBamExtraTags<>::Enum>(i));
+                    resolved = true;
+                    break;
+                }
+            }
+            if (!resolved)
+            {
+                std::cerr << "Unknown column specifier \"" << str
+                          << "\". Please see \"--sam-bam-columns help\" for valid options.\n";
                 return ArgumentParser::PARSE_ERROR;
             }
         }
