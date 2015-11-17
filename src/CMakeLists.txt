@@ -68,6 +68,9 @@ option (LAMBDA_NATIVE_BUILD "Architecture-specific optimizations, i.e. g++ -marc
 if (LAMBDA_NATIVE_BUILD)
     add_definitions (-DLAMBDA_NATIVE_BUILD=1)
     set (SEQAN_CXX_FLAGS "${SEQAN_CXX_FLAGS} -march=native")
+    if (COMPILER_IS_INTEL)
+        set (SEQAN_CXX_FLAGS "${SEQAN_CXX_FLAGS} -xHOST -ipo -no-prec-div -fp-model fast=2")
+    endif (COMPILER_IS_INTEL)
     message (STATUS "NATIVE_BUILD set, binaries will be optimized for this CPU (and might not work on others).")
     message (STATUS "To deactivate, pass -DLAMBDA_NATIVE_BUILD=0 to cmake.")
 endif (LAMBDA_NATIVE_BUILD)
@@ -122,7 +125,8 @@ add_executable (lambda lambda.cpp
                 match.hpp
                 options.hpp
                 alph.hpp
-                holders.hpp)
+                holders.hpp
+                output.hpp)
 add_executable (lambda_indexer lambda_indexer.cpp
                 lambda_indexer.hpp
                 options.hpp
@@ -134,7 +138,10 @@ target_link_libraries (lambda ${SEQAN_LIBRARIES})
 target_link_libraries (lambda_indexer ${SEQAN_LIBRARIES})
 
 # Add CXX flags found by find_package (SeqAn).
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN_CXX_FLAGS} ${CXX11_CXX_FLAGS} -Wno-vla")
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN_CXX_FLAGS} ${CXX11_CXX_FLAGS}")
+if (NOT COMPILER_IS_INTEL)
+   set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-vla")
+endif (NOT COMPILER_IS_INTEL)
 
 set(BUILD_SHARED_LIBS OFF)
 
