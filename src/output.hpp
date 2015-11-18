@@ -35,7 +35,7 @@ using namespace seqan;
 template <typename TVoidSpec = void>
 struct SamBamExtraTags
 {
-    enum class Enum : uint8_t
+    enum Enum
     {
         Q_START,
 //         S_START,
@@ -65,7 +65,7 @@ struct SamBamExtraTags
             { "ZF", "query frame" },                                    //  Q_FRAME,
             { "YF", "subject frame" },                                  //  S_FRAME,
             { "ZQ", "query proteine sequence (* for BLASTN)"},          //  Q_AA_SEQ,
-            { "ZC", "query proteine cigar (* for BLASTN)"},             //  Q_AA_CIGAR,
+            { "OC", "query proteine cigar (* for BLASTN)"},             //  Q_AA_CIGAR,
             { "NM", "edit distance (in proteine space unless BLASTN)"}, //  EDIT_DISTANCE
             { "IH", "number of matches this query has"},                //  MATCH_COUNT
         }
@@ -109,35 +109,36 @@ _untranslateSequence(TSequence1                     & target,
 // ----------------------------------------------------------------------------
 
 // similar to _untranslatePositions() from the blast module
-template <BlastProgram p>
-inline void
-_untranslatedClipPositions(unsigned & leftClip,         // should start with qStart
-                           unsigned & rightClip,        // should start with qEnd
-                           int const frameShift,
-                           unsigned const realLength,   // untranslated Length if translated
-                           BlastProgramSelector<p> const & selector)
-{
-    if (qIsTranslated(selector))
-    {
-        leftClip  = leftClip * 3 + std::abs(frameShift) - 1;
-        rightClip = rightClip * 3 + std::abs(frameShift) - 1;
-    }
-
-    rightClip = realLength - rightClip;
-
-    if (frameShift < 0)
-        std::swap(leftClip, rightClip);
-}
+// template <BlastProgram p>
+// inline void
+// _untranslatedClipPositions(unsigned & leftClip,                 // should start with qStart
+//                            unsigned & rightClip,                // should start with qEnd
+//                            int const frameShift,
+//                            unsigned const untransMatchLength,   // untranslated Length if translated
+//                            BlastProgramSelector<p> const & selector)
+// {
+//     if (qIsTranslated(selector))
+//     {
+//
+//     }
+//
+//
+//
+//     if (frameShift < 0)
+//         std::swap(leftClip, rightClip);
+// }
 
 // ----------------------------------------------------------------------------
 // Function blastMatchToCigar() convert seqan align to cigar
 // ----------------------------------------------------------------------------
 
-//TODO this could be done nicer, I guess
 template <typename TCigar, typename TBlastMatch, typename TLocalHolder>
 inline void
-blastMatchToDnaCigar(TCigar & cigar, TBlastMatch const & m, unsigned const untransMatchLength, TLocalHolder const & lH)
+blastMatchOneCigar(TCigar & cigar,
+                   TBlastMatch const & m,
+                   TLocalHolder const & lH)
 {
+    //TODO write both cigars in one go
     using TCElem = typename Value<TCigar>::Type;
 
     SEQAN_ASSERT_EQ(length(m.alignRow0), length(m.alignRow1));
@@ -145,11 +146,18 @@ blastMatchToDnaCigar(TCigar & cigar, TBlastMatch const & m, unsigned const untra
     // hard clipping
     unsigned leftClip   = m.qStart;
     unsigned rightClip  = m.qEnd;
-    _untranslatedClipPositions(leftClip,
-                               rightClip,
-                               m.qFrameShift,
-                               untransMatchLength,
-                               context(lH.gH.outfile).blastProgram);
+
+    // translation factor
+    unsigned transFac   = 1;
+    if (qIsTranslated(lH.gH.blastProgram))
+    {
+        transFac  = 3;
+        leftClip  = leftClip * 3 + std::abs(m.qFrameShift) - 1;
+        rightClip = rightClip * 3 + std::abs(m.qFrameShift) - 1;
+    }
+    // we want distance to end
+    rightClip = m.qLength - rightClip;
+
     if (leftClip > 0)
         appendValue(cigar, TCElem('H', leftClip));
 
@@ -163,7 +171,7 @@ blastMatchToDnaCigar(TCigar & cigar, TBlastMatch const & m, unsigned const untra
             ++i;
         }
         if (count > 0)
-            appendValue(cigar, TCElem('D', (qIsTranslated(lH.gH.blastProgram) ? count * 3 : count)));
+            appendValue(cigar, TCElem('D', count * transFac));
 
         // insertion in query
         count = 0;
@@ -173,7 +181,7 @@ blastMatchToDnaCigar(TCigar & cigar, TBlastMatch const & m, unsigned const untra
             ++i;
         }
         if (count > 0)
-            appendValue(cigar, TCElem('I', (qIsTranslated(lH.gH.blastProgram) ? count * 3 : count)));
+            appendValue(cigar, TCElem('I', count * transFac));
 
         // match or mismatch
         count = 0;
@@ -183,11 +191,87 @@ blastMatchToDnaCigar(TCigar & cigar, TBlastMatch const & m, unsigned const untra
             ++i;
         }
         if (count > 0)
-            appendValue(cigar, TCElem('M', (qIsTranslated(lH.gH.blastProgram) ? count * 3 : count)));
+            appendValue(cigar, TCElem('M', count * transFac));
     }
 
     if (rightClip > 0)
         appendValue(cigar, TCElem('H', rightClip));
+
+    if (m.qFrameShift < 0)
+        reverse(cigar);
+}
+
+// translation happened and we want both cigars
+template <typename TCigar, typename TBlastMatch, typename TLocalHolder>
+inline void
+blastMatchTwoCigar(TCigar & dnaCigar,
+                   TCigar & protCigar,
+                   TBlastMatch const & m,
+                   TLocalHolder const &)
+{
+    //TODO write both cigars in one go
+    using TCElem = typename Value<TCigar>::Type;
+
+    SEQAN_ASSERT_EQ(length(m.alignRow0), length(m.alignRow1));
+
+    if (m.qStart > 0)
+    {
+        appendValue(dnaCigar, TCElem('H', m.qStart * 3 + std::abs(m.qFrameShift) - 1));
+        appendValue(protCigar, TCElem('H', m.qStart));
+    }
+
+    for (unsigned i = 0, count = 0; i < length(m.alignRow0); /* incremented below */)
+    {
+        // deletion in query
+        count = 0;
+        while (isGap(m.alignRow0, i) && (i < length(m.alignRow0)))
+        {
+            ++count;
+            ++i;
+        }
+        if (count > 0)
+        {
+            appendValue(dnaCigar, TCElem('D', count * 3));
+            appendValue(protCigar, TCElem('D', count));
+        }
+
+        // insertion in query
+        count = 0;
+        while (isGap(m.alignRow1, i) && (i < length(m.alignRow0)))
+        {
+            ++count;
+            ++i;
+        }
+        if (count > 0)
+        {
+            appendValue(dnaCigar, TCElem('I', count * 3));
+            appendValue(protCigar, TCElem('I', count));
+        }
+
+        // match or mismatch
+        count = 0;
+        while ((!isGap(m.alignRow0, i)) && (!isGap(m.alignRow1, i)) && (i < length(m.alignRow0)))
+        {
+            ++count;
+            ++i;
+        }
+        if (count > 0)
+        {
+            appendValue(dnaCigar, TCElem('M', count * 3));
+            appendValue(protCigar, TCElem('M', count));
+        }
+    }
+
+    unsigned rightDnaClip = m.qLength - (m.qEnd * 3 + std::abs(m.qFrameShift) - 1);
+    if (rightDnaClip > 0)
+    {
+        appendValue(dnaCigar, TCElem('H', rightDnaClip));
+        appendValue(protCigar, TCElem('H', ((m.qLength - std::abs(m.qFrameShift) + 1) / 3) - m.qEnd));
+    }
+
+    if (m.qFrameShift < 0)
+        reverse(dnaCigar);
+    // protCigar never reversed
 }
 
 // ----------------------------------------------------------------------------
@@ -292,6 +376,9 @@ myWriteRecord(TLH & lH, TRecord const & record)
         std::vector<BamAlignmentRecord> bamRecords;
         bamRecords.resize(record.matches.size());
 
+        String<CigarElement<>> protCigar;
+        std::string protCigarString = "*";
+
         auto mIt = begin(record.matches, Standard());
         for (auto & bamR : bamRecords)
         {
@@ -308,9 +395,25 @@ myWriteRecord(TLH & lH, TRecord const & record)
                                      - begin(mIt->qId, Standard()));
             // reference ID
             bamR.rID        = mIt->_n_sId;
+
             // compute cigar
-            blastMatchToDnaCigar(bamR.cigar, *mIt, record.qLength, lH);
+            if (lH.options.samBamColumns[SamBamExtraTags<>::Q_AA_CIGAR]) // amino acid cigar, too?
+            {
+                clear(protCigar);
+                // native protein
+                if ((lH.gH.blastProgram == BlastProgram::BLASTP) || (lH.gH.blastProgram == BlastProgram::TBLASTN))
+                    blastMatchOneCigar(protCigar, *mIt, lH);
+                else if (qIsTranslated(lH.gH.blastProgram)) // translated
+                    blastMatchTwoCigar(bamR.cigar, protCigar, *mIt, lH);
+                else // BLASTN can't have protein sequence
+                    blastMatchOneCigar(bamR.cigar, *mIt, lH);
+            }
+            else
+            {
+                blastMatchOneCigar(bamR.cigar, *mIt, lH);
+            }
             // we want to include the seq
+            // TODO only include if unique
             if (lH.options.samBamSeq)
             {
                 // only dna sequences supported
@@ -322,97 +425,88 @@ myWriteRecord(TLH & lH, TRecord const & record)
                 else if (qIsTranslated(lH.gH.blastProgram))
                     _untranslateSequence(bamR.seq,
                                          lH.gH.untranslatedQrySeqs[mIt->_n_qId],
-                                        * mIt);
+                                         *mIt);
                 // else no sequence is available
             }
 
             // custom tags
-
-            std::vector<SamBamExtraTags<>::Enum> tags;
-            appendValue(tags, SamBamExtraTags<>::Enum::BIT_SCORE);
-            appendValue(tags, SamBamExtraTags<>::Enum::EDIT_DISTANCE);
-            appendValue(tags, SamBamExtraTags<>::Enum::E_VALUE);
-            appendValue(tags, SamBamExtraTags<>::Enum::P_IDENT);
-            appendValue(tags, SamBamExtraTags<>::Enum::P_POS);
-            appendValue(tags, SamBamExtraTags<>::Enum::Q_FRAME);
-
-            for (auto const & tag : lH.options.samBamColumns)
-            {
-                switch (tag)
-                {
-                    case SamBamExtraTags<>::Enum::Q_START:
-                        // TODO untranslate
-                        appendTagValue(bamR.tags,
-                                       std::get<0>(SamBamExtraTags<>::keyDescPairs[(uint8_t)tag]),
-                                       uint32_t(mIt->qLength), 'I');
-                        break;
+            //TODO untranslate?
+            if (lH.options.samBamColumns[SamBamExtraTags<>::Q_START])
+                appendTagValue(bamR.tags,
+                               std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::Q_START]),
+                               uint32_t(mIt->qLength), 'I');
             //      case    S_START:
-                    case SamBamExtraTags<>::Enum::E_VALUE:
-                        appendTagValue(bamR.tags,
-                                       std::get<0>(SamBamExtraTags<>::keyDescPairs[(uint8_t)tag]),
-                                       float(mIt->eValue), 'f');
-                        break;
-                    case SamBamExtraTags<>::Enum::BIT_SCORE:
-                        appendTagValue(bamR.tags,
-                                       std::get<0>(SamBamExtraTags<>::keyDescPairs[(uint8_t)tag]),
-                                       uint16_t(mIt->bitScore), 'S');
-                        break;
-                    case SamBamExtraTags<>::Enum::SCORE:
-                        appendTagValue(bamR.tags,
-                                       std::get<0>(SamBamExtraTags<>::keyDescPairs[(uint8_t)tag]),
-                                       uint8_t(mIt->alignStats.alignmentScore), 'C');
-                        break;
-                    case SamBamExtraTags<>::Enum::P_IDENT:
-                        appendTagValue(bamR.tags,
-                                       std::get<0>(SamBamExtraTags<>::keyDescPairs[(uint8_t)tag]),
-                                       uint8_t(mIt->alignStats.alignmentIdentity), 'C');
-                        break;
-                    case SamBamExtraTags<>::Enum::P_POS:
-                        appendTagValue(bamR.tags,
-                                       std::get<0>(SamBamExtraTags<>::keyDescPairs[(uint8_t)tag]),
-                                       uint16_t(mIt->alignStats.alignmentSimilarity), 'S');
-                        break;
-                    case SamBamExtraTags<>::Enum::Q_FRAME:
-                        appendTagValue(bamR.tags,
-                                       std::get<0>(SamBamExtraTags<>::keyDescPairs[(uint8_t)tag]),
-                                       int8_t(mIt->qFrameShift), 'c');
-                        break;
-                    case SamBamExtraTags<>::Enum::S_FRAME:
-                        appendTagValue(bamR.tags,
-                                       std::get<0>(SamBamExtraTags<>::keyDescPairs[(uint8_t)tag]),
-                                       int8_t(mIt->sFrameShift), 'c');
-                        break;
-                    case SamBamExtraTags<>::Enum::Q_AA_SEQ:
-                        if (lH.gH.blastProgram == BlastProgram::BLASTN)
-                            appendTagValue(bamR.tags,
-                                           std::get<0>(SamBamExtraTags<>::keyDescPairs[(uint8_t)tag]),
-                                           "*", 'Z');
-                        else
-                            appendTagValue(bamR.tags,
-                                           std::get<0>(SamBamExtraTags<>::keyDescPairs[(uint8_t)tag]),
-                                           infix(source(mIt->alignRow0),
-                                                 beginPosition(mIt->alignRow0),
-                                                 endPosition(mIt->alignRow0)),
-                                           'Z');
-                        break;
-                    case SamBamExtraTags<>::Enum::Q_AA_CIGAR:
-                        //TODO
-                        appendTagValue(bamR.tags,
-                                       std::get<0>(SamBamExtraTags<>::keyDescPairs[(uint8_t)tag]),
-                                       "*", 'Z');
-                        break;
-                    case SamBamExtraTags<>::Enum::EDIT_DISTANCE:
-                        appendTagValue(bamR.tags,
-                                       std::get<0>(SamBamExtraTags<>::keyDescPairs[(uint8_t)tag]),
-                                       uint32_t(mIt->alignStats.alignmentLength - mIt->alignStats.numMatches), 'I');
-                        break;
-                    case SamBamExtraTags<>::Enum::MATCH_COUNT:
-                        appendTagValue(bamR.tags,
-                                       std::get<0>(SamBamExtraTags<>::keyDescPairs[(uint8_t)tag]),
-                                       uint32_t(length(record.matches)), 'I');
-                        break;
-                }
+            if (lH.options.samBamColumns[SamBamExtraTags<>::E_VALUE])
+                appendTagValue(bamR.tags,
+                               std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::E_VALUE]),
+                               float(mIt->eValue), 'f');
+            if (lH.options.samBamColumns[SamBamExtraTags<>::BIT_SCORE])
+                appendTagValue(bamR.tags,
+                               std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::BIT_SCORE]),
+                               uint16_t(mIt->bitScore), 'S');
+            if (lH.options.samBamColumns[SamBamExtraTags<>::SCORE])
+                appendTagValue(bamR.tags,
+                               std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::SCORE]),
+                               uint8_t(mIt->alignStats.alignmentScore), 'C');
+            if (lH.options.samBamColumns[SamBamExtraTags<>::P_IDENT])
+                appendTagValue(bamR.tags,
+                               std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::P_IDENT]),
+                               uint8_t(mIt->alignStats.alignmentIdentity), 'C');
+            if (lH.options.samBamColumns[SamBamExtraTags<>::P_POS])
+                appendTagValue(bamR.tags,
+                               std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::P_POS]),
+                               uint16_t(mIt->alignStats.alignmentSimilarity), 'S');
+            if (lH.options.samBamColumns[SamBamExtraTags<>::Q_FRAME])
+                appendTagValue(bamR.tags,
+                               std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::Q_FRAME]),
+                               int8_t(mIt->qFrameShift), 'c');
+            if (lH.options.samBamColumns[SamBamExtraTags<>::S_FRAME])
+                appendTagValue(bamR.tags,
+                               std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::S_FRAME]),
+                               int8_t(mIt->sFrameShift), 'c');
+            if (lH.options.samBamColumns[SamBamExtraTags<>::Q_AA_SEQ])
+            {
+                 if (lH.gH.blastProgram == BlastProgram::BLASTN)
+                    appendTagValue(bamR.tags,
+                                   std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::Q_AA_SEQ]),
+                                   "*", 'Z');
+                 else
+                    appendTagValue(bamR.tags,
+                                   std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::Q_AA_SEQ]),
+                                   infix(source(mIt->alignRow0),
+                                         beginPosition(mIt->alignRow0),
+                                         endPosition(mIt->alignRow0)),
+                                   'Z');
             }
+            if (lH.options.samBamColumns[SamBamExtraTags<>::Q_AA_CIGAR])
+            {
+                if (empty(protCigar))
+                {
+                    protCigarString = "*";
+                }
+                else
+                {
+                    clear(protCigarString);
+                    for (unsigned i = 0; i < length(protCigar); ++i)
+                    {
+                        appendNumber(protCigarString, protCigar[i].count);
+                        appendValue(protCigarString, protCigar[i].operation);
+                    }
+
+                }
+                appendTagValue(bamR.tags,
+                               std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::Q_AA_CIGAR]),
+                               protCigarString, 'Z');
+            }
+            if (lH.options.samBamColumns[SamBamExtraTags<>::EDIT_DISTANCE])
+                appendTagValue(bamR.tags,
+                                std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::EDIT_DISTANCE]),
+                                uint32_t(mIt->alignStats.alignmentLength - mIt->alignStats.numMatches), 'I');
+            if (lH.options.samBamColumns[SamBamExtraTags<>::MATCH_COUNT])
+                appendTagValue(bamR.tags,
+                               std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::MATCH_COUNT]),
+                               uint32_t(length(record.matches)), 'I');
+
             // goto next match
             ++mIt;
         }

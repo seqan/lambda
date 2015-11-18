@@ -30,6 +30,7 @@
 
 #include <cstdio>
 #include <unistd.h>
+#include <bitset>
 
 #include <seqan/basic.h>
 #include <seqan/translation.h>
@@ -224,7 +225,7 @@ struct LambdaOptions : public SharedOptions
     std::string     output;
     std::vector<BlastMatchField<>::Enum> columns;
     std::string     outputBam;
-    std::vector<SamBamExtraTags<>::Enum> samBamColumns;
+    std::bitset<64> samBamColumns;
     bool            samWithRefHeader;
     bool            samBamSeq;
 
@@ -797,8 +798,9 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     getOptionValue(buffer, parser, "sam-bam-columns");
     if (buffer == "help")
     {
-        std::cout << "Please specify the columns in this format -oc 'column1 column2', i.e. space-seperated and "
-                  << "enclosed in single quotes.\nThe following specifiers are supported:\n";
+        std::cout << "Please specify the tags in this format -oc 'tag1 tag2', i.e. space-seperated and "
+                  << "enclosed in quotes. The order of tags is not preserved.\nThe following specifiers are "
+                  << "supported:\n";
 
         for (auto const & c : SamBamExtraTags<>::keyDescPairs)
             std::cout << "\t" << std::get<0>(c) << "\t" << std::get<1>(c) << "\n";
@@ -816,7 +818,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
             {
                 if (std::get<0>(SamBamExtraTags<>::keyDescPairs[i]) == str)
                 {
-                    appendValue(options.samBamColumns, static_cast<SamBamExtraTags<>::Enum>(i));
+                    options.samBamColumns[i] = true;
                     resolved = true;
                     break;
                 }
