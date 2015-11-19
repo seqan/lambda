@@ -472,7 +472,8 @@ loadQuery(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, TOutFormat, p, h>
                        options);
 
     // sam and bam need original sequences if translation happened
-    if (qIsTranslated(globalHolder.blastProgram) && (options.outFileFormat > 0))
+    if (qIsTranslated(globalHolder.blastProgram) && (options.outFileFormat > 0) &&
+        (options.samBamSeq > 0))
         std::swap(origSeqs, globalHolder.untranslatedQrySeqs);
 
     if (TGH::alphReduction)

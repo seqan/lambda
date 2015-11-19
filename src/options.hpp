@@ -225,7 +225,7 @@ struct LambdaOptions : public SharedOptions
     std::string     output;
     std::vector<BlastMatchField<>::Enum> columns;
     std::string     outputBam;
-    std::bitset<64> samBamColumns;
+    std::bitset<64> samBamTags;
     bool            samWithRefHeader;
     bool            samBamSeq;
 
@@ -433,8 +433,8 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     addOption(parser, ArgParseOption("", "sam-with-refheader",
         "BAM files require all subject names to be written to the header. For SAM this is not required, so Lambda does "
-        "not automatically do it to save space (especially for proteine database this is a lot!). If you still want "
-        "them with SAM, e.g. for better BAM compatability, use this option.",
+        "not automatically do it to save space (especially for protein database this is a lot!). If you still want "
+        "them with SAM, e.g. for better BAM compatibility, use this option.",
         ArgParseArgument::STRING,
         "STR"));
     setValidValues(parser, "sam-with-refheader", "on off");
@@ -442,21 +442,23 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setAdvanced(parser, "sam-with-refheader");
 
     addOption(parser, ArgParseOption("", "sam-bam-seq",
-        "Write matching DNA subsequence into SAM/BAM file (BLASTN). For BLASTX and TBLASTX the matching proteine "
+        "Write matching DNA subsequence into SAM/BAM file (BLASTN). For BLASTX and TBLASTX the matching protein "
         "sequence is \"untranslated\" and positions retransformed to the original sequence. For BLASTP and TBLASTN "
-        "there is no DNA sequence so this option has no effect. [see also --sam-bam-columns].",
+        "there is no DNA sequence so a \"*\" is written to the SEQ column. The matching protein sequence can be "
+        "written as an optional tag, see --sam-bam-tags. If set to uniq than "
+        "the sequence is omitted iff it is identical to the previous match's subsequence.",
         ArgParseArgument::STRING,
         "STR"));
-    setValidValues(parser, "sam-bam-seq", "on off");
-    setDefaultValue(parser, "sam-bam-seq", "on");
+    setValidValues(parser, "sam-bam-seq", "always uniq never");
+    setDefaultValue(parser, "sam-bam-seq", "uniq");
     setAdvanced(parser, "sam-bam-seq");
 
-    addOption(parser, ArgParseOption("", "sam-bam-columns",
-        "Write the the specified optional columns to the SAM/BAM file. Call --sam-bam-columns help for more details.",
+    addOption(parser, ArgParseOption("", "sam-bam-tags",
+        "Write the specified optional columns to the SAM/BAM file. Call --sam-bam-tags help for more details.",
         ArgParseArgument::STRING,
         "STR"));
-    setDefaultValue(parser, "sam-bam-columns", "AS NM ZE ZI ZF");
-    setAdvanced(parser, "sam-bam-columns");
+    setDefaultValue(parser, "sam-bam-tags", "AS NM ZE ZI ZF");
+    setAdvanced(parser, "sam-bam-tags");
 
         addSection(parser, "General Options");
 #ifdef _OPENMP
@@ -748,9 +750,12 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     clear(buffer);
     getOptionValue(buffer, parser, "sam-bam-seq");
-    options.samBamSeq = (buffer == "on");
-    if ((options.blastProgram == BlastProgram::BLASTP) || (options.blastProgram == BlastProgram::TBLASTN))
-        options.samBamSeq = false;
+    if (buffer == "never")
+        options.samBamSeq = 0;
+    else if (buffer == "uniq")
+        options.samBamSeq = 1;
+    else
+        options.samBamSeq = 2;
 
     clear(buffer);
     getOptionValue(buffer, parser, "output-columns");
@@ -795,7 +800,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     }
     clear(buffer);
 
-    getOptionValue(buffer, parser, "sam-bam-columns");
+    getOptionValue(buffer, parser, "sam-bam-tags");
     if (buffer == "help")
     {
         std::cout << "Please specify the tags in this format -oc 'tag1 tag2', i.e. space-seperated and "
@@ -818,7 +823,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
             {
                 if (std::get<0>(SamBamExtraTags<>::keyDescPairs[i]) == str)
                 {
-                    options.samBamColumns[i] = true;
+                    options.samBamTags[i] = true;
                     resolved = true;
                     break;
                 }
@@ -826,13 +831,17 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
             if (!resolved)
             {
                 std::cerr << "Unknown column specifier \"" << str
-                          << "\". Please see \"--sam-bam-columns help\" for valid options.\n";
+                          << "\". Please see \"--sam-bam-tags help\" for valid options.\n";
                 return ArgumentParser::PARSE_ERROR;
             }
         }
     }
-    clear(buffer);
+    // if original is protein, than only write if explicitly asked for
+    if (((options.blastProgram == BlastProgram::BLASTP) || (options.blastProgram == BlastProgram::TBLASTN)) &&
+        (!options.samBamTags[SamBamExtraTags<>::Q_AA_CIGAR]))
+        options.samBamSeq = 0;
 
+    clear(buffer);
     getOptionValue(options.seedLength, parser, "seed-length");
     if ((!isSet(parser, "seed-length")) &&
         (options.blastProgram == BlastProgram::BLASTN))

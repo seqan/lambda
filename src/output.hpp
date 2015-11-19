@@ -37,7 +37,7 @@ struct SamBamExtraTags
 {
     enum Enum
     {
-        Q_START,
+//         Q_START,
 //         S_START,
         E_VALUE,
         BIT_SCORE,
@@ -52,21 +52,21 @@ struct SamBamExtraTags
         MATCH_COUNT
     };
 
-    static constexpr const std::array<std::pair<const char*, const char*>, 12> keyDescPairs
+    static constexpr const std::array<std::pair<const char*, const char*>, 11> keyDescPairs
     {
         {
-            { "ZS", "query start (in DNA if original was DNA)" },       //  Q_START,
+//             { "ZS", "query start (in DNA if original was DNA)" },       //  Q_START,
 //             { "YS", "subject start (in DNA if original was DNA)" },  //  S_START,
             { "ZE", "expect value" },                                   //  E_VALUE,
             { "AS", "bit score" },                                      //  BIT_SCORE,
             { "ZR", "raw score" },                                      //  SCORE,
-            { "ZI", "% identity (in proteine space unless BLASTN) " },  //  P_IDENT,
-            { "ZP", "% positive (in proteine space unless BLASTN)"},     //  P_POS,
+            { "ZI", "% identity (in protein space unless BLASTN) " },  //  P_IDENT,
+            { "ZP", "% positive (in protein space unless BLASTN)"},     //  P_POS,
             { "ZF", "query frame" },                                    //  Q_FRAME,
             { "YF", "subject frame" },                                  //  S_FRAME,
-            { "ZQ", "query proteine sequence (* for BLASTN)"},          //  Q_AA_SEQ,
-            { "OC", "query proteine cigar (* for BLASTN)"},             //  Q_AA_CIGAR,
-            { "NM", "edit distance (in proteine space unless BLASTN)"}, //  EDIT_DISTANCE
+            { "ZQ", "query protein sequence (* for BLASTN)"},          //  Q_AA_SEQ,
+            { "OC", "query protein cigar (* for BLASTN)"},             //  Q_AA_CIGAR,
+            { "NM", "edit distance (in protein space unless BLASTN)"}, //  EDIT_DISTANCE
             { "IH", "number of matches this query has"},                //  MATCH_COUNT
         }
     };
@@ -74,7 +74,7 @@ struct SamBamExtraTags
 };
 
 template <typename TVoidSpec>
-constexpr const std::array<std::pair<const char*, const char*>, 12> SamBamExtraTags<TVoidSpec>::keyDescPairs;
+constexpr const std::array<std::pair<const char*, const char*>, 11> SamBamExtraTags<TVoidSpec>::keyDescPairs;
 
 // ----------------------------------------------------------------------------
 // Function _untranslatedClipPositions()
@@ -105,30 +105,6 @@ _untranslateSequence(TSequence1                     & target,
 }
 
 // ----------------------------------------------------------------------------
-// Function _untranslatedClipPositions()
-// ----------------------------------------------------------------------------
-
-// similar to _untranslatePositions() from the blast module
-// template <BlastProgram p>
-// inline void
-// _untranslatedClipPositions(unsigned & leftClip,                 // should start with qStart
-//                            unsigned & rightClip,                // should start with qEnd
-//                            int const frameShift,
-//                            unsigned const untransMatchLength,   // untranslated Length if translated
-//                            BlastProgramSelector<p> const & selector)
-// {
-//     if (qIsTranslated(selector))
-//     {
-//
-//     }
-//
-//
-//
-//     if (frameShift < 0)
-//         std::swap(leftClip, rightClip);
-// }
-
-// ----------------------------------------------------------------------------
 // Function blastMatchToCigar() convert seqan align to cigar
 // ----------------------------------------------------------------------------
 
@@ -138,7 +114,6 @@ blastMatchOneCigar(TCigar & cigar,
                    TBlastMatch const & m,
                    TLocalHolder const & lH)
 {
-    //TODO write both cigars in one go
     using TCElem = typename Value<TCigar>::Type;
 
     SEQAN_ASSERT_EQ(length(m.alignRow0), length(m.alignRow1));
@@ -209,7 +184,6 @@ blastMatchTwoCigar(TCigar & dnaCigar,
                    TBlastMatch const & m,
                    TLocalHolder const &)
 {
-    //TODO write both cigars in one go
     using TCElem = typename Value<TCigar>::Type;
 
     SEQAN_ASSERT_EQ(length(m.alignRow0), length(m.alignRow1));
@@ -338,7 +312,39 @@ myWriteHeader(TGH & globalHolder, TLambdaOptions const & options)
         appendValue(pgRecord.tags, TTag("CL", options.commandLine));
         appendValue(header, pgRecord);
 
-        // TODO add comment line describing extra fields and possibly link to homepage
+        // Fill homepage header line.
+        BamHeaderRecord hpRecord0;
+        hpRecord0.type = BAM_HEADER_COMMENT;
+        appendValue(hpRecord0.tags, TTag("CO", "Lambda is a high performance BLAST compatible local aligner, "
+                                         "please see http://seqan.de/lambda for more information."));
+        appendValue(header, hpRecord0);
+        BamHeaderRecord hpRecord1;
+        hpRecord1.type = BAM_HEADER_COMMENT;
+        appendValue(hpRecord1.tags, TTag("CO", "SAM/BAM dialect documentation is available here: "
+                                         "https://github.com/seqan/lambda/wiki/Output-Formats"));
+        appendValue(header, hpRecord1);
+        BamHeaderRecord hpRecord2;
+        hpRecord2.type = BAM_HEADER_COMMENT;
+        appendValue(hpRecord2.tags, TTag("CO", "If you use any results found by Lambda, please cite "
+                                         "Hauswedell et al. (2014) doi: 10.1093/bioinformatics/btu439"));
+        appendValue(header, hpRecord2);
+
+        // Fill extra tags header line.
+        BamHeaderRecord tagRecord;
+        tagRecord.type = BAM_HEADER_COMMENT;
+        std::string columnHeaders = "Optional tags as follow";
+        for (unsigned i = 0; i < length(SamBamExtraTags<>::keyDescPairs); ++i)
+        {
+            if (options.samBamTags[i])
+            {
+                columnHeaders += '\t';
+                columnHeaders += std::get<0>(SamBamExtraTags<>::keyDescPairs[i]);
+                columnHeaders += ':';
+                columnHeaders += std::get<1>(SamBamExtraTags<>::keyDescPairs[i]);
+            }
+        }
+        appendValue(tagRecord.tags, TTag("CO", columnHeaders));
+        appendValue(header, tagRecord);
 
         // sam and we don't want the headers
         if (!options.samWithRefHeader && (options.outFileFormat == 1))
@@ -382,7 +388,16 @@ myWriteRecord(TLH & lH, TRecord const & record)
         auto mIt = begin(record.matches, Standard());
         for (auto & bamR : bamRecords)
         {
-            bamR.beginPos   = mIt->sStart;
+            // untranslate for sIsTranslated
+            if (sIsTranslated(lH.gH.blastProgram))
+            {
+                bamR.beginPos = mIt->sStart * 3 + std::abs(mIt->sFrameShift) - 1;
+                if (mIt->sFrameShift < 0)
+                    bamR.beginPos = mIt->qLength - bamR.beginPos;
+            } else
+            {
+                bamR.beginPos   = mIt->sStart;
+            }
 
             bamR.flag       = BAM_FLAG_SECONDARY; // all are secondary for now
             if (mIt->qFrameShift < 0)
@@ -397,7 +412,7 @@ myWriteRecord(TLH & lH, TRecord const & record)
             bamR.rID        = mIt->_n_sId;
 
             // compute cigar
-            if (lH.options.samBamColumns[SamBamExtraTags<>::Q_AA_CIGAR]) // amino acid cigar, too?
+            if (lH.options.samBamTags[SamBamExtraTags<>::Q_AA_CIGAR]) // amino acid cigar, too?
             {
                 clear(protCigar);
                 // native protein
@@ -410,67 +425,78 @@ myWriteRecord(TLH & lH, TRecord const & record)
             }
             else
             {
-                blastMatchOneCigar(bamR.cigar, *mIt, lH);
+                if ((lH.gH.blastProgram != BlastProgram::BLASTP) && (lH.gH.blastProgram != BlastProgram::TBLASTN))
+                    blastMatchOneCigar(bamR.cigar, *mIt, lH);
             }
             // we want to include the seq
-            // TODO only include if unique
-            if (lH.options.samBamSeq)
+            bool writeSeq = false;
+            if ((lH.options.samBamSeq > 1) || (mIt == begin(record.matches, Standard())))
+            {
+                writeSeq = true;
+            }
+            else if (lH.options.samBamSeq == 1)// only uniq sequences
+            {
+                decltype(mIt) mPrevIt = mIt - 1;
+                writeSeq = ((beginPosition(mIt->alignRow0) != beginPosition(mPrevIt->alignRow0)) ||
+                            (endPosition(mIt->alignRow0)) != endPosition(mPrevIt->alignRow0));
+            }
+            if (writeSeq)
             {
                 // only dna sequences supported
                 if (lH.gH.blastProgram == BlastProgram::BLASTN)
                     bamR.seq = infix(source(mIt->alignRow0),
-                                     beginPosition(mIt->alignRow0),
-                                     endPosition(mIt->alignRow0));
+                                    beginPosition(mIt->alignRow0),
+                                    endPosition(mIt->alignRow0));
                 // untranslation is ok, too
                 else if (qIsTranslated(lH.gH.blastProgram))
                     _untranslateSequence(bamR.seq,
-                                         lH.gH.untranslatedQrySeqs[mIt->_n_qId],
-                                         *mIt);
+                                        lH.gH.untranslatedQrySeqs[mIt->_n_qId],
+                                        *mIt);
                 // else no sequence is available
             }
 
             // custom tags
             //TODO untranslate?
-            if (lH.options.samBamColumns[SamBamExtraTags<>::Q_START])
-                appendTagValue(bamR.tags,
-                               std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::Q_START]),
-                               uint32_t(mIt->qLength), 'I');
+//             if (lH.options.samBamTags[SamBamExtraTags<>::Q_START])
+//                 appendTagValue(bamR.tags,
+//                                std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::Q_START]),
+//                                uint32_t(mIt->qStart), 'I');
             //      case    S_START:
-            if (lH.options.samBamColumns[SamBamExtraTags<>::E_VALUE])
+            if (lH.options.samBamTags[SamBamExtraTags<>::E_VALUE])
                 appendTagValue(bamR.tags,
                                std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::E_VALUE]),
                                float(mIt->eValue), 'f');
-            if (lH.options.samBamColumns[SamBamExtraTags<>::BIT_SCORE])
+            if (lH.options.samBamTags[SamBamExtraTags<>::BIT_SCORE])
                 appendTagValue(bamR.tags,
                                std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::BIT_SCORE]),
                                uint16_t(mIt->bitScore), 'S');
-            if (lH.options.samBamColumns[SamBamExtraTags<>::SCORE])
+            if (lH.options.samBamTags[SamBamExtraTags<>::SCORE])
                 appendTagValue(bamR.tags,
                                std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::SCORE]),
                                uint8_t(mIt->alignStats.alignmentScore), 'C');
-            if (lH.options.samBamColumns[SamBamExtraTags<>::P_IDENT])
+            if (lH.options.samBamTags[SamBamExtraTags<>::P_IDENT])
                 appendTagValue(bamR.tags,
                                std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::P_IDENT]),
                                uint8_t(mIt->alignStats.alignmentIdentity), 'C');
-            if (lH.options.samBamColumns[SamBamExtraTags<>::P_POS])
+            if (lH.options.samBamTags[SamBamExtraTags<>::P_POS])
                 appendTagValue(bamR.tags,
                                std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::P_POS]),
                                uint16_t(mIt->alignStats.alignmentSimilarity), 'S');
-            if (lH.options.samBamColumns[SamBamExtraTags<>::Q_FRAME])
+            if (lH.options.samBamTags[SamBamExtraTags<>::Q_FRAME])
                 appendTagValue(bamR.tags,
                                std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::Q_FRAME]),
                                int8_t(mIt->qFrameShift), 'c');
-            if (lH.options.samBamColumns[SamBamExtraTags<>::S_FRAME])
+            if (lH.options.samBamTags[SamBamExtraTags<>::S_FRAME])
                 appendTagValue(bamR.tags,
                                std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::S_FRAME]),
                                int8_t(mIt->sFrameShift), 'c');
-            if (lH.options.samBamColumns[SamBamExtraTags<>::Q_AA_SEQ])
+            if (lH.options.samBamTags[SamBamExtraTags<>::Q_AA_SEQ])
             {
-                 if (lH.gH.blastProgram == BlastProgram::BLASTN)
+                if ((lH.gH.blastProgram == BlastProgram::BLASTN) || (!writeSeq))
                     appendTagValue(bamR.tags,
                                    std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::Q_AA_SEQ]),
                                    "*", 'Z');
-                 else
+                else
                     appendTagValue(bamR.tags,
                                    std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::Q_AA_SEQ]),
                                    infix(source(mIt->alignRow0),
@@ -478,7 +504,7 @@ myWriteRecord(TLH & lH, TRecord const & record)
                                          endPosition(mIt->alignRow0)),
                                    'Z');
             }
-            if (lH.options.samBamColumns[SamBamExtraTags<>::Q_AA_CIGAR])
+            if (lH.options.samBamTags[SamBamExtraTags<>::Q_AA_CIGAR])
             {
                 if (empty(protCigar))
                 {
@@ -498,11 +524,11 @@ myWriteRecord(TLH & lH, TRecord const & record)
                                std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::Q_AA_CIGAR]),
                                protCigarString, 'Z');
             }
-            if (lH.options.samBamColumns[SamBamExtraTags<>::EDIT_DISTANCE])
+            if (lH.options.samBamTags[SamBamExtraTags<>::EDIT_DISTANCE])
                 appendTagValue(bamR.tags,
                                 std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::EDIT_DISTANCE]),
                                 uint32_t(mIt->alignStats.alignmentLength - mIt->alignStats.numMatches), 'I');
-            if (lH.options.samBamColumns[SamBamExtraTags<>::MATCH_COUNT])
+            if (lH.options.samBamTags[SamBamExtraTags<>::MATCH_COUNT])
                 appendTagValue(bamR.tags,
                                std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::MATCH_COUNT]),
                                uint32_t(length(record.matches)), 'I');
