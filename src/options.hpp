@@ -227,7 +227,7 @@ struct LambdaOptions : public SharedOptions
     std::string     outputBam;
     std::bitset<64> samBamTags;
     bool            samWithRefHeader;
-    bool            samBamSeq;
+    unsigned        samBamSeq;
 
     unsigned        queryPart = 0;
 
