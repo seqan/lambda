@@ -394,14 +394,22 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         "with comments, .m0 is pairwise format).",
         ArgParseArgument::OUTPUT_FILE,
         "OUT"));
-    CharString exts = concat(getFileExtensions(BlastTabularFileOut<>()), ' ');
-    appendValue(exts, ' ');
-    append(exts, concat(getFileExtensions(BlastReportFileOut<>()), ' '));
-    appendValue(exts, ' ');
-    append(exts, concat(getFileExtensions(BamFileOut()), ' '));
-    //TODO remove .sam.bam, .sam.vcf.gz, .sam.tbi
-
-    setValidValues(parser, "output", toCString(exts));
+    auto exts = getFileExtensions(BlastTabularFileOut<>());
+    append(exts, getFileExtensions(BlastReportFileOut<>()));
+    append(exts, getFileExtensions(BamFileOut()));
+    CharString extsConcat;
+    // remove .sam.bam, .sam.vcf.gz, .sam.tbi
+    for (auto const & ext : exts)
+    {
+        if ((!endsWith(ext, ".bam") || startsWith(ext, ".bam")) &&
+            (!endsWith(ext, ".vcf.gz")) &&
+            (!endsWith(ext, ".sam.tbi")))
+        {
+            append(extsConcat, ext);
+            appendValue(extsConcat, ' ');
+        }
+    }
+    setValidValues(parser, "output", toCString(extsConcat));
     setDefaultValue(parser, "output", "output.m8");
 
     addOption(parser, ArgParseOption("oc", "output-columns",
