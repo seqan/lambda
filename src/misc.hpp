@@ -181,6 +181,54 @@ localAlignment2(Gaps<TSource0, TGapsSpec0> & row0,
 }
 
 // ----------------------------------------------------------------------------
+// Tag Truncate_ (private tag to signify truncating of IDs while reading)
+// ----------------------------------------------------------------------------
+
+struct Truncate_;
+
+// ----------------------------------------------------------------------------
+// Function readRecord(Fasta); an overload that truncates Ids at first Whitespace
+// ----------------------------------------------------------------------------
+
+template <typename TSeqStringSet, typename TSpec, typename TSize>
+inline void
+readRecords(TCDStringSet<String<char, Alloc<Truncate_>>> & meta,
+            TSeqStringSet & seq,
+            FormattedFile<Fastq, Input, TSpec> & file,
+            TSize maxRecords)
+{
+    typedef typename SeqFileBuffer_<TSeqStringSet, TSpec>::Type TSeqBuffer;
+
+    TSeqBuffer seqBuffer;
+    IsWhitespace func;
+
+    // reuse the memory of context(file).buffer for seqBuffer (which has a different type but same sizeof(Alphabet))
+    swapPtr(seqBuffer.data_begin, context(file).buffer[1].data_begin);
+    swapPtr(seqBuffer.data_end, context(file).buffer[1].data_end);
+    seqBuffer.data_capacity = context(file).buffer[1].data_capacity;
+
+    for (; !atEnd(file) && maxRecords > 0; --maxRecords)
+    {
+        readRecord(context(file).buffer[0], seqBuffer, file);
+        for (size_t i = 0; i < length(context(file).buffer[0]); ++i)
+        {
+            if (func(context(file).buffer[0][i]))
+            {
+                resize(context(file).buffer[0], i);
+                break;
+            }
+        }
+        appendValue(meta, context(file).buffer[0]);
+        appendValue(seq, seqBuffer);
+    }
+
+    swapPtr(seqBuffer.data_begin, context(file).buffer[1].data_begin);
+    swapPtr(seqBuffer.data_end, context(file).buffer[1].data_end);
+    context(file).buffer[1].data_capacity = seqBuffer.data_capacity;
+    seqBuffer.data_capacity = 0;
+}
+
+// ----------------------------------------------------------------------------
 // Generic Sequence loading
 // ----------------------------------------------------------------------------
 

@@ -53,13 +53,22 @@ inline int
 loadSubjSeqsAndIds(TCDStringSet<String<TOrigAlph>> & originalSeqs,
                    LambdaIndexerOptions const & options)
 {
-    StringSet<CharString, Owner<ConcatDirect<>>> ids;
+    typedef TCDStringSet<String<char, Alloc<>>>             TIDs;
+    typedef TCDStringSet<String<char, Alloc<Truncate_>>>    TIDsTruncated;
+    TIDs ids;
+    // difference only in name, same layout in mem, so we can hack the type:
+    TIDsTruncated* tIds = static_cast<TIDsTruncated*>((void*)&ids);
 
     double start = sysTime();
     myPrint(options, 1, "Loading Subject Sequences and Ids...");
 
     SeqFileIn infile(toCString(options.dbFile));
-    int ret = myReadRecords(ids, originalSeqs, infile);
+    int ret;
+    if (options.truncateIDs)
+        ret = myReadRecords(*tIds, originalSeqs, infile);
+    else
+        ret = myReadRecords(ids, originalSeqs, infile);
+
     if (ret)
         return ret;
 

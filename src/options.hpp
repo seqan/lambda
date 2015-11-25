@@ -277,6 +277,8 @@ struct LambdaIndexerOptions : public SharedOptions
     std::string     segFile = "";
     std::string     algo = "";
 
+    bool            truncateIDs;
+
     LambdaIndexerOptions()
         : SharedOptions()
     {}
@@ -986,12 +988,20 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
 //     setValidValues(parser, "output", "sa fm");
 
     addOption(parser, ArgParseOption("di", "db-index-type",
-        "suffix array or full-text minute space.",
+        "Suffix array or full-text minute space.",
         ArgParseArgument::STRING,
         "type"));
     setValidValues(parser, "db-index-type", "sa fm");
     setDefaultValue(parser, "db-index-type", "fm");
     setAdvanced(parser, "db-index-type");
+
+    addOption(parser, ArgParseOption("", "truncate-ids",
+        "Truncate IDs at first whitespace. This saves a lot of space and is irrelevant for all LAMBDA output formats "
+        "other than BLAST Pairwise (.m0).",
+        ArgParseArgument::STRING,
+        "STR"));
+    setValidValues(parser, "truncate-ids", "on off");
+    setDefaultValue(parser, "truncate-ids", "off");
 
     addSection(parser, "Alphabets and Translation");
     addOption(parser, ArgParseOption("p", "program",
@@ -1110,6 +1120,10 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
 
     getOptionValue(tmpdir, parser, "tmp-dir");
     setEnv("TMPDIR", tmpdir);
+
+    std::string buffer;
+    getOptionValue(buffer, parser, "truncate-ids");
+    options.truncateIDs = (buffer == "on");
 
     return ArgumentParser::PARSE_OK;
 }
