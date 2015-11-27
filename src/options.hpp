@@ -1001,7 +1001,7 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
         ArgParseArgument::STRING,
         "STR"));
     setValidValues(parser, "truncate-ids", "on off");
-    setDefaultValue(parser, "truncate-ids", "off");
+    setDefaultValue(parser, "truncate-ids", "on");
 
     addSection(parser, "Alphabets and Translation");
     addOption(parser, ArgParseOption("p", "program",
