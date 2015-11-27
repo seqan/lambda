@@ -261,7 +261,7 @@ loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
                   << " failed.\n"
                   << "It appears you tried to open an old index (created before 0.9.0) which "
                   << "is not supported. Please remove the old files and create a new index with lambda_indexer!\n";
-        return 1;
+        return 200;
     }
 
     int ret = open(globalHolder.dbIndex, path.c_str());
