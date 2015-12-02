@@ -163,7 +163,7 @@ loadSubjects(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, TOutFormat, p,
     append(_dbSeqs, ".");
     append(_dbSeqs, _alphName(TransAlph<p>()));
 
-    int ret = open(globalHolder.subjSeqs, toCString(_dbSeqs));
+    int ret = open(globalHolder.subjSeqs, toCString(_dbSeqs), OPEN_RDONLY);
     if (ret != true)
     {
         std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
@@ -186,7 +186,7 @@ loadSubjects(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, TOutFormat, p,
 
     _dbSeqs = options.dbFile;
     append(_dbSeqs, ".ids");
-    ret = open(globalHolder.subjIds, toCString(_dbSeqs));
+    ret = open(globalHolder.subjIds, toCString(_dbSeqs), OPEN_RDONLY);
     if (ret != true)
     {
         std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
@@ -209,7 +209,7 @@ loadSubjects(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, TOutFormat, p,
 
         _dbSeqs = options.dbFile;
         append(_dbSeqs, ".untranslengths");
-        ret = open(globalHolder.untransSubjSeqLengths, toCString(_dbSeqs));
+        ret = open(globalHolder.untransSubjSeqLengths, toCString(_dbSeqs), OPEN_RDONLY);
         if (ret != true)
         {
             std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
@@ -264,7 +264,7 @@ loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
         return 200;
     }
 
-    int ret = open(globalHolder.dbIndex, path.c_str());
+    int ret = open(globalHolder.dbIndex, path.c_str(), OPEN_RDONLY);
     if (ret != true)
     {
         std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
@@ -319,9 +319,9 @@ loadSegintervals(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, TOutFormat
         resize(segFileS, length(segFileS) - 7);
         resize(segFileE, length(segFileE) - 7);
 
-        fail = !open(globalHolder.segIntStarts, toCString(segFileS));
+        fail = !open(globalHolder.segIntStarts, toCString(segFileS), OPEN_RDONLY);
         if (!fail)
-            fail = !open(globalHolder.segIntEnds, toCString(segFileE));
+            fail = !open(globalHolder.segIntEnds, toCString(segFileE), OPEN_RDONLY);
     } else
     {
         fail = true;
