@@ -33,12 +33,12 @@ endif (NOT SEQAN_HAS_OPENMP)
 
 # Warn if Zlib was not found.
 if (NOT SEQAN_HAS_ZLIB)
-  message (WARNING "WARNING: Zlib not found. Building lambda without gzipped input and output.")
+  message (WARNING "WARNING: Zlib not found. Building lambda without support for gzipped input and output (this includes support for .bam).")
 endif (NOT SEQAN_HAS_ZLIB)
 
 # Warn if BZip2 was not found.
 if (NOT SEQAN_HAS_BZIP2)
-  message (WARNING "WARNING: BZip2 not found. Building lambda without bzipped input and output.")
+  message (WARNING "WARNING: BZip2 not found. Building lambda without support for bzipped input and output.")
 endif (NOT SEQAN_HAS_BZIP2)
 
 if (COMPILER_IS_CLANG)
