@@ -526,9 +526,10 @@ generateIndexAndDump(StringSet<TString, TSpec>        & seqs,
 
     // since we dumped unreduced sequences before and reduced sequences are
     // only "virtual" we clear them before dump
-    clear(seqs);
+    if (alphReduction || indexIsFM)
+        clear(seqs);
     if (alphReduction)
-        clear(redSubjSeqs.limits);
+        clear(redSubjSeqs.limits); // limits part is not lightweight
 
     double e = sysTime() - s;
     if (!hasProgress)

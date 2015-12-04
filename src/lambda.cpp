@@ -173,6 +173,7 @@ argConv0(LambdaOptions const & options)
     else if (endsWith(output, ".sam") || endsWith(output, ".bam")) // handled elsewhere
         return argConv05(options, BlastTabular(), BlastTabularSpecSelector<BlastTabularSpec::COMMENTS>());
 
+    std::cerr << "ERROR: Cannot handle output extension.\n";
     return -1;
 }
 
@@ -217,6 +218,7 @@ argConv05(LambdaOptions                 const & options,
         default:
             break;
     }
+    std::cerr << "ERROR: Cannot handle program mode (perhaps you are building in FASTMODE?).\n";
     return -1;
 }
 
@@ -251,8 +253,9 @@ argConv1(LambdaOptions                  const & options,
             return argConv2(options, TOutFormat(), ReducedAminoAcid<ClusterReduction<12>>());
 #endif
         default:
-            return -1;
+            break;
     }
+    std::cerr << "ERROR: Cannot handle the specified alphabet reduction.\n";
     return -1;
 }
 
@@ -284,10 +287,9 @@ argConv2(LambdaOptions                  const & options,
         case 62:
             return argConv3(options, TOutFormat(), Th(), Tp(), TRedAlph(), Blosum62());
         default:
-            std::cerr << "Unsupported Scoring Scheme selected.\n";
             break;
     }
-
+    std::cerr << "Unsupported Scoring Scheme selected.\n";
     return -1;
 }
 

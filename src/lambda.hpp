@@ -155,30 +155,37 @@ loadSubjects(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, TOutFormat, p,
 {
     using TGH = GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, TOutFormat, p, h>;
 
-    double start = sysTime();
-    std::string strIdent = "Loading Subj Sequences...";
-    myPrint(options, 1, strIdent);
+    double start, finish;
+    std::string strIdent;
+    int ret;
+    CharString _dbSeqs;
 
-    CharString _dbSeqs = options.dbFile;
-    append(_dbSeqs, ".");
-    append(_dbSeqs, _alphName(TransAlph<p>()));
-
-    int ret = open(globalHolder.subjSeqs, toCString(_dbSeqs), OPEN_RDONLY);
-    if (ret != true)
+    if (TGH::indexIsFM || TGH::alphReduction) // otherwise sequences are loaded as part of index
     {
-        std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
-                    << " failed.\n";
-        return 1;
+        start = sysTime();
+        strIdent = "Loading Subj Sequences...";
+        myPrint(options, 1, strIdent);
+
+        _dbSeqs = options.dbFile;
+        append(_dbSeqs, ".");
+        append(_dbSeqs, _alphName(TransAlph<p>()));
+
+        ret = open(globalHolder.subjSeqs, toCString(_dbSeqs), OPEN_RDONLY);
+        if (ret != true)
+        {
+            std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
+                        << " failed.\n";
+            return 1;
+        }
+
+        if (TGH::alphReduction)
+            globalHolder.redSubjSeqs.limits = globalHolder.subjSeqs.limits;
+
+        finish = sysTime() - start;
+        myPrint(options, 1, " done.\n");
+        myPrint(options, 2, "Runtime: ", finish, "s \n", "Amount: ",
+                length(globalHolder.subjSeqs), "\n\n");
     }
-
-    if (TGH::alphReduction)
-        globalHolder.redSubjSeqs.limits = globalHolder.subjSeqs.limits;
-
-    double finish = sysTime() - start;
-    myPrint(options, 1, " done.\n");
-    myPrint(options, 2, "Runtime: ", finish, "s \n", "Amount: ",
-            length(globalHolder.subjSeqs), "\n\n");
-
 
     start = sysTime();
     strIdent = "Loading Subj Ids...";
@@ -220,14 +227,6 @@ loadSubjects(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, TOutFormat, p,
         finish = sysTime() - start;
         myPrint(options, 1, " done.\n");
         myPrint(options, 2, "Runtime: ", finish, "s \n\n");
-
-        // last value has sum of lengths
-        context(globalHolder.outfile).dbTotalLength  = back(globalHolder.untransSubjSeqLengths);
-        context(globalHolder.outfile).dbNumberOfSeqs = length(globalHolder.untransSubjSeqLengths) - 1;
-    } else
-    {
-        context(globalHolder.outfile).dbTotalLength  = length(concat(globalHolder.subjSeqs));
-        context(globalHolder.outfile).dbNumberOfSeqs = length(globalHolder.subjSeqs);
     }
 
     return 0;
@@ -275,13 +274,25 @@ loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
 
     // assign previously loaded sub sequences (possibly modifier-wrapped
     // to the text-member of our new index (unless isFM, which doesnt need text)
-    if (!TGlobalHolder::indexIsFM)
+    if ((!TGlobalHolder::indexIsFM) && (TGlobalHolder::alphReduction))
         indexText(globalHolder.dbIndex) = globalHolder.redSubjSeqs;
 
     double finish = sysTime() - start;
     myPrint(options, 1, " done.\n");
     myPrint(options, 2, "Runtime: ", finish, "s \n", "No of Fibres: ",
             length(indexSA(globalHolder.dbIndex)), "\n\n");
+
+    // this is actually part of prepareScoring(), but the values are just available now
+    if (sIsTranslated(globalHolder.blastProgram ))
+    {
+        // last value has sum of lengths
+        context(globalHolder.outfile).dbTotalLength  = back(globalHolder.untransSubjSeqLengths);
+        context(globalHolder.outfile).dbNumberOfSeqs = length(globalHolder.untransSubjSeqLengths) - 1;
+    } else
+    {
+        context(globalHolder.outfile).dbTotalLength  = length(concat(globalHolder.subjSeqs));
+        context(globalHolder.outfile).dbNumberOfSeqs = length(globalHolder.subjSeqs);
+    }
 
     return 0;
 }

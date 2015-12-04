@@ -139,6 +139,22 @@ struct StatsHolder
 // struct GlobalDataHolder  -- one object per program
 // ----------------------------------------------------------------------------
 
+template <typename T>
+inline T &
+_initHelper(T & t1, T &&)
+{
+    std::cout << "FOO\n";
+    return t1;
+}
+
+template <typename T, typename T2>
+inline T2 &&
+_initHelper(T &, T2 && t2)
+{
+    std::cout << "BAR\n";
+    return std::move(t2);
+}
+
 template <typename TRedAlph_,
           typename TScoreScheme_,
           typename TIndexSpec_,
@@ -148,7 +164,11 @@ template <typename TRedAlph_,
 class GlobalDataHolder
 {
 public:
-    static constexpr BlastProgram blastProgram = p;
+    using TRedAlph       = RedAlph<p, TRedAlph_>; // ensures == Dna5 for BlastN
+
+    static constexpr BlastProgram blastProgram  = p;
+    static constexpr bool indexIsFM             = std::is_same<TIndexSpec_, TFMIndex<>>::value;
+    static constexpr bool alphReduction         = !std::is_same<TransAlph<p>, TRedAlph>::value;
 
     /* Sequence storage types */
     using TStringTag    = Alloc<>;
@@ -157,29 +177,26 @@ public:
 #else
     using TDirectStringTag = TStringTag;
 #endif
-    using TQryTag  = TStringTag;//typename std::conditional<qNumFrames(p) == 1, TStringTag, TDirectStringTag>::type;
+    using TQryTag  = TStringTag;
     using TSubjTag = TDirectStringTag; // even if subjects were translated they are now loaded from disk
 
     /* untranslated query sequences (ONLY USED FOR SAM/BAM OUTPUT) */
     using TUntransQrySeqs = StringSet<String<OrigQryAlph<p>, TQryTag>, Owner<ConcatDirect<>>>;
-    TUntransQrySeqs     untranslatedQrySeqs;
 
     /* Possibly translated but yet unreduced sequences */
     template <typename TSpec>
     using TTransSeqs     = StringSet<String<TransAlph<p>, TSpec>, Owner<ConcatDirect<>>>;
     using TTransQrySeqs  = TTransSeqs<TQryTag>;
     using TTransSubjSeqs = TTransSeqs<TSubjTag>;
-
-    TTransQrySeqs       qrySeqs;
-    TTransSubjSeqs      subjSeqs;
+    using TTransSubjReal = typename std::conditional<
+                            alphReduction || indexIsFM,
+                            TTransSubjSeqs,                     // real type
+                            TTransSubjSeqs &>::type;            // will be initialized in constructor
 
     /* Reduced sequence objects, either as modstrings or as references to trans-strings */
-    using TRedAlph       = RedAlph<p, TRedAlph_>; // ensures == Dna5 for BlastN
     template <typename TSpec>
     using TRedAlphModString = ModifiedString<String<TransAlph<p>, TSpec>,
                                 ModView<FunctorConvert<TransAlph<p>, TRedAlph>>>;
-
-    static constexpr bool alphReduction = !std::is_same<TransAlph<p>, TRedAlph>::value;
 
     using TRedQrySeqs   = typename std::conditional<
                             alphReduction,
@@ -190,50 +207,85 @@ public:
                             StringSet<TRedAlphModString<TSubjTag>, Owner<ConcatDirect<>>>, // modview
                             TTransSubjSeqs &>::type;                                       // reference to owner
 
-    TRedQrySeqs         redQrySeqs;
-    TRedSubjSeqs        redSubjSeqs;
-
-    /* INDECES AND THEIR TYPE */
-    static constexpr bool
-    indexIsFM           = std::is_same<TIndexSpec_, TFMIndex<>>::value;
-    using TIndexSpec    = TIndexSpec_;
-    using TDbIndex      = Index<typename std::remove_reference<TRedSubjSeqs>::type, TIndexSpec>;
-
-    TDbIndex            dbIndex;
-
-    // TODO maybe remove these for other specs?
-    using TPositions    = typename StringSetLimits<TTransQrySeqs>::Type;
-    TPositions          untransQrySeqLengths; // used iff qIsTranslated(p)
-    TPositions          untransSubjSeqLengths; // used iff sIsTranslated(p)
-
-    using TMasking      = StringSet<String<unsigned>, Owner<ConcatDirect<>>>;
-    TMasking            segIntStarts;
-    TMasking            segIntEnds;
-
+    /* sequence ID strings */
     template <typename TSpec>
     using TIds          = StringSet<String<char, TSpec>, Owner<ConcatDirect<>>>;
     using TQryIds       = TIds<TQryTag>;
     using TSubjIds      = TIds<TSubjTag>;
-    TQryIds             qryIds;
-    TSubjIds            subjIds;
 
-    // OUTPUT FILE //
+    /* indeces and their type */
+    using TIndexSpec    = TIndexSpec_;
+    using TDbIndex      = Index<typename std::remove_reference<TRedSubjSeqs>::type, TIndexSpec>;
+
+    /* output file */
     using TScoreScheme  = TScoreScheme_;
     using TIOContext    = BlastIOContext<TScoreScheme, p, h>;
     using TFile         = FormattedFile<TFileFormat, Output, TIOContext>;
-    TFile               outfile;
-
     using TBamFile      = FormattedFile<Bam, Output, BlastTabular>;
-//     using TBamContext   = FormattedFileContext<TBamFile, void>;
-//     using TNameStoreCache = typename TBamContext::TNameStorCache;
+
+    /* misc types */
+    using TPositions    = typename StringSetLimits<TTransQrySeqs>::Type;
+    using TMasking      = StringSet<String<unsigned>, Owner<ConcatDirect<>>>;
+
+    /* the actual members */
+    TDbIndex            dbIndex;
+
+    TUntransQrySeqs     untranslatedQrySeqs;    // used iff outformat is sam or bam
+
+    TTransQrySeqs       qrySeqs;
+    TTransSubjReal      subjSeqs;
+
+    TRedQrySeqs         redQrySeqs;
+    TRedSubjSeqs        redSubjSeqs;
+
+    TQryIds             qryIds;
+    TSubjIds            subjIds;
+
+    TFile               outfile;
     TBamFile            outfileBam;
+
+    TPositions          untransQrySeqLengths;   // used iff qIsTranslated(p)
+    TPositions          untransSubjSeqLengths;  // used iff sIsTranslated(p)
+
+    TMasking            segIntStarts;
+    TMasking            segIntEnds;
 
     StatsHolder         stats;
 
     GlobalDataHolder() :
-        redQrySeqs(qrySeqs), redSubjSeqs(subjSeqs), stats()
+        subjSeqs(_initHelper(indexText(dbIndex), TTransSubjSeqs())),//std::integral_constant<bool, alphReduction || indexIsFM>())),// : TTransSubjSeqs()),
+        redQrySeqs(qrySeqs),
+        redSubjSeqs(subjSeqs),
+        stats()
     {}
 };
+
+/* Documentation on the confusing type resolution used in the above class:
+ *
+ * !alphReduction && !indexIsFM  e.g. BLASTN and SA-Index
+ *
+ *   subjSeqs           is & and initialized with indexText()
+ *   redSubjSeqs        is & and initialized with subjSeqs
+ *   indexText(dbIndex) is non-ref owner StringSet assigned by loadDbIndexFromDisk()
+ *
+ * !alphReduction && indexIsFM  e.g. BLASTN and FM-Index
+ *
+ *   subjSeqs           is non-ref owner StringSet and assigned in loadSubjects()
+ *   redSubjSeqs        is & and initialized with subjSeqs
+ *   indexText(dbIndex) is non-ref owner StringSet, but never set (fmIndex doesnt need it)
+ *
+ * alphReduction && indexIsFM  e.g. default
+ *
+ *   subjSeqs           is non-ref owner StringSet and assigned in loadSubjects()
+ *   redSubjSeqs        is lightweight reduced StringSet and initialized with subjSeqs
+ *   indexText(dbIndex) is lightweight reduced StringSet, but never set (fmIndex doesnt need it)
+ *
+ * alphReduction && !indexIsFM  e.g. default
+ *
+ *   subjSeqs           is non-ref owner StringSet and assigned in loadSubjects()
+ *   redSubjSeqs        is lightweight reduced StringSet and initialized with subjSeqs
+ *   indexText(dbIndex) is lightweight reduced StringSet and assigned redSubjSeqs in loadDbIndexFromDisk
+ */
 
 // ----------------------------------------------------------------------------
 // struct LocalDataHolder  -- one object per thread

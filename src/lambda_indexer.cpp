@@ -192,8 +192,9 @@ realMain(LambdaIndexerOptions     const & options,
         translateOrSwap(translatedSeqs, originalSeqs, options);
     }
 
-    // dump translated and unreduced sequences
-    dumpTranslatedSeqs(translatedSeqs, options);
+    // dump translated and unreduced sequences (except where they are included in index)
+    if ((options.alphReduction != 0) || (options.dbIndexType != 0))
+        dumpTranslatedSeqs(translatedSeqs, options);
 
     // see if final sequence set actually fits into index 
     if (!checkIndexSize(translatedSeqs))

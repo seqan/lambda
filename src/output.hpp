@@ -95,7 +95,8 @@ _untranslateSequence(TSequence1                     & target,
     }
     else
     {
-        static thread_local Dna5String buf;
+        thread_local Dna5String buf;
+
         buf = source;
         reverseComplement(buf);
         target = infix(buf,
