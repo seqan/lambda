@@ -1,0 +1,22 @@
+sudo: false
+language: cpp
+compiler:
+  - gcc-4.9
+  - clang
+cache:
+  apt: true
+install:
+  - if [ "$CC" == "gcc" ]; then export CXX=g++-4.9 CC=gcc-4.9; fi
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - cmake
+      - gcc-4.9
+      - g++-4.9
+      - clang
+      - zlib1g-dev
+      - libbz2-dev
+script:
+  ./util/travis/linux-cibuild.sh
