@@ -8,7 +8,7 @@ set -x
 mkdir -p build
 cd build
 cmake ..
-make -j 2
+travis_wait make -j 2
 
 ## test
 ctest .
