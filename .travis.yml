@@ -23,7 +23,8 @@ matrix:
       compiler: clang
       addons:
         apt:
-          sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-precise-3.6']
-          packages: ['clang']
+          sources: ['ubuntu-toolchain-r-test']
+          packages: ['clang', 'g++-4.9', 'cmake', 'zlib1g-dev', 'libbz2-dev'] # g++ required for newer libstdc++
+
 script:
   ./util/travis/linux-cibuild.sh
