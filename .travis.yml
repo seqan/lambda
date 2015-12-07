@@ -9,11 +9,11 @@ cache:
   apt: true
 install:
     - if [ "$CXX" = "g++" ]; then export CXX="g++-5" CC="gcc-5"; fi
-    - if [ "$CXX" = "clang++" ]; then export CXX="clang++-3.7" CC="clang-3.7"; fi
+    #- if [ "$CXX" = "clang++" ]; then export CXX="clang++-3.7" CC="clang-3.7"; fi
 addons:
   apt:
     sources:
-      - llvm-toolchain-trusty
+      #- llvm-toolchain-trusty
       - ubuntu-toolchain-r-test
     packages:
       - cmake
@@ -21,7 +21,7 @@ addons:
       #- g++-4.9
       - gcc-5
       - g++-5
-      - clang-3.7
+      - clang
       - zlib1g-dev
       - libbz2-dev
 script:
