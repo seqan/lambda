@@ -1,6 +1,10 @@
 Lambda: the Local Aligner for Massive Biological DatA
 -----------------------------------------------------
 
+.. image:: https://travis-ci.org/seqan/lambda.svg?branch=master
+    :alt: Travis CI build status
+    :target: https://travis-ci.org/seqan/lambda
+
 Lambda is a local aligner optimized for many query sequences and searches in protein space.
 It is compatible to BLAST, but much faster than BLAST and many other comparable tools.
 

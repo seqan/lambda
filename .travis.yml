@@ -27,7 +27,7 @@ matrix:
           packages: ['clang', 'g++-4.9', 'cmake', 'zlib1g-dev', 'libbz2-dev'] # g++ required for newer libstdc++
 
 script:
-  - sudo dd if=/dev/zero of=/swapfile bs=64M count=16 # cheat us some extra MEM
+  - sudo dd if=/dev/zero of=/swapfile bs=64M count=32 # cheat us some extra MEM
   - sudo mkswap /swapfile
   - sudo swapon /swapfile
   - mkdir -p build && cd build
