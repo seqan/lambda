@@ -27,9 +27,13 @@ matrix:
           packages: ['clang', 'g++-4.9', 'cmake', 'zlib1g-dev', 'libbz2-dev'] # g++ required for newer libstdc++
 
 script:
-  - free
+  - sudo dd if=/dev/zero of=/swapfile bs=64M count=16 # cheat us some extra MEM
+  - sudo mkswap /swapfile
+  - sudo swapon /swapfile
   - mkdir -p build && cd build
   - cmake ..
-  - travis_wait make lambda_indexer
-  - travis_wait make lambda
+  - make lambda_indexer
+  - travis_wait make lambda # need to prefix with travis_wait because it might take > 10min
   - ctest .
+  - sudo swapoff /swapfile
+  - sudo rm /swapfile
