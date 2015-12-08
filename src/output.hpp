@@ -261,6 +261,16 @@ myWriteHeader(TGH & globalHolder, TLambdaOptions const & options)
     {
         open(globalHolder.outfile, toCString(options.output));
         context(globalHolder.outfile).fields = options.columns;
+        auto & versionString = context(globalHolder.outfile).versionString;
+        clear(versionString);
+        append(versionString, _programTagToString(globalHolder.blastProgram));
+        append(versionString, " 2.2.26+ [created by LAMBDA");
+        if (options.versionInformationToOutputFile)
+        {
+            append(versionString, "-");
+            append(versionString, SEQAN_APP_VERSION);
+        }
+        append(versionString, ", see http://seqan.de/lambda and please cite correctly in your academic work]");
         writeHeader(globalHolder.outfile);
     } else // SAM or BAM
     {
@@ -305,13 +315,16 @@ myWriteHeader(TGH & globalHolder, TLambdaOptions const & options)
         appendValue(header, firstRecord);
 
         // Fill program header line.
-        BamHeaderRecord pgRecord;
-        pgRecord.type = BAM_HEADER_PROGRAM;
-        appendValue(pgRecord.tags, TTag("ID", "lambda"));
-        appendValue(pgRecord.tags, TTag("PN", "lambda"));
-        appendValue(pgRecord.tags, TTag("VN", SEQAN_APP_VERSION));
-        appendValue(pgRecord.tags, TTag("CL", options.commandLine));
-        appendValue(header, pgRecord);
+        if (options.versionInformationToOutputFile)
+        {
+            BamHeaderRecord pgRecord;
+            pgRecord.type = BAM_HEADER_PROGRAM;
+            appendValue(pgRecord.tags, TTag("ID", "lambda"));
+            appendValue(pgRecord.tags, TTag("PN", "lambda"));
+            appendValue(pgRecord.tags, TTag("VN", SEQAN_APP_VERSION));
+            appendValue(pgRecord.tags, TTag("CL", options.commandLine));
+            appendValue(header, pgRecord);
+        }
 
         // Fill homepage header line.
         BamHeaderRecord hpRecord0;

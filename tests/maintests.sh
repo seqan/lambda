@@ -73,9 +73,10 @@ fi
 gunzip < "${SRCDIR}/tests/queries_${QALPHIN}.fasta.gz" > queries.fasta
 [ $? -eq 0 ] || errorout "Could not unzip queries.fasta"
 
-${BINDIR}/bin/lambda -d db.fasta -di ${DI} -p ${PROG} -q queries.fasta -t 1 -o output_${PROG}_${DI}.${EXTENSION}
+${BINDIR}/bin/lambda -d db.fasta -di ${DI} -p ${PROG} -q queries.fasta -t 1 --version-to-outputfile off -o output_${PROG}_${DI}.${EXTENSION}
 [ $? -eq 0 ] || errorout "Search failed."
 
 openssl md5 output_${PROG}_${DI}.${EXTENSION} >> /tmp/checksums
 ## TODO compare checksums instead of generating them
+
 

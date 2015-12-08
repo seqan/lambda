@@ -228,6 +228,7 @@ struct LambdaOptions : public SharedOptions
     std::bitset<64> samBamTags;
     bool            samWithRefHeader;
     unsigned        samBamSeq;
+    bool            versionInformationToOutputFile;
 
     unsigned        queryPart = 0;
 
@@ -470,7 +471,15 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setDefaultValue(parser, "sam-bam-tags", "AS NM ZE ZI ZF");
     setAdvanced(parser, "sam-bam-tags");
 
-        addSection(parser, "General Options");
+    addOption(parser, ArgParseOption("", "version-to-outputfile",
+        "Write the Lambda program tag and version number to the output file.",
+        ArgParseArgument::STRING,
+        "STR"));
+    setValidValues(parser, "version-to-outputfile", "on off");
+    setDefaultValue(parser, "version-to-outputfile", "on");
+    hideOption(parser, "version-to-outputfile");
+
+    addSection(parser, "General Options");
 #ifdef _OPENMP
     addOption(parser, ArgParseOption("t", "threads",
         "number of threads to run concurrently.",
@@ -850,6 +859,9 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     if (((options.blastProgram == BlastProgram::BLASTP) || (options.blastProgram == BlastProgram::TBLASTN)) &&
         (!options.samBamTags[SamBamExtraTags<>::Q_AA_CIGAR]))
         options.samBamSeq = 0;
+
+    getOptionValue(buffer, parser, "version-to-outputfile");
+    options.versionInformationToOutputFile = (buffer == "on");
 
     clear(buffer);
     getOptionValue(options.seedLength, parser, "seed-length");
