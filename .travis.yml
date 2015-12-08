@@ -27,4 +27,7 @@ matrix:
           packages: ['clang', 'g++-4.9', 'cmake', 'zlib1g-dev', 'libbz2-dev'] # g++ required for newer libstdc++
 
 script:
-  ./util/travis/linux-cibuild.sh
+  - mkdir -p build && cd build
+  - cmake ..
+  - travis_wait make -j 2
+  - ctest .
