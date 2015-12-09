@@ -17,8 +17,8 @@ MODE=$5
 EXTENSION=$6
 
 # check existence of commands
-which openssl gunzip mktemp diff cat zcat > /dev/null
-[ $? -eq 0 ] || errorout "Not all required programs found. Needs: openssl gunzip mktemp diff cat zcat"
+which openssl gunzip mktemp diff cat zcat zgrep > /dev/null
+[ $? -eq 0 ] || errorout "Not all required programs found. Needs: openssl gunzip mktemp diff cat zcat zgrep"
 
 SALPH=prot      # actual subject alph
 QALPHIN=prot    # query input file alph
@@ -73,10 +73,11 @@ fi
 gunzip < "${SRCDIR}/tests/queries_${QALPHIN}.fasta.gz" > queries.fasta
 [ $? -eq 0 ] || errorout "Could not unzip queries.fasta"
 
-${BINDIR}/bin/lambda -d db.fasta -di ${DI} -p ${PROG} -q queries.fasta -t 1 --version-to-outputfile off -o output_${PROG}_${DI}.${EXTENSION}
+${BINDIR}/bin/lambda -d db.fasta -di ${DI} -p ${PROG} -q queries.fasta -t 1 --version-to-outputfile off \
+-o output_${PROG}_${DI}.${EXTENSION}
 [ $? -eq 0 ] || errorout "Search failed."
 
-openssl md5 output_${PROG}_${DI}.${EXTENSION} >> /tmp/checksums
-## TODO compare checksums instead of generating them
+[ "$(openssl md5 output_${PROG}_${DI}.${EXTENSION})" = \
+"$(zgrep "(output_${PROG}_${DI}.${EXTENSION})" "${SRCDIR}/tests/search_test_outfile.md5sums.gz")" ] || errorout "MD5 mismatch of output file"
 
 
