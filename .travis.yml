@@ -10,6 +10,13 @@ matrix:
           sources: ['ubuntu-toolchain-r-test']
           packages: ['g++-5', 'cmake', 'zlib1g-dev', 'libbz2-dev']
       install: ['export CXX="g++-5" CC="gcc-5"' ]
+      before_script:
+        - sudo dd if=/dev/zero of=/swapfile bs=64M count=32 # cheat us some extra MEM
+        - sudo mkswap /swapfile
+        - sudo swapon /swapfile
+      after_script:
+        - sudo swapoff /swapfile
+        - sudo rm /swapfile
 
     - os: linux
       compiler: gcc-4.9
@@ -18,6 +25,13 @@ matrix:
           sources: ['ubuntu-toolchain-r-test']
           packages: ['g++-4.9', 'cmake', 'zlib1g-dev', 'libbz2-dev']
       install: ['export CXX="g++-4.9" CC="gcc-4.9"' ]
+      before_script:
+        - sudo dd if=/dev/zero of=/swapfile bs=64M count=32 # cheat us some extra MEM
+        - sudo mkswap /swapfile
+        - sudo swapon /swapfile
+      after_script:
+        - sudo swapoff /swapfile
+        - sudo rm /swapfile
 
     - os: linux
       compiler: clang
@@ -32,7 +46,7 @@ matrix:
         - sudo brew update
         - sudo brew tap homebrew/versions
         - sudo brew install llvm36
-      install: ['export CXX="clang++-36" CC="clang-36"' ]
+      install: ['export CXX="clang++-3.6" CC="clang-3.6"' ]
 
     - os: osx
       compiler: clang-3.7
@@ -40,16 +54,11 @@ matrix:
         - sudo brew update
         - sudo brew tap homebrew/versions
         - sudo brew install llvm37
-      install: ['export CXX="clang++-37" CC="clang-37"' ]
+      install: ['export CXX="clang++-3.7" CC="clang-3.7"' ]
 
 script:
-  - sudo dd if=/dev/zero of=/swapfile bs=64M count=32 # cheat us some extra MEM
-  - sudo mkswap /swapfile
-  - sudo swapon /swapfile
   - mkdir -p build && cd build
   - cmake ..
   - make lambda_indexer
   - travis_wait make lambda # need to prefix with travis_wait because it might take > 10min
   - ctest .
-  - sudo swapoff /swapfile
-  - sudo rm /swapfile
