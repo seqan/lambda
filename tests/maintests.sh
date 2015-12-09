@@ -80,4 +80,4 @@ ${BINDIR}/bin/lambda -d db.fasta -di ${DI} -p ${PROG} -q queries.fasta -t 1 --ve
 [ "$(openssl md5 output_${PROG}_${DI}.${EXTENSION})" = \
 "$(zgrep "(output_${PROG}_${DI}.${EXTENSION})" "${SRCDIR}/tests/search_test_outfile.md5sums.gz")" ] || errorout "MD5 mismatch of output file"
 
-
+rm -r "${MYTMP}"
