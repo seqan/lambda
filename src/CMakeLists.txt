@@ -56,7 +56,7 @@ endif(CMAKE_COMPILER_IS_GNUCXX)
 # App-Level Configuration
 # ----------------------------------------------------------------------------
 
-set (SEQAN_APP_VERSION "0.9.3")
+set (SEQAN_APP_VERSION "0.9.4")
 
 option (LAMBDA_FASTBUILD "Skip certain rarely used codepaths (speeds up build)." OFF)
 if (LAMBDA_FASTBUILD)
