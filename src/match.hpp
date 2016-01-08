@@ -27,13 +27,10 @@
 #ifndef SEQAN_LAMBDA_FINDER_H_
 #define SEQAN_LAMBDA_FINDER_H_
 
-#include <forward_list>
-#include <unordered_map>
+// #include <forward_list>
+// #include <unordered_map>
 #include <vector>
-
-#include "misc.hpp"
-
-
+#include <seqan/blast.h>
 
 using namespace seqan;
 
@@ -144,7 +141,7 @@ isSetToSkip(Match const & m)
 template <typename TGH>
 inline void
 myHyperSortSingleIndex(std::vector<Match> & matches,
-                       LambdaOptions const & options,
+                       bool const doubleIndexing,
                        TGH const &)
 {
     using TId = typename Match::TQId;
@@ -174,7 +171,7 @@ myHyperSortSingleIndex(std::vector<Match> & matches,
         }
     }
 
-    if (options.doubleIndexing)
+    if (doubleIndexing)
     {
         // sort by trueQryId, then lengths of interval
         std::sort(intervals.begin(), intervals.end(),

@@ -36,7 +36,14 @@
 #include <seqan/translation.h>
 #include <seqan/arg_parse.h>
 #include <seqan/index.h>
-#include "output.hpp"
+#include <seqan/blast.h>
+
+// ==========================================================================
+// Forwards
+// ==========================================================================
+
+template <typename T>
+struct SamBamExtraTags;
 
 // ==========================================================================
 // Metafunctions

@@ -24,13 +24,15 @@
 // holders.hpp: Data container structs
 // ==========================================================================
 
-
 #ifndef SEQAN_LAMBDA_HOLDERS_H_
 #define SEQAN_LAMBDA_HOLDERS_H_
 
+#include <seqan/align_extend.h>
 
-#include "match.hpp"
 #include "options.hpp"
+#include "match.hpp"
+
+//FOO
 
 // ============================================================================
 // Forwards
@@ -134,6 +136,65 @@ struct StatsHolder
     }
 };
 
+void printStats(StatsHolder const & stats, LambdaOptions const & options)
+{
+    if ((options.verbosity >= 1) && options.isTerm && options.doubleIndexing)
+        for (unsigned char i=0; i < options.threads + 3; ++i)
+            std::cout << std::endl;
+
+    if (options.verbosity >= 2)
+    {
+        unsigned long rem = stats.hitsAfterSeeding;
+        auto const w = _numberOfDigits(rem); // number of digits
+        #define R  " " << std::setw(w)
+        #define RR " = " << std::setw(w)
+        #define BLANKS for (unsigned i = 0; i< w; ++i) std::cout << " ";
+        std::cout << "\033[1m   HITS                         "; BLANKS;
+        std::cout << "Remaining\033[0m"
+                  << "\n   after Seeding               "; BLANKS;
+        std::cout << R << rem;
+        std::cout << "\n - masked                   " << R << stats.hitsMasked
+                  << RR << (rem -= stats.hitsMasked);
+        std::cout << "\n - merged                   " << R << stats.hitsMerged
+                  << RR << (rem -= stats.hitsMerged);
+        std::cout << "\n - putative duplicates      " << R
+                  << stats.hitsPutativeDuplicate << RR
+                  << (rem -= stats.hitsPutativeDuplicate);
+        std::cout << "\n - putative abundant        " << R
+                  << stats.hitsPutativeAbundant   << RR
+                  << (rem -= stats.hitsPutativeAbundant);
+        std::cout << "\n - failed pre-extend test   " << R
+                  << stats.hitsFailedPreExtendTest  << RR
+                  << (rem -= stats.hitsFailedPreExtendTest);
+        std::cout << "\n - failed %-identity test   " << R
+                  << stats.hitsFailedExtendPercentIdentTest << RR
+                  << (rem -= stats.hitsFailedExtendPercentIdentTest);
+        std::cout << "\n - failed e-value test      " << R
+                  << stats.hitsFailedExtendEValueTest << RR
+                  << (rem -= stats.hitsFailedExtendEValueTest);
+        std::cout << "\n - abundant                 " << R
+                  << stats.hitsAbundant << RR
+                  << (rem -= stats.hitsAbundant);
+        std::cout << "\n - duplicates               " << R
+                  << stats.hitsDuplicate << "\033[1m" << RR
+                  << (rem -= stats.hitsDuplicate)
+                  << "\033[0m\n\n";
+
+        if (rem != stats.hitsFinal)
+            std::cout << "WARNING: hits dont add up\n";
+    }
+
+    if (options.verbosity >= 1)
+    {
+        auto const w = _numberOfDigits(stats.hitsFinal);
+        std::cout << "Number of valid hits:                           "
+                  << std::setw(w) << stats.hitsFinal
+                  << "\nNumber of Queries with at least one valid hit:  "
+                  << std::setw(w) << stats.qrysWithHit
+                  << "\n";
+    }
+
+}
 
 // ----------------------------------------------------------------------------
 // struct GlobalDataHolder  -- one object per program
@@ -379,170 +440,6 @@ public:
         statusStr.clear();
         statusStr.precision(2);
     }
-
 };
-
-// perform a fast local alignment score calculation on the seed and see if we
-// reach above threshold
-// WARNING the following function only works for hammingdistanced seeds
-template <typename TMatch,
-          typename TGlobalHolder,
-          typename TScoreExtension>
-inline bool
-seedLooksPromising(
-            LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> const & lH,
-            TMatch const & m)
-{
-    // no pre-scoring, but still filter out XXX and NNN hits
-//     if (!lH.options.preScoring))
-//     {
-//         for (unsigned i = m.qryStart, count = 0; i < m.qryStart + lH.options.seedLength; ++i)
-//             if (lH.gH.qrySeqs[m.qryId][i] == unkownValue<typename TGlobalHolder::TRedAlph>())
-//                 if (++count > lH.options.maxSeedDist)
-//                     return false;
-//         return true;
-//     }
-
-    int64_t effectiveQBegin = m.qryStart;
-    int64_t effectiveSBegin = m.subjStart;
-    uint64_t effectiveLength = lH.options.seedLength * lH.options.preScoring;
-    if (lH.options.preScoring > 1)
-    {
-        effectiveQBegin -= (lH.options.preScoring - 1) *
-                           lH.options.seedLength / 2;
-        effectiveSBegin -= (lH.options.preScoring - 1) *
-                           lH.options.seedLength / 2;
-//         std::cout << effectiveQBegin << "\t" << effectiveSBegin << "\n";
-        int64_t min = std::min(effectiveQBegin, effectiveSBegin);
-        if (min < 0)
-        {
-            effectiveQBegin -= min;
-            effectiveSBegin -= min;
-            effectiveLength += min;
-        }
-
-        effectiveLength = std::min({
-                            length(lH.gH.qrySeqs[m.qryId]) - effectiveQBegin,
-                            length(lH.gH.subjSeqs[m.subjId]) - effectiveSBegin,
-                            effectiveLength});
-//         std::cout << effectiveQBegin << "\t" << effectiveSBegin << "\t"
-//                   << effectiveLength << "\n";
-    }
-
-    auto const & qSeq = infix(lH.gH.qrySeqs[m.qryId],
-                              effectiveQBegin,
-                              effectiveQBegin + effectiveLength);
-    auto const & sSeq = infix(lH.gH.subjSeqs[m.subjId],
-                              effectiveSBegin,
-                              effectiveSBegin + effectiveLength);
-    int maxScore = 0;
-
-    int scores[effectiveLength+1]; // C99, C++14, -Wno-vla before that
-    scores[0] = 0;
-
-    // score the diagonal
-    for (uint64_t i = 0; i < effectiveLength; ++i)
-    {
-        scores[i] += score(seqanScheme(context(lH.gH.outfile).scoringScheme), qSeq[i], sSeq[i]);
-        if (scores[i] < 0)
-            scores[i] = 0;
-        else if (scores[i] > maxScore)
-            maxScore = scores[i];
-
-//         if (i < static_cast<uint64_t>(effectiveLength - 1)) // TODO remove
-        scores[i+1] = scores[i];
-    }
-
-    return (maxScore >= int(lH.options.preScoringThresh * effectiveLength));
-}
-
-template <typename TMatch,
-          typename TGlobalHolder,
-          typename TScoreExtension,
-          typename TSeedId,
-          typename TSubjOcc>
-inline void
-onFindImpl(LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> & lH,
-           TSeedId const & seedId,
-           TSubjOcc subjOcc)
-{
-    if (TGlobalHolder::indexIsFM) // positions are reversed
-        setSeqOffset(subjOcc,
-                     length(lH.gH.subjSeqs[getSeqNo(subjOcc)])
-                     - getSeqOffset(subjOcc)
-                     - lH.options.seedLength);
-
-    Match m {static_cast<Match::TQId>(lH.seedRefs[seedId]),
-             static_cast<Match::TSId>(getSeqNo(subjOcc)),
-             static_cast<Match::TPos>(lH.seedRanks[seedId] * lH.options.seedOffset),
-             static_cast<Match::TPos>(getSeqOffset(subjOcc))};
-
-    bool discarded = false;
-    auto const halfSubjL = lH.options.seedLength /  2;
-
-    if (!sIsTranslated(lH.gH.blastProgram))
-    {
-        for (unsigned k = 0; k < length(lH.gH.segIntStarts[m.subjId]); ++k)
-        {
-            // more than half of the seed falls into masked interval
-            if (intervalOverlap(m.subjStart,
-                                m.subjStart + lH.options.seedLength,
-                                lH.gH.segIntStarts[m.subjId][k],
-                                lH.gH.segIntEnds[m.subjId][k])
-                    >= halfSubjL)
-            {
-                ++lH.stats.hitsMasked;
-                discarded = true;
-                break;
-            }
-        }
-    }
-
-     if ((!discarded) && (!seedLooksPromising(lH, m)))
-     {
-         discarded = true;
-         ++lH.stats.hitsFailedPreExtendTest;
-     }
-
-    if (!discarded)
-        lH.matches.emplace_back(m);
-}
-
-template <typename TMatch,
-          typename TGlobalHolder,
-          typename TScoreExtension,
-          typename TFinder>
-inline void
-onFindDoubleIndex(LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> & lH,
-                  TFinder const & finder)
-{
-    auto qryOccs = getOccurrences(back(finder.patternStack));
-    auto subjOccs = getOccurrences(back(finder.textStack));
-
-    lH.stats.hitsAfterSeeding += length(qryOccs) * length(subjOccs);
-
-    for (unsigned i = 0; i < length(qryOccs); ++i)
-        for (unsigned j = 0; j < length(subjOccs); ++j)
-            onFindImpl(lH, getSeqNo(qryOccs[i]), subjOccs[j]);
-}
-
-template <typename TMatch,
-          typename TGlobalHolder,
-          typename TScoreExtension,
-          typename TSeedListIterator,
-          typename TIndexIterator>
-inline void
-onFindSingleIndex(LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> & lH,
-                  TSeedListIterator const & seedIt,
-                  TIndexIterator const & indexIt)
-{
-    auto qryOcc = position(seedIt);
-    auto subjOccs = getOccurrences(indexIt);
-
-    lH.stats.hitsAfterSeeding += length(subjOccs);
-
-    for (unsigned j = 0; j < length(subjOccs); ++j)
-        onFindImpl(lH, qryOcc, subjOccs[j]);
-}
 
 #endif // SEQAN_LAMBDA_HOLDERS_H_

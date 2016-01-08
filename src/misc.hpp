@@ -32,12 +32,9 @@
 
 #include <seqan/basic.h>
 #include <seqan/sequence.h>
-
 #include <seqan/index.h>
-
 #include <seqan/align.h>
 #include <seqan/blast.h>
-// #include <seqan/reduced_aminoacid.h>
 
 #include "options.hpp"
 

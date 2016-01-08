@@ -95,15 +95,6 @@ _untranslateSequence(TSequence1                     & target,
     }
     else
     {
-        //TODO should be able to transform positions,
-        // assign and reverseComplement on target afterwards (ILLIMINATE BUFFER)
-// #if defined(__FreeBSD__) && defined(_LIBCPP_VERSION)
-//         Dna5String buf;
-// #else
-//         thread_local Dna5String buf;
-// #endif
-//         buf = source;
-
         target = infix(source,
                        length(source) - (3 * m.qEnd + std::abs(m.qFrameShift) - 1),
                        length(source) - (3 * m.qStart + std::abs(m.qFrameShift) - 1));

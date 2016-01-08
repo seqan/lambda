@@ -33,10 +33,10 @@
 #include <seqan/reduced_aminoacid.h>
 #include <seqan/misc/terminal.h>
 
+#include "output.hpp"
 #include "options.hpp"
-#include "match.hpp"
+#include "holders.hpp"
 #include "lambda.hpp"
-#include "misc.hpp"
 
 using namespace seqan;
 
