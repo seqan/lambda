@@ -36,9 +36,9 @@
 #include <seqan/translation.h>
 #include <seqan/reduced_aminoacid.h>
 
+#include "output.hpp" //TODO only needed because options are in one file, remove later
 #include "misc.hpp"
 #include "options.hpp"
-#include "alph.hpp"
 #include "radix_inplace.h"
 #include "lambda_indexer_misc.hpp"
 
