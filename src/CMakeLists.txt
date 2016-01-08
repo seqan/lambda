@@ -124,9 +124,9 @@ add_executable (lambda lambda.cpp
                 misc.hpp
                 match.hpp
                 options.hpp
-                alph.hpp
                 holders.hpp
                 output.hpp)
+
 add_executable (lambda_indexer lambda_indexer.cpp
                 lambda_indexer.hpp
                 options.hpp

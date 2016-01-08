@@ -40,7 +40,6 @@
 
 using namespace seqan;
 
-
 // inline BlastFormatFile
 // _fileType(LambdaOptions const & options)
 // {
