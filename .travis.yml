@@ -1,9 +1,9 @@
 sudo: required
 dist: trusty
 language: cpp
-cache: ccache
 cache:
-  directories:
+  - ccache
+  - directories:
     - $HOME/.ccache
 matrix:
   include:
@@ -77,6 +77,7 @@ matrix:
       #install: ['export CXX="clang++-3.7" CC="clang-3.7"' ]
 
 script:
+  - ccache -s
   - mkdir -p build && cd build
   - cmake ..
   - make lambda_indexer
