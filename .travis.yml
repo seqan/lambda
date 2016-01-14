@@ -18,7 +18,7 @@ matrix:
         - sudo swapoff /swapfile
         - sudo rm /swapfile
 
-   - os: linux
+    - os: linux
       compiler: gcc-5
       addons:
         apt:
@@ -57,20 +57,20 @@ matrix:
       #install: ['export CXX="clang++-3.7" CC="clang-3.7"' ]
 
     - allow_failures:
-        - os: linux
-          compiler: gcc-6
-          addons:
-              apt:
-              sources: ['ubuntu-toolchain-r-test']
-              packages: ['g++-6', 'cmake', 'zlib1g-dev', 'libbz2-dev']
-          install: ['export CXX="g++-6" CC="gcc-6"' ]
-          before_script:
-              - sudo dd if=/dev/zero of=/swapfile bs=64M count=32 # cheat us some extra MEM
-              - sudo mkswap /swapfile
-              - sudo swapon /swapfile
-          after_script:
-              - sudo swapoff /swapfile
-              - sudo rm /swapfile
+      - os: linux
+        compiler: gcc-6
+        addons:
+            apt:
+            sources: ['ubuntu-toolchain-r-test']
+            packages: ['g++-6', 'cmake', 'zlib1g-dev', 'libbz2-dev']
+        install: ['export CXX="g++-6" CC="gcc-6"' ]
+        before_script:
+            - sudo dd if=/dev/zero of=/swapfile bs=64M count=32 # cheat us some extra MEM
+            - sudo mkswap /swapfile
+            - sudo swapon /swapfile
+        after_script:
+            - sudo swapoff /swapfile
+            - sudo rm /swapfile
 
 script:
   - mkdir -p build && cd build
