@@ -87,3 +87,4 @@ script:
   - make lambda_indexer
   - travis_wait make lambda # need to prefix with travis_wait because it might take > 10min
   - ctest .
+  - ccache -s
