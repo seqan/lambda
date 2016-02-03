@@ -37,10 +37,6 @@ if (NOT BZIP2_FOUND)
   message (WARNING "WARNING: BZip2 not found. Building lambda without support for bzipped input and output.")
 endif (NOT BZIP2_FOUND)
 
-if (COMPILER_IS_CLANG)
-    set (CXX11_CXX_FLAGS "${CXX11_CXX_FLAGS} -ftemplate-depth-1024")
-endif (COMPILER_IS_CLANG)
-
 if(CMAKE_COMPILER_IS_GNUCXX)
   if (491 GREATER _GCC_VERSION)
     message (FATAL_ERROR "Your GCC version is too old. Minimum version is GCC-4.9.1!")
@@ -97,6 +93,28 @@ if (LAMBDA_MMAPPED_DB)
 endif (LAMBDA_MMAPPED_DB)
 
 # ----------------------------------------------------------------------------
+# Compiler specifics
+# ----------------------------------------------------------------------------
+
+if (COMPILER_IS_CLANG)
+    set (SEQAN_CXX_FLAGS "${SEQAN_CXX_FLAGS} -ftemplate-depth-1024")
+endif (COMPILER_IS_CLANG)
+
+if (NOT COMPILER_IS_INTEL)
+    # do not warn for variable length arrays
+    set (SEQAN_CXX_FLAGS "${SEQAN_CXX_FLAGS} -Wno-vla")
+endif (NOT COMPILER_IS_INTEL)
+
+if(CMAKE_COMPILER_IS_GNUCXX)
+    # parallelize parts of build even for one translation unit
+    include(ProcessorCount)
+    ProcessorCount(NCPU)
+    if(NCPU GREATER 1)
+        set (SEQAN_CXX_FLAGS "${SEQAN_CXX_FLAGS} -flto=${NCPU}")
+    endif()
+endif(CMAKE_COMPILER_IS_GNUCXX)
+
+# ----------------------------------------------------------------------------
 # Build Setup
 # ----------------------------------------------------------------------------
 
@@ -137,9 +155,6 @@ target_link_libraries (lambda_indexer ${SEQAN_LIBRARIES})
 
 # Add CXX flags found by find_package (SeqAn).
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN_CXX_FLAGS}")
-if (NOT COMPILER_IS_INTEL)
-   set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-vla")
-endif (NOT COMPILER_IS_INTEL)
 
 set(BUILD_SHARED_LIBS OFF)
 
