@@ -1,19 +1,18 @@
 sudo: required
 dist: trusty
 language: cpp
-cache:
-  - ccache
-  - directories:
-    - $HOME/.ccache
+#cache:
+  #- directories:
+    #- $HOME/ccache
 matrix:
   include:
     - os: linux
       compiler: gcc-4.9
       addons:
         apt:
-          sources: ['ubuntu-toolchain-r-test']
-          packages: ['g++-4.9', 'cmake', 'zlib1g-dev', 'libbz2-dev']
-      install: ['export PATH=/usr/lib/ccache:$PATH', 'export CXX="g++-4.9" CC="gcc-4.9"' ]
+          sources: ['ubuntu-toolchain-r-test', 'george-edison55-precise-backports']
+          packages: ['g++-4.9', 'cmake', 'cmake-data', 'zlib1g-dev', 'libbz2-dev']
+      install: ['export CXX="g++-4.9"' ]
       before_script:
         - sudo dd if=/dev/zero of=/swapfile bs=64M count=32 # cheat us some extra MEM
         - sudo mkswap /swapfile
@@ -26,9 +25,9 @@ matrix:
       compiler: gcc-5
       addons:
         apt:
-          sources: ['ubuntu-toolchain-r-test']
-          packages: ['g++-5', 'cmake', 'zlib1g-dev', 'libbz2-dev']
-      install: ['export PATH=/usr/lib/ccache:$PATH', 'export CXX="g++-5" CC="gcc-5"' ]
+          sources: ['ubuntu-toolchain-r-test', 'george-edison55-precise-backports']
+          packages: ['g++-5', 'cmake', 'cmake-data', 'zlib1g-dev', 'libbz2-dev']
+      install: ['export CXX="g++-5"' ]
       before_script:
         - sudo dd if=/dev/zero of=/swapfile bs=64M count=32 # cheat us some extra MEM
         - sudo mkswap /swapfile
@@ -41,9 +40,9 @@ matrix:
       #compiler: gcc-6
       #addons:
           #apt:
-          #sources: ['ubuntu-toolchain-r-test']
-          #packages: ['g++-6', 'cmake', 'zlib1g-dev', 'libbz2-dev']
-      #install: ['export CXX="g++-6" CC="gcc-6"' ]
+          #sources: ['ubuntu-toolchain-r-test', 'george-edison55-precise-backports']
+          #packages: ['g++-6', 'cmake', 'cmake-data', 'zlib1g-dev', 'libbz2-dev']
+      #install: ['export CXX="g++-6"' ]
       #before_script:
           #- sudo dd if=/dev/zero of=/swapfile bs=64M count=32 # cheat us some extra MEM
           #- sudo mkswap /swapfile
@@ -56,9 +55,8 @@ matrix:
       compiler: clang
       addons:
         apt:
-          sources: ['ubuntu-toolchain-r-test']
-          packages: ['clang', 'g++-4.9', 'cmake', 'zlib1g-dev', 'libbz2-dev'] # g++ required for newer libstdc++
-      install: ['export PATH=/usr/lib/ccache:$PATH']
+          sources: ['ubuntu-toolchain-r-test', 'george-edison55-precise-backports']
+          packages: ['clang', 'g++-4.9', 'cmake', 'cmake-data', 'zlib1g-dev', 'libbz2-dev'] # g++ required for newer libstdc++
 
     #- os: osx
       #compiler: clang-3.6
@@ -66,7 +64,7 @@ matrix:
         #- sudo brew update
         #- sudo brew tap homebrew/versions
         #- sudo brew install llvm36
-      #install: ['export CXX="clang++-3.6" CC="clang-3.6"' ]
+      #install: ['export CXX="clang++-3.6"' ]
 
     #- os: osx
       #compiler: clang-3.7
@@ -74,10 +72,16 @@ matrix:
         #- sudo brew update
         #- sudo brew tap homebrew/versions
         #- sudo brew install llvm37
-      #install: ['export CXX="clang++-3.7" CC="clang-3.7"' ]
+      #install: ['export CXX="clang++-3.7"' ]
 
+#before_script:
+  #- export PATH=$HOME/.local/bin:$PATH
+  #- rm -rf ${HOME}/.ccache
+  #- mkdir -p ${HOME}/ccache/${TRAVIS_BRANCH}/${TRAVIS_OS_NAME}/${CXX}
+  #- ln -s  ${HOME}/ccache/${TRAVIS_BRANCH}/${TRAVIS_OS_NAME}/${CXX} ${HOME}/.ccache
+  #- ln -s /usr/bin/ccache ${HOME}/.local/bin/${CXX}
 script:
-  - ccache -s
+  #- ccache -s
   - mkdir -p build && cd build
   - cmake ..
   - make lambda_indexer
