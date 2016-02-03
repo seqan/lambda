@@ -285,7 +285,11 @@ myWriteHeader(TGH & globalHolder, TLambdaOptions const & options)
         {
             // compute lengths ultra-fast
             resize(subjSeqLengths, length(globalHolder.subjSeqs));
+#ifdef __clang__
+            SEQAN_OMP_PRAGMA(parallel for)
+#else
             SEQAN_OMP_PRAGMA(parallel for simd)
+#endif
             for (unsigned i = 0; i < length(subjSeqLengths); ++i)
                 subjSeqLengths[i] = globalHolder.subjSeqs.limits[i+1] - globalHolder.subjSeqs.limits[i];
         }

@@ -396,7 +396,11 @@ loadQueryImplTrans(TCDStringSet<String<TTargetAlph, TSpec1>> & target,
            length(source.limits),
            Exact());
 
+#ifdef __clang__
+    SEQAN_OMP_PRAGMA(parallel for)
+#else
     SEQAN_OMP_PRAGMA(parallel for simd)
+#endif
     for (uint32_t i = 0; i < (length(untransQrySeqLengths) - 1); ++i)
         untransQrySeqLengths[i] = source.limits[i + 1] - source.limits[i];
 
