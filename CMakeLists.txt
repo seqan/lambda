@@ -2,11 +2,19 @@
 #                  Lambda
 # ===========================================================================
 
+cmake_minimum_required (VERSION 3.0.0)
+string(ASCII 27 Esc)
+set(ColourBold  "${Esc}[1m")
+set(ColourReset "${Esc}[m")
+message (STATUS "${ColourBold}Compiler Detection...${ColourReset}")
+
+project (lambda CXX)
+
 # ----------------------------------------------------------------------------
 # Load SeqAn build system
 # ----------------------------------------------------------------------------
 
-cmake_minimum_required (VERSION 2.8.2)
+message (STATUS "${ColourBold}Configuring SeqAn...${ColourReset}")
 set (CMAKE_INCLUDE_PATH
     ${CMAKE_CURRENT_SOURCE_DIR}/include/seqan/include
     ${CMAKE_INCLUDE_PATH})
@@ -34,10 +42,12 @@ include (SeqAnCtdSetup)
 # Add Lambda targets
 # ----------------------------------------------------------------------------
 
+message (STATUS "${ColourBold}Configuring LAMBDA...${ColourReset}")
 add_subdirectory(src)
 
 # ----------------------------------------------------------------------------
 # Add Tests
 # ----------------------------------------------------------------------------
 
+message (STATUS "${ColourBold}Configuring LAMBDA Tests...${ColourReset}")
 add_subdirectory(tests)

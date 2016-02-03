@@ -1,9 +1,4 @@
 
-
-cmake_minimum_required (VERSION 2.8.2)
-
-message (STATUS "Configuring tests")
-
 ## basic indexer tests
 foreach(PROG blastn blastp blastx tblastn tblastx)
     foreach(DI sa fm)

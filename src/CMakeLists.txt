@@ -6,19 +6,15 @@
 # CMakeLists.txt file for lambda.
 # ===========================================================================
 
-cmake_minimum_required (VERSION 2.8.2)
-project (lambda)
-message (STATUS "Configuring lambda")
-
 # ----------------------------------------------------------------------------
 # Dependencies
 # ----------------------------------------------------------------------------
 
 # Search SeqAn and select dependencies.
-set (SEQAN_FIND_DEPENDENCIES OpenMP ZLIB BZip2)
+find_package(OpenMP)
+find_package(ZLIB)
+find_package(BZip2)
 find_package(SeqAn REQUIRED)
-find_package(CXX11 REQUIRED)
-find_package(CXX14)
 
 if (NOT CXX11_FOUND)
     message (FATAL_ERROR "  C++11 not found: Not building lambda.")
@@ -26,20 +22,20 @@ if (NOT CXX11_FOUND)
 endif (NOT CXX11_FOUND)
 
 # Warn if OpenMP was not found.
-if (NOT SEQAN_HAS_OPENMP)
+if (NOT OPENMP_FOUND)
     message (WARNING "WARNING WARNING WARNING\nWARNING: OpenMP not found. Lambda will be built without multi-threading! "
     "This is probably not what you want! Use GCC or a very, very recent version of Clang.\nWARNING WARNING WARNING")
-endif (NOT SEQAN_HAS_OPENMP)
+endif (NOT OPENMP_FOUND)
 
 # Warn if Zlib was not found.
-if (NOT SEQAN_HAS_ZLIB)
+if (NOT ZLIB_FOUND)
   message (WARNING "WARNING: Zlib not found. Building lambda without support for gzipped input and output (this includes support for .bam).")
-endif (NOT SEQAN_HAS_ZLIB)
+endif (NOT ZLIB_FOUND)
 
 # Warn if BZip2 was not found.
-if (NOT SEQAN_HAS_BZIP2)
+if (NOT BZIP2_FOUND)
   message (WARNING "WARNING: BZip2 not found. Building lambda without support for bzipped input and output.")
-endif (NOT SEQAN_HAS_BZIP2)
+endif (NOT BZIP2_FOUND)
 
 if (COMPILER_IS_CLANG)
     set (CXX11_CXX_FLAGS "${CXX11_CXX_FLAGS} -ftemplate-depth-1024")
@@ -79,15 +75,17 @@ option (LAMBDA_STATIC_BUILD "Include all libraries in the binaries." OFF)
 if (LAMBDA_STATIC_BUILD)
     add_definitions (-DLAMBDA_STATIC_BUILD=1)
     set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
-    if (CMAKE_COMPILER_IS_GNUCXX)
+    # apple does not support fully static builds, but at least libgcc and libstdc++
+    if (APPLE)
         set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++")
-    endif (CMAKE_COMPILER_IS_GNUCXX)
-    # apple does not support fully static builds
-    if (NOT APPLE)
-        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
-    else (NOT APPLE)
         message (WARNING "WARNING: Builds on Mac are never fully static.")
-    endif (NOT APPLE)
+    else (APPLE)
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
+    endif (APPLE)
+    # on linux cmake adds -rdynamic automatically which clang can't handle in static builds
+    if (CMAKE_SYSTEM_NAME MATCHES "Linux")
+        SET(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS "")
+    endif (CMAKE_SYSTEM_NAME MATCHES "Linux")
     message (STATUS "STATIC_BUILD set, binaries built with all libs included.")
 endif (LAMBDA_STATIC_BUILD)
 
@@ -138,7 +136,7 @@ target_link_libraries (lambda ${SEQAN_LIBRARIES})
 target_link_libraries (lambda_indexer ${SEQAN_LIBRARIES})
 
 # Add CXX flags found by find_package (SeqAn).
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN_CXX_FLAGS} ${CXX11_CXX_FLAGS}")
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN_CXX_FLAGS}")
 if (NOT COMPILER_IS_INTEL)
    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-vla")
 endif (NOT COMPILER_IS_INTEL)
