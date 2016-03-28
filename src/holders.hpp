@@ -202,7 +202,7 @@ template <typename T>
 inline T &
 _initHelper(T & t1, T &&)
 {
-    std::cout << "FOO\n";
+//     std::cout << "FOO\n";
     return t1;
 }
 
@@ -210,7 +210,7 @@ template <typename T, typename T2>
 inline T2 &&
 _initHelper(T &, T2 && t2)
 {
-    std::cout << "BAR\n";
+//     std::cout << "BAR\n";
     return std::move(t2);
 }
 
