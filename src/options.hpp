@@ -50,7 +50,7 @@ struct SamBamExtraTags;
 // ==========================================================================
 
 // suffix array overloads
-namespace SEQAN_NAMESPACE_MAIN
+namespace seqan
 {
 
 template<typename TSpec1, typename TSpec2, typename TSpec3>

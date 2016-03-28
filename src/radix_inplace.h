@@ -49,7 +49,7 @@
 #endif
 //TODO(h-2): for clang use std::experimenta::parallel if available
 
-namespace SEQAN_NAMESPACE_MAIN
+namespace seqan
 {
 
 // ==========================================================================

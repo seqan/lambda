@@ -351,7 +351,7 @@ myPrintImplThread(SharedOptions const & options,
 //                   T const & first,
                   Args const & ... args)
 {
-    #pragma omp critical(stdout)
+    SEQAN_OMP_PRAGMA(critical(stdout))
     {
 //                 std::cout << "\033[" << omp_get_thread_num() << "B";
 //                 std::cout << "\033E";
