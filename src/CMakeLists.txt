@@ -24,7 +24,7 @@ endif (NOT CXX11_FOUND)
 # Warn if OpenMP was not found.
 if (NOT OPENMP_FOUND)
     message (WARNING "WARNING WARNING WARNING\nWARNING: OpenMP not found. Lambda will be built without multi-threading! "
-    "This is probably not what you want! Use GCC or a very, very recent version of Clang.\nWARNING WARNING WARNING")
+    "This is probably not what you want! Use GCC >= 4.9.1 or Clang >= 3.8.0\nWARNING WARNING WARNING")
 endif (NOT OPENMP_FOUND)
 
 # Warn if Zlib was not found.
@@ -43,6 +43,15 @@ if(CMAKE_COMPILER_IS_GNUCXX)
     return ()
   endif(491 GREATER _GCC_VERSION)
 endif(CMAKE_COMPILER_IS_GNUCXX)
+
+if(COMPILER_IS_CLANG)
+    if (_GCC_VERSION LESS 360)
+        message (FATAL_ERROR "Your Clang version is too old. Please upgrade to 3.8.0 or use GCC.")
+        return()
+    elseif (_GCC_VERSION LESS 380)
+        message (WARNING "Your Clang version is too old, you will not have parallelism! Upgrade to 3.8.0 or newer.")
+    endif()
+endif()
 
 # ----------------------------------------------------------------------------
 # App-Level Configuration
