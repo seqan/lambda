@@ -12,7 +12,7 @@ matrix:
         apt:
           sources: ['ubuntu-toolchain-r-test', 'george-edison55-precise-backports']
           packages: ['g++-4.9', 'cmake', 'cmake-data', 'zlib1g-dev', 'libbz2-dev']
-      install: export CXX="g++-4.9" CMAKE_ARGS=""
+      install: export CXX="g++-4.9" CMAKE_ARGS="-DLAMBDA_NATIVE_BUILD=0"
       before_script:
         - sudo dd if=/dev/zero of=/swapfile bs=64M count=32 # cheat us some extra MEM
         - sudo mkswap /swapfile
@@ -57,19 +57,19 @@ matrix:
         apt:
           sources: ['ubuntu-toolchain-r-test', 'george-edison55-precise-backports', 'llvm-toolchain-precise-3.8']
           packages: ['clang-3.8', 'g++-4.9', 'cmake', 'cmake-data', 'zlib1g-dev', 'libbz2-dev'] # g++ required for newer libstdc++
-      install: export CXX="clang++-3.8" CMAKE_ARGS="-DLAMBDA_NATIVE_BUILD=0"
+      install: export CXX="clang++-3.8" CMAKE_ARGS="-DLAMBDA_NATIVE_BUILD=0 -DLAMBDA_FASTBUILD=1"
 
     - os: osx
       compiler: gcc-4.9
       install: export CXX="g++-4.9" CMAKE_ARGS="-DLAMBDA_NATIVE_BUILD=0 -DLAMBDA_FASTBUILD=1"
 
-    #- os: osx
-      #compiler: gcc-5
-      #before_install:
-        #- sudo brew update
-        #- sudo brew tap homebrew/versions
-        #- sudo brew install gcc5
-      #install: export CXX="g++-5" CMAKE_ARGS="-DLAMBDA_NATIVE_BUILD=0 -DLAMBDA_FASTBUILD=1"
+    - os: osx
+      compiler: gcc-5
+      before_install:
+        - sudo brew update
+        - sudo brew tap homebrew/versions
+        - sudo brew install gcc5
+      install: export CXX="g++-5" CMAKE_ARGS="-DLAMBDA_NATIVE_BUILD=0 -DLAMBDA_FASTBUILD=1"
 
     #- os: osx
       #compiler: gcc-6
@@ -95,13 +95,13 @@ matrix:
         #- sudo brew install llvm37
       #install: ['export CXX="clang++-3.7"' ]
 
-    - os: osx
-      compiler: clang-3.8
-      before_install:
-        - sudo brew update
-        - sudo brew tap homebrew/versions
-        - sudo brew install llvm38
-      install: export CXX="clang++-3.8" CMAKE_ARGS='-DLAMBDA_NATIVE_BUILD=0 -DLAMBDA_FASTBUILD=1 -DCMAKE_CXX_FLAGS="-L/usr/local/Cellar/llvm38/3.8.0/lib/llvm-3.8/lib"'
+    #- os: osx
+      #compiler: clang-3.8
+      #before_install:
+        #- sudo brew update
+        #- sudo brew tap homebrew/versions
+        #- sudo brew install llvm38
+      #install: export CXX="clang++-3.8" CMAKE_ARGS='-DLAMBDA_NATIVE_BUILD=0 -DLAMBDA_FASTBUILD=1 -DCMAKE_CXX_FLAGS="-L/usr/local/Cellar/llvm38/3.8.0/lib/llvm-3.8/lib"'
 
 #before_script:
   #- export PATH=$HOME/.local/bin:$PATH
@@ -111,7 +111,7 @@ matrix:
   #- ln -s /usr/bin/ccache ${HOME}/.local/bin/${CXX}
 script:
   #- ccache -s
-  - find /usr/lib | grep omp
+  #- find /usr/lib | grep libomp
   - mkdir -p build && cd build
   - cmake .. ${CMAKE_ARGS}
   - make lambda_indexer VERBOSE=1
