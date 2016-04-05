@@ -1,6 +1,12 @@
+## only subset of tests
+if (LAMBDA_FASTBUILD)
+    set (PROGS blastp blastx)
+else ()
+    set (PROGS blastn blastp blastx tblastn tblastx)
+endif ()
 
 ## basic indexer tests
-foreach(PROG blastn blastp blastx tblastn tblastx)
+foreach(PROG ${PROGS})
     foreach(DI sa fm)
         add_test (NAME test_mkindex_${PROG}_${DI}
                   COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/maintests.sh
@@ -9,7 +15,7 @@ foreach(PROG blastn blastp blastx tblastn tblastx)
 endforeach()
 
 ## basic search tests
-foreach(PROG blastn blastp blastx tblastn tblastx)
+foreach(PROG ${PROGS})
     foreach(DI sa fm)
         foreach(FF m0 m8 m9 sam bam m9.gz sam.bz2)
             add_test (NAME test_search_${PROG}_${DI}_${FF}
