@@ -12,7 +12,7 @@ matrix:
         apt:
           sources: ['ubuntu-toolchain-r-test', 'george-edison55-precise-backports']
           packages: ['g++-4.9', 'cmake', 'cmake-data', 'zlib1g-dev', 'libbz2-dev']
-      install: export CXX="g++-4.9" CMAKE_ARGS="-DLAMBDA_NATIVE_BUILD=0"
+      install: export CXX="g++-4.9" CMAKE_ARGS=""
       before_script:
         - sudo dd if=/dev/zero of=/swapfile bs=64M count=32 # cheat us some extra MEM
         - sudo mkswap /swapfile
@@ -63,13 +63,13 @@ matrix:
       compiler: gcc-4.9
       install: export CXX="g++-4.9" CMAKE_ARGS="-DLAMBDA_NATIVE_BUILD=0 -DLAMBDA_FASTBUILD=1"
 
-    - os: osx
-      compiler: gcc-5
-      before_install:
-        - sudo brew update
-        - sudo brew tap homebrew/versions
-        - sudo brew install gcc5
-      install: export CXX="g++-5" CMAKE_ARGS="-DLAMBDA_NATIVE_BUILD=0 -DLAMBDA_FASTBUILD=1"
+    #- os: osx
+      #compiler: gcc-5
+      #before_install:
+        #- sudo brew update
+        #- sudo brew tap homebrew/versions
+        #- sudo brew install gcc5
+      #install: export CXX="g++-5" CMAKE_ARGS="-DLAMBDA_NATIVE_BUILD=0 -DLAMBDA_FASTBUILD=1"
 
     #- os: osx
       #compiler: gcc-6
@@ -101,7 +101,7 @@ matrix:
         - sudo brew update
         - sudo brew tap homebrew/versions
         - sudo brew install llvm38
-      install: export CXX="clang++-3.8" CMAKE_ARGS="-DLAMBDA_NATIVE_BUILD=0 -DLAMBDA_FASTBUILD=1"
+      install: export CXX="clang++-3.8" CMAKE_ARGS='-DLAMBDA_NATIVE_BUILD=0 -DLAMBDA_FASTBUILD=1 -DCMAKE_CXX_FLAGS="-L/usr/local/Cellar/llvm38/3.8.0/lib/llvm-3.8/lib"'
 
 #before_script:
   #- export PATH=$HOME/.local/bin:$PATH
@@ -111,9 +111,10 @@ matrix:
   #- ln -s /usr/bin/ccache ${HOME}/.local/bin/${CXX}
 script:
   #- ccache -s
+  - find /usr/lib | grep omp
   - mkdir -p build && cd build
   - cmake .. ${CMAKE_ARGS}
-  - make lambda_indexer
-  - travis_wait make lambda # need to prefix with travis_wait because it might take > 10min
+  - make lambda_indexer VERBOSE=1
+  - travis_wait make lambda VERBOSE=1 # need to prefix with travis_wait because it might take > 10min
   - ctest .
   - ccache -s
