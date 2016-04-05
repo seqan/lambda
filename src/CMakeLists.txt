@@ -107,14 +107,15 @@ endif (LAMBDA_MMAPPED_DB)
 
 if (COMPILER_IS_CLANG)
     set (SEQAN_CXX_FLAGS "${SEQAN_CXX_FLAGS} -ftemplate-depth-1024")
+
+    # do not warn for variable length arrays
+    set (SEQAN_CXX_FLAGS "${SEQAN_CXX_FLAGS} -Wno-vla-extension")
 endif (COMPILER_IS_CLANG)
 
-if (NOT COMPILER_IS_INTEL)
+if(CMAKE_COMPILER_IS_GNUCXX)
     # do not warn for variable length arrays
     set (SEQAN_CXX_FLAGS "${SEQAN_CXX_FLAGS} -Wno-vla")
-endif (NOT COMPILER_IS_INTEL)
 
-if(CMAKE_COMPILER_IS_GNUCXX)
     # parallelize parts of build even for one translation unit
     include(ProcessorCount)
     ProcessorCount(NCPU)
