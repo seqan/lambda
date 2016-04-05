@@ -52,11 +52,28 @@ matrix:
           #- sudo rm /swapfile
 
     - os: linux
-      compiler: clang
+      compiler: clang-3.8
       addons:
         apt:
-          sources: ['ubuntu-toolchain-r-test', 'george-edison55-precise-backports']
-          packages: ['clang', 'g++-4.9', 'cmake', 'cmake-data', 'zlib1g-dev', 'libbz2-dev'] # g++ required for newer libstdc++
+          sources: ['ubuntu-toolchain-r-test', 'george-edison55-precise-backports', 'llvm-toolchain-precise-3.8']
+          packages: ['clang-3.8', 'g++-4.9', 'cmake', 'cmake-data', 'zlib1g-dev', 'libbz2-dev'] # g++ required for newer libstdc++
+      install: ['export CXX="clang++-3.8"' ]
+
+    - os: osx
+      compiler: gcc-4.9
+      before_install:
+        - sudo brew update
+        - sudo brew tap homebrew/versions
+        - sudo brew install gcc49
+      install: ['export CXX="g++-4.9"' ]
+
+    - os: osx
+      compiler: gcc-6
+      before_install:
+        - sudo brew update
+        - sudo brew tap homebrew/versions
+        - sudo brew install gcc6
+      install: ['export CXX="g++-6"' ]
 
     #- os: osx
       #compiler: clang-3.6
