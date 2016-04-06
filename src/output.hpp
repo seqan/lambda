@@ -81,23 +81,25 @@ constexpr const std::array<std::pair<const char*, const char*>, 11> SamBamExtraT
 // ----------------------------------------------------------------------------
 
 // similar to _untranslatePositions() from the blast module
-template <typename TSequence1, typename TSequence2, typename TBlastMatch>
+template <typename TSequence1, typename TSequence2, typename TNum>
 inline void
 _untranslateSequence(TSequence1                     & target,
                      TSequence2               const & source,
-                     TBlastMatch              const & m)
+                     TNum                     const   qStart,
+                     TNum                     const   qEnd,
+                     int                      const   qFrameShift)
 {
-    if (m.qFrameShift >= 0)
+    if (qFrameShift >= 0)
     {
         target = infix(source,
-                       3 * m.qStart + std::abs(m.qFrameShift) - 1,
-                       3 * m.qEnd + std::abs(m.qFrameShift) - 1);
+                       3 * qStart + std::abs(qFrameShift) - 1,
+                       3 * qEnd + std::abs(qFrameShift) - 1);
     }
     else
     {
         target = infix(source,
-                       length(source) - (3 * m.qEnd + std::abs(m.qFrameShift) - 1),
-                       length(source) - (3 * m.qStart + std::abs(m.qFrameShift) - 1));
+                       length(source) - (3 * qEnd + std::abs(qFrameShift) - 1),
+                       length(source) - (3 * qStart + std::abs(qFrameShift) - 1));
         reverseComplement(target);
     }
 }
@@ -116,23 +118,26 @@ blastMatchOneCigar(TCigar & cigar,
 
     SEQAN_ASSERT_EQ(length(m.alignRow0), length(m.alignRow1));
 
-    // hard clipping
-    unsigned leftClip   = m.qStart;
-    unsigned rightClip  = m.qEnd;
+    // translate positions into dna space
+    unsigned const transFac       = qIsTranslated(lH.gH.blastProgram) ? 3 : 1;
+    // clips resulting from translation / frameshift are always hard clips
+    unsigned const leftFrameClip  = std::abs(m.qFrameShift) - 1;
+    unsigned const rightFrameClip = qIsTranslated(lH.gH.blastProgram) ? (m.qLength - leftFrameClip) % 3 : 0;
+    // regular clipping from local alignment (regions outside match) can be hard or soft
+    unsigned const leftClip       = m.qStart * transFac;
+    unsigned const rightClip      = (length(source(m.alignRow0)) - m.qEnd) * transFac;
 
-    // translation factor
-    unsigned transFac   = 1;
-    if (qIsTranslated(lH.gH.blastProgram))
+    if (lH.options.samBamHardClip)
     {
-        transFac  = 3;
-        leftClip  = leftClip * 3 + std::abs(m.qFrameShift) - 1;
-        rightClip = rightClip * 3 + std::abs(m.qFrameShift) - 1;
+        if (leftFrameClip + leftClip > 0)
+            appendValue(cigar, TCElem('H', leftFrameClip + leftClip));
+    } else
+    {
+        if (leftFrameClip > 0)
+            appendValue(cigar, TCElem('H', leftFrameClip));
+        if (leftClip > 0)
+            appendValue(cigar, TCElem('S', leftClip));
     }
-    // we want distance to end
-    rightClip = m.qLength - rightClip;
-
-    if (leftClip > 0)
-        appendValue(cigar, TCElem('H', leftClip));
 
     for (unsigned i = 0, count = 0; i < length(m.alignRow0); /* incremented below */)
     {
@@ -167,8 +172,17 @@ blastMatchOneCigar(TCigar & cigar,
             appendValue(cigar, TCElem('M', count * transFac));
     }
 
-    if (rightClip > 0)
-        appendValue(cigar, TCElem('H', rightClip));
+    if (lH.options.samBamHardClip)
+    {
+        if (rightFrameClip + rightClip > 0)
+            appendValue(cigar, TCElem('H', rightFrameClip + rightClip));
+    } else
+    {
+        if (rightClip > 0)
+            appendValue(cigar, TCElem('S', rightClip));
+        if (rightFrameClip > 0)
+            appendValue(cigar, TCElem('H', rightFrameClip));
+    }
 
     if (m.qFrameShift < 0)
         reverse(cigar);
@@ -180,16 +194,36 @@ inline void
 blastMatchTwoCigar(TCigar & dnaCigar,
                    TCigar & protCigar,
                    TBlastMatch const & m,
-                   TLocalHolder const &)
+                   TLocalHolder const & lH)
 {
     using TCElem = typename Value<TCigar>::Type;
 
     SEQAN_ASSERT_EQ(length(m.alignRow0), length(m.alignRow1));
 
-    if (m.qStart > 0)
+    // clips resulting from translation / frameshift are always hard clips
+    unsigned const leftFrameClip  = std::abs(m.qFrameShift) - 1;            // in dna space
+    unsigned const rightFrameClip = (m.qLength - leftFrameClip) % 3;          // in dna space
+    // regular clipping from local alignment (regions outside match) can be hard or soft
+    unsigned const leftClip       = m.qStart;                               // in protein space
+    unsigned const rightClip      = length(source(m.alignRow0)) - m.qEnd;   // in protein space
+
+    if (lH.options.samBamHardClip)
     {
-        appendValue(dnaCigar, TCElem('H', m.qStart * 3 + std::abs(m.qFrameShift) - 1));
-        appendValue(protCigar, TCElem('H', m.qStart));
+        if (leftFrameClip + leftClip > 0)
+            appendValue(dnaCigar, TCElem('H', leftFrameClip + 3 * leftClip));
+        if (leftClip > 0)
+            appendValue(protCigar, TCElem('H', leftClip));
+
+    } else
+    {
+        if (leftFrameClip > 0)
+            appendValue(dnaCigar, TCElem('H', leftFrameClip));
+
+        if (leftClip > 0)
+        {
+            appendValue(dnaCigar, TCElem('S', 3 * leftClip));
+            appendValue(protCigar, TCElem('S', leftClip));
+        }
     }
 
     for (unsigned i = 0, count = 0; i < length(m.alignRow0); /* incremented below */)
@@ -234,11 +268,23 @@ blastMatchTwoCigar(TCigar & dnaCigar,
         }
     }
 
-    unsigned rightDnaClip = m.qLength - (m.qEnd * 3 + std::abs(m.qFrameShift) - 1);
-    if (rightDnaClip > 0)
+    if (lH.options.samBamHardClip)
     {
-        appendValue(dnaCigar, TCElem('H', rightDnaClip));
-        appendValue(protCigar, TCElem('H', ((m.qLength - std::abs(m.qFrameShift) + 1) / 3) - m.qEnd));
+        if (rightFrameClip + rightClip > 0)
+            appendValue(dnaCigar, TCElem('H', rightFrameClip + 3 * rightClip));
+        if (rightClip > 0)
+            appendValue(protCigar, TCElem('H', rightClip));
+
+    } else
+    {
+        if (rightClip > 0)
+        {
+            appendValue(dnaCigar, TCElem('S', 3 * rightClip));
+            appendValue(protCigar, TCElem('S', rightClip));
+        }
+
+        if (rightFrameClip > 0)
+            appendValue(dnaCigar, TCElem('H', rightFrameClip));
     }
 
     if (m.qFrameShift < 0)
@@ -449,26 +495,49 @@ myWriteRecord(TLH & lH, TRecord const & record)
             {
                 writeSeq = true;
             }
-            else if (lH.options.samBamSeq == 1)// only uniq sequences
+            else if ((lH.options.samBamSeq == 1))// && lH.options.samBamHardClip)// only uniq sequences
             {
                 decltype(mIt) mPrevIt = mIt - 1;
-                writeSeq = ((beginPosition(mIt->alignRow0) != beginPosition(mPrevIt->alignRow0)) ||
-                            (endPosition(mIt->alignRow0)) != endPosition(mPrevIt->alignRow0));
+                writeSeq = ((mIt->qFrameShift              != mPrevIt->qFrameShift) ||
+                            (beginPosition(mIt->alignRow0) != beginPosition(mPrevIt->alignRow0)) ||
+                            (endPosition(mIt->alignRow0)   != endPosition(mPrevIt->alignRow0)));
             }
-            if (writeSeq)
+
+            if (lH.gH.blastProgram == BlastProgram::BLASTN)
             {
-                // only dna sequences supported
-                if (lH.gH.blastProgram == BlastProgram::BLASTN)
-                    bamR.seq = infix(source(mIt->alignRow0),
-                                    beginPosition(mIt->alignRow0),
-                                    endPosition(mIt->alignRow0));
-                // untranslation is ok, too
-                else if (qIsTranslated(lH.gH.blastProgram))
-                    _untranslateSequence(bamR.seq,
-                                        lH.gH.untranslatedQrySeqs[mIt->_n_qId],
-                                        *mIt);
-                // else no sequence is available
+                if (lH.options.samBamHardClip)
+                {
+                    if (writeSeq)
+                        bamR.seq = infix(source(mIt->alignRow0),
+                                         beginPosition(mIt->alignRow0),
+                                         endPosition(mIt->alignRow0));
+                } else
+                {
+                    if (writeSeq)
+                        bamR.seq = source(mIt->alignRow0);
+                }
             }
+            else if (qIsTranslated(lH.gH.blastProgram))
+            {
+                if (lH.options.samBamHardClip)
+                {
+                    if (writeSeq)
+                        _untranslateSequence(bamR.seq,
+                                             lH.gH.untranslatedQrySeqs[mIt->_n_qId],
+                                             mIt->qStart,
+                                             mIt->qEnd,
+                                             mIt->qFrameShift);
+                } else
+                {
+                    if (writeSeq)
+                        _untranslateSequence(bamR.seq,
+                                             lH.gH.untranslatedQrySeqs[mIt->_n_qId],
+                                             decltype(length(source(mIt->alignRow0)))(0u),
+                                             length(source(mIt->alignRow0)),
+                                             mIt->qFrameShift);
+                }
+            } // else original query is protein and cannot be printed
+
 
             // custom tags
             //TODO untranslate?
@@ -511,12 +580,17 @@ myWriteRecord(TLH & lH, TRecord const & record)
                     appendTagValue(bamR.tags,
                                    std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::Q_AA_SEQ]),
                                    "*", 'Z');
-                else
+                else if (lH.options.samBamHardClip)
                     appendTagValue(bamR.tags,
                                    std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::Q_AA_SEQ]),
                                    infix(source(mIt->alignRow0),
                                          beginPosition(mIt->alignRow0),
                                          endPosition(mIt->alignRow0)),
+                                   'Z');
+                else // full prot sequence
+                    appendTagValue(bamR.tags,
+                                   std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::Q_AA_SEQ]),
+                                   source(mIt->alignRow0),
                                    'Z');
             }
             if (lH.options.samBamTags[SamBamExtraTags<>::Q_AA_CIGAR])

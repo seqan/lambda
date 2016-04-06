@@ -235,6 +235,7 @@ struct LambdaOptions : public SharedOptions
     std::bitset<64> samBamTags;
     bool            samWithRefHeader;
     unsigned        samBamSeq;
+    bool            samBamHardClip;
     bool            versionInformationToOutputFile;
 
     unsigned        queryPart = 0;
@@ -477,6 +478,15 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         "STR"));
     setDefaultValue(parser, "sam-bam-tags", "AS NM ZE ZI ZF");
     setAdvanced(parser, "sam-bam-tags");
+
+    addOption(parser, ArgParseOption("", "sam-bam-clip",
+        "Whether to hard-clip or soft-clip the regions beyond the local match. Soft-clipping retains the full sequence "
+        "in the output file, but obviously uses more space.",
+        ArgParseArgument::STRING,
+        "STR"));
+    setValidValues(parser, "sam-bam-clip", "hard soft");
+    setDefaultValue(parser, "sam-bam-clip", "hard");
+    setAdvanced(parser, "sam-bam-clip");
 
     addOption(parser, ArgParseOption("", "version-to-outputfile",
         "Write the Lambda program tag and version number to the output file.",
@@ -782,6 +792,10 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         options.samBamSeq = 1;
     else
         options.samBamSeq = 2;
+
+    clear(buffer);
+    getOptionValue(buffer, parser, "sam-bam-clip");
+    options.samBamHardClip = (buffer == "hard");
 
     clear(buffer);
     getOptionValue(buffer, parser, "output-columns");
