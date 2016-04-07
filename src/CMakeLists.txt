@@ -181,26 +181,21 @@ endif (NOT SEQAN_PREFIX_SHARE_DOC)
 install (TARGETS lambda lambda_indexer
          DESTINATION bin)
 
-# Install non-binary files for the package to "." for app builds and
-# ${PREFIX}/share/doc/lambda for SeqAn release builds.
+# Install non-binary files for the package to share/lambda
 install (FILES ../LICENSE-GPL3.rst
                ../README.rst
                ../COPYING.rst
          DESTINATION ${SEQAN_PREFIX_SHARE_DOC})
-# install (FILES example/fasta1.fa
-#               example/fasta2.fa
-#         DESTINATION ${SEQAN_PREFIX_SHARE_DOC}/example)
 
 # ----------------------------------------------------------------------------
 # CPack Install
 # ----------------------------------------------------------------------------
 
-if (SEQAN_BUILD_SYSTEM STREQUAL "APP:lambda")
-  set (CPACK_PACKAGE_NAME "lambda")
-  set (CPACK_PACKAGE_DESCRIPTION_SUMMARY "lambda")
-  set (CPACK_DEBIAN_PACKAGE_MAINTAINER "Your Name <your.email@example.net>")
-  set (CPACK_PACKAGE_VENDOR "Your Name <your.email@example.net>")
+set (CPACK_PACKAGE_NAME "lambda")
+set (CPACK_PACKAGE_DESCRIPTION_SUMMARY "lambda -- the local aligner for massive bioligical data")
+set (CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/../README.rst")
+set (CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/../LICENSE-GPL3.rst")
+set (CPACK_PACKAGE_VENDOR "Hannes Hauswedell <hannes.hauswedell()fu-berlin.de>")
+set (CPACK_PACKAGE_CONTACT "${CPACK_PACKAGE_VENDOR}")
 
-  seqan_configure_cpack_app (lambda "lambda")
-endif (SEQAN_BUILD_SYSTEM STREQUAL "APP:lambda")
-
+seqan_configure_cpack_app (lambda "lambda")
