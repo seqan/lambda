@@ -677,13 +677,16 @@ seedLooksPromising(LocalDataHolder<TGlobalHolder, TScoreExtension> const & lH,
 
     int64_t effectiveQBegin = m.qryStart;
     int64_t effectiveSBegin = m.subjStart;
-    uint64_t effectiveLength = lH.options.seedLength * lH.options.preScoring;
-    if (lH.options.preScoring > 1)
+    uint64_t actualLength = m.qryEnd - m.qryStart;
+    uint64_t effectiveLength = std::max(static_cast<uint64_t>(lH.options.seedLength * lH.options.preScoring),
+                                        actualLength);
+
+    if (effectiveLength > actualLength)
     {
         effectiveQBegin -= (lH.options.preScoring - 1) *
-                           lH.options.seedLength / 2;
+                           actualLength / 2;
         effectiveSBegin -= (lH.options.preScoring - 1) *
-                           lH.options.seedLength / 2;
+                           actualLength / 2;
 //         std::cout << effectiveQBegin << "\t" << effectiveSBegin << "\n";
         int64_t min = std::min(effectiveQBegin, effectiveSBegin);
         if (min < 0)
@@ -753,10 +756,12 @@ onFind(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
                      - getSeqOffset(subjOcc)
                      - lH.options.seedLength);
 
-    TMatch m{static_cast<typename TMatch::TQId>(lH.seedRefs[seedId]),
-             static_cast<typename TMatch::TSId>(getSeqNo(subjOcc)),
-             static_cast<typename TMatch::TPos>(lH.seedRanks[seedId] * lH.options.seedOffset),
-             static_cast<typename TMatch::TPos>(getSeqOffset(subjOcc))};
+    Match m {static_cast<Match::TQId>(lH.seedRefs[seedId]),
+             static_cast<Match::TSId>(getSeqNo(subjOcc)),
+             static_cast<Match::TPos>(lH.seedRanks[seedId] * lH.options.seedOffset),
+             static_cast<Match::TPos>(lH.seedRanks[seedId] * lH.options.seedOffset + lH.options.seedLength),
+             static_cast<Match::TPos>(getSeqOffset(subjOcc)),
+             static_cast<Match::TPos>(getSeqOffset(subjOcc) + lH.options.seedLength)};
 
     bool discarded = false;
     auto const halfSubjL = lH.options.seedLength /  2;
@@ -767,7 +772,7 @@ onFind(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
         {
             // more than half of the seed falls into masked interval
             if (intervalOverlap(m.subjStart,
-                                m.subjStart + lH.options.seedLength,
+                                m.subjEnd,
                                 lH.gH.segIntStarts[m.subjId][k],
                                 lH.gH.segIntEnds[m.subjId][k])
                     >= halfSubjL)
@@ -789,9 +794,208 @@ onFind(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
         lH.matches.emplace_back(m);
 }
 
+template <typename TMatch,
+          typename TGlobalHolder,
+          typename TScoreExtension,
+          typename TSubjOcc>
+inline void
+onFindVariable(LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> & lH,
+               TSubjOcc subjOcc,
+               Match::TQId const seedId,
+               Match::TPos const seedBegin,
+               Match::TPos const seedLength)
+{
+    if (TGlobalHolder::indexIsFM) // positions are reversed
+        setSeqOffset(subjOcc,
+                     length(lH.gH.subjSeqs[getSeqNo(subjOcc)])
+                     - getSeqOffset(subjOcc)
+                     - seedLength);
+
+    Match m {seedId,
+             static_cast<Match::TSId>(getSeqNo(subjOcc)),
+             seedBegin,
+             static_cast<Match::TPos>(seedBegin + seedLength),
+             static_cast<Match::TPos>(getSeqOffset(subjOcc)),
+             static_cast<Match::TPos>(getSeqOffset(subjOcc) + seedLength)};
+
+     if (!seedLooksPromising(lH, m))
+         ++lH.stats.hitsFailedPreExtendTest;
+     else
+        lH.matches.emplace_back(m);
+}
+
 // --------------------------------------------------------------------------
 // Function search()
 // --------------------------------------------------------------------------
+
+template <typename TIndexIt, typename TString, typename TPos, typename TLambda, typename TLambda2>
+inline void
+__goDownNoErrors(TIndexIt const & indexIt,
+                 TString const & seq,
+                 TPos const pos,
+                 TLambda & continRunnable,
+                 TLambda2 & reportRunnable)
+{
+    TIndexIt nextIndexIt(indexIt);
+    if (pos < length(seq) &&
+        goDown(nextIndexIt, seq[pos]) &&
+        continRunnable(indexIt, nextIndexIt, pos))
+    {
+        __goDownNoErrors(nextIndexIt, seq, pos + 1, continRunnable, reportRunnable);
+    } else
+    {
+        reportRunnable(indexIt, pos - 1);
+    }
+}
+
+template <typename TIndexIt, typename TString, typename TPos, typename TLambda, typename TLambda2>
+inline void
+__goDownErrors(TIndexIt const & indexIt,
+               TString const & seq,
+               TPos const pos,
+               TLambda & continRunnable,
+               TLambda2 & reportRunnable)
+{
+    using TAlph = typename Value<TString>::Type;
+
+    unsigned contin = 0;
+
+    if (pos < length(seq))
+    {
+        for (unsigned i = 0; i < ValueSize<TAlph>::VALUE; ++i)
+        {
+            TIndexIt nextIndexIt(indexIt);
+            if (goDown(nextIndexIt, static_cast<TAlph>(i)) &&
+                continRunnable(indexIt, nextIndexIt, pos))
+            {
+                ++contin;
+                if (ordValue(seq[pos]) == i)
+                    __goDownErrors(nextIndexIt, seq, pos + 1, continRunnable, reportRunnable);
+                else
+                    __goDownNoErrors(nextIndexIt, seq, pos + 1, continRunnable, reportRunnable);
+            }
+        }
+    }
+
+    if (contin == 0)
+        reportRunnable(indexIt, pos - 1);
+}
+
+template <typename TMatch,
+          typename TGlobalHolder,
+          typename TScoreExtension>
+inline void
+__searchVariable(LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> & lH)
+{
+    typedef typename Iterator<typename TGlobalHolder::TDbIndex, TopDown<> >::Type TIndexIt;
+
+    // TODO optionize
+//     size_t minSeedLength = lH.options.seedLength;
+
+    size_t constexpr seedHeurFactor = 2;
+    size_t constexpr minResults = 5;
+
+
+    size_t needlesSum = lengthSum(infix(lH.gH.redQrySeqs, lH.indexBeginQry, lH.indexEndQry));
+    size_t needlesPos = 0;
+//     size_t desiredOccs = 0;
+
+    TIndexIt root(lH.gH.dbIndex);
+    TIndexIt indexIt = root;
+//     TIndexIt prevIndexIt = indexIt;
+
+    for (size_t i = lH.indexBeginQry; i < lH.indexEndQry; ++i)
+    {
+        size_t seedBegin = 0;
+        for (; seedBegin <= length(lH.gH.redQrySeqs[i]) - lH.options.seedLength;)
+        {
+            indexIt = root;
+
+            int foo = 0;
+            // seed must be at least minSeedLength long
+//             for (unsigned c = 0; c < lH.options.seedLength; ++c)
+//                 foo += !goDown(indexIt, lH.gH.redQrySeqs[i][seedBegin + c]);
+
+//             prevIndexIt = indexIt;
+
+            if (foo == 0)
+            {
+                // dynamically grow seed
+//                 size_t pos = seedBegin + lH.options.seedLength;
+
+                auto continRunnable = [&] (TIndexIt const & prevIndexIt, TIndexIt const & indexIt, size_t const /**/)
+                {
+                    // NON-ADAPTIVE
+                    return (repLength(indexIt) <= lH.options.seedLength);
+                    // ADAPTIVE SEEDING:
+
+//                     // always continue if minimum seed length not reached
+//                     if (repLength(indexIt) < lH.options.seedLength)
+//                         return true;
+//
+//                     // do vodoo heuristics to see if this hit is to frequent
+//                     size_t desiredOccs = length(lH.matches) >= lH.options.maxMatches
+//                                             ? minResults
+//                                             : ((needlesSum - needlesPos - repLength(indexIt)) * seedHeurFactor / repLength(indexIt));
+//
+//                     if ((countOccurrences(indexIt) != countOccurrences(prevIndexIt)) &&
+//                         (countOccurrences(indexIt) < desiredOccs))
+//                     {
+//                         return false;
+//                     }
+//                     return true;
+                };
+
+
+                auto reportRunnable = [&] (TIndexIt const & indexIt, size_t const /**/)
+                {
+                    if (repLength(indexIt) >= lH.options.seedLength)
+                    {
+                        lH.stats.hitsAfterSeeding += countOccurrences(indexIt);
+                        for (auto const & occ : getOccurrences(indexIt))
+                            onFindVariable(lH, occ, i, seedBegin, repLength(indexIt));// pos - seedBegin);
+                    }
+                };
+
+                __goDownErrors(indexIt, lH.gH.redQrySeqs[i], seedBegin, continRunnable, reportRunnable);
+//                 for (; pos < length(lH.gH.redQrySeqs[i]); ++pos)
+//                 {
+//                     prevIndexIt = indexIt;
+//                     // break if we can grow seed
+//                     if (!goDown(indexIt, lH.gH.redQrySeqs[i][pos]))
+//                         break;
+//
+//                     desiredOccs = (length(lH.matches) >= lH.options.maxMatches)
+//                                     ? minResults
+//                                     : ((needlesSum - needlesPos - pos) * seedHeurFactor / pos);
+//                     // break if we would loose to many hits
+//                     if ((countOccurrences(indexIt) != countOccurrences(prevIndexIt)) &&
+//                         (countOccurrences(indexIt) < desiredOccs))
+//                         break;
+//                 }
+//
+//                 // getOccurrences
+//                 if (countOccurrences(prevIndexIt) < lH.options.maxMatches)//* 2) // filter out abundant
+//                 {
+//                     lH.stats.hitsAfterSeeding += countOccurrences(prevIndexIt);
+//                     for (auto const & occ : getOccurrences(prevIndexIt))
+//                         onFindVariable(lH, occ, i, seedBegin, pos - seedBegin);
+//                 }
+
+                // set beginning of next seed (-2 so we have some overlap)
+//                 seedBegin  = pos - lH.options.seedOffset - lH.options.seedLength;
+                seedBegin += lH.options.seedOffset;
+
+
+            } else
+            {
+                ++seedBegin;
+
+            }
+        }
+        needlesPos += length(lH.gH.redQrySeqs[i]);
+    }
+}
 
 template <typename BackSpec, typename TLocalHolder>
 inline void
@@ -878,7 +1082,9 @@ template <typename TLocalHolder>
 inline void
 search(TLocalHolder & lH)
 {
-    if (lH.options.maxSeedDist == 0)
+    if (lH.options.adaptiveSeeding)
+        __searchVariable(lH);
+    else if (lH.options.maxSeedDist == 0)
         __search<Backtracking<Exact>>(lH);
     else if (lH.options.hammingOnly)
         __search<Backtracking<HammingDistance>>(lH);
@@ -1443,9 +1649,9 @@ iterateMatches(TLocalHolder & lH)
                 auto & bm = back(record.matches);
 
                 bm.qStart    = it->qryStart;
-                bm.qEnd      = it->qryStart + lH.options.seedLength;
+                bm.qEnd      = it->qryEnd; // it->qryStart + lH.options.seedLength;
                 bm.sStart    = it->subjStart;
-                bm.sEnd      = it->subjStart + lH.options.seedLength;
+                bm.sEnd      = it->subjEnd;//it->subjStart + lH.options.seedLength;
 
                 bm.qLength = record.qLength;
                 bm.sLength = sIsTranslated(lH.gH.blastProgram)
@@ -1453,34 +1659,36 @@ iterateMatches(TLocalHolder & lH)
                                 : length(lH.gH.subjSeqs[it->subjId]);
 
                 // MERGE PUTATIVE SIBLINGS INTO THIS MATCH
-                for (auto it2 = itN;
-                     (it2 != itEnd) &&
-                     (trueQryId == it2->qryId / qNumFrames(lH.gH.blastProgram)) &&
-                     (trueSubjId == it2->subjId / sNumFrames(lH.gH.blastProgram));
-                    ++it2)
+                if (lH.options.mergePutativeSiblings)
                 {
-                    // same frame
-                    if ((it->qryId % qNumFrames(lH.gH.blastProgram) == it2->qryId % qNumFrames(lH.gH.blastProgram)) &&
-                        (it->subjId % sNumFrames(lH.gH.blastProgram) == it2->subjId % sNumFrames(lH.gH.blastProgram)))
+                    for (auto it2 = itN;
+                        (it2 != itEnd) &&
+                        (trueQryId == it2->qryId / qNumFrames(lH.gH.blastProgram)) &&
+                        (trueSubjId == it2->subjId / sNumFrames(lH.gH.blastProgram));
+                        ++it2)
                     {
+                        // same frame
+                        if ((it->qryId % qNumFrames(lH.gH.blastProgram) == it2->qryId % qNumFrames(lH.gH.blastProgram)) &&
+                            (it->subjId % sNumFrames(lH.gH.blastProgram) == it2->subjId % sNumFrames(lH.gH.blastProgram)))
+                        {
 
-//                         TPos const qDist = (it2->qryStart >= bm.qEnd)
-//                                             ? it2->qryStart - bm.qEnd // upstream
-//                                             : 0; // overlap
-// 
-//                         TPos sDist = TPosMax; // subj match region downstream of *it
-//                         if (it2->subjStart >= bm.sEnd) // upstream
-//                             sDist = it2->subjStart - bm.sEnd;
-//                         else if (it2->subjStart >= it->subjStart) // overlap
-//                             sDist = 0;
+    //                         TPos const qDist = (it2->qryStart >= bm.qEnd)
+    //                                             ? it2->qryStart - bm.qEnd // upstream
+    //                                             : 0; // overlap
+    //
+    //                         TPos sDist = TPosMax; // subj match region downstream of *it
+    //                         if (it2->subjStart >= bm.sEnd) // upstream
+    //                             sDist = it2->subjStart - bm.sEnd;
+    //                         else if (it2->subjStart >= it->subjStart) // overlap
+    //                             sDist = 0;
 
-                        // due to sorting it2->qryStart never <= it->qStart
-                        // so subject sequences must have same order
-                        if (it2->subjStart < it->subjStart)
-                            continue;
+                            // due to sorting it2->qryStart never <= it->qStart
+                            // so subject sequences must have same order
+                            if (it2->subjStart < it->subjStart)
+                                continue;
 
-                        long const qDist = it2->qryStart - bm.qEnd;
-                        long const sDist = it2->subjStart - bm.sEnd;
+                            long const qDist = it2->qryStart - bm.qEnd;
+                            long const sDist = it2->subjStart - bm.sEnd;
 
                         if ((qDist == sDist) &&
                             (qDist <= (long)lH.options.seedGravity))
@@ -1493,7 +1701,8 @@ iterateMatches(TLocalHolder & lH)
                                                + lH.options.seedLength));
                             ++lH.stats.hitsMerged;
 
-                            setToSkip(*it2);
+                                setToSkip(*it2);
+                            }
                         }
                     }
                 }
@@ -1526,16 +1735,20 @@ iterateMatches(TLocalHolder & lH)
                           << "subjId: " << it->subjId << "\t"
                           << "seed    qry: " << infix(lH.gH.redQrySeqs,
                                                       it->qryStart,
-                                                      it->qryStart + lH.options.seedLength)
+                                                      it->qryEnd)
+//                                                       it->qryStart + lH.options.seedLength)
                           << "\n       subj: " << infix(lH.gH.redSubjSeqs,
                                                       it->subjStart,
-                                                      it->subjStart + lH.options.seedLength)
+                                                      it->subjEnd)
+//                                                       it->subjStart + lH.options.seedLength)
                           << "\nunred  qry: " << infix(lH.gH.qrySeqs,
                                                       it->qryStart,
-                                                      it->qryStart + lH.options.seedLength)
+                                                      it->qryEnd)
+//                                                       it->qryStart + lH.options.seedLength)
                           << "\n       subj: " << infix(lH.gH.subjSeqs,
                                                       it->subjStart,
-                                                      it->subjStart + lH.options.seedLength)
+                                                      it->subjEnd)
+//                                                       it->subjStart + lH.options.seedLength)
                           << "\nmatch    qry: " << infix(lH.gH.qrySeqs,
                                                       bm.qStart,
                                                       bm.qEnd)
@@ -1564,11 +1777,13 @@ iterateMatches(TLocalHolder & lH)
                         if ((it->qryId == it2->qryId) &&
                             (it->subjId == it2->subjId) &&
                             (intervalOverlap(it2->qryStart,
-                                             it2->qryStart + lH.options.seedLength,
+                                             it2->qryEnd,
+//                                              it2->qryStart + lH.options.seedLength,
                                              bm.qStart,
                                              bm.qEnd) > 0) &&
                             (intervalOverlap(it2->subjStart,
-                                             it2->subjStart + lH.options.seedLength,
+                                             it2->subjEnd,
+//                                              it2->subjStart + lH.options.seedLength,
                                              bm.sStart,
                                              bm.sEnd) > 0))
                         {

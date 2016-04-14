@@ -49,10 +49,10 @@ struct Match
     TQId qryId;
     TSId subjId;
     TPos qryStart;
-//     TPos qryEnd;
+    TPos qryEnd;
 
     TPos subjStart;
-//     TPos subjEnd;
+    TPos subjEnd;
 
 //     Match()
 //     :
@@ -72,13 +72,13 @@ struct Match
 
     inline bool operator== (Match const & m2) const
     {
-         return std::tie(qryId, subjId, qryStart, subjStart/*, qryEnd, subjEnd*/)
-             == std::tie(m2.qryId, m2.subjId, m2.qryStart, m2.subjStart/*, m2.qryEnd, m2.subjEnd*/);
+         return std::tie(qryId, subjId, qryStart, subjStart, qryEnd, subjEnd)
+             == std::tie(m2.qryId, m2.subjId, m2.qryStart, m2.subjStart, m2.qryEnd, m2.subjEnd);
     }
     inline bool operator< (Match const & m2) const
     {
-         return std::tie(qryId, subjId, qryStart, subjStart/*, qryEnd, subjEnd*/)
-              < std::tie(m2.qryId, m2.subjId, m2.qryStart, m2.subjStart/*, m2.qryEnd, m2.subjEnd*/);
+         return std::tie(qryId, subjId, qryStart, subjStart, qryEnd, subjEnd)
+              < std::tie(m2.qryId, m2.subjId, m2.qryStart, m2.subjStart, m2.qryEnd, m2.subjEnd);
     }
 };
 
@@ -278,15 +278,15 @@ myHyperSortSingleIndex(std::vector<Match<TAlph>> & matches,
 // }
 
 
-// inline void
-// _printMatch(Match const & m)
-// {
-//     std::cout << "MATCH  Query " << m.qryId
-//               << "(" << m.qryStart << ", " << m.qryEnd
-//               << ")   on Subject "<< m.subjId
-//               << "(" << m.subjStart << ", " << m.subjEnd
-//               << ")" <<  std::endl << std::flush;
-// }
+inline void
+_printMatch(Match const & m)
+{
+    std::cout << "MATCH  Query " << m.qryId
+              << "(" << m.qryStart << ", " << m.qryEnd
+              << ")   on Subject "<< m.subjId
+              << "(" << m.subjStart << ", " << m.subjEnd
+              << ")" <<  std::endl << std::flush;
+}
 
 
 

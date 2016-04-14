@@ -446,9 +446,12 @@ realMain(LambdaOptions                  const & options,
             localHolder.init(t);
 
             // seed
-            res = generateSeeds(localHolder);
-            if (res)
-                continue;
+            if (options.seedLength > 0) // constant length seeding
+            {
+                res = generateSeeds(localHolder);
+                if (res)
+                    continue;
+            }
 
             if (options.doubleIndexing)
             {
@@ -460,8 +463,13 @@ realMain(LambdaOptions                  const & options,
             // search
             search(localHolder);
 
+//             // TODO DEBUG
+//             for (auto const & m : localHolder.matches)
+//                 _printMatch(m);
+
             // sort
-            sortMatches(localHolder);
+            if (options.filterPutativeAbundant || options.filterPutativeDuplicates || options.mergePutativeSiblings)
+                sortMatches(localHolder);
 
             // extend
             res = iterateMatches(localHolder);
