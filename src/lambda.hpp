@@ -828,171 +828,136 @@ onFindVariable(LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> & lH,
 // Function search()
 // --------------------------------------------------------------------------
 
-template <typename TIndexIt, typename TString, typename TPos, typename TLambda, typename TLambda2>
+template <typename TIndexIt, typename TNeedleIt, typename TLambda, typename TLambda2>
 inline void
 __goDownNoErrors(TIndexIt const & indexIt,
-                 TString const & seq,
-                 TPos const pos,
+                 TNeedleIt const & needleIt,
+                 TNeedleIt const & needleItEnd,
                  TLambda & continRunnable,
                  TLambda2 & reportRunnable)
 {
     TIndexIt nextIndexIt(indexIt);
-    if (pos < length(seq) &&
-        goDown(nextIndexIt, seq[pos]) &&
-        continRunnable(indexIt, nextIndexIt, pos))
+    if ((needleIt != needleItEnd) &&
+        goDown(nextIndexIt, *needleIt) &&
+        continRunnable(indexIt, nextIndexIt))
     {
-        __goDownNoErrors(nextIndexIt, seq, pos + 1, continRunnable, reportRunnable);
+        __goDownNoErrors(nextIndexIt, needleIt + 1, needleItEnd, continRunnable, reportRunnable);
     } else
     {
-        reportRunnable(indexIt, pos - 1);
+        reportRunnable(indexIt);
     }
 }
 
-template <typename TIndexIt, typename TString, typename TPos, typename TLambda, typename TLambda2>
+template <typename TIndexIt, typename TNeedleIt, typename TLambda, typename TLambda2>
 inline void
 __goDownErrors(TIndexIt const & indexIt,
-               TString const & seq,
-               TPos const pos,
+               TNeedleIt const & needleIt,
+               TNeedleIt const & needleItEnd,
                TLambda & continRunnable,
                TLambda2 & reportRunnable)
 {
-    using TAlph = typename Value<TString>::Type;
+    using TAlph = typename Value<TNeedleIt>::Type;
 
     unsigned contin = 0;
 
-    if (pos < length(seq))
+    if (needleIt != needleItEnd)
     {
         for (unsigned i = 0; i < ValueSize<TAlph>::VALUE; ++i)
         {
             TIndexIt nextIndexIt(indexIt);
             if (goDown(nextIndexIt, static_cast<TAlph>(i)) &&
-                continRunnable(indexIt, nextIndexIt, pos))
+                continRunnable(indexIt, nextIndexIt))
             {
                 ++contin;
-                if (ordValue(seq[pos]) == i)
-                    __goDownErrors(nextIndexIt, seq, pos + 1, continRunnable, reportRunnable);
+                if (ordValue(*needleIt) == i)
+                    __goDownErrors(nextIndexIt, needleIt + 1, needleItEnd, continRunnable, reportRunnable);
                 else
-                    __goDownNoErrors(nextIndexIt, seq, pos + 1, continRunnable, reportRunnable);
+                    __goDownNoErrors(nextIndexIt, needleIt + 1, needleItEnd, continRunnable, reportRunnable);
             }
         }
     }
 
     if (contin == 0)
-        reportRunnable(indexIt, pos - 1);
+        reportRunnable(indexIt);
 }
 
 template <typename TMatch,
           typename TGlobalHolder,
           typename TScoreExtension>
 inline void
-__searchVariable(LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> & lH)
+__serachAdaptive(LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> & lH,
+                 uint64_t const seedLength)
 {
     typedef typename Iterator<typename TGlobalHolder::TDbIndex, TopDown<> >::Type TIndexIt;
 
     // TODO optionize
-//     size_t minSeedLength = lH.options.seedLength;
-
-    size_t constexpr seedHeurFactor = 2;
-    size_t constexpr minResults = 5;
-
+    size_t constexpr seedHeurFactor = 1;//2;
+    size_t constexpr minResults = 1;
 
     size_t needlesSum = lengthSum(infix(lH.gH.redQrySeqs, lH.indexBeginQry, lH.indexEndQry));
     size_t needlesPos = 0;
-//     size_t desiredOccs = 0;
 
     TIndexIt root(lH.gH.dbIndex);
     TIndexIt indexIt = root;
-//     TIndexIt prevIndexIt = indexIt;
 
     for (size_t i = lH.indexBeginQry; i < lH.indexEndQry; ++i)
     {
-        size_t seedBegin = 0;
-        for (; seedBegin <= length(lH.gH.redQrySeqs[i]) - lH.options.seedLength;)
+        for (size_t seedBegin = 0; seedBegin <= length(lH.gH.redQrySeqs[i]) - seedLength;)
         {
             indexIt = root;
+            uint64_t maxSeedExtension = 0;
 
-            int foo = 0;
-            // seed must be at least minSeedLength long
-//             for (unsigned c = 0; c < lH.options.seedLength; ++c)
-//                 foo += !goDown(indexIt, lH.gH.redQrySeqs[i][seedBegin + c]);
-
-//             prevIndexIt = indexIt;
-
-            if (foo == 0)
+            auto continRunnable = [&] (TIndexIt const & prevIndexIt, TIndexIt const & indexIt)
             {
-                // dynamically grow seed
-//                 size_t pos = seedBegin + lH.options.seedLength;
+                // NON-ADAPTIVE
+//              return (repLength(indexIt) <= seedLength);
+                // ADAPTIVE SEEDING:
 
-                auto continRunnable = [&] (TIndexIt const & prevIndexIt, TIndexIt const & indexIt, size_t const /**/)
-                {
-                    // NON-ADAPTIVE
-                    return (repLength(indexIt) <= lH.options.seedLength);
-                    // ADAPTIVE SEEDING:
+                // always continue if minimum seed length not reached
+                if (repLength(indexIt) <= seedLength)
+                    return true;
 
-//                     // always continue if minimum seed length not reached
-//                     if (repLength(indexIt) < lH.options.seedLength)
-//                         return true;
-//
-//                     // do vodoo heuristics to see if this hit is to frequent
-//                     size_t desiredOccs = length(lH.matches) >= lH.options.maxMatches
-//                                             ? minResults
-//                                             : ((needlesSum - needlesPos - repLength(indexIt)) * seedHeurFactor / repLength(indexIt));
-//
-//                     if ((countOccurrences(indexIt) != countOccurrences(prevIndexIt)) &&
-//                         (countOccurrences(indexIt) < desiredOccs))
-//                     {
-//                         return false;
-//                     }
-//                     return true;
-                };
+                // always continue if it means not loosing hits
+                if (countOccurrences(indexIt) == countOccurrences(prevIndexIt))
+                    return true;
 
+                // do vodoo heuristics to see if this hit is to frequent
+                size_t desiredOccs = length(lH.matches) >= lH.options.maxMatches
+                                        ? minResults
+                                        : (lH.options.maxMatches - length(lH.matches)) * seedHeurFactor / ((needlesSum - needlesPos - repLength(indexIt)) / repLength(indexIt));
+//                                      : lH.options.maxMatches / (length(lH.gH.redQrySeqs[i]) / repLength(indexIt));
+                if (desiredOccs == 0)
+                    desiredOccs = 1u;
+                if (countOccurrences(indexIt) < desiredOccs)
+                    return false;
 
-                auto reportRunnable = [&] (TIndexIt const & indexIt, size_t const /**/)
-                {
-                    if (repLength(indexIt) >= lH.options.seedLength)
-                    {
-                        lH.stats.hitsAfterSeeding += countOccurrences(indexIt);
-                        for (auto const & occ : getOccurrences(indexIt))
-                            onFindVariable(lH, occ, i, seedBegin, repLength(indexIt));// pos - seedBegin);
-                    }
-                };
-
-                __goDownErrors(indexIt, lH.gH.redQrySeqs[i], seedBegin, continRunnable, reportRunnable);
-//                 for (; pos < length(lH.gH.redQrySeqs[i]); ++pos)
-//                 {
-//                     prevIndexIt = indexIt;
-//                     // break if we can grow seed
-//                     if (!goDown(indexIt, lH.gH.redQrySeqs[i][pos]))
-//                         break;
-//
-//                     desiredOccs = (length(lH.matches) >= lH.options.maxMatches)
-//                                     ? minResults
-//                                     : ((needlesSum - needlesPos - pos) * seedHeurFactor / pos);
-//                     // break if we would loose to many hits
-//                     if ((countOccurrences(indexIt) != countOccurrences(prevIndexIt)) &&
-//                         (countOccurrences(indexIt) < desiredOccs))
-//                         break;
-//                 }
-//
-//                 // getOccurrences
-//                 if (countOccurrences(prevIndexIt) < lH.options.maxMatches)//* 2) // filter out abundant
-//                 {
-//                     lH.stats.hitsAfterSeeding += countOccurrences(prevIndexIt);
-//                     for (auto const & occ : getOccurrences(prevIndexIt))
-//                         onFindVariable(lH, occ, i, seedBegin, pos - seedBegin);
-//                 }
-
-                // set beginning of next seed (-2 so we have some overlap)
-//                 seedBegin  = pos - lH.options.seedOffset - lH.options.seedLength;
-                seedBegin += lH.options.seedOffset;
+                return true;
+            };
 
 
-            } else
+            auto reportRunnable = [&] (TIndexIt const & indexIt)
             {
+                if (repLength(indexIt) >= seedLength)
+                {
+                    maxSeedExtension = std::max(maxSeedExtension, repLength(indexIt));
+                    lH.stats.hitsAfterSeeding += countOccurrences(indexIt);
+                    for (auto const & occ : getOccurrences(indexIt))
+                        onFindVariable(lH, occ, i, seedBegin, repLength(indexIt));// pos - seedBegin);
+                }
+            };
+
+            __goDownErrors(indexIt, begin(lH.gH.redQrySeqs[i], Standard()) + seedBegin, end(lH.gH.redQrySeqs[i], Standard()), continRunnable, reportRunnable);
+
+            // set beginning of next seed (-2 so we have some overlap)
+            if (maxSeedExtension <= seedLength - lH.options.seedOffset)
+//                     maxSeedExtension = lH.options.seedOffset;
                 ++seedBegin;
+            else
+                seedBegin += maxSeedExtension + lH.options.seedOffset - lH.options.seedLength;
+//                 seedBegin += lH.options.seedOffset;
 
-            }
         }
+
         needlesPos += length(lH.gH.redQrySeqs[i]);
     }
 }
@@ -1083,7 +1048,7 @@ inline void
 search(TLocalHolder & lH)
 {
     if (lH.options.adaptiveSeeding)
-        __searchVariable(lH);
+        __serachAdaptive(lH, lH.options.seedLength);
     else if (lH.options.maxSeedDist == 0)
         __search<Backtracking<Exact>>(lH);
     else if (lH.options.hammingOnly)

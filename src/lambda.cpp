@@ -446,7 +446,7 @@ realMain(LambdaOptions                  const & options,
             localHolder.init(t);
 
             // seed
-            if (options.seedLength > 0) // constant length seeding
+            if (!options.adaptiveSeeding)
             {
                 res = generateSeeds(localHolder);
                 if (res)
@@ -461,7 +461,7 @@ realMain(LambdaOptions                  const & options,
             }
 
             // search
-            search(localHolder);
+            search(localHolder); //TODO seed refining if iterateMatches gives 0 results
 
 //             // TODO DEBUG
 //             for (auto const & m : localHolder.matches)
