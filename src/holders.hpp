@@ -75,6 +75,12 @@ struct StatsHolder
     uint64_t hitsFinal;
     uint64_t qrysWithHit;
 
+// times
+    double timeGenSeeds;
+    double timeSearch;
+    double timeSort;
+    double timeExtend;
+
     StatsHolder()
     {
         clear();
@@ -98,6 +104,11 @@ struct StatsHolder
 
         hitsFinal = 0;
         qrysWithHit = 0;
+
+        timeGenSeeds = 0;
+        timeSearch = 0;
+        timeSort = 0;
+        timeExtend = 0;
     }
 
     StatsHolder plus(StatsHolder const & rhs)
@@ -118,6 +129,12 @@ struct StatsHolder
 
         hitsFinal += rhs.hitsFinal;
         qrysWithHit += rhs.qrysWithHit;
+
+        timeGenSeeds += rhs.timeGenSeeds;
+        timeSearch   += rhs.timeSearch;
+        timeSort     += rhs.timeSort;
+        timeExtend   += rhs.timeExtend;
+
         return *this;
     }
 
@@ -180,6 +197,12 @@ void printStats(StatsHolder const & stats, LambdaOptions const & options)
 
         if (rem != stats.hitsFinal)
             std::cout << "WARNING: hits dont add up\n";
+
+        std::cout << "Detailed Non-Wall-Clock times:\n"
+                  << " genSeeds: " << stats.timeGenSeeds << "\n"
+                  << " search:   " << stats.timeSearch << "\n"
+                  << " sort:     " << stats.timeSort << "\n"
+                  << " extend:   " << stats.timeExtend << "\n\n";
     }
 
     if (options.verbosity >= 1)

@@ -446,6 +446,7 @@ realMain(LambdaOptions                  const & options,
             localHolder.init(t);
 
             // seed
+            double buf = sysTime();
             if (!options.adaptiveSeeding)
             {
                 res = generateSeeds(localHolder);
@@ -459,9 +460,12 @@ realMain(LambdaOptions                  const & options,
                 if (res)
                     continue;
             }
+            localHolder.stats.timeGenSeeds += sysTime() - buf;
 
             // search
+            buf = sysTime();
             search(localHolder); //TODO seed refining if iterateMatches gives 0 results
+            localHolder.stats.timeSearch += sysTime() - buf;
 
 //             // TODO DEBUG
 //             for (auto const & m : localHolder.matches)
@@ -469,13 +473,18 @@ realMain(LambdaOptions                  const & options,
 
             // sort
             if (options.filterPutativeAbundant || options.filterPutativeDuplicates || options.mergePutativeSiblings)
+            {
+                buf = sysTime();
                 sortMatches(localHolder);
+                localHolder.stats.timeSort += sysTime() - buf;
+            }
 
             // extend
+            buf = sysTime();
             res = iterateMatches(localHolder);
+            localHolder.stats.timeExtend += sysTime() - buf;
             if (res)
                 continue;
-
 
             if ((!options.doubleIndexing) && (TID == 0) &&
                 (options.verbosity >= 1))
@@ -502,7 +511,7 @@ realMain(LambdaOptions                  const & options,
 
     if (!options.doubleIndexing)
     {
-        myPrint(options, 2, "Runtime: ", sysTime() - start, "s.\n\n");
+        myPrint(options, 2, "Runtime total: ", sysTime() - start, "s.\n\n");
     }
 
     printStats(globalHolder.stats, options);

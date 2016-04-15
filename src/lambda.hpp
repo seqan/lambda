@@ -905,12 +905,20 @@ __serachAdaptive(LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> & lH,
         for (size_t seedBegin = 0; seedBegin <= length(lH.gH.redQrySeqs[i]) - seedLength;)
         {
             indexIt = root;
-            uint64_t maxSeedExtension = 0;
+            size_t maxSeedExtension = 0;
+
+            size_t desiredOccs = length(lH.matches) >= lH.options.maxMatches
+                                    ? minResults
+                                    : (lH.options.maxMatches - length(lH.matches)) * seedHeurFactor /
+                                        ((needlesSum - needlesPos - seedLength) / seedLength);
+//                                  : lH.options.maxMatches / repLength(indexIt);
+            if (desiredOccs == 0)
+                desiredOccs = minResults;
 
             auto continRunnable = [&] (TIndexIt const & prevIndexIt, TIndexIt const & indexIt)
             {
                 // NON-ADAPTIVE
-//              return (repLength(indexIt) <= seedLength);
+//                 return (repLength(indexIt) <= seedLength);
                 // ADAPTIVE SEEDING:
 
                 // always continue if minimum seed length not reached
@@ -922,12 +930,6 @@ __serachAdaptive(LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> & lH,
                     return true;
 
                 // do vodoo heuristics to see if this hit is to frequent
-                size_t desiredOccs = length(lH.matches) >= lH.options.maxMatches
-                                        ? minResults
-                                        : (lH.options.maxMatches - length(lH.matches)) * seedHeurFactor / ((needlesSum - needlesPos - repLength(indexIt)) / repLength(indexIt));
-//                                      : lH.options.maxMatches / (length(lH.gH.redQrySeqs[i]) / repLength(indexIt));
-                if (desiredOccs == 0)
-                    desiredOccs = 1u;
                 if (countOccurrences(indexIt) < desiredOccs)
                     return false;
 
@@ -950,11 +952,11 @@ __serachAdaptive(LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> & lH,
 
             // set beginning of next seed (-2 so we have some overlap)
             if (maxSeedExtension <= seedLength - lH.options.seedOffset)
-//                     maxSeedExtension = lH.options.seedOffset;
-                ++seedBegin;
+                seedBegin += lH.options.seedOffset;
             else
                 seedBegin += maxSeedExtension + lH.options.seedOffset - lH.options.seedLength;
-//                 seedBegin += lH.options.seedOffset;
+            // NON-ADAPTIVE:
+//             seedBegin += lH.options.seedOffset;
 
         }
 
