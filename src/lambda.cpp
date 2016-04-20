@@ -414,7 +414,7 @@ realMain(LambdaOptions                  const & options,
                                            TOutFormat,
                                            p,
                                            h>;
-    using TLocalHolder = LocalDataHolder<Match, TGlobalHolder, TScoreExtension>;
+    using TLocalHolder = LocalDataHolder<TGlobalHolder, TScoreExtension>;
 
     myPrint(options, 1, "LAMBDA - the Local Aligner for Massive Biological DatA"
                       "\n======================================================"

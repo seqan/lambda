@@ -61,8 +61,7 @@ template <typename TRedAlph_,
           BlastTabularSpec h>
 class GlobalDataHolder;
 
-template <typename TMatch,
-          typename TGlobalHolder_,
+template <typename TGlobalHolder_,
           typename TScoreExtension>
 class LocalDataHolder;
 
@@ -516,16 +515,30 @@ loadQuery(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, TOutFormat, p, h>
     double finish = sysTime() - start;
     myPrint(options, 1, " done.\n");
 
-    if (options.verbosity >= 2)
+    unsigned long maxLen = 0ul;
+    for (auto const & s : globalHolder.qrySeqs)
+        if (length(s) > maxLen)
+            maxLen = length(s);
+
+    myPrint(options, 2, "Runtime: ", finish, "s \n",
+            "Number of effective query sequences: ",
+            length(globalHolder.qrySeqs), "\nLongest query sequence: ",
+            maxLen, "\n\n");
+
+    if (length(globalHolder.qrySeqs) >= std::numeric_limits<typename TGH::TMatch::TQId>::max())
     {
-        unsigned long maxLen = 0ul;
-        for (auto const & s : globalHolder.qrySeqs)
-            if (length(s) > maxLen)
-                maxLen = length(s);
-        myPrint(options, 2, "Runtime: ", finish, "s \n",
-                "Number of effective query sequences: ",
-                length(globalHolder.qrySeqs), "\nLongest query sequence: ",
-                maxLen, "\n\n");
+        std::cerr << "ERROR: Too many sequences submitted. The maximum (including frames) is "
+                  << std::numeric_limits<typename TGH::TMatch::TQId>::max()
+                  << ".\n";
+        return -1;
+    }
+
+    if (maxLen >= std::numeric_limits<typename TGH::TMatch::TPos>::max())
+    {
+        std::cerr << "ERROR: one or more of your query sequences are too long. "
+                  << "The maximum length is " << std::numeric_limits<typename TGH::TMatch::TPos>::max()
+                  << ".\n";
+        return -1;
     }
     return 0;
 }
@@ -631,13 +644,11 @@ generateTrieOverSeeds(TLocalHolder & lH)
 // perform a fast local alignment score calculation on the seed and see if we
 // reach above threshold
 // WARNING the following function only works for hammingdistanced seeds
-template <typename TMatch,
-          typename TGlobalHolder,
+template <typename TGlobalHolder,
           typename TScoreExtension>
 inline bool
-seedLooksPromising(
-            LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> const & lH,
-            TMatch const & m)
+seedLooksPromising(LocalDataHolder<TGlobalHolder, TScoreExtension> const & lH,
+                   typename TGlobalHolder::TMatch const & m)
 {
     // no pre-scoring, but still filter out XXX and NNN hits
 //     if (!lH.options.preScoring))
@@ -706,26 +717,31 @@ seedLooksPromising(
 // Function onFind()
 // --------------------------------------------------------------------------
 
-template <typename TMatch,
-          typename TGlobalHolder,
+template <typename TGlobalHolder,
           typename TScoreExtension,
           typename TSeedId,
           typename TSubjOcc>
 inline void
-onFind(LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> & lH,
-           TSeedId const & seedId,
-           TSubjOcc subjOcc)
+onFind(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
+       TSeedId const & seedId,
+       TSubjOcc subjOcc)
 {
+    using TMatch = typename TGlobalHolder::TMatch;
+    SEQAN_ASSERT_GT_MSG(getSeqOffset(subjOcc) + lH.options.seedLength,
+                        length(lH.gH.subjSeqs[getSeqNo(subjOcc)]),
+                        "ERROR: Seed reaches beyond end of subject sequence! Please report a bug with your files at "
+                        "http://www.seqan.de/lambda !");
+
     if (TGlobalHolder::indexIsFM) // positions are reversed
         setSeqOffset(subjOcc,
                      length(lH.gH.subjSeqs[getSeqNo(subjOcc)])
                      - getSeqOffset(subjOcc)
                      - lH.options.seedLength);
 
-    Match m {static_cast<Match::TQId>(lH.seedRefs[seedId]),
-             static_cast<Match::TSId>(getSeqNo(subjOcc)),
-             static_cast<Match::TPos>(lH.seedRanks[seedId] * lH.options.seedOffset),
-             static_cast<Match::TPos>(getSeqOffset(subjOcc))};
+    TMatch m{static_cast<typename TMatch::TQId>(lH.seedRefs[seedId]),
+             static_cast<typename TMatch::TSId>(getSeqNo(subjOcc)),
+             static_cast<typename TMatch::TPos>(lH.seedRanks[seedId] * lH.options.seedOffset),
+             static_cast<typename TMatch::TPos>(getSeqOffset(subjOcc))};
 
     bool discarded = false;
     auto const halfSubjL = lH.options.seedLength /  2;
@@ -907,9 +923,12 @@ template <typename TBlastMatch,
           typename TLocalHolder>
 inline int
 computeBlastMatch(TBlastMatch         & bm,
-                  Match         const & m,
+                  typename TLocalHolder::TMatch const & m,
                   TLocalHolder        & lH)
 {
+    using TMatch = typename TLocalHolder::TMatch;
+    using TPos   = typename TMatch::TPos;
+
     const unsigned long qryLength = length(value(lH.gH.qrySeqs, m.qryId));
 
     SEQAN_ASSERT_LEQ(bm.qStart, bm.qEnd);
@@ -942,9 +961,9 @@ computeBlastMatch(TBlastMatch         & bm,
 //     double         seedE = 0;
 //     double         seedB = 0;
 
-    unsigned row0len = bm.qEnd - bm.qStart;
-    unsigned row1len = bm.sEnd - bm.sStart;
-    unsigned short band = (!lH.options.hammingOnly) * (lH.options.maxSeedDist);
+    TPos row0len = bm.qEnd - bm.qStart;
+    TPos row1len = bm.sEnd - bm.sStart;
+    TPos band = (!lH.options.hammingOnly) * (lH.options.maxSeedDist);
 
 //     // TODO FIGURE THIS OUT
 //     if ((row0len > (lH.options.seedLength + band)) ||
@@ -959,7 +978,7 @@ computeBlastMatch(TBlastMatch         & bm,
 
     auto seedsInSeed = std::max(row0len, row1len) / lH.options.seedLength;
 
-    unsigned short maxDist =  0;
+    TPos  maxDist =  0;
     if (lH.options.maxSeedDist <= 1)
         maxDist = std::abs(int(row1len) - int(row0len));
     else
@@ -1281,11 +1300,13 @@ inline int
 iterateMatches(TLocalHolder & lH)
 {
     using TGlobalHolder = typename TLocalHolder::TGlobalHolder;
-    using TPos          = uint32_t; //typename Match::TPos;
+//     using TMatch        = typename TGlobalHolder::TMatch;
+//     using TPos          = typename TMatch::TPos;
+    using TBlastPos     = uint32_t; //TODO why can't this be == TPos
     using TBlastMatch   = BlastMatch<
                            typename TLocalHolder::TAlignRow0,
                            typename TLocalHolder::TAlignRow1,
-                           TPos,
+                           TBlastPos,
                            typename Value<typename TGlobalHolder::TQryIds>::Type,// const &,
                            typename Value<typename TGlobalHolder::TSubjIds>::Type// const &,
                            >;
@@ -1450,10 +1471,10 @@ iterateMatches(TLocalHolder & lH)
                             (qDist <= (long)lH.options.seedGravity))
                         {
                             bm.qEnd = std::max(bm.qEnd,
-                                               (TPos)(it2->qryStart
+                                               static_cast<TBlastPos>(it2->qryStart
                                                + lH.options.seedLength));
                             bm.sEnd = std::max(bm.sEnd,
-                                               (TPos)(it2->subjStart
+                                               static_cast<TBlastPos>(it2->subjStart
                                                + lH.options.seedLength));
                             ++lH.stats.hitsMerged;
 

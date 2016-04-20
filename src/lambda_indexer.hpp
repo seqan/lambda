@@ -78,10 +78,36 @@ loadSubjSeqsAndIds(TCDStringSet<String<TOrigAlph>> & originalSeqs,
 
     unsigned long maxLen = 0ul;
     for (auto const & s : originalSeqs)
+    {
         if (length(s) > maxLen)
+        {
             maxLen = length(s);
+        }
+        else if (length(s) == 0)
+        {
+            std::cerr << "ERROR: Unexpectedly encountered a sequence of length 0 in the file. Aborting.\n";
+            return -1;
+        }
+    }
     myPrint(options, 2, "Number of sequences read: ", length(originalSeqs),
             "\nLongest sequence read: ", maxLen, "\n\n");
+
+    if (length(originalSeqs) * 6 >= std::numeric_limits<SizeTypeNum_<TOrigAlph>>::max())
+    {
+        std::cerr << "ERROR: Too many sequences submitted. The maximum (including frames) is "
+                  << std::numeric_limits<SizeTypeNum_<TOrigAlph>>::max()
+                  << ".\n";
+        return -1;
+    }
+
+    if (maxLen >= std::numeric_limits<SizeTypePos_<TOrigAlph>>::max())
+    {
+        std::cerr << "ERROR: one or more of your subject sequences are too long. "
+                  << "The maximum length is " << std::numeric_limits<SizeTypePos_<TOrigAlph>>::max()
+                  << ".\n";
+        return -1;
+    }
+
 
     myPrint(options, 1, "Dumping Subj Ids...");
 

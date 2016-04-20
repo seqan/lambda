@@ -49,6 +49,30 @@ struct SamBamExtraTags;
 // Metafunctions
 // ==========================================================================
 
+// SIZE TYPES
+
+// Expected Number of Sequences
+template <typename TAlph>
+using SizeTypeNum_ = uint32_t;
+
+// Expected Lengths of Sequences
+template <typename T>
+struct SizeTypePosMeta_
+{
+    using Type = uint16_t;
+};
+
+template <>
+struct SizeTypePosMeta_<Dna5>
+{
+    // DNA sequences are expected to be longer
+    using Type = uint32_t;
+};
+
+template <typename TAlph>
+using SizeTypePos_ = typename SizeTypePosMeta_<TAlph>::Type;
+
+
 // suffix array overloads
 namespace seqan
 {
@@ -56,26 +80,19 @@ namespace seqan
 template<typename TSpec1, typename TSpec2, typename TSpec3>
 struct SAValue<StringSet<String<ReducedAminoAcid<TSpec1>, TSpec2>, TSpec3> >
 {
-    typedef Pair<uint32_t, uint16_t, Pack> Type;
+    typedef Pair<SizeTypeNum_<TSpec1>, SizeTypePos_<TSpec1>, Pack> Type;
 };
 
-template<typename TSpec2, typename TSpec3, typename TFunctor>
-struct SAValue<StringSet<ModifiedString<String<AminoAcid, TSpec2>, TFunctor>, TSpec3> >
+template<typename TSpec1, typename TSpec2, typename TSpec3, typename TFunctor>
+struct SAValue<StringSet<ModifiedString<String<TSpec1, TSpec2>, TFunctor>, TSpec3> >
 {
-    typedef Pair<uint32_t, uint16_t, Pack> Type;
+    typedef Pair<SizeTypeNum_<TSpec1>, SizeTypePos_<TSpec1>, Pack> Type;
 };
 
-template<typename TSpec2, typename TSpec3>
-struct SAValue<StringSet<String<AminoAcid, TSpec2>, TSpec3> >
+template<typename TSpec1, typename TSpec2, typename TSpec3>
+struct SAValue<StringSet<String<TSpec1, TSpec2>, TSpec3> >
 {
-    typedef Pair<uint32_t, uint16_t, Pack> Type;
-};
-
-// Dna Sequences might be longer (chromosomes, genomes)
-template<typename TSpec1, typename TSpec2>
-struct SAValue<StringSet<String<Dna5, TSpec1>, TSpec2> >
-{
-    typedef Pair<uint32_t, uint32_t, Pack> Type;
+    typedef Pair<SizeTypeNum_<TSpec1>, SizeTypePos_<TSpec1>, Pack> Type;
 };
 
 template <typename TString, typename TSpec>

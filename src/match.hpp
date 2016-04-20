@@ -30,7 +30,8 @@
 // #include <forward_list>
 // #include <unordered_map>
 #include <vector>
-#include <seqan/blast.h>
+
+#include "options.hpp"
 
 using namespace seqan;
 
@@ -38,11 +39,13 @@ using namespace seqan;
 //                  Finder
 //-----------------------------------------------------------------------------
 
+template<typename TAlph>
 struct Match
 {
-    typedef uint32_t    TQId;
-    typedef uint32_t    TSId;// many suffixes in subject-index TODO can be smaller now?
-    typedef uint16_t    TPos;
+    typedef SizeTypeNum_<TAlph>    TQId;
+    typedef SizeTypeNum_<TAlph>    TSId;
+    typedef SizeTypePos_<TAlph>    TPos;
+
     TQId qryId;
     TSId subjId;
     TPos qryStart;
@@ -79,19 +82,21 @@ struct Match
     }
 };
 
+template <typename TAlph>
 inline void
-setToSkip(Match & m)
+setToSkip(Match<TAlph> & m)
 {
-    using TPos          = typename Match::TPos;
+    using TPos          = typename Match<TAlph>::TPos;
     constexpr TPos posMax = std::numeric_limits<TPos>::max();
     m.qryStart = posMax;
     m.subjStart = posMax;
 }
 
+template <typename TAlph>
 inline bool
-isSetToSkip(Match const & m)
+isSetToSkip(Match<TAlph> const & m)
 {
-    using TPos          = typename Match::TPos;
+    using TPos          = typename Match<TAlph>::TPos;
     constexpr TPos posMax = std::numeric_limits<TPos>::max();
     return (m.qryStart == posMax) && (m.subjStart == posMax);
 }
@@ -138,13 +143,13 @@ isSetToSkip(Match const & m)
 //     }
 // };
 
-template <typename TGH>
+template <typename TGH, typename TAlph>
 inline void
-myHyperSortSingleIndex(std::vector<Match> & matches,
+myHyperSortSingleIndex(std::vector<Match<TAlph>> & matches,
                        bool const doubleIndexing,
                        TGH const &)
 {
-    using TId = typename Match::TQId;
+    using TId = typename Match<TAlph>::TQId;
 
     // regular sort
     std::sort(matches.begin(), matches.end());
@@ -195,7 +200,7 @@ myHyperSortSingleIndex(std::vector<Match> & matches,
         });
     }
 
-    std::vector<Match> tmpVector;
+    std::vector<Match<TAlph>> tmpVector;
     tmpVector.resize(matches.size());
 
     TId newIndex = 0;
