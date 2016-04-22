@@ -894,7 +894,10 @@ __serachAdaptive(LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> & lH,
     size_t constexpr seedHeurFactor = 1;//2;
     size_t constexpr minResults = 1;
 
-    size_t needlesSum = lengthSum(infix(lH.gH.redQrySeqs, lH.indexBeginQry, lH.indexEndQry));
+    size_t needlesSum = lH.gH.redQrySeqs.limits[lH.indexEndQry] - lH.gH.redQrySeqs.limits[lH.indexBeginQry];
+    // BROKEN:lengthSum(infix(lH.gH.redQrySeqs, lH.indexBeginQry, lH.indexEndQry));
+    // the above is faster anyway (but only works on concatdirect sets)
+
     size_t needlesPos = 0;
 
     TIndexIt root(lH.gH.dbIndex);
@@ -906,7 +909,7 @@ __serachAdaptive(LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> & lH,
         {
             indexIt = root;
             size_t maxSeedExtension = 0;
-
+            // TODO this was faster when more strict
             size_t desiredOccs = length(lH.matches) >= lH.options.maxMatches
                                     ? minResults
                                     : (lH.options.maxMatches - length(lH.matches)) * seedHeurFactor /
