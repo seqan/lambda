@@ -122,12 +122,47 @@ prepareScoringMore(GlobalDataHolder<TRedAlph, TScoreScheme,TIndexSpec, TOutForma
 template <BlastTabularSpec h,
           BlastProgram p,
           typename TRedAlph,
+          typename TIndexSpec,
+          typename TOutFormat>
+inline void
+prepareScoringMore(GlobalDataHolder<TRedAlph, Score<int, ScoreMatrix<AminoAcid, ScoreSpecSelectable>>, TIndexSpec, TOutFormat, p, h> & globalHolder,
+                   LambdaOptions                                                    const & options,
+                   std::false_type                                                  const & /**/)
+{
+    switch (options.scoringMethod)
+    {
+//         case 0:
+//             return argConv3(options, TOutFormat(), Th(), Tp(), TRedAlph(), Score<int, Simple>());
+        case 45:
+            setScoreMatrixById(context(globalHolder.outfile).scoringScheme._internalScheme,
+                               AminoAcidScoreMatrixID::BLOSUM30);
+            break;
+//         case 62:
+//             setScoreMatrixById(context(globalHolder.outfile).scoringScheme._internalScheme,
+//                                AminoAcidScoreMatrixID::BLOSUM62);
+//             break;
+        case 63:
+            setScoreMatrixById(context(globalHolder.outfile).scoringScheme._internalScheme,
+                               AminoAcidScoreMatrixID::BLOSUM62);
+            break;
+        case 80:
+            setScoreMatrixById(context(globalHolder.outfile).scoringScheme._internalScheme,
+                               AminoAcidScoreMatrixID::BLOSUM80);
+            break;
+        default:
+            break;
+    }
+}
+
+template <BlastTabularSpec h,
+          BlastProgram p,
+          typename TRedAlph,
           typename TScoreScheme,
           typename TIndexSpec,
           typename TOutFormat>
 inline void
-prepareScoringMore(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, TOutFormat, p, h> & /*globalHolder*/,
-                   LambdaOptions                                                    const & /*options*/,
+prepareScoringMore(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, TOutFormat, p, h> & /**/,
+                   LambdaOptions                                                    const & /**/,
                    std::false_type                                                  const & /**/)
 {
 }
@@ -142,10 +177,10 @@ inline int
 prepareScoring(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, TOutFormat, p, h> & globalHolder,
                LambdaOptions                                                    const & options)
 {
+    prepareScoringMore(globalHolder, options, std::is_same<TScoreScheme, Score<int, Simple>>());
+
     setScoreGapOpenBlast(context(globalHolder.outfile).scoringScheme, options.gapOpen);
     setScoreGapExtend(context(globalHolder.outfile).scoringScheme, options.gapExtend);
-
-    prepareScoringMore(globalHolder, options, std::is_same<TScoreScheme, Score<int, Simple>>());
 
     if (!isValid(context(globalHolder.outfile).scoringScheme))
     {

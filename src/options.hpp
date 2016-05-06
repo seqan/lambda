@@ -960,6 +960,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
             getOptionValue(options.misMatch, parser, "score-mismatch");
             getOptionValue(options.match, parser, "score-match");
             break;
+        case 63: //TODO DEBUG
         case 45: case 62: case 80: break;
         default:
             std::cerr << "Unsupported Scoring Scheme selected.\n";

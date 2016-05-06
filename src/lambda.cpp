@@ -273,20 +273,26 @@ argConv2(LambdaOptions                  const & options,
 {
     using Th = BlastTabularSpecSelector<h>;
     using Tp = BlastProgramSelector<p>;
+    using TScore = Score<int, ScoreMatrix<AminoAcid, ScoreSpecSelectable>>;
     switch (options.scoringMethod)
     {
 #ifndef FASTBUILD
         case 0:
             return argConv3(options, TOutFormat(), Th(), Tp(), TRedAlph(), Score<int, Simple>());
-        case 45:
-            return argConv3(options, TOutFormat(), Th(), Tp(), TRedAlph(), Blosum45());
-        case 80:
-            return argConv3(options, TOutFormat(), Th(), Tp(), TRedAlph(), Blosum80());
+//         case 45:
+//             return argConv3(options, TOutFormat(), Th(), Tp(), TRedAlph(), Blosum45());
+//         case 80:
+//         {
+//             Blosum62 matr;
+//             setDefaultScoreMatrix(matr, ScoreSpecBlosum80());
+//             return argConv3(options, TOutFormat(), Th(), Tp(), TRedAlph(), matr);
+//         }
+
 #endif
         case 62:
             return argConv3(options, TOutFormat(), Th(), Tp(), TRedAlph(), Blosum62());
         default:
-            break;
+            return argConv3(options, TOutFormat(), Th(), Tp(), TRedAlph(), TScore());;
     }
     std::cerr << "Unsupported Scoring Scheme selected.\n";
     return -1;
@@ -337,7 +343,7 @@ argConv4(LambdaOptions                  const & options,
          BlastTabularSpecSelector<h>    const &,
          BlastProgramSelector<p>        const &,
          TRedAlph                       const & /**/,
-         TScoreScheme                   const & /**/,
+         TScoreScheme                   const &,
          TScoreExtension                const & /**/)
 {
     int indexType = options.dbIndexType;
@@ -405,7 +411,7 @@ realMain(LambdaOptions                  const & options,
          BlastTabularSpecSelector<h>    const &,
          BlastProgramSelector<p>        const &,
          TRedAlph                       const & /**/,
-         TScoreScheme                   const & /**/,
+         TScoreScheme                   const &,
          TScoreExtension                const & /**/)
 {
     using TGlobalHolder = GlobalDataHolder<TRedAlph,
@@ -424,6 +430,7 @@ realMain(LambdaOptions                  const & options,
         printOptions<TLocalHolder>(options);
 
     TGlobalHolder globalHolder;
+//     context(globalHolder.outfile).scoringScheme._internalScheme = matr;
 
     int ret = prepareScoring(globalHolder, options);
     if (ret)
