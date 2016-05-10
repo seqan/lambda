@@ -762,10 +762,10 @@ onFind(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
        TSubjOcc subjOcc)
 {
     using TMatch = typename TGlobalHolder::TMatch;
-    SEQAN_ASSERT_GT_MSG(getSeqOffset(subjOcc) + lH.options.seedLength,
-                        length(lH.gH.subjSeqs[getSeqNo(subjOcc)]),
-                        "ERROR: Seed reaches beyond end of subject sequence! Please report a bug with your files at "
-                        "http://www.seqan.de/lambda !");
+    SEQAN_ASSERT_LEQ_MSG(getSeqOffset(subjOcc) + lH.options.seedLength,
+                         length(lH.gH.subjSeqs[getSeqNo(subjOcc)]),
+                         "ERROR: Seed reaches beyond end of subject sequence! Please report a bug with your files at "
+                         "http://www.seqan.de/lambda !");
 
     if (TGlobalHolder::indexIsFM) // positions are reversed
         setSeqOffset(subjOcc,
