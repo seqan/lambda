@@ -135,12 +135,12 @@ prepareScoringMore(GlobalDataHolder<TRedAlph, Score<int, ScoreMatrix<AminoAcid, 
 //             return argConv3(options, TOutFormat(), Th(), Tp(), TRedAlph(), Score<int, Simple>());
         case 45:
             setScoreMatrixById(context(globalHolder.outfile).scoringScheme._internalScheme,
-                               AminoAcidScoreMatrixID::BLOSUM30);
+                               AminoAcidScoreMatrixID::BLOSUM45);
             break;
-//         case 62:
-//             setScoreMatrixById(context(globalHolder.outfile).scoringScheme._internalScheme,
-//                                AminoAcidScoreMatrixID::BLOSUM62);
-//             break;
+        case 62:
+            setScoreMatrixById(context(globalHolder.outfile).scoringScheme._internalScheme,
+                               AminoAcidScoreMatrixID::BLOSUM62);
+            break;
         case 63:
             setScoreMatrixById(context(globalHolder.outfile).scoringScheme._internalScheme,
                                AminoAcidScoreMatrixID::BLOSUM62);

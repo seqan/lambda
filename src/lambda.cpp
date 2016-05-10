@@ -289,8 +289,8 @@ argConv2(LambdaOptions                  const & options,
 //         }
 
 #endif
-        case 62:
-            return argConv3(options, TOutFormat(), Th(), Tp(), TRedAlph(), Blosum62());
+//         case 62:
+//             return argConv3(options, TOutFormat(), Th(), Tp(), TRedAlph(), Blosum62());
         default:
             return argConv3(options, TOutFormat(), Th(), Tp(), TRedAlph(), TScore());;
     }
