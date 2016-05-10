@@ -274,28 +274,11 @@ argConv2(LambdaOptions                  const & options,
     using Th = BlastTabularSpecSelector<h>;
     using Tp = BlastProgramSelector<p>;
     using TScore = Score<int, ScoreMatrix<AminoAcid, ScoreSpecSelectable>>;
-    switch (options.scoringMethod)
-    {
-#ifndef FASTBUILD
-        case 0:
-            return argConv3(options, TOutFormat(), Th(), Tp(), TRedAlph(), Score<int, Simple>());
-//         case 45:
-//             return argConv3(options, TOutFormat(), Th(), Tp(), TRedAlph(), Blosum45());
-//         case 80:
-//         {
-//             Blosum62 matr;
-//             setDefaultScoreMatrix(matr, ScoreSpecBlosum80());
-//             return argConv3(options, TOutFormat(), Th(), Tp(), TRedAlph(), matr);
-//         }
 
-#endif
-//         case 62:
-//             return argConv3(options, TOutFormat(), Th(), Tp(), TRedAlph(), Blosum62());
-        default:
-            return argConv3(options, TOutFormat(), Th(), Tp(), TRedAlph(), TScore());;
-    }
-    std::cerr << "Unsupported Scoring Scheme selected.\n";
-    return -1;
+    if (options.scoringMethod == 0)
+        return argConv3(options, TOutFormat(), Th(), Tp(), TRedAlph(), Score<int, Simple>());
+    else
+        return argConv3(options, TOutFormat(), Th(), Tp(), TRedAlph(), TScore());
 }
 
 template <typename TOutFormat,

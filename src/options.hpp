@@ -683,8 +683,8 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     addSection(parser, "Scoring");
 
     addOption(parser, ArgParseOption("sc", "scoring-scheme",
-        "'62' for Blosum62 (default); '50' for Blosum50; '0' for manual "
-        "(default for BlastN)",
+        "'45' for Blosum45; '62' for Blosum62 (default);  '80' for Blosum80; "
+        "'0' for manual (default for BlastN)",
         ArgParseArgument::INTEGER));
     setDefaultValue(parser, "scoring-scheme", "62");
     setAdvanced(parser, "scoring-scheme");
@@ -960,7 +960,6 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
             getOptionValue(options.misMatch, parser, "score-mismatch");
             getOptionValue(options.match, parser, "score-match");
             break;
-        case 63: //TODO DEBUG
         case 45: case 62: case 80: break;
         default:
             std::cerr << "Unsupported Scoring Scheme selected.\n";

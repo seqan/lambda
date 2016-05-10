@@ -141,10 +141,6 @@ prepareScoringMore(GlobalDataHolder<TRedAlph, Score<int, ScoreMatrix<AminoAcid, 
             setScoreMatrixById(context(globalHolder.outfile).scoringScheme._internalScheme,
                                AminoAcidScoreMatrixID::BLOSUM62);
             break;
-        case 63:
-            setScoreMatrixById(context(globalHolder.outfile).scoringScheme._internalScheme,
-                               AminoAcidScoreMatrixID::BLOSUM62);
-            break;
         case 80:
             setScoreMatrixById(context(globalHolder.outfile).scoringScheme._internalScheme,
                                AminoAcidScoreMatrixID::BLOSUM80);
