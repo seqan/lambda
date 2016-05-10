@@ -24,7 +24,7 @@ endif (NOT CXX11_FOUND)
 # Warn if OpenMP was not found.
 if (NOT OPENMP_FOUND)
     message (WARNING "WARNING WARNING WARNING\nWARNING: OpenMP not found. Lambda will be built without multi-threading! "
-    "This is probably not what you want! Use GCC >= 4.9.1 or Clang >= 3.8.0\nWARNING WARNING WARNING")
+    "This is probably not what you want! Use GCC >= 4.9.1, Clang >= 3.8.0 or ICC >= 16.0.2\nWARNING WARNING WARNING")
 endif (NOT OPENMP_FOUND)
 
 # Warn if Zlib was not found.
@@ -37,27 +37,29 @@ if (NOT BZIP2_FOUND)
   message (WARNING "WARNING: BZip2 not found. Building lambda without support for bzipped input and output.")
 endif (NOT BZIP2_FOUND)
 
-if(CMAKE_COMPILER_IS_GNUCXX)
-  if (491 GREATER _GCC_VERSION)
-    message (FATAL_ERROR "Your GCC version is too old. Minimum version is GCC-4.9.1!")
-    return ()
-  endif(491 GREATER _GCC_VERSION)
-endif(CMAKE_COMPILER_IS_GNUCXX)
-
-if(COMPILER_IS_CLANG)
-    if (_GCC_VERSION LESS 360)
+if (CMAKE_COMPILER_IS_GNUCXX)
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.9.1)
+        message (FATAL_ERROR "Your GCC version is too old. Minimum version is GCC-4.9.1!")
+        return ()
+    endif ()
+elseif (COMPILER_IS_CLANG)
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 3.6)
         message (FATAL_ERROR "Your Clang version is too old. Please upgrade to 3.8.0 or use GCC.")
         return()
-    elseif (_GCC_VERSION LESS 380)
+    elseif (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 3.8)
         message (WARNING "Your Clang version is too old, you will not have parallelism! Upgrade to 3.8.0 or newer.")
-    endif()
-endif()
+    endif ()
+elseif (COMPILER_IS_INTEL)
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 16.0.2)
+        message(WARNING "Your Intel Compiler version is too old. Please upgrade to 16.0.2 or newer!")
+    endif ()
+endif ()
 
 # ----------------------------------------------------------------------------
 # App-Level Configuration
 # ----------------------------------------------------------------------------
 
-set (SEQAN_APP_VERSION "0.9.4")
+set (SEQAN_APP_VERSION "1.0.0")
 
 option (LAMBDA_FASTBUILD "Skip certain rarely used codepaths (speeds up build)." OFF)
 if (LAMBDA_FASTBUILD)
@@ -198,7 +200,7 @@ set (CPACK_PACKAGE_NAME "lambda")
 set (CPACK_PACKAGE_DESCRIPTION_SUMMARY "lambda -- the local aligner for massive bioligical data")
 set (CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/../README.rst")
 set (CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/../LICENSE-GPL3.rst")
-set (CPACK_PACKAGE_VENDOR "Hannes Hauswedell <hannes.hauswedell()fu-berlin.de>")
+set (CPACK_PACKAGE_VENDOR "Hannes Hauswedell <hannes.hauswedell@fu-berlin.de>")
 set (CPACK_PACKAGE_CONTACT "${CPACK_PACKAGE_VENDOR}")
 
 seqan_configure_cpack_app (lambda "lambda")
