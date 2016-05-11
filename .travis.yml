@@ -22,12 +22,12 @@ matrix:
         - sudo rm /swapfile
 
     - os: linux
-      compiler: gcc-5-debug
+      compiler: gcc-5
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test', 'george-edison55-precise-backports']
           packages: ['g++-5', 'cmake', 'cmake-data', 'zlib1g-dev', 'libbz2-dev']
-      install: export CXX="g++-5" CMAKE_ARGS="-DLAMBDA_NATIVE_BUILD=0 -DCMAKE_BUILD_TYPE=Debug"
+      install: export CXX="g++-5" CMAKE_ARGS="-DLAMBDA_NATIVE_BUILD=0"
       before_script:
         - sudo dd if=/dev/zero of=/swapfile bs=64M count=32 # cheat us some extra MEM
         - sudo mkswap /swapfile
