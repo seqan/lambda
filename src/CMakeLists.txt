@@ -103,6 +103,11 @@ if (LAMBDA_MMAPPED_DB)
     message (STATUS "To deactivate, pass -DLAMBDA_MMAPPED_DB=0 to cmake.")
 endif (LAMBDA_MMAPPED_DB)
 
+option (LAMBDA_LINGAPS_OPT "Add optimized codepaths for linear gap costs (increases binary size and compile time)." OFF)
+if (LAMBDA_LINGAPS_OPT)
+    add_definitions (-DLAMBDA_LINGAPS_OPT=1)
+endif ()
+
 # ----------------------------------------------------------------------------
 # Compiler specifics
 # ----------------------------------------------------------------------------

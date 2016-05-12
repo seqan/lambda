@@ -187,10 +187,11 @@ argConv05(LambdaOptions                 const & options,
     {
 #ifndef FASTBUILD
         case BlastProgram::BLASTN:
-            return argConv1(options,
+            return argConv2(options,
                             TOutFormat(),
                             BlastTabularSpecSelector<h>(),
-                            BlastProgramSelector<BlastProgram::BLASTN>());
+                            BlastProgramSelector<BlastProgram::BLASTN>(),
+                            Dna5());
 #endif
         case BlastProgram::BLASTP:
             return argConv1(options,
@@ -232,13 +233,12 @@ argConv1(LambdaOptions                  const & options,
          BlastTabularSpecSelector<h>    const &,
          BlastProgramSelector<p>        const &)
 {
-    using TUnred = typename std::conditional<p == BlastProgram::BLASTN, Dna5, AminoAcid>::type;
     using Th = BlastTabularSpecSelector<h>;
     using Tp = BlastProgramSelector<p>;
     switch (options.alphReduction)
     {
         case 0:
-            return argConv2(options, TOutFormat(), Th(), Tp(), TUnred());
+            return argConv2(options, TOutFormat(), Th(), Tp(), AminoAcid());
         case 2:
             return argConv2(options, TOutFormat(), Th(), Tp(), ReducedAminoAcid<Murphy10>());
 #if 0
@@ -271,6 +271,7 @@ argConv2(LambdaOptions                  const & options,
          BlastProgramSelector<p>        const &,
          TRedAlph                       const &)
 {
+    //TODO make this just dependent on programmode / eliminate switch and deactivate SimpleScore for protein + document in options
     using Th = BlastTabularSpecSelector<h>;
     using Tp = BlastProgramSelector<p>;
     using TScore = Score<int, ScoreMatrix<AminoAcid, ScoreSpecSelectable>>;
@@ -294,8 +295,13 @@ argConv3(LambdaOptions                  const & options,
          TRedAlph                       const &,
          TScoreScheme                   const &)
 {
-#ifndef FASTBUILD
+
     if (options.gapOpen == 0)
+#ifndef LAMBDA_LINGAPS_OPT
+        std::cerr << "ATTENTION: You have set the additional gap open cost to 0. If you run LAMBDA "
+                     "in this configuration regularly, you might want to rebuild it with "
+                     "LAMBDA_LINGAPS_OPT=1 to profit from additional optimizations.\n";
+#else
         return argConv4(options,
                         TOutFormat(),
                         BlastTabularSpecSelector<h>(),
