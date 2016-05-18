@@ -61,10 +61,10 @@ endif ()
 
 set (SEQAN_APP_VERSION "1.0.0")
 
-option (LAMBDA_FASTBUILD "Skip certain rarely used codepaths (speeds up build)." OFF)
+option (LAMBDA_FASTBUILD "Build only blastp and blastx modes (speeds up build)." OFF)
 if (LAMBDA_FASTBUILD)
     add_definitions (-DFASTBUILD=1)
-    message (STATUS "FASTBUILD set, not all command line options available.")
+    message (STATUS "FASTBUILD set, only blastp and blastx available.")
 endif (LAMBDA_FASTBUILD)
 
 option (LAMBDA_NATIVE_BUILD "Architecture-specific optimizations, i.e. g++ -march=native." ON)

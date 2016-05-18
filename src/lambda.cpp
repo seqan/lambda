@@ -61,15 +61,15 @@ argConv0(LambdaOptions const & options);
 template <typename TOutFormat,
           BlastTabularSpec h>
 inline int
-argConv05(LambdaOptions                 const & options,
-          TOutFormat                    const & /**/,
-          BlastTabularSpecSelector<h>   const &);
+argConv1(LambdaOptions                 const & options,
+         TOutFormat                    const & /**/,
+         BlastTabularSpecSelector<h>   const &);
 //-
 template <typename TOutFormat,
           BlastTabularSpec h,
           BlastProgram p>
 inline int
-argConv1(LambdaOptions                  const & options,
+argConv2(LambdaOptions                  const & options,
          TOutFormat                     const & /**/,
          BlastTabularSpecSelector<h>    const &,
          BlastProgramSelector<p>        const &);
@@ -79,7 +79,7 @@ template <typename TOutFormat,
           BlastTabularSpec h,
           BlastProgram p>
 inline int
-argConv2(LambdaOptions                  const & options,
+argConv3(LambdaOptions                  const & options,
          TOutFormat                     const &,
          BlastTabularSpecSelector<h>    const &,
          BlastProgramSelector<p>        const &,
@@ -87,20 +87,6 @@ argConv2(LambdaOptions                  const & options,
 //-
 template <typename TOutFormat,
           typename TRedAlph,
-          typename TScoreScheme,
-          BlastTabularSpec h,
-          BlastProgram p>
-inline int
-argConv3(LambdaOptions                  const & options,
-         TOutFormat                     const &,
-         BlastTabularSpecSelector<h>    const &,
-         BlastProgramSelector<p>        const &,
-         TRedAlph                       const &,
-         TScoreScheme                   const &);
-//-
-template <typename TOutFormat,
-          typename TRedAlph,
-          typename TScoreScheme,
           typename TScoreExtension,
           BlastTabularSpec h,
           BlastProgram p>
@@ -110,12 +96,10 @@ argConv4(LambdaOptions                  const & options,
          BlastTabularSpecSelector<h>    const &,
          BlastProgramSelector<p>        const &,
          TRedAlph                       const & /**/,
-         TScoreScheme                   const & /**/,
          TScoreExtension                const & /**/);
 //-
 template <typename TIndexSpec,
           typename TRedAlph,
-          typename TScoreScheme,
           typename TScoreExtension,
           typename TOutFormat,
           BlastProgram p,
@@ -126,7 +110,6 @@ realMain(LambdaOptions                  const & options,
          BlastTabularSpecSelector<h>    const &,
          BlastProgramSelector<p>        const &,
          TRedAlph                       const & /**/,
-         TScoreScheme                   const & /**/,
          TScoreExtension                const & /**/);
 
 // --------------------------------------------------------------------------
@@ -164,13 +147,13 @@ argConv0(LambdaOptions const & options)
         output = prefix(output, length(output) - 4);
 
     if (endsWith(output, ".m0"))
-        return argConv05(options, BlastReport(), BlastTabularSpecSelector<BlastTabularSpec::NO_COMMENTS>());
+        return argConv1(options, BlastReport(), BlastTabularSpecSelector<BlastTabularSpec::NO_COMMENTS>());
     else if (endsWith(output, ".m8"))
-        return argConv05(options, BlastTabular(), BlastTabularSpecSelector<BlastTabularSpec::NO_COMMENTS>());
+        return argConv1(options, BlastTabular(), BlastTabularSpecSelector<BlastTabularSpec::NO_COMMENTS>());
     else if (endsWith(output, ".m9"))
-        return argConv05(options, BlastTabular(), BlastTabularSpecSelector<BlastTabularSpec::COMMENTS>());
+        return argConv1(options, BlastTabular(), BlastTabularSpecSelector<BlastTabularSpec::COMMENTS>());
     else if (endsWith(output, ".sam") || endsWith(output, ".bam")) // handled elsewhere
-        return argConv05(options, BlastTabular(), BlastTabularSpecSelector<BlastTabularSpec::COMMENTS>());
+        return argConv1(options, BlastTabular(), BlastTabularSpecSelector<BlastTabularSpec::COMMENTS>());
 
     std::cerr << "ERROR: Cannot handle output extension.\n";
     return -1;
@@ -179,38 +162,38 @@ argConv0(LambdaOptions const & options)
 template <typename TOutFormat,
           BlastTabularSpec h>
 inline int
-argConv05(LambdaOptions                 const & options,
-          TOutFormat                    const & /**/,
-          BlastTabularSpecSelector<h>   const &)
+argConv1(LambdaOptions                 const & options,
+         TOutFormat                    const & /**/,
+         BlastTabularSpecSelector<h>   const &)
 {
     switch(options.blastProgram)
     {
 #ifndef FASTBUILD
         case BlastProgram::BLASTN:
-            return argConv2(options,
+            return argConv3(options,
                             TOutFormat(),
                             BlastTabularSpecSelector<h>(),
                             BlastProgramSelector<BlastProgram::BLASTN>(),
                             Dna5());
 #endif
         case BlastProgram::BLASTP:
-            return argConv1(options,
+            return argConv2(options,
                             TOutFormat(),
                             BlastTabularSpecSelector<h>(),
                             BlastProgramSelector<BlastProgram::BLASTP>());
         case BlastProgram::BLASTX:
-            return argConv1(options,
+            return argConv2(options,
                             TOutFormat(),
                             BlastTabularSpecSelector<h>(),
                             BlastProgramSelector<BlastProgram::BLASTX>());
 #ifndef FASTBUILD
         case BlastProgram::TBLASTN:
-            return argConv1(options,
+            return argConv2(options,
                             TOutFormat(),
                             BlastTabularSpecSelector<h>(),
                             BlastProgramSelector<BlastProgram::TBLASTN>());
         case BlastProgram::TBLASTX:
-            return argConv1(options,
+            return argConv2(options,
                             TOutFormat(),
                             BlastTabularSpecSelector<h>(),
                             BlastProgramSelector<BlastProgram::TBLASTX>());
@@ -228,7 +211,7 @@ template <typename TOutFormat,
           BlastTabularSpec h,
           BlastProgram p>
 inline int
-argConv1(LambdaOptions                  const & options,
+argConv2(LambdaOptions                  const & options,
          TOutFormat                     const & /**/,
          BlastTabularSpecSelector<h>    const &,
          BlastProgramSelector<p>        const &)
@@ -238,9 +221,9 @@ argConv1(LambdaOptions                  const & options,
     switch (options.alphReduction)
     {
         case 0:
-            return argConv2(options, TOutFormat(), Th(), Tp(), AminoAcid());
+            return argConv3(options, TOutFormat(), Th(), Tp(), AminoAcid());
         case 2:
-            return argConv2(options, TOutFormat(), Th(), Tp(), ReducedAminoAcid<Murphy10>());
+            return argConv3(options, TOutFormat(), Th(), Tp(), ReducedAminoAcid<Murphy10>());
 #if 0
         case 10:
             return argConv2(options, TOutFormat(), ReducedAminoAcid<ClusterReduction<10>>());
@@ -258,33 +241,9 @@ argConv1(LambdaOptions                  const & options,
     return -1;
 }
 
-/// scoring scheme
-
+// extension model
 template <typename TOutFormat,
           typename TRedAlph,
-          BlastTabularSpec h,
-          BlastProgram p>
-inline int
-argConv2(LambdaOptions                  const & options,
-         TOutFormat                     const &,
-         BlastTabularSpecSelector<h>    const &,
-         BlastProgramSelector<p>        const &,
-         TRedAlph                       const &)
-{
-    //TODO make this just dependent on programmode / eliminate switch and deactivate SimpleScore for protein + document in options
-    using Th = BlastTabularSpecSelector<h>;
-    using Tp = BlastProgramSelector<p>;
-    using TScore = Score<int, ScoreMatrix<AminoAcid, ScoreSpecSelectable>>;
-
-    if (options.scoringMethod == 0)
-        return argConv3(options, TOutFormat(), Th(), Tp(), TRedAlph(), Score<int, Simple>());
-    else
-        return argConv3(options, TOutFormat(), Th(), Tp(), TRedAlph(), TScore());
-}
-
-template <typename TOutFormat,
-          typename TRedAlph,
-          typename TScoreScheme,
           BlastTabularSpec h,
           BlastProgram p>
 inline int
@@ -292,8 +251,7 @@ argConv3(LambdaOptions                  const & options,
          TOutFormat                     const &,
          BlastTabularSpecSelector<h>    const &,
          BlastProgramSelector<p>        const &,
-         TRedAlph                       const &,
-         TScoreScheme                   const &)
+         TRedAlph                       const &)
 {
 
     if (options.gapOpen == 0)
@@ -307,7 +265,6 @@ argConv3(LambdaOptions                  const & options,
                         BlastTabularSpecSelector<h>(),
                         BlastProgramSelector<p>(),
                         TRedAlph(),
-                        TScoreScheme(),
                         LinearGaps());
     else
 #endif
@@ -316,13 +273,11 @@ argConv3(LambdaOptions                  const & options,
                         BlastTabularSpecSelector<h>(),
                         BlastProgramSelector<p>(),
                         TRedAlph(),
-                        TScoreScheme(),
                         AffineGaps());
 }
 
 template <typename TOutFormat,
           typename TRedAlph,
-          typename TScoreScheme,
           typename TScoreExtension,
           BlastTabularSpec h,
           BlastProgram p>
@@ -332,7 +287,6 @@ argConv4(LambdaOptions                  const & options,
          BlastTabularSpecSelector<h>    const &,
          BlastProgramSelector<p>        const &,
          TRedAlph                       const & /**/,
-         TScoreScheme                   const &,
          TScoreExtension                const & /**/)
 {
     int indexType = options.dbIndexType;
@@ -369,7 +323,6 @@ argConv4(LambdaOptions                  const & options,
                                    BlastTabularSpecSelector<h>(),
                                    BlastProgramSelector<p>(),
                                    TRedAlph(),
-                                   TScoreScheme(),
                                    TScoreExtension());
     else
         return realMain<TFMIndex<>>(options,
@@ -377,7 +330,6 @@ argConv4(LambdaOptions                  const & options,
                                    BlastTabularSpecSelector<h>(),
                                    BlastProgramSelector<p>(),
                                    TRedAlph(),
-                                   TScoreScheme(),
                                    TScoreExtension());
 }
 
@@ -389,7 +341,6 @@ argConv4(LambdaOptions                  const & options,
 #endif
 template <typename TIndexSpec,
           typename TRedAlph,
-          typename TScoreScheme,
           typename TScoreExtension,
           typename TOutFormat,
           BlastProgram p,
@@ -400,15 +351,9 @@ realMain(LambdaOptions                  const & options,
          BlastTabularSpecSelector<h>    const &,
          BlastProgramSelector<p>        const &,
          TRedAlph                       const & /**/,
-         TScoreScheme                   const &,
          TScoreExtension                const & /**/)
 {
-    using TGlobalHolder = GlobalDataHolder<TRedAlph,
-                                           TScoreScheme,
-                                           TIndexSpec,
-                                           TOutFormat,
-                                           p,
-                                           h>;
+    using TGlobalHolder = GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h>;
     using TLocalHolder = LocalDataHolder<TGlobalHolder, TScoreExtension>;
 
     myPrint(options, 1, "LAMBDA - the Local Aligner for Massive Biological DatA"

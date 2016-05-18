@@ -551,7 +551,11 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         "Blast Operation Mode.",
         ArgParseArgument::STRING,
         "STR"));
+#ifdef FASTBUILD
+    setValidValues(parser, "program", "blastp blastx");
+#else
     setValidValues(parser, "program", "blastn blastp blastx tblastn tblastx");
+#endif
     setDefaultValue(parser, "program", "blastx");
 
 //     addOption(parser, ArgParseOption("qa", "query-alphabet",
@@ -684,7 +688,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     addOption(parser, ArgParseOption("sc", "scoring-scheme",
         "'45' for Blosum45; '62' for Blosum62 (default);  '80' for Blosum80; "
-        "'0' for manual (default for BlastN)",
+        "[ignored for BlastN]",
         ArgParseArgument::INTEGER));
     setDefaultValue(parser, "scoring-scheme", "62");
     setAdvanced(parser, "scoring-scheme");
@@ -702,13 +706,13 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setAdvanced(parser, "score-gap-open");
 
     addOption(parser, ArgParseOption("ma", "score-match",
-        "Match score (BLASTN or manual scoring)",
+        "Match score [only BLASTN])",
         ArgParseArgument::INTEGER));
     setDefaultValue(parser, "score-match", "2");
     setAdvanced(parser, "score-match");
 
     addOption(parser, ArgParseOption("mi", "score-mismatch",
-        "Mismatch score (BLASTN or manual scoring)",
+        "Mismatch score [only BLASTN]",
         ArgParseArgument::INTEGER));
     setDefaultValue(parser, "score-mismatch", "-3");
     setAdvanced(parser, "score-mismatch");
@@ -1405,6 +1409,12 @@ printOptions(LambdaOptions const & options)
     #endif
               << "  mmapped_db:               "
     #if defined(LAMBDA_MMAPPED_DB)
+              << "on\n"
+    #else
+              << "off\n"
+    #endif
+              << "  lingaps_opt:              "
+    #if defined(LAMBDA_LINGAPS_OPT)
               << "on\n"
     #else
               << "off\n"

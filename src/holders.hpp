@@ -215,7 +215,6 @@ _initHelper(T &, T2 && t2)
 }
 
 template <typename TRedAlph_,
-          typename TScoreScheme_,
           typename TIndexSpec_,
           typename TFileFormat,
           BlastProgram p,
@@ -278,7 +277,10 @@ public:
     using TDbIndex      = Index<typename std::remove_reference<TRedSubjSeqs>::type, TIndexSpec>;
 
     /* output file */
-    using TScoreScheme  = TScoreScheme_;
+    using TScoreScheme  = std::conditional_t<std::is_same<TRedAlph, Dna5>::value,
+                                             Score<int, Simple>,
+                                             Score<int, ScoreMatrix<AminoAcid, ScoreSpecSelectable>>>;
+//     using TScoreScheme  = TScoreScheme_;
     using TIOContext    = BlastIOContext<TScoreScheme, p, h>;
     using TFile         = FormattedFile<TFileFormat, Output, TIOContext>;
     using TBamFile      = FormattedFile<Bam, Output, BlastTabular>;

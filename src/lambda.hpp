@@ -54,7 +54,6 @@ using namespace seqan;
 // ============================================================================
 
 template <typename TRedAlph_,
-          typename TScoreScheme_,
           typename TIndexSpec_,
           typename TFileFormat,
           BlastProgram p,
@@ -107,11 +106,10 @@ struct Comp :
 template <BlastTabularSpec h,
           BlastProgram p,
           typename TRedAlph,
-          typename TScoreScheme,
           typename TIndexSpec,
           typename TOutFormat>
 inline void
-prepareScoringMore(GlobalDataHolder<TRedAlph, TScoreScheme,TIndexSpec, TOutFormat, p, h>  & globalHolder,
+prepareScoringMore(GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h>  & globalHolder,
                    LambdaOptions                                                    const & options,
                    std::true_type                                                   const & /**/)
 {
@@ -125,7 +123,7 @@ template <BlastTabularSpec h,
           typename TIndexSpec,
           typename TOutFormat>
 inline void
-prepareScoringMore(GlobalDataHolder<TRedAlph, Score<int, ScoreMatrix<AminoAcid, ScoreSpecSelectable>>, TIndexSpec, TOutFormat, p, h> & globalHolder,
+prepareScoringMore(GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h> & globalHolder,
                    LambdaOptions                                                    const & options,
                    std::false_type                                                  const & /**/)
 {
@@ -153,27 +151,16 @@ prepareScoringMore(GlobalDataHolder<TRedAlph, Score<int, ScoreMatrix<AminoAcid, 
 template <BlastTabularSpec h,
           BlastProgram p,
           typename TRedAlph,
-          typename TScoreScheme,
-          typename TIndexSpec,
-          typename TOutFormat>
-inline void
-prepareScoringMore(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, TOutFormat, p, h> & /**/,
-                   LambdaOptions                                                    const & /**/,
-                   std::false_type                                                  const & /**/)
-{
-}
-
-template <BlastTabularSpec h,
-          BlastProgram p,
-          typename TRedAlph,
-          typename TScoreScheme,
           typename TIndexSpec,
           typename TOutFormat>
 inline int
-prepareScoring(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, TOutFormat, p, h> & globalHolder,
+prepareScoring(GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h> & globalHolder,
                LambdaOptions                                                    const & options)
 {
-    prepareScoringMore(globalHolder, options, std::is_same<TScoreScheme, Score<int, Simple>>());
+    using TGlobalHolder = GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h>;
+    prepareScoringMore(globalHolder,
+                       options,
+                       std::is_same<typename TGlobalHolder::TScoreScheme, Score<int, Simple>>());
 
     setScoreGapOpenBlast(context(globalHolder.outfile).scoringScheme, options.gapOpen);
     setScoreGapExtend(context(globalHolder.outfile).scoringScheme, options.gapExtend);
@@ -194,14 +181,13 @@ prepareScoring(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, TOutFormat, 
 template <BlastTabularSpec h,
           BlastProgram p,
           typename TRedAlph,
-          typename TScoreScheme,
           typename TIndexSpec,
           typename TOutFormat>
 inline int
-loadSubjects(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, TOutFormat, p, h> & globalHolder,
+loadSubjects(GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h> & globalHolder,
              LambdaOptions                                                    const & options)
 {
-    using TGH = GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, TOutFormat, p, h>;
+    using TGH = GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h>;
 
     double start, finish;
     std::string strIdent;
@@ -352,11 +338,10 @@ loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
 template <BlastTabularSpec h,
           BlastProgram p,
           typename TRedAlph,
-          typename TScoreScheme,
           typename TIndexSpec,
           typename TOutFormat>
 inline int
-loadSegintervals(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, TOutFormat, p, h>     & globalHolder,
+loadSegintervals(GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h>     & globalHolder,
                  LambdaOptions                                            const & options)
 {
 
@@ -499,14 +484,13 @@ loadQueryImplTrans(TCDStringSet<String<TransAlph<BlastProgram::BLASTP>, TSpec1>>
 template <BlastTabularSpec h,
           BlastProgram p,
           typename TRedAlph,
-          typename TScoreScheme,
           typename TIndexSpec,
           typename TOutFormat>
 inline int
-loadQuery(GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, TOutFormat, p, h> & globalHolder,
+loadQuery(GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h> & globalHolder,
           LambdaOptions                                                    const & options)
 {
-    using TGH = GlobalDataHolder<TRedAlph, TScoreScheme, TIndexSpec, TOutFormat, p, h>;
+    using TGH = GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h>;
     double start = sysTime();
 
     std::string strIdent = "Loading Query Sequences and Ids...";
