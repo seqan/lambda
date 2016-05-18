@@ -26,7 +26,7 @@ matrix:
     - os: linux
       compiler: gcc-6
       addons:
-          apt:
+        apt:
           sources: ['ubuntu-toolchain-r-test', 'george-edison55-precise-backports']
           packages: ['g++-6', 'cmake', 'cmake-data', 'zlib1g-dev', 'libbz2-dev']
       install: export CXX="g++-6"
