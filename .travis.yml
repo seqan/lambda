@@ -28,7 +28,7 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test', 'george-edison55-precise-backports']
-          packages: ['g++-6', 'cmake', 'cmake-data', 'zlib1g-dev', 'libbz2-dev']
+      before_install: sudo apt-get install -qq g++-6 cmake cmake-data zlib1g-dev libbz2-dev
       install: export CXX="g++-6"
 
     - os: linux
