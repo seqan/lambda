@@ -129,10 +129,12 @@ if(CMAKE_COMPILER_IS_GNUCXX)
     if(NCPU GREATER 1)
         set (SEQAN_CXX_FLAGS "${SEQAN_CXX_FLAGS} -flto=${NCPU}")
     endif()
+endif(CMAKE_COMPILER_IS_GNUCXX)
 
+if (NOT COMPILER_IS_INTEL)
     # strip binaries to make them smaller
     set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -s")
-endif(CMAKE_COMPILER_IS_GNUCXX)
+endif ()
 
 # ----------------------------------------------------------------------------
 # Build Setup
