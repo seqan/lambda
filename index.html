@@ -17,20 +17,18 @@
     <div class="wrapper">
       <header>
         <h1 class="header">Lambda</h1>
-        <p class="header">Version 0.9.1</p>
+        <p class="header">Download</p>
 
         <ul>
-          <li class="download"><a class="buttons" href="https://github.com/seqan/lambda/releases/download/lambda-v0.9.1/lambda-v0.9.1-linux_x86-64.tar.gz">Linux 64bit</a></li>
-<!--          <li class="download"><a class="buttons" href="https://github.com/seqan/lambda/releases/download/lambda-v0.9.0/lambda-v0.9.0-linux_sandybridge.tar.gz">Linux AVX</a></li>
-          <li class="download"><a class="buttons" href="https://github.com/seqan/lambda/releases/download/lambda-v0.9.0/lambda-v0.9.0-freebsd_x86-64.tar.gz">FreeBSD 64bit</a></li>-->
-          <li class="download"><a class="buttons" href="https://github.com/seqan/lambda/releases/download/lambda-v0.9.1/lambda-v0.9.1-darwin_x86-64.tar.gz">MacOS X 64bit</a></li>
-          <li><a class="buttons download" href="https://github.com/seqan/lambda/releases/tag/lambda-v0.9.1">All Downloads</a></li>
+         <li><a class="buttons download" href="https://github.com/seqan/lambda/releases/">Lambda Binaries</a></li>
+         <li><a class="buttons download" href="https://github.com/seqan/lambda/wiki/Pre-built-Database-Indexes">Databases</a></li>
         </ul>
 
-        <p class="header">View on Github</p>
+        <p class="header">Resources</p>
         <ul>
-          <li><a class="buttons github" href="https://github.com/seqan/lambda">Source-Code</a></li>
           <li><a class="buttons github" href="https://github.com/seqan/lambda/wiki">Documentation</a></li>
+          <li><a class="buttons github" href="https://github.com/seqan/lambda">Source-Code</a></li>
+          <li><a class="buttons github" href="http://bioinformatics.oxfordjournals.org/content/30/17/i349.abstract">Publication</a></li>
         </ul>
       </header>
       <section>
@@ -51,6 +49,29 @@
 
 <h2>
 <a id="news" class="anchor" href="#news" aria-hidden="true"><span class="octicon octicon-link"></span></a>News</h2>
+
+<h4>
+<a id="2016-04-08-release-of-094" class="anchor" href="#2016-04-08-release-of-094" aria-hidden="true"><span class="octicon octicon-link"></span></a>2016-04-08: Release of 0.9.4</h4>
+
+<p>Version 0.9.4 has just been released. It contains minor SAM/BAM fixes and additions, and it now runs on OpenBSD. Lambda can now also be built with Clang (as of version 3.8)
+and the Intel Compiler (as of version 16.0.2). If there are no serious bugs, this version will soon become 1.0 and development of the new feature branch will begin.</p>
+
+<h4>
+<a id="2015-12-11-release-of-093" class="anchor" href="#2015-12-11-release-of-093" aria-hidden="true"><span class="octicon octicon-link"></span></a>2015-12-11: Release of 0.9.3</h4>
+
+<p>Version 0.9.3 has just been released. This is mostly a bug-fix release. We have also added app tests and continuous integration builds to improve the
+quality of Lambda and spot issues more quickly. Happy holiday season to all users who are affected :-)</p>
+
+<h4>
+<a id="2015-11-27-release-of-092" class="anchor" href="#2015-11-27-release-of-092" aria-hidden="true"><span class="octicon octicon-link"></span></a>2015-11-27: Release of 0.9.2</h4>
+
+<p>Version 0.9.2 has just been released. We have implemented (long-awaited) support for the SAM and BAM formats!
+And documentation on the different formats and their options has been added to the <a href="https://github.com/seqan/lambda/wiki/Output-Formats">wiki</a>.
+The indexer now truncates sequence IDs by default which results in smaller indexes. If you use the pairwise format (.m0)
+you might want to change this since your output files will only contain the shortened IDs otherwise; all other formats are not
+effected (they truncate the IDs anyway). Head over to the <a href="https://github.com/seqan/lambda/releases">releases</a>
+for a full list of changes and the downloads. Updated index files will be created next week (but old indexes are compatible).</p>
+
 
 <h4>
 <a id="2015-10-23-release-of-091" class="anchor" href="#2015-10-23-release-of-091" aria-hidden="true"><span class="octicon octicon-link"></span></a>2015-10-23: Release of 0.9.1</h4>
