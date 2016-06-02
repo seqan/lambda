@@ -759,9 +759,9 @@ onFind(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
     Match m {static_cast<Match::TQId>(lH.seedRefs[seedId]),
              static_cast<Match::TSId>(getSeqNo(subjOcc)),
              static_cast<Match::TPos>(lH.seedRanks[seedId] * lH.options.seedOffset),
-             static_cast<Match::TPos>(lH.seedRanks[seedId] * lH.options.seedOffset + lH.options.seedLength),
-             static_cast<Match::TPos>(getSeqOffset(subjOcc)),
-             static_cast<Match::TPos>(getSeqOffset(subjOcc) + lH.options.seedLength)};
+             static_cast<typename TMatch::TPos>(lH.seedRanks[seedId] * lH.options.seedOffset + lH.options.seedLength),
+             static_cast<typename TMatch::TPos>(getSeqOffset(subjOcc)),
+             static_cast<typename TMatch::TPos>(getSeqOffset(subjOcc) + lH.options.seedLength)};
 
     bool discarded = false;
     auto const halfSubjL = lH.options.seedLength /  2;
@@ -794,29 +794,29 @@ onFind(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
         lH.matches.emplace_back(m);
 }
 
-template <typename TMatch,
-          typename TGlobalHolder,
+template <typename TGlobalHolder,
           typename TScoreExtension,
           typename TSubjOcc>
 inline void
-onFindVariable(LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> & lH,
+onFindVariable(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
                TSubjOcc subjOcc,
-               Match::TQId const seedId,
-               Match::TPos const seedBegin,
-               Match::TPos const seedLength)
+               typename TGlobalHolder::TMatch::TQId const seedId,
+               typename TGlobalHolder::TMatch::TPos const seedBegin,
+               typename TGlobalHolder::TMatch::TPos const seedLength)
 {
+    using TMatch = typename TGlobalHolder::TMatch;
     if (TGlobalHolder::indexIsFM) // positions are reversed
         setSeqOffset(subjOcc,
                      length(lH.gH.subjSeqs[getSeqNo(subjOcc)])
                      - getSeqOffset(subjOcc)
                      - seedLength);
 
-    Match m {seedId,
-             static_cast<Match::TSId>(getSeqNo(subjOcc)),
-             seedBegin,
-             static_cast<Match::TPos>(seedBegin + seedLength),
-             static_cast<Match::TPos>(getSeqOffset(subjOcc)),
-             static_cast<Match::TPos>(getSeqOffset(subjOcc) + seedLength)};
+    TMatch m {seedId,
+              static_cast<typename TGlobalHolder::TMatch::TSId>(getSeqNo(subjOcc)),
+              seedBegin,
+              static_cast<typename TGlobalHolder::TMatch::TPos>(seedBegin + seedLength),
+              static_cast<typename TGlobalHolder::TMatch::TPos>(getSeqOffset(subjOcc)),
+              static_cast<typename TGlobalHolder::TMatch::TPos>(getSeqOffset(subjOcc) + seedLength)};
 
      if (!seedLooksPromising(lH, m))
          ++lH.stats.hitsFailedPreExtendTest;
@@ -881,11 +881,10 @@ __goDownErrors(TIndexIt const & indexIt,
         reportRunnable(indexIt);
 }
 
-template <typename TMatch,
-          typename TGlobalHolder,
+template <typename TGlobalHolder,
           typename TScoreExtension>
 inline void
-__serachAdaptive(LocalDataHolder<TMatch, TGlobalHolder, TScoreExtension> & lH,
+__serachAdaptive(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
                  uint64_t const seedLength)
 {
     typedef typename Iterator<typename TGlobalHolder::TDbIndex, TopDown<> >::Type TIndexIt;
@@ -1660,16 +1659,12 @@ iterateMatches(TLocalHolder & lH)
                             long const qDist = it2->qryStart - bm.qEnd;
                             long const sDist = it2->subjStart - bm.sEnd;
 
-                        if ((qDist == sDist) &&
-                            (qDist <= (long)lH.options.seedGravity))
-                        {
-                            bm.qEnd = std::max(bm.qEnd,
-                                               static_cast<TBlastPos>(it2->qryStart
-                                               + lH.options.seedLength));
-                            bm.sEnd = std::max(bm.sEnd,
-                                               static_cast<TBlastPos>(it2->subjStart
-                                               + lH.options.seedLength));
-                            ++lH.stats.hitsMerged;
+                            if ((qDist == sDist) &&
+                                (qDist <= (long)lH.options.seedGravity))
+                            {
+                                bm.qEnd = std::max(bm.qEnd, static_cast<TBlastPos>(it2->qryEnd));
+                                bm.sEnd = std::max(bm.sEnd, static_cast<TBlastPos>(it2->subjEnd));
+                                ++lH.stats.hitsMerged;
 
                                 setToSkip(*it2);
                             }

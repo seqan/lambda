@@ -277,9 +277,9 @@ myHyperSortSingleIndex(std::vector<Match<TAlph>> & matches,
 //     m1.subjEnd   = std::max(m1.subjEnd,  m2.subjEnd);
 // }
 
-
+template <typename TAlph>
 inline void
-_printMatch(Match const & m)
+_printMatch(Match<TAlph> const & m)
 {
     std::cout << "MATCH  Query " << m.qryId
               << "(" << m.qryStart << ", " << m.qryEnd
