@@ -917,6 +917,16 @@ __serachAdaptive(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
             if (desiredOccs == 0)
                 desiredOccs = minResults;
 
+            bool failed = 0;
+            size_t k = 0;
+
+            while ((k < 3 /*seedLength / 2*/) && (!failed))
+            {
+                failed = !goDown(indexIt, lH.gH.redQrySeqs[i][seedBegin + k]);
+                ++k;
+//                 ++seedBegin;
+            }
+
             auto continRunnable = [&] (TIndexIt const & prevIndexIt, TIndexIt const & indexIt)
             {
                 // NON-ADAPTIVE
@@ -950,7 +960,12 @@ __serachAdaptive(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
                 }
             };
 
-            __goDownErrors(indexIt, begin(lH.gH.redQrySeqs[i], Standard()) + seedBegin, end(lH.gH.redQrySeqs[i], Standard()), continRunnable, reportRunnable);
+            if (!failed)
+                __goDownErrors(indexIt,
+                               begin(lH.gH.redQrySeqs[i], Standard()) + seedBegin + k,
+                               end(lH.gH.redQrySeqs[i], Standard()),
+                               continRunnable,
+                               reportRunnable);
 
             // set beginning of next seed (-2 so we have some overlap)
             if (maxSeedExtension <= seedLength - lH.options.seedOffset)
