@@ -7,7 +7,19 @@
 # ===========================================================================
 
 # ----------------------------------------------------------------------------
-# Dependencies
+# App version
+# ----------------------------------------------------------------------------
+
+# change this after every release
+set (SEQAN_APP_VERSION_MAJOR "1")
+set (SEQAN_APP_VERSION_MINOR "0")
+set (SEQAN_APP_VERSION_PATCH "0")
+
+# don't change the following
+set (SEQAN_APP_VERSION "${SEQAN_APP_VERSION_MAJOR}.${SEQAN_APP_VERSION_MINOR}.${SEQAN_APP_VERSION_PATCH}")
+
+# ----------------------------------------------------------------------------
+# Dependencies (continued)
 # ----------------------------------------------------------------------------
 
 # Search SeqAn and select dependencies.
@@ -55,30 +67,37 @@ elseif (COMPILER_IS_INTEL)
     endif ()
 endif ()
 
+# if (SEQAN_VERSION_STRING VERSION_LESS "2.2.0")
+#     message (FATAL_ERROR "The minimum SeqAn verison required is 2.2.0")
+#     return ()
+# endif ()
+
 # ----------------------------------------------------------------------------
 # App-Level Configuration
 # ----------------------------------------------------------------------------
 
-set (SEQAN_APP_VERSION "1.0.0")
+message ("\n${ColourBold}Build configuration${ColourReset}")
 
-option (LAMBDA_FASTBUILD "Build only blastp and blastx modes (speeds up build)." OFF)
+message (STATUS "LAMBDA version is: ${SEQAN_APP_VERSION}")
+
+option (LAMBDA_FASTBUILD    "Build only blastp and blastx modes (speeds up build)."                             OFF)
+option (LAMBDA_NATIVE_BUILD "Architecture-specific optimizations, i.e. g++ -march=native."                      ON)
+option (LAMBDA_STATIC_BUILD "Include all libraries in the binaries."                                            OFF)
+option (LAMBDA_MMAPPED_DB   "Use mmapped access to the database."                                               ON)
+option (LAMBDA_LINGAPS_OPT  "Add optimized codepaths for linear gap costs (inc. bin size and compile time)."    OFF)
+
 if (LAMBDA_FASTBUILD)
     add_definitions (-DFASTBUILD=1)
-    message (STATUS "FASTBUILD set, only blastp and blastx available.")
 endif (LAMBDA_FASTBUILD)
 
-option (LAMBDA_NATIVE_BUILD "Architecture-specific optimizations, i.e. g++ -march=native." ON)
 if (LAMBDA_NATIVE_BUILD)
     add_definitions (-DLAMBDA_NATIVE_BUILD=1)
     set (SEQAN_CXX_FLAGS "${SEQAN_CXX_FLAGS} -march=native")
     if (COMPILER_IS_INTEL)
         set (SEQAN_CXX_FLAGS "${SEQAN_CXX_FLAGS} -xHOST -ipo -no-prec-div -fp-model fast=2")
     endif (COMPILER_IS_INTEL)
-    message (STATUS "NATIVE_BUILD set, binaries will be optimized for this CPU (and might not work on others).")
-    message (STATUS "To deactivate, pass -DLAMBDA_NATIVE_BUILD=0 to cmake.")
 endif (LAMBDA_NATIVE_BUILD)
 
-option (LAMBDA_STATIC_BUILD "Include all libraries in the binaries." OFF)
 if (LAMBDA_STATIC_BUILD)
     add_definitions (-DLAMBDA_STATIC_BUILD=1)
     set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
@@ -93,20 +112,24 @@ if (LAMBDA_STATIC_BUILD)
     if (CMAKE_SYSTEM_NAME MATCHES "Linux")
         SET(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS "")
     endif (CMAKE_SYSTEM_NAME MATCHES "Linux")
-    message (STATUS "STATIC_BUILD set, binaries built with all libs included.")
 endif (LAMBDA_STATIC_BUILD)
 
-option (LAMBDA_MMAPPED_DB "Use mmapped access to the database." ON)
 if (LAMBDA_MMAPPED_DB)
     add_definitions (-DLAMBDA_MMAPPED_DB=1)
-    message (STATUS "MMAPPED_DB set, using memory-mapped IO to access the database.")
-    message (STATUS "To deactivate, pass -DLAMBDA_MMAPPED_DB=0 to cmake.")
 endif (LAMBDA_MMAPPED_DB)
 
-option (LAMBDA_LINGAPS_OPT "Add optimized codepaths for linear gap costs (increases binary size and compile time)." OFF)
 if (LAMBDA_LINGAPS_OPT)
     add_definitions (-DLAMBDA_LINGAPS_OPT=1)
 endif ()
+
+message(STATUS "The following options are selected for the build:")
+message(   "     LAMBDA_FASTBUILD         ${LAMBDA_FASTBUILD}")
+message(   "     LAMBDA_LINGAPS_OPT       ${LAMBDA_LINGAPS_OPT}")
+message(   "     LAMBDA_MMAPPED_DB        ${LAMBDA_MMAPPED_DB}")
+message(   "     LAMBDA_NATIVE_BUILD      ${LAMBDA_NATIVE_BUILD}")
+message(   "     LAMBDA_STATIC_BUILD      ${LAMBDA_STATIC_BUILD}")
+message(   "   Run 'cmake -LH' to get a comment on each option.")
+message(   "   Remove CMakeCache.txt and re-run cmake with -DOPTIONNAME=ON|OFF to change an option.")
 
 # ----------------------------------------------------------------------------
 # Compiler specifics
@@ -184,11 +207,6 @@ set(BUILD_SHARED_LIBS OFF)
 # Installation
 # ----------------------------------------------------------------------------
 
-# Set variables for installing, depending on the selected build type.
-if (NOT SEQAN_PREFIX_SHARE_DOC)
-  seqan_setup_install_vars (lambda)
-endif (NOT SEQAN_PREFIX_SHARE_DOC)
-
 # Install lambda in ${PREFIX}/bin directory
 install (TARGETS lambda lambda_indexer
          DESTINATION bin)
@@ -197,7 +215,7 @@ install (TARGETS lambda lambda_indexer
 install (FILES ../LICENSE-GPL3.rst
                ../README.rst
                ../COPYING.rst
-         DESTINATION ${SEQAN_PREFIX_SHARE_DOC})
+         DESTINATION "share/doc/lambda")
 
 # ----------------------------------------------------------------------------
 # CPack Install
@@ -209,5 +227,24 @@ set (CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/../README.rst")
 set (CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/../LICENSE-GPL3.rst")
 set (CPACK_PACKAGE_VENDOR "Hannes Hauswedell <hannes.hauswedell@fu-berlin.de>")
 set (CPACK_PACKAGE_CONTACT "${CPACK_PACKAGE_VENDOR}")
+set (CPACK_PACKAGE_VERSION_MAJOR "${SEQAN_APP_VERSION_MAJOR}")
+set (CPACK_PACKAGE_VERSION_MINOR "${SEQAN_APP_VERSION_MINOR}")
+set (CPACK_PACKAGE_VERSION_PATCH "${SEQAN_APP_VERSION_PATCH}")
+set (CPACK_PACKAGE_VERSION "${SEQAN_APP_VERSION}")
+set (CPACK_PACKAGE_INSTALL_DIRECTORY "${CPACK_PACKAGE_NAME} ${CPACK_PACKAGE_VERSION}")
 
-seqan_configure_cpack_app (lambda "lambda")
+if (CMAKE_SYSTEM_NAME MATCHES "Windows")
+    set(CPACK_GENERATOR "ZIP;NSIS")
+elseif (CMAKE_SYSTEM_NAME MATCHES "Darwin")
+    set(CPACK_GENERATOR "ZIP;DragNDrop")
+elseif (CMAKE_VERSION VERSION_LESS "3.1") # TXZ support since 3.1
+    set(CPACK_GENERATOR "TBZ2")
+else()
+    set(CPACK_GENERATOR "TXZ")
+endif ()
+
+if (CMAKE_SYSTEM_NAME MATCHES "Linux")
+    set(CPACK_GENERATOR "${CPACK_GENERATOR};DEB;RPM")
+endif ()
+
+include (CPack)
