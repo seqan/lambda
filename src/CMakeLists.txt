@@ -23,15 +23,16 @@ set (SEQAN_APP_VERSION "${SEQAN_APP_VERSION_MAJOR}.${SEQAN_APP_VERSION_MINOR}.${
 # ----------------------------------------------------------------------------
 
 # Search SeqAn and select dependencies.
-find_package(OpenMP)
-find_package(ZLIB)
-find_package(BZip2)
-find_package(SeqAn REQUIRED)
+find_package(OpenMP QUIET)
+find_package(ZLIB   QUIET)
+find_package(BZip2  QUIET)
+find_package(SeqAn  QUIET REQUIRED)
 
-if (NOT CXX11_FOUND)
-    message (FATAL_ERROR "  C++11 not found: Not building lambda.")
-    return ()
-endif (NOT CXX11_FOUND)
+message(STATUS "These dependencies where found:")
+message(   "     OPENMP     ${OPENMP_FOUND}      ${OpenMP_CXX_FLAGS}")
+message(   "     ZLIB       ${ZLIB_FOUND}      ${ZLIB_VERSION_STRING}")
+message(   "     BZIP2      ${BZIP2_FOUND}      ${BZIP2_VERSION_STRING}")
+message(   "     SEQAN      ${SEQAN_FOUND}      ${SEQAN_VERSION_STRING}")
 
 # Warn if OpenMP was not found.
 if (NOT OPENMP_FOUND)
@@ -67,10 +68,12 @@ elseif (COMPILER_IS_INTEL)
     endif ()
 endif ()
 
-# if (SEQAN_VERSION_STRING VERSION_LESS "2.2.0")
-#     message (FATAL_ERROR "The minimum SeqAn verison required is 2.2.0")
-#     return ()
-# endif ()
+if (SEQAN_VERSION_STRING VERSION_LESS "2.2.0")
+    message (FATAL_ERROR "The minimum SeqAn verison required is 2.2.0!")
+    return ()
+endif ()
+
+message(STATUS "The requirements where met.")
 
 # ----------------------------------------------------------------------------
 # App-Level Configuration
@@ -128,8 +131,8 @@ message(   "     LAMBDA_LINGAPS_OPT       ${LAMBDA_LINGAPS_OPT}")
 message(   "     LAMBDA_MMAPPED_DB        ${LAMBDA_MMAPPED_DB}")
 message(   "     LAMBDA_NATIVE_BUILD      ${LAMBDA_NATIVE_BUILD}")
 message(   "     LAMBDA_STATIC_BUILD      ${LAMBDA_STATIC_BUILD}")
-message(   "   Run 'cmake -LH' to get a comment on each option.")
-message(   "   Remove CMakeCache.txt and re-run cmake with -DOPTIONNAME=ON|OFF to change an option.")
+message(STATUS "Run 'cmake -LH' to get a comment on each option.")
+message(STATUS "Remove CMakeCache.txt and re-run cmake with -DOPTIONNAME=ON|OFF to change an option.")
 
 # ----------------------------------------------------------------------------
 # Compiler specifics
