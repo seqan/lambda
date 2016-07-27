@@ -1,7 +1,9 @@
 lambda copyright
 ================
-Copyright (c) 2013-2015, Hannes Hauswedell, FU Berlin.
-All rights reserved.
+::
+
+  Copyright (c) 2013-2016, Hannes Hauswedell
+  All rights reserved.
 
 Lambda is *free software*: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -10,18 +12,34 @@ the Free Software Foundation, either version 3 of the License, or
 
 Lambda is distributed in the hope that it will be useful,
 but **without any warranty**; without even the implied warranty of
-**merchantability** or **fitness for a particular purpose**. See the
-GNU General Public License for more details.
+**merchantability** or **fitness for a particular purpose**.
 
 See the file `LICENSE-GPL3.rst <./LICENSE-GPL3.rst>`__ or
 http://www.gnu.org/licenses/ for a full text of the license and the
 rights and obligations implied.
 
+Some of the contributions to Lambda are alternatively or additionally
+::
+
+  Copyright (c) 2016, Knut Reinert and Freie Universität Berlin
+
+These are covered by the three clause BSD license as can be found in
+the file `LICENSE-BSD.rst <./LICENSE-BSD.rst>`__.
+
+
+submodules
+==========
+
+When Lambda is distributed in binary form or when Lambda is distributed
+in source form including its submodules the following additional
+license terms apply:
+
 SeqAn copyright
-===============
-Lambda contains code of the SeqAn project in the folder
-`include/seqan <./include/seqan>`__. See
-`include/seqan/LICENSE <./include/seqan/LICENSE>`__  for the terms.
-Please note that due to technical reasons the repository contains
-other SeqAn applications, as well, that might be distributed under
-different terms.
+---------------
+::
+
+  Copyright (c) 2006-2016, Knut Reinert and Freie Universität Berlin
+
+SeqAn is published under the terms of the three clause BSD license as can
+be found in the file `include/seqan/LICENSE <./include/seqan/LICENSE>`__
+or printed by the parameter ``--copyright``.
