@@ -42,7 +42,7 @@ Lambda is being developed by `Hannes Hauswedell <mailto:hannes.hauswedell@[molge
 +------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------+
 | .. image:: https://raw.githubusercontent.com/seqan/lambda/gh-pages/images_readme/copyleft.png                    | Lambda is Free and open source software, so you can use it for any purpose, free of charge.                        |
 |    :alt: Respect the license                                                                                     | However certain conditions apply when you (re-)distribute and/or modify Lambda, please respect the                 |
-|    :target: https://github.com/seqan/lambda/blob/master/LICENSE-GPL3.rst                                         | `license <https://github.com/seqan/lambda/blob/master/LICENSE-GPL3.rst>`__.                                        |
+|    :target: https://github.com/seqan/lambda/blob/master/LICENSE.rst                                              | `license <https://github.com/seqan/lambda/blob/master/LICENSE.rst>`__.                                             |
 |    :width: 76px                                                                                                  |                                                                                                                    |
 +------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------+
 
