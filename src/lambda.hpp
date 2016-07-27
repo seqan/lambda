@@ -1,25 +1,20 @@
 // ==========================================================================
 //                                  lambda
 // ==========================================================================
-// Copyright (c) 2013-2015, Hannes Hauswedell, FU Berlin
+// Copyright (c) 2013-2016, Hannes Hauswedell <h2 @ fsfe.org>
+// Copyright (c) 2016, Knut Reinert and Freie Universität Berlin
 // All rights reserved.
 //
 // This file is part of Lambda.
 //
-// Lambda is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Lambda is Free Software: you can redistribute it and/or modify it
+// under the terms found in the LICENSE[.md|.rst] file distributed
+// together with this file.
 //
 // Lambda is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 //
-// You should have received a copy of the GNU General Public License
-// along with Lambda.  If not, see <http://www.gnu.org/licenses/>.
-// ==========================================================================
-// Author: Hannes Hauswedell <hannes.hauswedell @ fu-berlin.de>
 // ==========================================================================
 // lambda.hpp: contains the main progam pipeline
 // ==========================================================================
@@ -1234,13 +1229,17 @@ computeBlastMatch(TBlastMatch         & bm,
     } else
     {
         // compute with DP-code
-//         scr = localAlignment(bm.align, seqanScheme(context(lH.gH.outfile).scoringScheme), -maxDist, +maxDist);
-        scr = localAlignment2(bm.alignRow0,
+        scr = localAlignment(bm.alignRow0,
                               bm.alignRow1,
                               seqanScheme(context(lH.gH.outfile).scoringScheme),
                               -maxDist,
-                              +maxDist,
-                              lH.alignContext);
+                              +maxDist);
+//         scr = localAlignment2(bm.alignRow0,
+//                               bm.alignRow1,
+//                               seqanScheme(context(lH.gH.outfile).scoringScheme),
+//                               -maxDist,
+//                               +maxDist,
+//                               lH.alignContext);
     }
 
     // save new bounds of alignment
