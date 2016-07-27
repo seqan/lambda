@@ -24,8 +24,8 @@ Some of the contributions to Lambda are alternatively or additionally
   Copyright (c) 2016, Knut Reinert and Freie Universität Berlin
 
 These are covered by the three clause BSD license as can be found in
-the file `LICENSE-BSD.rst <./LICENSE-BSD.rst>`__.
-
+the file `LICENSE-BSD.rst <./LICENSE-BSD.rst>`__. In cases of doubt
+the terms of both licenses apply.
 
 submodules
 ==========
