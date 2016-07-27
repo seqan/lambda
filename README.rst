@@ -1,21 +1,29 @@
 Lambda: the Local Aligner for Massive Biological DatA
 -----------------------------------------------------
 
-.. image:: https://travis-ci.org/seqan/lambda.svg?branch=master
-    :alt: Travis CI build status
-    :target: https://travis-ci.org/seqan/lambda
-
 Lambda is a local aligner optimized for many query sequences and searches in protein space. It is...
 
 * highly compatible to BLAST (bitscore and e-value statistics, tab seperated and verbose output formats)
 * much faster than BLAST and many other comparable tools
 * supports many other input and output formats, including standards-conformant ``.sam`` and ``.bam`` and many compression types
 
+versions
+--------
 
-This is the stable/recommended branch of Lambda, there are also
-
-* `the development branch <https://github.com/seqan/lambda/tree/lambda-next>`__
-* `the old repository <https://github.com/h-2/seqan/tree/feature/lambda>`__ (contains the version initially published)
++--------------------------------------------------------------------------+----------------+---------------------+----------------------------------------------------------------------+
+| Branch / Repository                                                      | Description    | Versions            | Build state                                                          |
++==========================================================================+================+=====================+======================================================================+
+| `master <https://github.com/seqan/lambda/tree/master>`__                 | stable         | ``0.9.* - 1.0.*``   | .. image:: https://travis-ci.org/seqan/lambda.svg?branch=master      |
+|                                                                          | (recommended)  |                     |    :alt: Travis CI build status                                      |
+|                                                                          |                |                     |    :target: https://travis-ci.org/seqan/lambda                       |
++--------------------------------------------------------------------------+----------------+---------------------+----------------------------------------------------------------------+
+| `lambda-next <https://github.com/seqan/lambda/tree/lambda-next>`__       | experimental   | ``1.9.* - 2.0.*``   | .. image:: https://travis-ci.org/seqan/lambda.svg?branch=lambda-next |
+|                                                                          |                |                     |    :alt: Travis CI build status                                      |
+|                                                                          |                |                     |    :target: https://travis-ci.org/seqan/lambda                       |
++--------------------------------------------------------------------------+----------------+---------------------+----------------------------------------------------------------------+
+| `old repo <https://github.com/h-2/seqan/tree/feature/lambda>`__          | initially      | ``0.4.*``           |                                                                      |
+|                                                                          | published      |                     |                                                                      |
++--------------------------------------------------------------------------+----------------+---------------------+----------------------------------------------------------------------+
 
 authorship and copyright
 ------------------------
