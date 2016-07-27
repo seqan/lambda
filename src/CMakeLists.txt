@@ -182,6 +182,9 @@ add_definitions (-DSEQAN_DATE="${SEQAN_DATE}")
 add_definitions (-DSEQAN_APP_VERSION="${SEQAN_APP_VERSION}")
 add_definitions (-DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}")
 
+# Set the right output directory
+set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
+
 # Update the list of file names below if you add source files to your application.
 add_executable (lambda lambda.cpp
                 lambda.hpp
