@@ -2,17 +2,17 @@ sudo: required
 dist: trusty
 language: cpp
 before_install:
- - test $(uname) = "Linux" && sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
- - test $(uname) = "Linux" && sudo add-apt-repository -y ppa:george-edison55/cmake-3.x
- - test $(uname) = "Linux" && sudo add-apt-repository -y 'deb http://llvm.org/apt/trusty/ llvm-toolchain-trusty-3.8 main'
- - test $(uname) = "Linux" && sudo add-apt-repository -y 'deb http://llvm.org/apt/trusty/ llvm-toolchain-trusty-3.9 main'
- - test $(uname) = "Linux" && wget -O - http://llvm.org/apt/llvm-snapshot.gpg.key | sudo apt-key add -
- - test $(uname) = "Linux" && sudo apt-get update -y
- - test $(uname) = "Linux" && sudo apt-get install -qq -y g++-4.9 g++-5 g++-6 clang-3.8 clang-3.9 cmake cmake-data zlib1g-dev libbz2-dev
- - test $(uname) = "Darwin" && sudo brew update
- - test $(uname) = "Darwin" && sudo brew tap homebrew/versions
- - test $(uname) = "Darwin" && sudo brew install gcc5
- - test $(uname) = "Darwin" && sudo brew install gcc6
+ - test $(uname) = "Linux" && sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test || true
+ - test $(uname) = "Linux" && sudo add-apt-repository -y ppa:george-edison55/cmake-3.x || true
+ - test $(uname) = "Linux" && sudo add-apt-repository -y 'deb http://llvm.org/apt/trusty/ llvm-toolchain-trusty-3.8 main' || true
+ - test $(uname) = "Linux" && sudo add-apt-repository -y 'deb http://llvm.org/apt/trusty/ llvm-toolchain-trusty-3.9 main' || true
+ - test $(uname) = "Linux" && wget -O - http://llvm.org/apt/llvm-snapshot.gpg.key | sudo apt-key add - || true
+ - test $(uname) = "Linux" && sudo apt-get update -y || true
+ - test $(uname) = "Linux" && sudo apt-get install -qq -y g++-4.9 g++-5 g++-6 clang-3.8 clang-3.9 cmake cmake-data zlib1g-dev libbz2-dev || true
+ - test $(uname) = "Darwin" && sudo brew update || true
+ - test $(uname) = "Darwin" && sudo brew tap homebrew/versions || true
+ - test $(uname) = "Darwin" && sudo brew install gcc5 || true
+ - test $(uname) = "Darwin" && sudo brew install gcc6 || true
 matrix:
   include:
     - os: linux
