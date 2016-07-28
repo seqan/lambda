@@ -1,3 +1,12 @@
+# ===========================================================================
+#  Lambda tests
+# ===========================================================================
+
+cmake_minimum_required (VERSION 3.0.0)
+
+enable_testing ()
+include (CTest)
+
 ## only subset of tests
 if (LAMBDA_FASTBUILD)
     set (PROGS blastp blastx)
@@ -24,6 +33,3 @@ foreach(PROG ${PROGS})
         endforeach()
     endforeach()
 endforeach()
-
-## TODO remove files afterwards, remove folder hierarchy
-## only .fasta.gz and md5sums files are required

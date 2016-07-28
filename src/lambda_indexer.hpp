@@ -71,6 +71,11 @@ loadSubjSeqsAndIds(TCDStringSet<String<TOrigAlph>> & originalSeqs,
     double finish = sysTime() - start;
     myPrint(options, 2, "Runtime: ", finish, "s \n");
 
+    if (length(originalSeqs) == 0)
+    {
+        std::cerr << "ERROR: No sequences in file. Aborting.\n";
+        return -1;
+    }
     unsigned long maxLen = 0ul;
     for (auto const & s : originalSeqs)
     {
@@ -80,7 +85,8 @@ loadSubjSeqsAndIds(TCDStringSet<String<TOrigAlph>> & originalSeqs,
         }
         else if (length(s) == 0)
         {
-            std::cerr << "ERROR: Unexpectedly encountered a sequence of length 0 in the file. Aborting.\n";
+            std::cerr << "ERROR: Unexpectedly encountered a sequence of length 0 in the file."
+                      << "Remove the entry and try again. Aborting.\n";
             return -1;
         }
     }

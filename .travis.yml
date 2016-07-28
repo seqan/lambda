@@ -1,65 +1,46 @@
 sudo: required
 dist: trusty
 language: cpp
-#cache:
-  #- directories:
-    #- $HOME/ccache
+before_install:
+ - test $(uname) = "Linux" && sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test || true
+ - test $(uname) = "Linux" && sudo add-apt-repository -y ppa:george-edison55/cmake-3.x || true
+ - test $(uname) = "Linux" && sudo add-apt-repository -y 'deb http://llvm.org/apt/trusty/ llvm-toolchain-trusty-3.8 main' || true
+ - test $(uname) = "Linux" && sudo add-apt-repository -y 'deb http://llvm.org/apt/trusty/ llvm-toolchain-trusty-3.9 main' || true
+ - test $(uname) = "Linux" && wget -O - http://llvm.org/apt/llvm-snapshot.gpg.key | sudo apt-key add - || true
+ - test $(uname) = "Linux" && sudo apt-get update -y || true
+ - test $(uname) = "Linux" && sudo apt-get install -qq -y g++-4.9 g++-5 g++-6 clang-3.8 clang-3.9 cmake cmake-data zlib1g-dev libbz2-dev || true
+ - test $(uname) = "Darwin" && sudo brew update || true
+ - test $(uname) = "Darwin" && sudo brew tap homebrew/versions || true
+ - test $(uname) = "Darwin" && sudo brew install gcc5 || true
+ - test $(uname) = "Darwin" && sudo brew install gcc6 || true
 matrix:
   include:
     - os: linux
       compiler: gcc-4.9
-      addons:
-        apt:
-          sources: ['ubuntu-toolchain-r-test', 'george-edison55-precise-backports']
-          packages: ['g++-4.9', 'cmake', 'cmake-data', 'zlib1g-dev', 'libbz2-dev']
       install: export CXX="g++-4.9"
-
     - os: linux
       compiler: gcc-5
-      addons:
-        apt:
-          sources: ['ubuntu-toolchain-r-test', 'george-edison55-precise-backports']
-          packages: ['g++-5', 'cmake', 'cmake-data', 'zlib1g-dev', 'libbz2-dev']
       install: export CXX="g++-5"
       env: CMAKE_ARGS="-DCMAKE_BUILD_TYPE=RelWithDebInfo"
-
     - os: linux
       compiler: gcc-6
-      before_install:
-        - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
-        - sudo add-apt-repository -y ppa:george-edison55/cmake-3.x
-        - sudo apt-get update -y
-        - sudo apt-get install -qq -y g++-6 cmake cmake-data zlib1g-dev libbz2-dev
       install: export CXX="g++-6"
-
     - os: linux
       compiler: clang-3.8
-      addons:
-        apt:
-          sources: ['ubuntu-toolchain-r-test', 'george-edison55-precise-backports', 'llvm-toolchain-precise-3.8']
-          packages: ['clang-3.8', 'g++-4.9', 'cmake', 'cmake-data', 'zlib1g-dev', 'libbz2-dev'] # g++ required for newer libstdc++
       install: export CXX="clang++-3.8"
-
+    - os: linux
+      compiler: clang-3.9
+      install: export CXX="clang++-3.9"
     - os: osx
       compiler: gcc-4.9
       install: export CXX="g++-4.9"
       env: CMAKE_ARGS="-DLAMBDA_FASTBUILD=1"
-
     - os: osx
       compiler: gcc-5
-      before_install:
-        - sudo brew update
-        - sudo brew tap homebrew/versions
-        - sudo brew install gcc5
       install: export CXX="g++-5"
       env: CMAKE_ARGS="-DLAMBDA_FASTBUILD=1"
-
     - os: osx
       compiler: gcc-6
-      before_install:
-        - sudo brew update
-        - sudo brew tap homebrew/versions
-        - sudo brew install gcc6
       install: export CXX="g++-6"
       env: CMAKE_ARGS="-DLAMBDA_FASTBUILD=1"
 
@@ -87,15 +68,7 @@ matrix:
         #- sudo brew install llvm38
       #install: export CXX="clang++-3.8" CMAKE_ARGS='-DLAMBDA_NATIVE_BUILD=0 -DLAMBDA_FASTBUILD=1 -DCMAKE_CXX_FLAGS="-L/usr/local/Cellar/llvm38/3.8.0/lib/llvm-3.8/lib"'
 
-#before_script:
-  #- export PATH=$HOME/.local/bin:$PATH
-  #- rm -rf ${HOME}/.ccache
-  #- mkdir -p ${HOME}/ccache/${TRAVIS_BRANCH}/${TRAVIS_OS_NAME}/${CXX}
-  #- ln -s  ${HOME}/ccache/${TRAVIS_BRANCH}/${TRAVIS_OS_NAME}/${CXX} ${HOME}/.ccache
-  #- ln -s /usr/bin/ccache ${HOME}/.local/bin/${CXX}
 script:
-  #- ccache -s
-  #- find /usr/lib | grep libomp
   - mkdir -p build && cd build
   - cmake .. -DLAMBDA_NATIVE_BUILD=0 ${CMAKE_ARGS}
   - make lambda_indexer VERBOSE=1

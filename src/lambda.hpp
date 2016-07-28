@@ -207,6 +207,12 @@ loadSubjects(GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h> & globalHo
             return 1;
         }
 
+        if (length(globalHolder.subjSeqs) == 0)
+        {
+            std::cerr << "ERROR: No sequences in database. Aborting.\n";
+            return -1;
+        }
+
         if (TGH::alphReduction)
             globalHolder.redSubjSeqs.limits = globalHolder.subjSeqs.limits;
 
@@ -534,6 +540,12 @@ loadQuery(GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h> & globalHolde
             "Number of effective query sequences: ",
             length(globalHolder.qrySeqs), "\nLongest query sequence: ",
             maxLen, "\n\n");
+
+    if (length(globalHolder.qrySeqs) == 0)
+    {
+        std::cerr << "ERROR: Zero sequences submitted. Aborting.\n";
+        return -1;
+    }
 
     if (length(globalHolder.qrySeqs) >= std::numeric_limits<typename TGH::TMatch::TQId>::max())
     {
