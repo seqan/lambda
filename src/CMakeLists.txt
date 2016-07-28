@@ -220,7 +220,7 @@ install (TARGETS lambda lambda_indexer
 # Install non-binary files for the package to share/lambda
 install (FILES ../LICENSE.rst
                ../LICENSE-BSD.rst
-               ../LICENSE-GPL3.rst
+               ../LICENSE-AGPL3.rst
                ../README.rst
          DESTINATION "share/doc/lambda")
 
