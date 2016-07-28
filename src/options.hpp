@@ -323,12 +323,13 @@ sharedSetup(ArgumentParser & parser)
                                 std::string(SEQAN_REVISION) + ")";
     setVersion(parser, versionString);
     setDate(parser, __DATE__);
-    setShortCopyright(parser, "2013-2015 Hannes Hauswedell; released under the GNU GPL v3 (or later).");
+    setShortCopyright(parser, "2013-2016 Hannes Hauswedell, released under the GNU GPL v3 (or later); "
+                              "2016 Knut Reinert and Freie Universität Berlin, released under the 3-clause-BSDL");
 
     setCitation(parser, "Hauswedell et al (2014); doi: 10.1093/bioinformatics/btu439");
 
     setLongCopyright(parser,
-        " Copyright (c) 2013-2015, Hannes Hauswedell, FU Berlin\n"
+        " Copyright (c) 2013-2016, Hannes Hauswedell\n"
         " All rights reserved.\n"
         "\n"
         " Lambda is free software: you can redistribute it and/or modify\n"
@@ -342,7 +343,34 @@ sharedSetup(ArgumentParser & parser)
         " GNU General Public License for more details.\n"
         "\n"
         " You should have received a copy of the GNU General Public License\n"
-        " along with Lambda.  If not, see <http://www.gnu.org/licenses/>.\n");
+        " along with Lambda.  If not, see <http://www.gnu.org/licenses/>.\n"
+        "\n"
+        " Copyright (c) 2016 Knut Reinert and Freie Universität Berlin\n"
+        " All rights reserved.\n"
+        "\n"
+        " Redistribution and use in source and binary forms, with or without\n"
+        " modification, are permitted provided that the following conditions are met:\n"
+        "\n"
+        " * Redistributions of source code must retain the above copyright\n"
+        "   notice, this list of conditions and the following disclaimer.\n"
+        " * Redistributions in binary form must reproduce the above copyright\n"
+        "   notice, this list of conditions and the following disclaimer in the\n"
+        "   documentation and/or other materials provided with the distribution.\n"
+        " * Neither the name of Knut Reinert or the FU Berlin nor the names of\n"
+        "   its contributors may be used to endorse or promote products derived\n"
+        "   from this software without specific prior written permission.\n"
+        "\n"
+        " THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\"\n"
+        " AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE\n"
+        " IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE\n"
+        " ARE DISCLAIMED. IN NO EVENT SHALL KNUT REINERT OR THE FU BERLIN BE LIABLE\n"
+        " FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL\n"
+        " DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR\n"
+        " SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER\n"
+        " CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT\n"
+        " LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY\n"
+        " OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH\n"
+        " DAMAGE.\n");
 
     addOption(parser, ArgParseOption("v", "verbosity",
         "Display more/less diagnostic output during operation: 0 [only errors]; 1 [default]; 2 "

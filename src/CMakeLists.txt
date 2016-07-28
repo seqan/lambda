@@ -182,6 +182,9 @@ add_definitions (-DSEQAN_DATE="${SEQAN_DATE}")
 add_definitions (-DSEQAN_APP_VERSION="${SEQAN_APP_VERSION}")
 add_definitions (-DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}")
 
+# Set the right output directory
+set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
+
 # Update the list of file names below if you add source files to your application.
 add_executable (lambda lambda.cpp
                 lambda.hpp
@@ -215,9 +218,10 @@ install (TARGETS lambda lambda_indexer
          DESTINATION bin)
 
 # Install non-binary files for the package to share/lambda
-install (FILES ../LICENSE-GPL3.rst
+install (FILES ../LICENSE.rst
+               ../LICENSE-BSD.rst
+               ../LICENSE-GPL3.rst
                ../README.rst
-               ../COPYING.rst
          DESTINATION "share/doc/lambda")
 
 # ----------------------------------------------------------------------------
@@ -227,7 +231,7 @@ install (FILES ../LICENSE-GPL3.rst
 set (CPACK_PACKAGE_NAME "lambda")
 set (CPACK_PACKAGE_DESCRIPTION_SUMMARY "lambda -- the local aligner for massive bioligical data")
 set (CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/../README.rst")
-set (CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/../LICENSE-GPL3.rst")
+set (CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/../LICENSE.rst")
 set (CPACK_PACKAGE_VENDOR "Hannes Hauswedell <hannes.hauswedell@fu-berlin.de>")
 set (CPACK_PACKAGE_CONTACT "${CPACK_PACKAGE_VENDOR}")
 set (CPACK_PACKAGE_VERSION_MAJOR "${SEQAN_APP_VERSION_MAJOR}")
