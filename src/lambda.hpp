@@ -751,12 +751,12 @@ onFind(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
                      - getSeqOffset(subjOcc)
                      - lH.options.seedLength);
 
-    Match m {static_cast<Match::TQId>(lH.seedRefs[seedId]),
-             static_cast<Match::TSId>(getSeqNo(subjOcc)),
-             static_cast<Match::TPos>(lH.seedRanks[seedId] * lH.options.seedOffset),
-             static_cast<typename TMatch::TPos>(lH.seedRanks[seedId] * lH.options.seedOffset + lH.options.seedLength),
-             static_cast<typename TMatch::TPos>(getSeqOffset(subjOcc)),
-             static_cast<typename TMatch::TPos>(getSeqOffset(subjOcc) + lH.options.seedLength)};
+    TMatch m {static_cast<typename TMatch::TQId>(lH.seedRefs[seedId]),
+              static_cast<typename TMatch::TSId>(getSeqNo(subjOcc)),
+              static_cast<typename TMatch::TPos>(lH.seedRanks[seedId] * lH.options.seedOffset),
+              static_cast<typename TMatch::TPos>(lH.seedRanks[seedId] * lH.options.seedOffset + lH.options.seedLength),
+              static_cast<typename TMatch::TPos>(getSeqOffset(subjOcc)),
+              static_cast<typename TMatch::TPos>(getSeqOffset(subjOcc) + lH.options.seedLength)};
 
     bool discarded = false;
     auto const halfSubjL = lH.options.seedLength /  2;
