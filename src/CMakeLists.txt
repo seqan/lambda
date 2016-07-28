@@ -218,9 +218,10 @@ install (TARGETS lambda lambda_indexer
          DESTINATION bin)
 
 # Install non-binary files for the package to share/lambda
-install (FILES ../LICENSE-GPL3.rst
+install (FILES ../LICENSE.rst
+               ../LICENSE-BSD.rst
+               ../LICENSE-GPL3.rst
                ../README.rst
-               ../COPYING.rst
          DESTINATION "share/doc/lambda")
 
 # ----------------------------------------------------------------------------
@@ -230,7 +231,7 @@ install (FILES ../LICENSE-GPL3.rst
 set (CPACK_PACKAGE_NAME "lambda")
 set (CPACK_PACKAGE_DESCRIPTION_SUMMARY "lambda -- the local aligner for massive bioligical data")
 set (CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/../README.rst")
-set (CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/../LICENSE-GPL3.rst")
+set (CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/../LICENSE.rst")
 set (CPACK_PACKAGE_VENDOR "Hannes Hauswedell <hannes.hauswedell@fu-berlin.de>")
 set (CPACK_PACKAGE_CONTACT "${CPACK_PACKAGE_VENDOR}")
 set (CPACK_PACKAGE_VERSION_MAJOR "${SEQAN_APP_VERSION_MAJOR}")
