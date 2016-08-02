@@ -892,7 +892,7 @@ template <typename TGlobalHolder,
           typename TScoreExtension>
 inline void
 __serachAdaptive(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
-                 uint64_t const seedLength)
+                 std::pair<uint64_t, uint64_t> const & seedLenOff)
 {
     typedef typename Iterator<typename TGlobalHolder::TDbIndex, TopDown<> >::Type TIndexIt;
 
@@ -912,35 +912,35 @@ __serachAdaptive(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
     for (size_t i = lH.indexBeginQry; i < lH.indexEndQry; ++i)
     {
         for (size_t seedBegin = 0;
-             seedBegin <= length(lH.gH.redQrySeqs[i]) - seedLength;
-             seedBegin += lH.options.seedOffset)
+             seedBegin <= length(lH.gH.redQrySeqs[i]) - seedLenOff.first;
+             seedBegin += seedLenOff.second)
         {
             indexIt = root;
 
             size_t desiredOccs = length(lH.matches) >= lH.options.maxMatches
                                     ? minResults
                                     : (lH.options.maxMatches - length(lH.matches)) * seedHeurFactor /
-                                        ((needlesSum - needlesPos - seedBegin) / lH.options.seedOffset);
+                                        ((needlesSum - needlesPos - seedBegin) / seedLenOff.second);
 
             if (desiredOccs == 0)
                 desiredOccs = minResults;
 
             // go down seedOffset number of characters without errors
-            for (size_t k = 0; k < lH.options.seedOffset; ++k)
+            for (size_t k = 0; k < seedLenOff.second; ++k)
                 if (!goDown(indexIt, lH.gH.redQrySeqs[i][seedBegin + k]))
                     break;
             // if unsuccessful, move to next seed
-            if (repLength(indexIt) != lH.options.seedOffset)
+            if (repLength(indexIt) != seedLenOff.second)
                 continue;
 
-            auto continRunnable = [&seedLength, &desiredOccs] (TIndexIt const & prevIndexIt, TIndexIt const & indexIt)
+            auto continRunnable = [&seedLenOff, &desiredOccs] (TIndexIt const & prevIndexIt, TIndexIt const & indexIt)
             {
                 // NON-ADAPTIVE
-//                 return (repLength(indexIt) <= seedLength);
+//                 return (repLength(indexIt) <= seedLenOff.first);
                 // ADAPTIVE SEEDING:
 
                 // always continue if minimum seed length not reached
-                if (repLength(indexIt) <= seedLength)
+                if (repLength(indexIt) <= seedLenOff.first)
                     return true;
 
                 // always continue if it means not loosing hits
@@ -954,9 +954,9 @@ __serachAdaptive(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
                 return true;
             };
 
-            auto reportRunnable = [&seedLength, &lH, &i, &seedBegin] (TIndexIt const & indexIt)
+            auto reportRunnable = [&seedLenOff, &lH, &i, &seedBegin] (TIndexIt const & indexIt)
             {
-                if (repLength(indexIt) >= seedLength)
+                if (repLength(indexIt) >= seedLenOff.first)
                 {
                     appendValue(lH.stats.seedLengths, repLength(indexIt));
                     lH.stats.hitsAfterSeeding += countOccurrences(indexIt);
@@ -966,7 +966,7 @@ __serachAdaptive(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
             };
 
             __goDownErrors(indexIt,
-                           begin(lH.gH.redQrySeqs[i], Standard()) + seedBegin + lH.options.seedOffset,
+                           begin(lH.gH.redQrySeqs[i], Standard()) + seedBegin + seedLenOff.second,
                            end(lH.gH.redQrySeqs[i], Standard()),
                            continRunnable,
                            reportRunnable);
@@ -974,6 +974,9 @@ __serachAdaptive(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
 
         needlesPos += length(lH.gH.redQrySeqs[i]);
     }
+
+    if (length(lH.matches) > 0)
+        lH.stats.qrysWithHitAfterSeeding++;
 }
 
 template <typename BackSpec, typename TLocalHolder>
@@ -1062,7 +1065,7 @@ inline void
 search(TLocalHolder & lH)
 {
     if (lH.options.adaptiveSeeding)
-        __serachAdaptive(lH, lH.options.seedLength);
+        __serachAdaptive(lH, std::make_pair(lH.options.seedLength, lH.options.seedOffset));
     else if (lH.options.maxSeedDist == 0)
         __search<Backtracking<Exact>>(lH);
     else if (lH.options.hammingOnly)
