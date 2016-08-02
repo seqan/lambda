@@ -122,7 +122,8 @@ struct LambdaFMIndexConfig
 #else
     using TAlloc    = Alloc<>;
 #endif
-    using Bwt       = WaveletTree<void, WTRDConfig<LengthSum, TAlloc> >;
+//     using Bwt       = WaveletTree<void, WTRDConfig<LengthSum, TAlloc> >;
+    using Bwt       = Levels<void, LevelsRDConfig<LengthSum, TAlloc, 1, 3> >;
     using Sentinels = Levels<void, LevelsRDConfig<LengthSum, TAlloc> >;
 
     static const unsigned SAMPLING = 10;
