@@ -49,6 +49,8 @@ struct Match
     TPos subjStart;
     TPos subjEnd;
 
+    double _scorePerPos;
+
 //     Match()
 //     :
 //         qryId(0), qryStart(0), /*qryEnd(0),*/ subjId(0), subjStart(0)/*, subjEnd(0)*/
@@ -67,13 +69,13 @@ struct Match
 
     inline bool operator== (Match const & m2) const
     {
-         return std::tie(qryId, subjId, qryStart, subjStart, qryEnd, subjEnd)
-             == std::tie(m2.qryId, m2.subjId, m2.qryStart, m2.subjStart, m2.qryEnd, m2.subjEnd);
+         return std::tie(qryId, subjId, qryStart, subjStart, qryEnd, subjEnd, _scorePerPos)
+             == std::tie(m2.qryId, m2.subjId, m2.qryStart, m2.subjStart, m2.qryEnd, m2.subjEnd, m2._scorePerPos);
     }
     inline bool operator< (Match const & m2) const
     {
-         return std::tie(qryId, subjId, qryStart, subjStart, qryEnd, subjEnd)
-              < std::tie(m2.qryId, m2.subjId, m2.qryStart, m2.subjStart, m2.qryEnd, m2.subjEnd);
+         return std::tie(qryId, subjId, qryStart, subjStart, qryEnd, subjEnd, m2._scorePerPos) // higher score is better
+              < std::tie(m2.qryId, m2.subjId, m2.qryStart, m2.subjStart, m2.qryEnd, m2.subjEnd, _scorePerPos);
     }
 };
 
@@ -209,6 +211,31 @@ myHyperSortSingleIndex(std::vector<Match<TAlph>> & matches,
         }
     }
     std::swap(tmpVector, matches);
+}
+
+template <typename TLH>
+inline void
+myFilterSort(TLH & lH)
+{
+    static constexpr size_t minResults = 10;
+
+    std::sort(lH.matches.begin(), lH.matches.end(), [] (typename TLH::TMatch const & m1, typename TLH::TMatch const & m2)
+    {
+        return (m1._scorePerPos > m2._scorePerPos);
+    });
+
+    if (length(lH.matches) <= minResults)
+        return;
+
+    size_t cuttoffValue = lH.options.preScoringThresh;
+    size_t cuttoffIndex = minResults;
+    for (; (cuttoffIndex < length(lH.matches)) && (lH.matches[cuttoffIndex]._scorePerPos >= cuttoffValue); ++cuttoffIndex)
+    {}
+
+    lH.stats.hitsFailedPreExtendTest += length(lH.matches) - cuttoffIndex;
+    resize(lH.matches, cuttoffIndex);
+
+    std::sort(lH.matches.begin(), lH.matches.end());
 }
 
 
