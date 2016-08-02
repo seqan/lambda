@@ -897,7 +897,7 @@ __serachAdaptive(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
     typedef typename Iterator<typename TGlobalHolder::TDbIndex, TopDown<> >::Type TIndexIt;
 
     // TODO optionize
-    size_t constexpr seedHeurFactor = 1;//2;
+    size_t constexpr seedHeurFactor = 10;
     size_t constexpr minResults = 1;
 
     size_t needlesSum = lH.gH.redQrySeqs.limits[lH.indexEndQry] - lH.gH.redQrySeqs.limits[lH.indexBeginQry];
@@ -911,30 +911,29 @@ __serachAdaptive(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
 
     for (size_t i = lH.indexBeginQry; i < lH.indexEndQry; ++i)
     {
-        for (size_t seedBegin = 0; seedBegin <= length(lH.gH.redQrySeqs[i]) - seedLength;)
+        for (size_t seedBegin = 0;
+             seedBegin <= length(lH.gH.redQrySeqs[i]) - seedLength;
+             seedBegin += lH.options.seedOffset)
         {
             indexIt = root;
-            size_t maxSeedExtension = 0;
-            // TODO this was faster when more strict
+
             size_t desiredOccs = length(lH.matches) >= lH.options.maxMatches
                                     ? minResults
                                     : (lH.options.maxMatches - length(lH.matches)) * seedHeurFactor /
-                                        ((needlesSum - needlesPos - seedLength) / seedLength);
-//                                  : lH.options.maxMatches / repLength(indexIt);
+                                        ((needlesSum - needlesPos - seedBegin) / lH.options.seedOffset);
+
             if (desiredOccs == 0)
                 desiredOccs = minResults;
 
-            bool failed = 0;
-            size_t k = 0;
+            // go down seedOffset number of characters without errors
+            for (size_t k = 0; k < lH.options.seedOffset; ++k)
+                if (!goDown(indexIt, lH.gH.redQrySeqs[i][seedBegin + k]))
+                    break;
+            // if unsuccessful, move to next seed
+            if (repLength(indexIt) != lH.options.seedOffset)
+                continue;
 
-            while ((k < 3 /*seedLength / 2*/) && (!failed))
-            {
-                failed = !goDown(indexIt, lH.gH.redQrySeqs[i][seedBegin + k]);
-                ++k;
-//                 ++seedBegin;
-            }
-
-            auto continRunnable = [&] (TIndexIt const & prevIndexIt, TIndexIt const & indexIt)
+            auto continRunnable = [&seedLength, &desiredOccs] (TIndexIt const & prevIndexIt, TIndexIt const & indexIt)
             {
                 // NON-ADAPTIVE
 //                 return (repLength(indexIt) <= seedLength);
@@ -955,33 +954,22 @@ __serachAdaptive(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
                 return true;
             };
 
-
-            auto reportRunnable = [&] (TIndexIt const & indexIt)
+            auto reportRunnable = [&seedLength, &lH, &i, &seedBegin] (TIndexIt const & indexIt)
             {
                 if (repLength(indexIt) >= seedLength)
                 {
-                    maxSeedExtension = std::max(maxSeedExtension, repLength(indexIt));
+                    appendValue(lH.stats.seedLengths, repLength(indexIt));
                     lH.stats.hitsAfterSeeding += countOccurrences(indexIt);
                     for (auto const & occ : getOccurrences(indexIt))
-                        onFindVariable(lH, occ, i, seedBegin, repLength(indexIt));// pos - seedBegin);
+                        onFindVariable(lH, occ, i, seedBegin, repLength(indexIt));
                 }
             };
 
-            if (!failed)
-                __goDownErrors(indexIt,
-                               begin(lH.gH.redQrySeqs[i], Standard()) + seedBegin + k,
-                               end(lH.gH.redQrySeqs[i], Standard()),
-                               continRunnable,
-                               reportRunnable);
-
-            // set beginning of next seed (-2 so we have some overlap)
-            if (maxSeedExtension <= seedLength - lH.options.seedOffset)
-                seedBegin += lH.options.seedOffset;
-            else
-                seedBegin += maxSeedExtension + lH.options.seedOffset - lH.options.seedLength;
-            // NON-ADAPTIVE:
-//             seedBegin += lH.options.seedOffset;
-
+            __goDownErrors(indexIt,
+                           begin(lH.gH.redQrySeqs[i], Standard()) + seedBegin + lH.options.seedOffset,
+                           end(lH.gH.redQrySeqs[i], Standard()),
+                           continRunnable,
+                           reportRunnable);
         }
 
         needlesPos += length(lH.gH.redQrySeqs[i]);

@@ -54,6 +54,7 @@ struct StatsHolder
     uint64_t hitsMerged;
     uint64_t hitsTooShort;
     uint64_t hitsMasked;
+    std::vector<uint16_t> seedLengths;
 
 // pre-extension
     uint64_t hitsFailedPreExtendTest;
@@ -87,6 +88,7 @@ struct StatsHolder
         hitsMerged = 0;
         hitsTooShort = 0;
         hitsMasked = 0;
+        seedLengths.clear();
 
         hitsFailedPreExtendTest = 0;
         hitsPutativeDuplicate = 0;
@@ -112,6 +114,7 @@ struct StatsHolder
         hitsMerged += rhs.hitsMerged;
         hitsTooShort += rhs.hitsTooShort;
         hitsMasked += rhs.hitsMasked;
+        append(seedLengths, rhs.seedLengths);
 
         hitsFailedPreExtendTest += rhs.hitsFailedPreExtendTest;
         hitsPutativeDuplicate += rhs.hitsPutativeDuplicate;
@@ -198,6 +201,22 @@ void printStats(StatsHolder const & stats, LambdaOptions const & options)
                   << " search:   " << stats.timeSearch << "\n"
                   << " sort:     " << stats.timeSort << "\n"
                   << " extend:   " << stats.timeExtend << "\n\n";
+
+        double _seedLengthSum       = std::accumulate(stats.seedLengths.begin(), stats.seedLengths.end(), 0.0);
+        double seedLengthMean       = _seedLengthSum / stats.seedLengths.size();
+
+        double _seedLengthMeanSqSum = std::inner_product(stats.seedLengths.begin(),
+                                                         stats.seedLengths.end(),
+                                                         stats.seedLengths.begin(),
+                                                         0.0);
+        double seedLengthStdDev     = std::sqrt(_seedLengthMeanSqSum / stats.seedLengths.size() -
+                                                seedLengthMean * seedLengthMean);
+        uint16_t seedLengthMax      = *std::max_element(stats.seedLengths.begin(), stats.seedLengths.end());
+
+        std::cout << "SeedStats:\n"
+                  << " avgLength:   " << seedLengthMean << "\n"
+                  << " stddev:      " << seedLengthStdDev << "\n"
+                  << " max:         " << seedLengthMax << "\n\n";
     }
 
     if (options.verbosity >= 1)
