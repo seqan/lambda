@@ -37,5 +37,5 @@ add_subdirectory(src)
 # Add Tests
 # ----------------------------------------------------------------------------
 
-message ("\n${ColourBold}Setting up unit tests${ColourReset}")
-add_subdirectory(tests)
+# message ("\n${ColourBold}Setting up unit tests${ColourReset}")
+# add_subdirectory(tests)
