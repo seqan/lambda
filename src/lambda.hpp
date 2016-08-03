@@ -911,10 +911,17 @@ __serachAdaptive(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
 
     for (size_t i = lH.indexBeginQry; i < lH.indexEndQry; ++i)
     {
-        for (size_t seedBegin = 0;
-             seedBegin <= length(lH.gH.redQrySeqs[i]) - seedLength;
-             seedBegin += lH.options.seedOffset)
+        for (size_t seedBegin = 0; /* below */; seedBegin += lH.options.seedOffset)
         {
+            // skip proteine 'X' or Dna 'N'
+            while ((lH.gH.qrySeqs[i][seedBegin] == unknownValue<TransAlph<lH.gH.blastProgram>>()) &&
+                   (seedBegin <= length(lH.gH.redQrySeqs[i]) - seedLength))
+                ++seedBegin;
+
+            // termination criterium
+            if (seedBegin > length(lH.gH.redQrySeqs[i]) - seedLength)
+                break;
+
             indexIt = root;
 
             size_t desiredOccs = length(lH.matches) >= lH.options.maxMatches
