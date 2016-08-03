@@ -51,7 +51,6 @@ struct StatsHolder
 {
 // seeding
     uint64_t hitsAfterSeeding;
-    uint64_t qrysWithHitAfterSeeding;
     uint64_t hitsMerged;
     uint64_t hitsTooShort;
     uint64_t hitsMasked;
@@ -86,7 +85,6 @@ struct StatsHolder
     void clear()
     {
         hitsAfterSeeding = 0;
-        qrysWithHitAfterSeeding = 0;
         hitsMerged = 0;
         hitsTooShort = 0;
         hitsMasked = 0;
@@ -113,7 +111,6 @@ struct StatsHolder
     StatsHolder plus(StatsHolder const & rhs)
     {
         hitsAfterSeeding += rhs.hitsAfterSeeding;
-        qrysWithHitAfterSeeding += rhs.qrysWithHitAfterSeeding;
         hitsMerged += rhs.hitsMerged;
         hitsTooShort += rhs.hitsTooShort;
         hitsMasked += rhs.hitsMasked;
@@ -169,7 +166,6 @@ void printStats(StatsHolder const & stats, LambdaOptions const & options)
         std::cout << "Remaining\033[0m"
                   << "\n   after Seeding               "; BLANKS;
         std::cout << R << rem;
-        std::cout << " (qrysWithHit: " << stats.qrysWithHitAfterSeeding << ")";
         std::cout << "\n - masked                   " << R << stats.hitsMasked
                   << RR << (rem -= stats.hitsMasked);
         std::cout << "\n - merged                   " << R << stats.hitsMerged
