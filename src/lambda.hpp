@@ -670,7 +670,7 @@ template <typename TGlobalHolder,
           typename TScoreExtension>
 inline bool
 seedLooksPromising(LocalDataHolder<TGlobalHolder, TScoreExtension> const & lH,
-                   typename TGlobalHolder::TMatch & m)
+                   typename TGlobalHolder::TMatch const & m)
 {
     // no pre-scoring, but still filter out XXX and NNN hits
 //     if (!lH.options.preScoring))
@@ -735,7 +735,6 @@ seedLooksPromising(LocalDataHolder<TGlobalHolder, TScoreExtension> const & lH,
         scores[i+1] = scores[i];
     }
 
-    m._scorePerPos = static_cast<double>(maxScore) / effectiveLength;
     return (maxScore >= int(lH.options.preScoringThresh * effectiveLength));
 }
 
@@ -826,12 +825,10 @@ onFindVariable(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
               static_cast<typename TGlobalHolder::TMatch::TPos>(getSeqOffset(subjOcc)),
               static_cast<typename TGlobalHolder::TMatch::TPos>(getSeqOffset(subjOcc) + seedLength)};
 
-//      if (!seedLooksPromising(lH, m))
-//          ++lH.stats.hitsFailedPreExtendTest;
-//      else
-//         lH.matches.emplace_back(m);
-    seedLooksPromising(lH, m);
-    lH.matches.emplace_back(m);
+     if (!seedLooksPromising(lH, m))
+         ++lH.stats.hitsFailedPreExtendTest;
+     else
+        lH.matches.emplace_back(m);
 }
 
 // --------------------------------------------------------------------------
@@ -1108,9 +1105,7 @@ sortMatches(TLocalHolder & lH)
 //         std::sort(lH.matches.begin(), lH.matches.end(), comp);
 //     } else
 
-    if (lH.options.adaptiveSeeding)
-        myFilterSort(lH);
-    else if ((lH.options.filterPutativeAbundant) &&
+    if ((lH.options.filterPutativeAbundant) &&
         (lH.matches.size() > lH.options.maxMatches))
         // more expensive sort to get likely targets to front
         myHyperSortSingleIndex(lH.matches, lH.options.doubleIndexing, lH.gH);
