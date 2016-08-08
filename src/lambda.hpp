@@ -1834,4 +1834,229 @@ iterateMatches(TLocalHolder & lH)
     return 0;
 }
 
+#if SEQAN_SIMD_ENABLED
+
+template <typename TLocalHolder>
+inline int
+iterateMatchesFullSimd(TLocalHolder & lH)
+{
+    using TGlobalHolder = typename TLocalHolder::TGlobalHolder;
+//     using TMatch        = typename TGlobalHolder::TMatch;
+//     using TPos          = typename TMatch::TPos;
+    using TBlastPos     = uint32_t; //TODO why can't this be == TPos
+    using TBlastMatch   = BlastMatch<
+                           typename TLocalHolder::TAlignRow0,
+                           typename TLocalHolder::TAlignRow1,
+                           TBlastPos,
+                           typename Value<typename TGlobalHolder::TQryIds>::Type,// const &,
+                           typename Value<typename TGlobalHolder::TSubjIds>::Type// const &,
+                           >;
+    using TBlastRecord  = BlastRecord<TBlastMatch>;
+
+    typedef FreeEndGaps_<True, True, True, True> TFreeEndGaps;
+    typedef AlignConfig2<LocalAlignment_<>,
+                         DPBandConfig<BandOff>,
+                         TFreeEndGaps,
+                         TracebackOn<TracebackConfig_<CompleteTrace, GapsLeft> > > TAlignConfig;
+
+    typedef int TScoreValue; //TODO don't hardcode
+    typedef typename TLocalHolder::TAlignRow0                           TGapSequenceH;
+    typedef typename TLocalHolder::TAlignRow1                           TGapSequenceV;
+    typedef typename Size<TGapSequenceH>::Type                          TSize;
+    typedef typename Position<TGapSequenceH>::Type                      TPosition;
+    typedef TraceSegment_<TPosition, TSize>                             TTraceSegment;
+
+    typedef typename SimdVector<int16_t>::Type                          TSimdAlign;
+
+    unsigned const numAlignments = length(lH.matches);
+    unsigned const sizeBatch = LENGTH<TSimdAlign>::VALUE;
+    unsigned const fullSize = sizeBatch * ((numAlignments + sizeBatch - 1) / sizeBatch);
+
+    String<TScoreValue> results;
+    resize(results, numAlignments);
+
+    // Create a SIMD scoring scheme.
+    Score<TSimdAlign, ScoreSimdWrapper<typename TGlobalHolder::TScoreScheme> > simdScoringScheme(seqanScheme(context(lH.gH.outfile).scoringScheme));
+
+    // Prepare string sets with sequences.
+    StringSet<typename Source<TGapSequenceH>::Type, Dependent<> > depSetH;
+    StringSet<typename Source<TGapSequenceV>::Type, Dependent<> > depSetV;
+    reserve(depSetH, fullSize);
+    reserve(depSetV, fullSize);
+
+
+    auto const trueQryId = lH.matches[0].qryId / qNumFrames(lH.gH.blastProgram);
+
+    TBlastRecord record(lH.gH.qryIds[trueQryId]);
+    record.qLength = (qIsTranslated(lH.gH.blastProgram)
+                        ? lH.gH.untransQrySeqLengths[trueQryId]
+                        : length(lH.gH.qrySeqs[lH.matches[0].qryId]));
+
+    size_t maxDist = 0;
+//     switch (lH.options.band)
+//     {
+//         case -3: maxDist = ceil(log2(record.qLength)); break;
+//         case -2: maxDist = floor(sqrt(record.qLength)); break;
+//         case -1: break;
+//         default: maxDist = lH.options.band; break;
+//     }
+
+    TAlignConfig config;//(-maxDist, maxDist);
+
+    // create blast matches
+    for (auto it = lH.matches.begin(), itEnd = lH.matches.end(); it != itEnd; ++it)
+    {
+        auto const trueSubjId = it->subjId / sNumFrames(lH.gH.blastProgram);
+
+        // create blastmatch in list without copy or move
+        record.matches.emplace_back(lH.gH.qryIds [trueQryId],
+                                    lH.gH.subjIds[trueSubjId]);
+
+        auto & bm = back(record.matches);
+        auto &  m = *it;
+
+        bm.qLength = record.qLength;
+        bm.sLength = sIsTranslated(lH.gH.blastProgram)
+                        ? lH.gH.untransSubjSeqLengths[trueSubjId]
+                        : length(lH.gH.subjSeqs[it->subjId]);
+        // TODO what to do if it is 0? band won't work and end will be wrong
+        TPosition sStart = std::max((long)it->subjStart - (long)it->qryStart - (long)maxDist, 0l);
+        TPosition sEnd   = std::min(sStart + length(lH.gH.qrySeqs[it->qryId]) + maxDist,
+                                    length(lH.gH.subjSeqs[it->subjId]));
+        SEQAN_ASSERT_LEQ(sStart, sEnd);
+
+        assignSource(bm.alignRow0, infix(lH.gH.qrySeqs[it->qryId],   0,      length(lH.gH.qrySeqs[it->qryId])));
+        assignSource(bm.alignRow1, infix(lH.gH.subjSeqs[it->subjId], sStart, sEnd));
+
+        appendValue(depSetH, source(bm.alignRow0));
+        appendValue(depSetV, source(bm.alignRow1));
+
+        if (qIsTranslated(TLocalHolder::TGlobalHolder::blastProgram))
+        {
+            bm.qFrameShift = (m.qryId % 3) + 1;
+            if (m.qryId % 6 > 2)
+                bm.qFrameShift = -bm.qFrameShift;
+        } else if (qHasRevComp(TLocalHolder::TGlobalHolder::blastProgram))
+        {
+            bm.qFrameShift = 1;
+            if (m.qryId % 2)
+                bm.qFrameShift = -bm.qFrameShift;
+        } else
+        {
+            bm.qFrameShift = 0;
+        }
+
+        if (sIsTranslated(TLocalHolder::TGlobalHolder::blastProgram))
+        {
+            bm.sFrameShift = (m.subjId % 3) + 1;
+            if (m.subjId % 6 > 2)
+                bm.sFrameShift = -bm.sFrameShift;
+        } else if (sHasRevComp(TLocalHolder::TGlobalHolder::blastProgram))
+        {
+            bm.sFrameShift = 1;
+            if (m.subjId % 2)
+                bm.sFrameShift = -bm.sFrameShift;
+        } else
+        {
+            bm.sFrameShift = 0;
+        }
+    }
+
+    // fill up last batch
+    for (size_t i = numAlignments; i < fullSize; ++i)
+    {
+        appendValue(depSetH, source(back(record.matches).alignRow0));
+        appendValue(depSetV, source(back(record.matches).alignRow1));
+    }
+
+    // Run alignments in batches.
+    auto matchIt = record.matches.begin();
+    for (auto pos = 0u; pos < fullSize; pos += sizeBatch)
+    {
+        auto infSetH = infixWithLength(depSetH, pos, sizeBatch);
+        auto infSetV = infixWithLength(depSetV, pos, sizeBatch);
+
+        TSimdAlign resultsBatch;
+
+        StringSet<String<TTraceSegment> > trace;
+        resize(trace, sizeBatch, Exact());
+
+        _prepareAndRunSimdAlignment(resultsBatch, trace, infSetH, infSetV, simdScoringScheme, config, typename TLocalHolder::TScoreExtension());
+
+        // copy results and finish traceback
+        // TODO(rrahn): Could be parallelized!
+        // to for_each call
+        for(auto x = pos; x < pos + sizeBatch && x < numAlignments; ++x)
+        {
+            results[x] = resultsBatch[x - pos];
+            _adaptTraceSegmentsTo(matchIt->alignRow0, matchIt->alignRow1, trace[x - pos]);
+            ++matchIt;
+        }
+    }
+
+    // TODO share this code with above function
+    for (auto it = record.matches.begin(), itEnd = record.matches.end(); it != itEnd; /*below*/)
+    {
+        TBlastMatch & bm = *it;
+
+        bm.sStart = beginPosition(bm.alignRow1);
+        bm.qStart = beginPosition(bm.alignRow0);
+        bm.sEnd   = endPosition(bm.alignRow1);
+        bm.qEnd   = endPosition(bm.alignRow0);
+
+        computeAlignmentStats(bm, context(lH.gH.outfile));
+
+        if (bm.alignStats.alignmentIdentity < lH.options.idCutOff)
+        {
+            ++lH.stats.hitsFailedExtendPercentIdentTest;
+            it = record.matches.erase(it);
+            continue;
+        }
+
+        computeBitScore(bm, context(lH.gH.outfile));
+
+        // the length adjustment cache must no be written to by multiple threads
+        SEQAN_OMP_PRAGMA(critical(evalue_length_adj_cache))
+        {
+            computeEValue(bm, context(lH.gH.outfile));
+        }
+
+        if (bm.eValue > lH.options.eCutOff)
+        {
+            ++lH.stats.hitsFailedExtendEValueTest;
+            it = record.matches.erase(it);
+            continue;
+        }
+
+        ++it;
+    }
+
+    if (length(record.matches) > 0)
+    {
+        ++lH.stats.qrysWithHit;
+        // sort and remove duplicates -> STL, yeah!
+        auto const before = record.matches.size();
+        record.matches.sort();
+        if (!lH.options.filterPutativeDuplicates)
+        {
+            record.matches.unique();
+            lH.stats.hitsDuplicate += before - record.matches.size();
+        }
+        if (record.matches.size() > lH.options.maxMatches)
+        {
+            lH.stats.hitsAbundant += record.matches.size() -
+                                        lH.options.maxMatches;
+            record.matches.resize(lH.options.maxMatches);
+        }
+        lH.stats.hitsFinal += record.matches.size();
+
+        myWriteRecord(lH, record);
+    }
+
+    return 0;
+
+}
+
+#endif // SEQAN_SIMD_ENABLED
+
 #endif // HEADER GUARD

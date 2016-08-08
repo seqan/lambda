@@ -391,7 +391,7 @@ public:
 // ----------------------------------------------------------------------------
 
 template <typename TGlobalHolder_,
-          typename TScoreExtension>
+          typename TScoreExtension_>
 class LocalDataHolder
 {
 public:
@@ -400,6 +400,7 @@ public:
     using TSeeds        = StringSet<typename Infix<TRedQrySeq const>::Type>;
     using TSeedIndex    = Index<TSeeds, IndexSa<>>;
     using TMatch        = typename TGlobalHolder::TMatch;
+    using TScoreExtension = TScoreExtension_;
 
 
     // references to global stuff

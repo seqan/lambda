@@ -476,7 +476,11 @@ realMain(LambdaOptions                  const & options,
 
             // extend
             buf = sysTime();
+#if SEQAN_SIMD_ENABLED
+            res = iterateMatchesFullSimd(localHolder);
+#else
             res = iterateMatches(localHolder);
+#endif
             localHolder.stats.timeExtend += sysTime() - buf;
             if (res)
                 continue;
