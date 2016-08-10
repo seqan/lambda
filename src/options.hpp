@@ -283,6 +283,14 @@ struct LambdaOptions : public SharedOptions
     int             idCutOff    = 0;
     unsigned long   maxMatches  = 500;
 
+    enum class ExtensionMode : uint8_t
+    {
+        XDROP,
+        FULL_SERIAL,
+        FULL_SIMD
+    };
+    ExtensionMode   extensionMode;
+
     bool            filterPutativeDuplicates = true;
     bool            filterPutativeAbundant = true;
     bool            mergePutativeSiblings = true;
@@ -778,6 +786,17 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setMinValue(parser, "band", "-3");
     setAdvanced(parser, "band");
 
+    addOption(parser, ArgParseOption("em", "extension-mode",
+        "How to extend",
+        ArgParseArgument::STRING));
+#ifdef SEQAN_SIMD_ENABLED
+    setValidValues(parser, "extension-mode", "xdrop fullSerial fullSIMD");
+#else
+    setValidValues(parser, "extension-mode", "xdrop fullSerial");
+#endif
+    setDefaultValue(parser, "extension-mode", "xdrop");
+    setAdvanced(parser, "extension-mode");
+
     addTextSection(parser, "Tuning");
     addText(parser, "Tuning the seeding parameters and (de)activating alphabet "
                     "reduction has a strong "
@@ -1051,6 +1070,14 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     int numbuf;
     getOptionValue(numbuf, parser, "num-matches");
     options.maxMatches = static_cast<unsigned long>(numbuf);
+
+    getOptionValue(buffer, parser, "extension-mode");
+    if (buffer == "fullSIMD")
+        options.extensionMode = LambdaOptions::ExtensionMode::FULL_SIMD;
+    else if (buffer == "fullSerial")
+        options.extensionMode = LambdaOptions::ExtensionMode::FULL_SERIAL;
+    else
+        options.extensionMode = LambdaOptions::ExtensionMode::XDROP;
 
     return ArgumentParser::PARSE_OK;
 }
@@ -1467,6 +1494,12 @@ printOptions(LambdaOptions const & options)
     #endif
               << "  lingaps_opt:              "
     #if defined(LAMBDA_LINGAPS_OPT)
+              << "on\n"
+    #else
+              << "off\n"
+    #endif
+              << "  seqan_simd:               "
+    #if defined(SEQAN_SIMD_ENABLED)
               << "on\n"
     #else
               << "off\n"

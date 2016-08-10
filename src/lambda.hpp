@@ -1086,7 +1086,6 @@ search(TLocalHolder & lH)
 // Function joinAndFilterMatches()
 // --------------------------------------------------------------------------
 
-
 template <typename TLocalHolder>
 inline void
 sortMatches(TLocalHolder & lH)
@@ -1125,6 +1124,85 @@ sortMatches(TLocalHolder & lH)
         myPrint(lH.options, 1, lH.statusStr);
     }
 }
+
+// --------------------------------------------------------------------------
+// Function _setFrames()
+// --------------------------------------------------------------------------
+
+template <typename TBlastMatch,
+          typename TLocalHolder>
+inline void
+_setFrames(TBlastMatch                          & bm,
+           typename TLocalHolder::TMatch  const & m,
+           TLocalHolder                   const & lH)
+{
+    if (qIsTranslated(TLocalHolder::TGlobalHolder::blastProgram))
+    {
+        bm.qFrameShift = (m.qryId % 3) + 1;
+        if (m.qryId % 6 > 2)
+            bm.qFrameShift = -bm.qFrameShift;
+    } else if (qHasRevComp(TLocalHolder::TGlobalHolder::blastProgram))
+    {
+        bm.qFrameShift = 1;
+        if (m.qryId % 2)
+            bm.qFrameShift = -bm.qFrameShift;
+    } else
+    {
+        bm.qFrameShift = 0;
+    }
+
+    if (sIsTranslated(TLocalHolder::TGlobalHolder::blastProgram))
+    {
+        bm.sFrameShift = (m.subjId % 3) + 1;
+        if (m.subjId % 6 > 2)
+            bm.sFrameShift = -bm.sFrameShift;
+    } else if (sHasRevComp(TLocalHolder::TGlobalHolder::blastProgram))
+    {
+        bm.sFrameShift = 1;
+        if (m.subjId % 2)
+            bm.sFrameShift = -bm.sFrameShift;
+    } else
+    {
+        bm.sFrameShift = 0;
+    }
+}
+
+// --------------------------------------------------------------------------
+// Function _writeMatches()
+// --------------------------------------------------------------------------
+
+template <typename TBlastRecord,
+          typename TLocalHolder>
+inline void
+_writeRecord(TBlastRecord & record,
+             TLocalHolder & lH)
+{
+    if (length(record.matches) > 0)
+    {
+        ++lH.stats.qrysWithHit;
+        // sort and remove duplicates -> STL, yeah!
+        auto const before = record.matches.size();
+        record.matches.sort();
+        if (!lH.options.filterPutativeDuplicates)
+        {
+            record.matches.unique();
+            lH.stats.hitsDuplicate += before - record.matches.size();
+        }
+        if (record.matches.size() > lH.options.maxMatches)
+        {
+            lH.stats.hitsAbundant += record.matches.size() -
+                                        lH.options.maxMatches;
+            record.matches.resize(lH.options.maxMatches);
+        }
+        lH.stats.hitsFinal += record.matches.size();
+
+        myWriteRecord(lH, record);
+    }
+}
+
+// --------------------------------------------------------------------------
+// Function computeBlastMatch()
+// --------------------------------------------------------------------------
 
 template <typename TBlastMatch,
           typename TLocalHolder>
@@ -1454,53 +1532,17 @@ computeBlastMatch(TBlastMatch         & bm,
 //     std::cout << "ALIGN BEFORE STATS:\n" << bm.align << "\n";
 
     computeAlignmentStats(bm, context(lH.gH.outfile));
-
     if (bm.alignStats.alignmentIdentity < lH.options.idCutOff)
         return PERCENTIDENT;
 
 //     const unsigned long qryLength = length(row0);
     computeBitScore(bm, context(lH.gH.outfile));
 
-    // the length adjustment cache must no be written to by multiple threads
-    SEQAN_OMP_PRAGMA(critical(evalue_length_adj_cache))
-    {
-        computeEValue(bm, context(lH.gH.outfile));
-    }
-
+    computeEValueThreadSafe(bm, context(lH.gH.outfile));
     if (bm.eValue > lH.options.eCutOff)
-    {
         return EVALUE;
-    }
 
-    if (qIsTranslated(TLocalHolder::TGlobalHolder::blastProgram))
-    {
-        bm.qFrameShift = (m.qryId % 3) + 1;
-        if (m.qryId % 6 > 2)
-            bm.qFrameShift = -bm.qFrameShift;
-    } else if (qHasRevComp(TLocalHolder::TGlobalHolder::blastProgram))
-    {
-        bm.qFrameShift = 1;
-        if (m.qryId % 2)
-            bm.qFrameShift = -bm.qFrameShift;
-    } else
-    {
-        bm.qFrameShift = 0;
-    }
-
-    if (sIsTranslated(TLocalHolder::TGlobalHolder::blastProgram))
-    {
-        bm.sFrameShift = (m.subjId % 3) + 1;
-        if (m.subjId % 6 > 2)
-            bm.sFrameShift = -bm.sFrameShift;
-    } else if (sHasRevComp(TLocalHolder::TGlobalHolder::blastProgram))
-    {
-        bm.sFrameShift = 1;
-        if (m.subjId % 2)
-            bm.sFrameShift = -bm.sFrameShift;
-    } else
-    {
-        bm.sFrameShift = 0;
-    }
+    _setFrames(bm, m, lH);
 
     return 0;
 }
@@ -1798,28 +1840,7 @@ iterateMatches(TLocalHolder & lH)
                 break;
         }
 
-        if (length(record.matches) > 0)
-        {
-            ++lH.stats.qrysWithHit;
-            // sort and remove duplicates -> STL, yeah!
-            auto const before = record.matches.size();
-            record.matches.sort();
-            if (!lH.options.filterPutativeDuplicates)
-            {
-                record.matches.unique();
-                lH.stats.hitsDuplicate += before - record.matches.size();
-            }
-            if (record.matches.size() > lH.options.maxMatches)
-            {
-                lH.stats.hitsAbundant += record.matches.size() -
-                                         lH.options.maxMatches;
-                record.matches.resize(lH.options.maxMatches);
-            }
-            lH.stats.hitsFinal += record.matches.size();
-
-            myWriteRecord(lH, record);
-        }
-
+        _writeRecord(record, lH);
     }
 
     if (lH.options.doubleIndexing)
@@ -1834,15 +1855,15 @@ iterateMatches(TLocalHolder & lH)
     return 0;
 }
 
-#if SEQAN_SIMD_ENABLED
+#ifdef SEQAN_SIMD_ENABLED
 
 template <typename TLocalHolder>
 inline int
 iterateMatchesFullSimd(TLocalHolder & lH)
 {
     using TGlobalHolder = typename TLocalHolder::TGlobalHolder;
-//     using TMatch        = typename TGlobalHolder::TMatch;
-//     using TPos          = typename TMatch::TPos;
+    using TMatch        = typename TGlobalHolder::TMatch;
+    using TPos          = typename TMatch::TPos;
     using TBlastPos     = uint32_t; //TODO why can't this be == TPos
     using TBlastMatch   = BlastMatch<
                            typename TLocalHolder::TAlignRow0,
@@ -1860,11 +1881,8 @@ iterateMatchesFullSimd(TLocalHolder & lH)
                          TracebackOn<TracebackConfig_<CompleteTrace, GapsLeft> > > TAlignConfig;
 
     typedef int TScoreValue; //TODO don't hardcode
-    typedef typename TLocalHolder::TAlignRow0                           TGapSequenceH;
-    typedef typename TLocalHolder::TAlignRow1                           TGapSequenceV;
-    typedef typename Size<TGapSequenceH>::Type                          TSize;
-    typedef typename Position<TGapSequenceH>::Type                      TPosition;
-    typedef TraceSegment_<TPosition, TSize>                             TTraceSegment;
+    typedef typename Size<typename TLocalHolder::TAlignRow0>::Type      TSize;
+    typedef TraceSegment_<TPos, TSize>                                  TTraceSegment;
 
     typedef typename SimdVector<int16_t>::Type                          TSimdAlign;
 
@@ -1879,8 +1897,8 @@ iterateMatchesFullSimd(TLocalHolder & lH)
     Score<TSimdAlign, ScoreSimdWrapper<typename TGlobalHolder::TScoreScheme> > simdScoringScheme(seqanScheme(context(lH.gH.outfile).scoringScheme));
 
     // Prepare string sets with sequences.
-    StringSet<typename Source<TGapSequenceH>::Type, Dependent<> > depSetH;
-    StringSet<typename Source<TGapSequenceV>::Type, Dependent<> > depSetV;
+    StringSet<typename Source<typename TLocalHolder::TAlignRow0>::Type, Dependent<> > depSetH;
+    StringSet<typename Source<typename TLocalHolder::TAlignRow1>::Type, Dependent<> > depSetV;
     reserve(depSetH, fullSize);
     reserve(depSetV, fullSize);
 
@@ -1893,13 +1911,13 @@ iterateMatchesFullSimd(TLocalHolder & lH)
                         : length(lH.gH.qrySeqs[lH.matches[0].qryId]));
 
     size_t maxDist = 0;
-//     switch (lH.options.band)
-//     {
-//         case -3: maxDist = ceil(log2(record.qLength)); break;
-//         case -2: maxDist = floor(sqrt(record.qLength)); break;
-//         case -1: break;
-//         default: maxDist = lH.options.band; break;
-//     }
+    switch (lH.options.band)
+    {
+        case -3: maxDist = ceil(log2(record.qLength)); break;
+        case -2: maxDist = floor(sqrt(record.qLength)); break;
+        case -1: break;
+        default: maxDist = lH.options.band; break;
+    }
 
     TAlignConfig config;//(-maxDist, maxDist);
 
@@ -1919,47 +1937,31 @@ iterateMatchesFullSimd(TLocalHolder & lH)
         bm.sLength = sIsTranslated(lH.gH.blastProgram)
                         ? lH.gH.untransSubjSeqLengths[trueSubjId]
                         : length(lH.gH.subjSeqs[it->subjId]);
-        // TODO what to do if it is 0? band won't work and end will be wrong
-        TPosition sStart = std::max((long)it->subjStart - (long)it->qryStart - (long)maxDist, 0l);
-        TPosition sEnd   = std::min(sStart + length(lH.gH.qrySeqs[it->qryId]) + maxDist,
-                                    length(lH.gH.subjSeqs[it->subjId]));
-        SEQAN_ASSERT_LEQ(sStart, sEnd);
 
-        assignSource(bm.alignRow0, infix(lH.gH.qrySeqs[it->qryId],   0,      length(lH.gH.qrySeqs[it->qryId])));
+        long lenDiff = (long)it->subjStart - (long)it->qryStart;
+
+        TPos sStart;
+        TPos qStart;
+        if (lenDiff >= 0)
+        {
+            sStart = lenDiff;
+            qStart = 0;
+        }
+        else
+        {
+            sStart = 0;
+            qStart = -lenDiff;
+        }
+        TPos sEnd   = std::min(sStart + length(lH.gH.qrySeqs[it->qryId]), length(lH.gH.subjSeqs[it->subjId]));
+
+        assignSource(bm.alignRow0, infix(lH.gH.qrySeqs[it->qryId],   qStart, length(lH.gH.qrySeqs[it->qryId])));
         assignSource(bm.alignRow1, infix(lH.gH.subjSeqs[it->subjId], sStart, sEnd));
+
 
         appendValue(depSetH, source(bm.alignRow0));
         appendValue(depSetV, source(bm.alignRow1));
 
-        if (qIsTranslated(TLocalHolder::TGlobalHolder::blastProgram))
-        {
-            bm.qFrameShift = (m.qryId % 3) + 1;
-            if (m.qryId % 6 > 2)
-                bm.qFrameShift = -bm.qFrameShift;
-        } else if (qHasRevComp(TLocalHolder::TGlobalHolder::blastProgram))
-        {
-            bm.qFrameShift = 1;
-            if (m.qryId % 2)
-                bm.qFrameShift = -bm.qFrameShift;
-        } else
-        {
-            bm.qFrameShift = 0;
-        }
-
-        if (sIsTranslated(TLocalHolder::TGlobalHolder::blastProgram))
-        {
-            bm.sFrameShift = (m.subjId % 3) + 1;
-            if (m.subjId % 6 > 2)
-                bm.sFrameShift = -bm.sFrameShift;
-        } else if (sHasRevComp(TLocalHolder::TGlobalHolder::blastProgram))
-        {
-            bm.sFrameShift = 1;
-            if (m.subjId % 2)
-                bm.sFrameShift = -bm.sFrameShift;
-        } else
-        {
-            bm.sFrameShift = 0;
-        }
+        _setFrames(bm, *it, lH);
     }
 
     // fill up last batch
@@ -2015,11 +2017,7 @@ iterateMatchesFullSimd(TLocalHolder & lH)
 
         computeBitScore(bm, context(lH.gH.outfile));
 
-        // the length adjustment cache must no be written to by multiple threads
-        SEQAN_OMP_PRAGMA(critical(evalue_length_adj_cache))
-        {
-            computeEValue(bm, context(lH.gH.outfile));
-        }
+        computeEValueThreadSafe(bm, context(lH.gH.outfile));
 
         if (bm.eValue > lH.options.eCutOff)
         {
@@ -2031,32 +2029,125 @@ iterateMatchesFullSimd(TLocalHolder & lH)
         ++it;
     }
 
-    if (length(record.matches) > 0)
-    {
-        ++lH.stats.qrysWithHit;
-        // sort and remove duplicates -> STL, yeah!
-        auto const before = record.matches.size();
-        record.matches.sort();
-        if (!lH.options.filterPutativeDuplicates)
-        {
-            record.matches.unique();
-            lH.stats.hitsDuplicate += before - record.matches.size();
-        }
-        if (record.matches.size() > lH.options.maxMatches)
-        {
-            lH.stats.hitsAbundant += record.matches.size() -
-                                        lH.options.maxMatches;
-            record.matches.resize(lH.options.maxMatches);
-        }
-        lH.stats.hitsFinal += record.matches.size();
-
-        myWriteRecord(lH, record);
-    }
+    _writeRecord(record, lH);
 
     return 0;
-
 }
 
 #endif // SEQAN_SIMD_ENABLED
+
+template <typename TLocalHolder>
+inline int
+iterateMatchesFullSerial(TLocalHolder & lH)
+{
+    using TGlobalHolder = typename TLocalHolder::TGlobalHolder;
+    using TMatch        = typename TGlobalHolder::TMatch;
+    using TPos          = typename TMatch::TPos;
+    using TBlastPos     = uint32_t; //TODO why can't this be == TPos
+    using TBlastMatch   = BlastMatch<
+                           typename TLocalHolder::TAlignRow0,
+                           typename TLocalHolder::TAlignRow1,
+                           TBlastPos,
+                           typename Value<typename TGlobalHolder::TQryIds>::Type,// const &,
+                           typename Value<typename TGlobalHolder::TSubjIds>::Type// const &,
+                           >;
+    using TBlastRecord  = BlastRecord<TBlastMatch>;
+
+    auto const trueQryId = lH.matches[0].qryId / qNumFrames(lH.gH.blastProgram);
+
+    TBlastRecord record(lH.gH.qryIds[trueQryId]);
+    record.qLength = (qIsTranslated(lH.gH.blastProgram)
+                        ? lH.gH.untransQrySeqLengths[trueQryId]
+                        : length(lH.gH.qrySeqs[lH.matches[0].qryId]));
+
+    unsigned maxDist = 0;
+    switch (lH.options.band)
+    {
+        case -3: maxDist = ceil(log2(record.qLength)); break;
+        case -2: maxDist = floor(sqrt(record.qLength)); break;
+        case -1: break;
+        default: maxDist = lH.options.band; break;
+    }
+
+    // create blast matches
+    for (auto it = lH.matches.begin(), itEnd = lH.matches.end(); it != itEnd; ++it)
+    {
+        auto const trueSubjId = it->subjId / sNumFrames(lH.gH.blastProgram);
+
+        // create blastmatch in list without copy or move
+        record.matches.emplace_back(lH.gH.qryIds [trueQryId],
+                                    lH.gH.subjIds[trueSubjId]);
+
+        auto & bm = back(record.matches);
+        auto &  m = *it;
+
+        bm.qLength = record.qLength;
+        bm.sLength = sIsTranslated(lH.gH.blastProgram)
+                        ? lH.gH.untransSubjSeqLengths[trueSubjId]
+                        : length(lH.gH.subjSeqs[it->subjId]);
+
+        long lenDiff = (long)it->subjStart - (long)it->qryStart;
+
+        TPos sStart;
+        TPos qStart;
+        if (lenDiff >= 0)
+        {
+            sStart = lenDiff;
+            qStart = 0;
+        }
+        else
+        {
+            sStart = 0;
+            qStart = -lenDiff;
+        }
+        TPos sEnd   = std::min(sStart + length(lH.gH.qrySeqs[it->qryId]), length(lH.gH.subjSeqs[it->subjId]));
+
+        assignSource(bm.alignRow0, infix(lH.gH.qrySeqs[it->qryId],   qStart, length(lH.gH.qrySeqs[it->qryId])));
+        assignSource(bm.alignRow1, infix(lH.gH.subjSeqs[it->subjId], sStart, sEnd));
+
+//         localAlignment2(bm.alignRow0,
+//                         bm.alignRow1,
+//                         seqanScheme(context(lH.gH.outfile).scoringScheme),
+//                         -maxDist,
+//                         maxDist,
+//                         lH.alignContext);
+        localAlignment(bm.alignRow0,
+                       bm.alignRow1,
+                       seqanScheme(context(lH.gH.outfile).scoringScheme),
+                       -maxDist,
+                       maxDist);
+
+        bm.sStart = beginPosition(bm.alignRow1);
+        bm.qStart = beginPosition(bm.alignRow0);
+        bm.sEnd   = endPosition(bm.alignRow1);
+        bm.qEnd   = endPosition(bm.alignRow0);
+
+        computeAlignmentStats(bm, context(lH.gH.outfile));
+
+        if (bm.alignStats.alignmentIdentity < lH.options.idCutOff)
+        {
+            ++lH.stats.hitsFailedExtendPercentIdentTest;
+            record.matches.pop_back();
+            continue;
+        }
+
+        computeBitScore(bm, context(lH.gH.outfile));
+
+        computeEValueThreadSafe(bm, context(lH.gH.outfile));
+
+        if (bm.eValue > lH.options.eCutOff)
+        {
+            ++lH.stats.hitsFailedExtendEValueTest;
+            record.matches.pop_back();
+            continue;
+        }
+
+        _setFrames(bm, m, lH);
+    }
+
+    _writeRecord(record, lH);
+
+    return 0;
+}
 
 #endif // HEADER GUARD

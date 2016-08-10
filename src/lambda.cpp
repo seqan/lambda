@@ -21,6 +21,9 @@
 
 #include <iostream>
 
+//TODO TEMPORARY REMOVE
+#define amd64
+
 #include <seqan/basic.h>
 #include <seqan/sequence.h>
 #include <seqan/arg_parse.h>
@@ -476,11 +479,16 @@ realMain(LambdaOptions                  const & options,
 
             // extend
             buf = sysTime();
-#if SEQAN_SIMD_ENABLED
-            res = iterateMatchesFullSimd(localHolder);
-#else
-            res = iterateMatches(localHolder);
+#ifdef SEQAN_SIMD_ENABLED
+            if (options.extensionMode == LambdaOptions::ExtensionMode::FULL_SIMD)
+                res = iterateMatchesFullSimd(localHolder);
+            else
 #endif
+            if (options.extensionMode == LambdaOptions::ExtensionMode::FULL_SERIAL)
+                res = iterateMatchesFullSerial(localHolder);
+            else
+                res = iterateMatches(localHolder);
+
             localHolder.stats.timeExtend += sysTime() - buf;
             if (res)
                 continue;

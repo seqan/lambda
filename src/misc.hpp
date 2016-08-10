@@ -412,6 +412,35 @@ appendToStatus(std::stringstream & status,
 }
 
 // ----------------------------------------------------------------------------
+// Function computeEValueThreadSafe
+// ----------------------------------------------------------------------------
+
+template <typename TBlastMatch,
+          typename TScore,
+          BlastProgram p,
+          BlastTabularSpec h>
+inline double
+computeEValueThreadSafe(TBlastMatch & match,
+                        BlastIOContext<TScore, p, h> & context)
+{
+    static thread_local std::unordered_map<uint64_t, uint64_t> _cachedLengthAdjustments;
+
+    // convert to 64bit and divide for translated sequences
+    uint64_t ql = match.qLength / (qIsTranslated(context.blastProgram) ? 3 : 1);
+    // length adjustment not yet computed
+    if (_cachedLengthAdjustments.find(ql) == _cachedLengthAdjustments.end())
+        _cachedLengthAdjustments[ql] = _lengthAdjustment(context.dbTotalLength, ql, context.scoringScheme);
+
+    uint64_t adj = _cachedLengthAdjustments[ql];
+
+    match.eValue = _computeEValue(match.alignStats.alignmentScore,
+                                  ql - adj,
+                                  context.dbTotalLength - adj,
+                                  context.scoringScheme);
+    return match.eValue;
+}
+
+// ----------------------------------------------------------------------------
 // remove tag type
 // ----------------------------------------------------------------------------
 
