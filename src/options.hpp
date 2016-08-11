@@ -1548,7 +1548,7 @@ printOptions(LambdaOptions const & options)
               << "  seqan_simd:               "
     #if defined(SEQAN_SIMD_ENABLED) && defined(__AVX2__)
               << "avx2\n"
-    #elseif defined(SEQAN_SIMD_ENABLED) && defined(__SSE4_2__)
+    #elif defined(SEQAN_SIMD_ENABLED) && defined(__SSE4_2__)
               << "sse4\n"
     #else
               << "off\n"
