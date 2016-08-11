@@ -166,19 +166,24 @@ void printStats(StatsHolder const & stats, LambdaOptions const & options)
         std::cout << "Remaining\033[0m"
                   << "\n   after Seeding               "; BLANKS;
         std::cout << R << rem;
-        std::cout << "\n - masked                   " << R << stats.hitsMasked
-                  << RR << (rem -= stats.hitsMasked);
-        std::cout << "\n - merged                   " << R << stats.hitsMerged
-                  << RR << (rem -= stats.hitsMerged);
-        std::cout << "\n - putative duplicates      " << R
-                  << stats.hitsPutativeDuplicate << RR
-                  << (rem -= stats.hitsPutativeDuplicate);
-        std::cout << "\n - putative abundant        " << R
-                  << stats.hitsPutativeAbundant   << RR
-                  << (rem -= stats.hitsPutativeAbundant);
-        std::cout << "\n - failed pre-extend test   " << R
-                  << stats.hitsFailedPreExtendTest  << RR
-                  << (rem -= stats.hitsFailedPreExtendTest);
+        if (stats.hitsMasked)
+            std::cout << "\n - masked                   " << R << stats.hitsMasked
+                      << RR << (rem -= stats.hitsMasked);
+        if (options.mergePutativeSiblings)
+            std::cout << "\n - merged                   " << R << stats.hitsMerged
+                      << RR << (rem -= stats.hitsMerged);
+        if (options.filterPutativeDuplicates)
+            std::cout << "\n - putative duplicates      " << R
+                      << stats.hitsPutativeDuplicate << RR
+                      << (rem -= stats.hitsPutativeDuplicate);
+        if (options.filterPutativeAbundant)
+            std::cout << "\n - putative abundant        " << R
+                      << stats.hitsPutativeAbundant   << RR
+                      << (rem -= stats.hitsPutativeAbundant);
+        if (options.preScoring)
+            std::cout << "\n - failed pre-extend test   " << R
+                      << stats.hitsFailedPreExtendTest  << RR
+                      << (rem -= stats.hitsFailedPreExtendTest);
         std::cout << "\n - failed %-identity test   " << R
                   << stats.hitsFailedExtendPercentIdentTest << RR
                   << (rem -= stats.hitsFailedExtendPercentIdentTest);

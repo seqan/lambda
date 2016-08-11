@@ -488,8 +488,8 @@ template <BlastTabularSpec h,
           typename TIndexSpec,
           typename TOutFormat>
 inline int
-loadQuery(GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h> & globalHolder,
-          LambdaOptions                                                    const & options)
+loadQuery(GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h>      & globalHolder,
+          LambdaOptions                                                 & options)
 {
     using TGH = GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h>;
     double start = sysTime();
@@ -562,6 +562,28 @@ loadQuery(GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h> & globalHolde
                   << ".\n";
         return -1;
     }
+
+    if (options.extensionMode == LambdaOptions::ExtensionMode::AUTO)
+    {
+        if (maxLen <= 100)
+        {
+        #if defined(SEQAN_SIMD_ENABLED) && defined(__AVX2__)
+            options.extensionMode = LambdaOptions::ExtensionMode::FULL_SIMD;
+            options.band = -1;
+        #else
+            options.extensionMode = LambdaOptions::ExtensionMode::FULL_SERIAL;
+        #endif
+            options.xDropOff = -1;
+            options.filterPutativeAbundant = false;
+            options.filterPutativeDuplicates = false;
+            options.mergePutativeSiblings = false;
+        }
+        else
+        {
+            options.extensionMode = LambdaOptions::ExtensionMode::XDROP;
+        }
+    }
+
     return 0;
 }
 

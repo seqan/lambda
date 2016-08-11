@@ -54,12 +54,12 @@ using namespace seqan;
 // forwards
 
 inline int
-argConv0(LambdaOptions const & options);
+argConv0(LambdaOptions & options);
 //-
 template <typename TOutFormat,
           BlastTabularSpec h>
 inline int
-argConv1(LambdaOptions                 const & options,
+argConv1(LambdaOptions                       & options,
          TOutFormat                    const & /**/,
          BlastTabularSpecSelector<h>   const &);
 //-
@@ -67,7 +67,7 @@ template <typename TOutFormat,
           BlastTabularSpec h,
           BlastProgram p>
 inline int
-argConv2(LambdaOptions                  const & options,
+argConv2(LambdaOptions                        & options,
          TOutFormat                     const & /**/,
          BlastTabularSpecSelector<h>    const &,
          BlastProgramSelector<p>        const &);
@@ -77,7 +77,7 @@ template <typename TOutFormat,
           BlastTabularSpec h,
           BlastProgram p>
 inline int
-argConv3(LambdaOptions                  const & options,
+argConv3(LambdaOptions                        & options,
          TOutFormat                     const &,
          BlastTabularSpecSelector<h>    const &,
          BlastProgramSelector<p>        const &,
@@ -89,7 +89,7 @@ template <typename TOutFormat,
           BlastTabularSpec h,
           BlastProgram p>
 inline int
-argConv4(LambdaOptions                  const & options,
+argConv4(LambdaOptions                        & options,
          TOutFormat                     const & /**/,
          BlastTabularSpecSelector<h>    const &,
          BlastProgramSelector<p>        const &,
@@ -103,7 +103,7 @@ template <typename TIndexSpec,
           BlastProgram p,
           BlastTabularSpec h>
 inline int
-realMain(LambdaOptions                  const & options,
+realMain(LambdaOptions                        & options,
          TOutFormat                     const & /**/,
          BlastTabularSpecSelector<h>    const &,
          BlastProgramSelector<p>        const &,
@@ -136,7 +136,7 @@ int main(int argc, char const ** argv)
 
 // CONVERT Run-time options to compile-time Format-Type
 inline int
-argConv0(LambdaOptions const & options)
+argConv0(LambdaOptions & options)
 {
     CharString output = options.output;
     if (endsWith(output, ".gz"))
@@ -160,7 +160,7 @@ argConv0(LambdaOptions const & options)
 template <typename TOutFormat,
           BlastTabularSpec h>
 inline int
-argConv1(LambdaOptions                 const & options,
+argConv1(LambdaOptions                       & options,
          TOutFormat                    const & /**/,
          BlastTabularSpecSelector<h>   const &)
 {
@@ -209,7 +209,7 @@ template <typename TOutFormat,
           BlastTabularSpec h,
           BlastProgram p>
 inline int
-argConv2(LambdaOptions                  const & options,
+argConv2(LambdaOptions                        & options,
          TOutFormat                     const & /**/,
          BlastTabularSpecSelector<h>    const &,
          BlastProgramSelector<p>        const &)
@@ -245,7 +245,7 @@ template <typename TOutFormat,
           BlastTabularSpec h,
           BlastProgram p>
 inline int
-argConv3(LambdaOptions                  const & options,
+argConv3(LambdaOptions                        & options,
          TOutFormat                     const &,
          BlastTabularSpecSelector<h>    const &,
          BlastProgramSelector<p>        const &,
@@ -280,7 +280,7 @@ template <typename TOutFormat,
           BlastTabularSpec h,
           BlastProgram p>
 inline int
-argConv4(LambdaOptions                  const & options,
+argConv4(LambdaOptions                        & options,
          TOutFormat                     const & /**/,
          BlastTabularSpecSelector<h>    const &,
          BlastProgramSelector<p>        const &,
@@ -344,7 +344,7 @@ template <typename TIndexSpec,
           BlastProgram p,
           BlastTabularSpec h>
 inline int
-realMain(LambdaOptions                  const & options,
+realMain(LambdaOptions                        & options,
          TOutFormat                     const & /**/,
          BlastTabularSpecSelector<h>    const &,
          BlastProgramSelector<p>        const &,
