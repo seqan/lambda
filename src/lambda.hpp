@@ -287,7 +287,7 @@ loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
         path += ".sa";
 
     // Check if the index is of the old format (pre 0.9.0) by looking for different files
-    if ((globalHolder.blastProgram != BlastProgram::BLASTN) && // BLASTN indexes are compatible
+    if ((TGlobalHolder::blastProgram != BlastProgram::BLASTN) && // BLASTN indexes are compatible
         ((TGlobalHolder::alphReduction && fileExists(toCString(path + ".txt.concat"))) ||
         (!TGlobalHolder::alphReduction && TGlobalHolder::indexIsFM && !fileExists(toCString(path + ".lf.drv.wtc.24")))))
     {
@@ -318,7 +318,7 @@ loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
             length(indexSA(globalHolder.dbIndex)), "\n\n");
 
     // this is actually part of prepareScoring(), but the values are just available now
-    if (sIsTranslated(globalHolder.blastProgram ))
+    if (sIsTranslated(TGlobalHolder::blastProgram ))
     {
         // last value has sum of lengths
         context(globalHolder.outfile).dbTotalLength  = back(globalHolder.untransSubjSeqLengths);
@@ -521,7 +521,7 @@ loadQuery(GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h>      & global
                        options);
 
     // sam and bam need original sequences if translation happened
-    if (qIsTranslated(globalHolder.blastProgram) && (options.outFileFormat > 0) &&
+    if (qIsTranslated(TGH::blastProgram) && (options.outFileFormat > 0) &&
         (options.samBamSeq > 0))
         std::swap(origSeqs, globalHolder.untranslatedQrySeqs);
 
@@ -795,7 +795,7 @@ onFind(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
     bool discarded = false;
     auto const halfSubjL = lH.options.seedLength /  2;
 
-    if (!sIsTranslated(lH.gH.blastProgram))
+    if (!sIsTranslated(TGlobalHolder::blastProgram))
     {
         for (unsigned k = 0; k < length(lH.gH.segIntStarts[m.subjId]); ++k)
         {
@@ -936,7 +936,7 @@ __serachAdaptive(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
         for (size_t seedBegin = 0; /* below */; seedBegin += lH.options.seedOffset)
         {
             // skip proteine 'X' or Dna 'N'
-            while ((lH.gH.qrySeqs[i][seedBegin] == unknownValue<TransAlph<lH.gH.blastProgram>>()) &&
+            while ((lH.gH.qrySeqs[i][seedBegin] == unknownValue<TransAlph<TGlobalHolder::blastProgram>>()) &&
                    (seedBegin <= length(lH.gH.redQrySeqs[i]) - seedLength))
                 ++seedBegin;
 
@@ -1249,10 +1249,10 @@ computeBlastMatch(TBlastMatch         & bm,
 //                                 bm.sEnd);
 
 //     std::cout << "Query Id: " << m.qryId
-//               << "\t TrueQryId: " << getTrueQryId(bm.m, lH.options, lH.gH.blastProgram)
+//               << "\t TrueQryId: " << getTrueQryId(bm.m, lH.options, TGlobalHolder::blastProgram)
 //               << "\t length(qryIds): " << length(qryIds)
 //               << "Subj Id: " << m.subjId
-//               << "\t TrueSubjId: " << getTrueSubjId(bm.m, lH.options, lH.gH.blastProgram)
+//               << "\t TrueSubjId: " << getTrueSubjId(bm.m, lH.options, TGlobalHolder::blastProgram)
 //               << "\t length(subjIds): " << length(subjIds) << "\n\n";
 
     assignSource(bm.alignRow0, infix(lH.gH.qrySeqs[m.qryId], bm.qStart, bm.qEnd));
@@ -1588,8 +1588,8 @@ iterateMatches(TLocalHolder & lH)
     using TBlastRecord  = BlastRecord<TBlastMatch>;
 
 //     constexpr TPos TPosMax = std::numeric_limits<TPos>::max();
-//     constexpr uint8_t qFactor = qHasRevComp(lH.gH.blastProgram) ? 3 : 1;
-//     constexpr uint8_t sFactor = sHasRevComp(lH.gH.blastProgram) ? 3 : 1;
+//     constexpr uint8_t qFactor = qHasRevComp(TGlobalHolder::blastProgram) ? 3 : 1;
+//     constexpr uint8_t sFactor = sHasRevComp(TGlobalHolder::blastProgram) ? 3 : 1;
 
     double start = sysTime();
     if (lH.options.doubleIndexing)
@@ -1603,7 +1603,7 @@ iterateMatches(TLocalHolder & lH)
 //     std::cout << "Length of matches:   " << length(lH.matches);
 //     for (auto const & m :  lH.matches)
 //     {
-//         std::cout << m.qryId << "\t" << getTrueQryId(m,lH.options, lH.gH.blastProgram) << "\n";
+//         std::cout << m.qryId << "\t" << getTrueQryId(m,lH.options, TGlobalHolder::blastProgram) << "\n";
 //     }
 
 //     double topMaxMatchesMedianBitScore = 0;
@@ -1616,11 +1616,11 @@ iterateMatches(TLocalHolder & lH)
          ++it)
     {
         itN = std::next(it,1);
-        auto const trueQryId = it->qryId / qNumFrames(lH.gH.blastProgram);
+        auto const trueQryId = it->qryId / qNumFrames(TGlobalHolder::blastProgram);
 
         TBlastRecord record(lH.gH.qryIds[trueQryId]);
 
-        record.qLength = (qIsTranslated(lH.gH.blastProgram)
+        record.qLength = (qIsTranslated(TGlobalHolder::blastProgram)
                             ? lH.gH.untransQrySeqLengths[trueQryId]
                             : length(lH.gH.qrySeqs[it->qryId]));
 
@@ -1629,7 +1629,7 @@ iterateMatches(TLocalHolder & lH)
         // inner loop over matches per record
         for (; it != itEnd; ++it)
         {
-            auto const trueSubjId = it->subjId / sNumFrames(lH.gH.blastProgram);
+            auto const trueSubjId = it->subjId / sNumFrames(TGlobalHolder::blastProgram);
             itN = std::next(it,1);
 //             std::cout << "FOO\n" << std::flush;
 //             std::cout << "QryStart: " << it->qryStart << "\n" << std::flush;
@@ -1681,7 +1681,7 @@ iterateMatches(TLocalHolder & lH)
                             {
                                 // declare all the rest as putative abundant
                                 while ((it != itEnd) &&
-                                       (trueQryId == it->qryId / qNumFrames(lH.gH.blastProgram)))
+                                       (trueQryId == it->qryId / qNumFrames(TGlobalHolder::blastProgram)))
                                 {
                                     // not already marked as abundant, duplicate or merged
                                     if (!isSetToSkip(*it))
@@ -1708,7 +1708,7 @@ iterateMatches(TLocalHolder & lH)
                 bm.sEnd      = it->subjEnd;//it->subjStart + lH.options.seedLength;
 
                 bm.qLength = record.qLength;
-                bm.sLength = sIsTranslated(lH.gH.blastProgram)
+                bm.sLength = sIsTranslated(TGlobalHolder::blastProgram)
                                 ? lH.gH.untransSubjSeqLengths[trueSubjId]
                                 : length(lH.gH.subjSeqs[it->subjId]);
 
@@ -1717,13 +1717,13 @@ iterateMatches(TLocalHolder & lH)
                 {
                     for (auto it2 = itN;
                         (it2 != itEnd) &&
-                        (trueQryId == it2->qryId / qNumFrames(lH.gH.blastProgram)) &&
-                        (trueSubjId == it2->subjId / sNumFrames(lH.gH.blastProgram));
+                        (trueQryId == it2->qryId / qNumFrames(TGlobalHolder::blastProgram)) &&
+                        (trueSubjId == it2->subjId / sNumFrames(TGlobalHolder::blastProgram));
                         ++it2)
                     {
                         // same frame
-                        if ((it->qryId % qNumFrames(lH.gH.blastProgram) == it2->qryId % qNumFrames(lH.gH.blastProgram)) &&
-                            (it->subjId % sNumFrames(lH.gH.blastProgram) == it2->subjId % sNumFrames(lH.gH.blastProgram)))
+                        if ((it->qryId % qNumFrames(TGlobalHolder::blastProgram) == it2->qryId % qNumFrames(TGlobalHolder::blastProgram)) &&
+                            (it->subjId % sNumFrames(TGlobalHolder::blastProgram) == it2->subjId % sNumFrames(TGlobalHolder::blastProgram)))
                         {
 
     //                         TPos const qDist = (it2->qryStart >= bm.qEnd)
@@ -1766,8 +1766,8 @@ iterateMatches(TLocalHolder & lH)
     //                     ++lH.stats.goodMatches;
                         if (lH.options.outFileFormat > 0)
                         {
-                            bm._n_qId = it->qryId / qNumFrames(lH.gH.blastProgram);
-                            bm._n_sId = it->subjId / sNumFrames(lH.gH.blastProgram);
+                            bm._n_qId = it->qryId / qNumFrames(TGlobalHolder::blastProgram);
+                            bm._n_sId = it->subjId / sNumFrames(TGlobalHolder::blastProgram);
                         }
                         break;
                     case EVALUE:
@@ -1819,8 +1819,8 @@ iterateMatches(TLocalHolder & lH)
                     // PUTATIVE DUBLICATES CHECK
                     for (auto it2 = itN;
                          (it2 != itEnd) &&
-                         (trueQryId == it2->qryId / qNumFrames(lH.gH.blastProgram)) &&
-                         (trueSubjId == it2->subjId / sNumFrames(lH.gH.blastProgram));
+                         (trueQryId == it2->qryId / qNumFrames(TGlobalHolder::blastProgram)) &&
+                         (trueSubjId == it2->subjId / sNumFrames(TGlobalHolder::blastProgram));
                          ++it2)
                     {
                         // same frame and same range
@@ -1858,7 +1858,7 @@ iterateMatches(TLocalHolder & lH)
 
             // last item or new TrueQryId
             if ((itN == itEnd) ||
-                (trueQryId != itN->qryId / qNumFrames(lH.gH.blastProgram)))
+                (trueQryId != itN->qryId / qNumFrames(TGlobalHolder::blastProgram)))
                 break;
         }
 
@@ -1925,10 +1925,10 @@ iterateMatchesFullSimd(TLocalHolder & lH)
     reserve(depSetV, fullSize);
 
 
-    auto const trueQryId = lH.matches[0].qryId / qNumFrames(lH.gH.blastProgram);
+    auto const trueQryId = lH.matches[0].qryId / qNumFrames(TGlobalHolder::blastProgram);
 
     TBlastRecord record(lH.gH.qryIds[trueQryId]);
-    record.qLength = (qIsTranslated(lH.gH.blastProgram)
+    record.qLength = (qIsTranslated(TGlobalHolder::blastProgram)
                         ? lH.gH.untransQrySeqLengths[trueQryId]
                         : length(lH.gH.qrySeqs[lH.matches[0].qryId]));
 
@@ -1946,7 +1946,7 @@ iterateMatchesFullSimd(TLocalHolder & lH)
     // create blast matches
     for (auto it = lH.matches.begin(), itEnd = lH.matches.end(); it != itEnd; ++it)
     {
-        auto const trueSubjId = it->subjId / sNumFrames(lH.gH.blastProgram);
+        auto const trueSubjId = it->subjId / sNumFrames(TGlobalHolder::blastProgram);
 
         // create blastmatch in list without copy or move
         record.matches.emplace_back(lH.gH.qryIds [trueQryId],
@@ -1956,7 +1956,7 @@ iterateMatchesFullSimd(TLocalHolder & lH)
         auto &  m = *it;
 
         bm.qLength = record.qLength;
-        bm.sLength = sIsTranslated(lH.gH.blastProgram)
+        bm.sLength = sIsTranslated(TGlobalHolder::blastProgram)
                         ? lH.gH.untransSubjSeqLengths[trueSubjId]
                         : length(lH.gH.subjSeqs[it->subjId]);
 
@@ -2075,10 +2075,10 @@ iterateMatchesFullSerial(TLocalHolder & lH)
                            >;
     using TBlastRecord  = BlastRecord<TBlastMatch>;
 
-    auto const trueQryId = lH.matches[0].qryId / qNumFrames(lH.gH.blastProgram);
+    auto const trueQryId = lH.matches[0].qryId / qNumFrames(TGlobalHolder::blastProgram);
 
     TBlastRecord record(lH.gH.qryIds[trueQryId]);
-    record.qLength = (qIsTranslated(lH.gH.blastProgram)
+    record.qLength = (qIsTranslated(TGlobalHolder::blastProgram)
                         ? lH.gH.untransQrySeqLengths[trueQryId]
                         : length(lH.gH.qrySeqs[lH.matches[0].qryId]));
 
@@ -2094,7 +2094,7 @@ iterateMatchesFullSerial(TLocalHolder & lH)
     // create blast matches
     for (auto it = lH.matches.begin(), itEnd = lH.matches.end(); it != itEnd; ++it)
     {
-        auto const trueSubjId = it->subjId / sNumFrames(lH.gH.blastProgram);
+        auto const trueSubjId = it->subjId / sNumFrames(TGlobalHolder::blastProgram);
 
         // create blastmatch in list without copy or move
         record.matches.emplace_back(lH.gH.qryIds [trueQryId],
@@ -2104,7 +2104,7 @@ iterateMatchesFullSerial(TLocalHolder & lH)
         auto &  m = *it;
 
         bm.qLength = record.qLength;
-        bm.sLength = sIsTranslated(lH.gH.blastProgram)
+        bm.sLength = sIsTranslated(TGlobalHolder::blastProgram)
                         ? lH.gH.untransSubjSeqLengths[trueSubjId]
                         : length(lH.gH.subjSeqs[it->subjId]);
 

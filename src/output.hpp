@@ -110,14 +110,15 @@ blastMatchOneCigar(TCigar & cigar,
                    TLocalHolder const & lH)
 {
     using TCElem = typename Value<TCigar>::Type;
+    using TGlobalHolder = typename TLocalHolder::TGlobalHolder;
 
     SEQAN_ASSERT_EQ(length(m.alignRow0), length(m.alignRow1));
 
     // translate positions into dna space
-    unsigned const transFac       = qIsTranslated(lH.gH.blastProgram) ? 3 : 1;
+    unsigned const transFac       = qIsTranslated(TGlobalHolder::blastProgram) ? 3 : 1;
     // clips resulting from translation / frameshift are always hard clips
     unsigned const leftFrameClip  = std::abs(m.qFrameShift) - 1;
-    unsigned const rightFrameClip = qIsTranslated(lH.gH.blastProgram) ? (m.qLength - leftFrameClip) % 3 : 0;
+    unsigned const rightFrameClip = qIsTranslated(TGlobalHolder::blastProgram) ? (m.qLength - leftFrameClip) % 3 : 0;
     // regular clipping from local alignment (regions outside match) can be hard or soft
     unsigned const leftClip       = m.qStart * transFac;
     unsigned const rightClip      = (length(source(m.alignRow0)) - m.qEnd) * transFac;
@@ -192,6 +193,7 @@ blastMatchTwoCigar(TCigar & dnaCigar,
                    TLocalHolder const & lH)
 {
     using TCElem = typename Value<TCigar>::Type;
+    using TGlobalHolder = typename TLocalHolder::TGlobalHolder;
 
     SEQAN_ASSERT_EQ(length(m.alignRow0), length(m.alignRow1));
 
@@ -301,7 +303,7 @@ myWriteHeader(TGH & globalHolder, TLambdaOptions const & options)
         context(globalHolder.outfile).fields = options.columns;
         auto & versionString = context(globalHolder.outfile).versionString;
         clear(versionString);
-        append(versionString, _programTagToString(globalHolder.blastProgram));
+        append(versionString, _programTagToString(TGH::blastProgram));
         append(versionString, " 2.2.26+ [created by LAMBDA");
         if (options.versionInformationToOutputFile)
         {
@@ -318,7 +320,7 @@ myWriteHeader(TGH & globalHolder, TLambdaOptions const & options)
         auto & subjIds          = contigNames(context);
 
         // set sequence lengths
-        if (sIsTranslated(globalHolder.blastProgram))
+        if (sIsTranslated(TGH::blastProgram))
         {
             //TODO can we get around a copy?
             subjSeqLengths = globalHolder.untransSubjSeqLengths;
@@ -425,6 +427,7 @@ template <typename TLH, typename TRecord>
 inline void
 myWriteRecord(TLH & lH, TRecord const & record)
 {
+    using TGH = typename TLH::TGlobalHolder;
     if (lH.options.outFileFormat == 0) // BLAST
     {
         SEQAN_OMP_PRAGMA(critical(filewrite))
@@ -445,7 +448,7 @@ myWriteRecord(TLH & lH, TRecord const & record)
         for (auto & bamR : bamRecords)
         {
             // untranslate for sIsTranslated
-            if (sIsTranslated(lH.gH.blastProgram))
+            if (sIsTranslated(TGH::blastProgram))
             {
                 bamR.beginPos = mIt->sStart * 3 + std::abs(mIt->sFrameShift) - 1;
                 if (mIt->sFrameShift < 0)
@@ -472,16 +475,16 @@ myWriteRecord(TLH & lH, TRecord const & record)
             {
                 clear(protCigar);
                 // native protein
-                if ((lH.gH.blastProgram == BlastProgram::BLASTP) || (lH.gH.blastProgram == BlastProgram::TBLASTN))
+                if ((TGH::blastProgram == BlastProgram::BLASTP) || (TGH::blastProgram == BlastProgram::TBLASTN))
                     blastMatchOneCigar(protCigar, *mIt, lH);
-                else if (qIsTranslated(lH.gH.blastProgram)) // translated
+                else if (qIsTranslated(TGH::blastProgram)) // translated
                     blastMatchTwoCigar(bamR.cigar, protCigar, *mIt, lH);
                 else // BLASTN can't have protein sequence
                     blastMatchOneCigar(bamR.cigar, *mIt, lH);
             }
             else
             {
-                if ((lH.gH.blastProgram != BlastProgram::BLASTP) && (lH.gH.blastProgram != BlastProgram::TBLASTN))
+                if ((TGH::blastProgram != BlastProgram::BLASTP) && (TGH::blastProgram != BlastProgram::TBLASTN))
                     blastMatchOneCigar(bamR.cigar, *mIt, lH);
             }
             // we want to include the seq
@@ -498,7 +501,7 @@ myWriteRecord(TLH & lH, TRecord const & record)
                             (endPosition(mIt->alignRow0)   != endPosition(mPrevIt->alignRow0)));
             }
 
-            if (lH.gH.blastProgram == BlastProgram::BLASTN)
+            if (TGH::blastProgram == BlastProgram::BLASTN)
             {
                 if (lH.options.samBamHardClip)
                 {
@@ -512,7 +515,7 @@ myWriteRecord(TLH & lH, TRecord const & record)
                         bamR.seq = source(mIt->alignRow0);
                 }
             }
-            else if (qIsTranslated(lH.gH.blastProgram))
+            else if (qIsTranslated(TGH::blastProgram))
             {
                 if (lH.options.samBamHardClip)
                 {
@@ -571,7 +574,7 @@ myWriteRecord(TLH & lH, TRecord const & record)
                                int8_t(mIt->sFrameShift), 'c');
             if (lH.options.samBamTags[SamBamExtraTags<>::Q_AA_SEQ])
             {
-                if ((lH.gH.blastProgram == BlastProgram::BLASTN) || (!writeSeq))
+                if ((TGH::blastProgram == BlastProgram::BLASTN) || (!writeSeq))
                     appendTagValue(bamR.tags,
                                    std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::Q_AA_SEQ]),
                                    "*", 'Z');
