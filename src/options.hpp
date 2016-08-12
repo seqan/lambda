@@ -980,7 +980,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     if (isSet(parser, "seed-offset"))
         getOptionValue(options.seedOffset, parser, "seed-offset");
     else
-        options.seedOffset = options.seedLength;
+        options.seedOffset = options.seedLength / 2;
 
     if (isSet(parser, "seed-gravity"))
         getOptionValue(options.seedGravity, parser, "seed-gravity");
