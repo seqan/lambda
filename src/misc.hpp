@@ -423,7 +423,13 @@ inline double
 computeEValueThreadSafe(TBlastMatch & match,
                         BlastIOContext<TScore, p, h> & context)
 {
+#if defined(__FreeBSD__) && defined(STDLIB_LLVM)
+    // https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=192320
+    static std::vector<std::unordered_map<uint64_t, uint64_t>> _cachedLengthAdjustmentsArray(omp_get_num_threads());
+    static std::unordered_map<uint64_t, uint64_t> & _cachedLengthAdjustments = _cachedLengthAdjustmentsArray[omp_get_thread_num()];
+#else
     static thread_local std::unordered_map<uint64_t, uint64_t> _cachedLengthAdjustments;
+#endif
 
     // convert to 64bit and divide for translated sequences
     uint64_t ql = match.qLength / (qIsTranslated(context.blastProgram) ? 3 : 1);
