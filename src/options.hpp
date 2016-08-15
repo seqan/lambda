@@ -188,11 +188,22 @@ bool setEnv(TString const & key, TValue & value)
 }
 
 // ==========================================================================
+// Option Enums
+// ==========================================================================
+
+enum class DbIndexType : uint8_t
+{
+    SUFFIX_ARRAY,
+    FM_INDEX,
+    BI_FM_INDEX
+};
+
+// ==========================================================================
 // Classes
 // ==========================================================================
 
 // --------------------------------------------------------------------------
-// Class LambdaOptions
+// Class SharedOptions
 // --------------------------------------------------------------------------
 
 // This struct stores the options from the command line.
@@ -204,13 +215,9 @@ struct SharedOptions
 
     std::string commandLine;
 
-    std::string dbFile;
+    std::string indexDir;
 
-    int      dbIndexType = 0;
-    // for indexer, the file format of database sequences
-    // for main app, the file format of query sequences
-    // 0 -- fasta, 1 -- fastq
-//     int      fileFormat = 0;
+    DbIndexType dbIndexType;
 
     int      alphReduction = 0;
 
@@ -234,6 +241,9 @@ struct SharedOptions
     }
 };
 
+// --------------------------------------------------------------------------
+// Class LambdaOptions
+// --------------------------------------------------------------------------
 
 struct LambdaOptions : public SharedOptions
 {
@@ -305,9 +315,14 @@ struct LambdaOptions : public SharedOptions
     }
 };
 
+// --------------------------------------------------------------------------
+// Class LambdaIndexerOptions
+// --------------------------------------------------------------------------
+
 struct LambdaIndexerOptions : public SharedOptions
 {
-    std::string     segFile = "";
+    std::string     dbFile;
+//     std::string     segFile = "";
     std::string     algo = "";
 
     bool            truncateIDs;
@@ -322,7 +337,7 @@ struct LambdaIndexerOptions : public SharedOptions
 // ==========================================================================
 
 // --------------------------------------------------------------------------
-// Function displayCopyright()
+// Function sharedSetup()
 // --------------------------------------------------------------------------
 
 void
@@ -333,7 +348,7 @@ sharedSetup(ArgumentParser & parser)
                                 std::string(SEQAN_REVISION) + ")";
     setVersion(parser, versionString);
     setDate(parser, __DATE__);
-    setShortCopyright(parser, "2013-2016 Hannes Hauswedell, released under the GNU GPL v3 (or later); "
+    setShortCopyright(parser, "2013-2016 Hannes Hauswedell, released under the GNU AGPL v3 (or later); "
                               "2016 Knut Reinert and Freie Universität Berlin, released under the 3-clause-BSDL");
 
     setCitation(parser, "Hauswedell et al (2014); doi: 10.1093/bioinformatics/btu439");
@@ -422,7 +437,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     // Define usage line and long description.
     addUsageLine(parser, "[\\fIOPTIONS\\fP] \\fI-q QUERY.fasta\\fP "
-                         "\\fI-d DATABASE.fasta\\fP "
+                         "\\fI-i INDEX.lambda\\fP "
                          "[\\fI-o output.m8\\fP]");
 
     sharedSetup(parser);
@@ -435,12 +450,12 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setValidValues(parser, "query", toCString(concat(getFileExtensions(SeqFileIn()), ' ')));
     setRequired(parser, "q");
 
-    addOption(parser, ArgParseOption("d", "database",
-        "Path to original database sequences (a precomputed index with .sa or .fm needs to exist!).",
+    addOption(parser, ArgParseOption("i", "index",
+        "The database index (created by the lambda_indexer executable).",
         ArgParseArgument::INPUT_FILE,
         "IN"));
-    setValidValues(parser, "database", toCString(concat(getFileExtensions(SeqFileIn()), ' ')));
-    setRequired(parser, "d");
+    setRequired(parser, "index");
+    setValidValues(parser, "index", ".lambda");
 
     addOption(parser, ArgParseOption("di", "db-index-type",
         "database index is in this format.",
@@ -843,6 +858,9 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     // Extract option values.
     getOptionValue(options.queryFile, parser, "query");
+
+    getOptionValue(options.indexDir, parser, "index");
+
 //     if (endsWith(options.queryFile, ".fastq") ||
 //         endsWith(options.queryFile, ".fq"))
 //         options.fileFormat = 1;
@@ -1110,7 +1128,7 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
     ArgumentParser parser("lambda_indexer");
 
     // Define usage line and long description.
-    addUsageLine(parser, "[\\fIOPTIONS\\fP] \\-d DATABASE.fasta\\fP");
+    addUsageLine(parser, "[\\fIOPTIONS\\fP] \\-d DATABASE.fasta [-i INDEX.lambda]\\fP");
 
     sharedSetup(parser);
 
@@ -1124,21 +1142,20 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
     setRequired(parser, "database");
     setValidValues(parser, "database", toCString(concat(getFileExtensions(SeqFileIn()), ' ')));
 
-    addOption(parser, ArgParseOption("s",
-        "segfile",
-        "SEG intervals for database"
-        "(optional).",
-        ArgParseArgument::INPUT_FILE));
-    setValidValues(parser, "segfile", "seg");
-    hideOption(parser, "segfile"); // TODO remove completely
+//     addOption(parser, ArgParseOption("s",
+//         "segfile",
+//         "SEG intervals for database"
+//         "(optional).",
+//         ArgParseArgument::INPUT_FILE));
+//     setValidValues(parser, "segfile", "seg");
+//     hideOption(parser, "segfile"); // TODO remove completely
 
     addSection(parser, "Output Options");
-//     addOption(parser, ArgParseOption("o",
-//                                             "output",
-//                                             "Index of database sequences",
-//                                             ArgParseArgument::OUTPUT_FILE,
-//                                             "OUT"));
-//     setValidValues(parser, "output", "sa fm");
+    addOption(parser, ArgParseOption("i", "index",
+        "The output directory for the index files (defaults to \"DATABASE.lambda\").",
+        ArgParseArgument::INPUT_FILE,
+        "OUT"));
+    setValidValues(parser, "index", ".lambda");
 
     addOption(parser, ArgParseOption("di", "db-index-type",
         "Suffix array or full-text minute space.",
@@ -1262,7 +1279,7 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
         return res;
 
     // Extract option values
-    getOptionValue(options.segFile, parser, "segfile");
+//     getOptionValue(options.segFile, parser, "segfile");
     getOptionValue(options.algo, parser, "algorithm");
     if ((options.algo == "mergesort") || (options.algo == "quicksort") || (options.algo == "quicksortbuckets"))
     {
@@ -1278,6 +1295,29 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
     getOptionValue(buffer, parser, "truncate-ids");
     options.truncateIDs = (buffer == "on");
 
+
+    getOptionValue(options.dbFile, parser, "database");
+    if (isSet(parser, "index"))
+        getOptionValue(options.indexDir, parser, "index");
+    else
+        options.indexDir = options.dbFile + ".lambda";
+
+
+    if (fileExists(options.indexDir.c_str()))
+    {
+        std::cerr << "ERROR: An output directory already exists at " << options.indexDir << '\n'
+                  << "Remove it, or choose a different location.\n";
+        return ArgumentParser::PARSE_ERROR;
+    }
+    else
+    {
+        if (mkdir(options.indexDir.c_str(), S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH))
+        {
+            std::cerr << "ERROR: Cannot create output directory at " << options.indexDir << '\n';;
+            return ArgumentParser::PARSE_ERROR;
+        }
+    }
+
     return ArgumentParser::PARSE_OK;
 }
 
@@ -1288,13 +1328,13 @@ parseCommandLineShared(SharedOptions & options, ArgumentParser & parser)
     int buf = 0;
     std::string buffer;
 
-    getOptionValue(options.dbFile, parser, "database");
-
     getOptionValue(buffer, parser, "db-index-type");
     if (buffer == "sa")
-        options.dbIndexType = 0;
-    else // if fm
-        options.dbIndexType = 1;
+        options.dbIndexType = DbIndexType::SUFFIX_ARRAY;
+    else if (buffer == "bifm")
+        options.dbIndexType = DbIndexType::BI_FM_INDEX;
+    else
+        options.dbIndexType = DbIndexType::FM_INDEX;
 
     getOptionValue(buffer, parser, "program");
     if (buffer == "blastn")
@@ -1350,6 +1390,10 @@ parseCommandLineShared(SharedOptions & options, ArgumentParser & parser)
     return ArgumentParser::PARSE_OK;
 }
 
+// --------------------------------------------------------------------------
+// Function _alphName()
+// --------------------------------------------------------------------------
+
 constexpr const char *
 _alphName(AminoAcid const & /**/)
 {
@@ -1392,6 +1436,26 @@ _alphName(Dna5 const & /**/)
     return "dna5";
 }
 
+// --------------------------------------------------------------------------
+// Function _indexName()
+// --------------------------------------------------------------------------
+
+constexpr const char *
+_indexName(DbIndexType const t)
+{
+    switch (t)
+    {
+        case DbIndexType::SUFFIX_ARRAY:  return "suffix_array";
+        case DbIndexType::FM_INDEX:      return "fm_index";
+        case DbIndexType::BI_FM_INDEX:   return "bi_fm_index";
+    }
+    return "ERROR_UNKNOWN_INDEX_TYPE";
+}
+
+// --------------------------------------------------------------------------
+// Function printOptions()
+// --------------------------------------------------------------------------
+
 template <typename TLH>
 inline void
 printOptions(LambdaOptions const & options)
@@ -1410,7 +1474,7 @@ printOptions(LambdaOptions const & options)
     std::cout << "OPTIONS\n"
               << " INPUT\n"
               << "  query file:               " << options.queryFile << "\n"
-              << "  db file:                  " << options.dbFile << "\n"
+              << "  index directory:          " << options.indexDir << "\n"
               << "  db index type:            " << (TGH::indexIsFM
                                                     ? "FM-Index\n"
                                                     : "SA-Index\n")

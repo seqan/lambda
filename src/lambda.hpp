@@ -195,9 +195,8 @@ loadSubjects(GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h> & globalHo
         strIdent = "Loading Subj Sequences...";
         myPrint(options, 1, strIdent);
 
-        _dbSeqs = options.dbFile;
-        append(_dbSeqs, ".");
-        append(_dbSeqs, _alphName(TransAlph<p>()));
+        _dbSeqs = options.indexDir;
+        append(_dbSeqs, "/translated_seqs");
 
         ret = open(globalHolder.subjSeqs, toCString(_dbSeqs), OPEN_RDONLY);
         if (ret != true)
@@ -226,8 +225,8 @@ loadSubjects(GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h> & globalHo
     strIdent = "Loading Subj Ids...";
     myPrint(options, 1, strIdent);
 
-    _dbSeqs = options.dbFile;
-    append(_dbSeqs, ".ids");
+    _dbSeqs = options.indexDir;
+    append(_dbSeqs, "/seq_ids");
     ret = open(globalHolder.subjIds, toCString(_dbSeqs), OPEN_RDONLY);
     if (ret != true)
     {
@@ -239,7 +238,7 @@ loadSubjects(GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h> & globalHo
     myPrint(options, 1, " done.\n");
     myPrint(options, 2, "Runtime: ", finish, "s \n\n");
 
-    context(globalHolder.outfile).dbName = options.dbFile;
+    context(globalHolder.outfile).dbName = options.indexDir;
 
     // if subjects where translated, we don't have the untranslated seqs at all
     // but we still need the data for statistics and position un-translation
@@ -249,8 +248,8 @@ loadSubjects(GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h> & globalHo
         std::string strIdent = "Loading Lengths of untranslated Subj sequences...";
         myPrint(options, 1, strIdent);
 
-        _dbSeqs = options.dbFile;
-        append(_dbSeqs, ".untranslengths");
+        _dbSeqs = options.indexDir;
+        append(_dbSeqs, "/untranslated_seq_lengths");
         ret = open(globalHolder.untransSubjSeqLengths, toCString(_dbSeqs), OPEN_RDONLY);
         if (ret != true)
         {
@@ -279,24 +278,20 @@ loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
     std::string strIdent = "Loading Database Index...";
     myPrint(options, 1, strIdent);
     double start = sysTime();
-    std::string path = toCString(options.dbFile);
-    path += '.' + std::string(_alphName(typename TGlobalHolder::TRedAlph()));
-    if (TGlobalHolder::indexIsFM)
-        path += ".fm";
-    else
-        path += ".sa";
+    std::string path = toCString(options.indexDir);
+    path += "/index";
 
     // Check if the index is of the old format (pre 0.9.0) by looking for different files
-    if ((TGlobalHolder::blastProgram != BlastProgram::BLASTN) && // BLASTN indexes are compatible
-        ((TGlobalHolder::alphReduction && fileExists(toCString(path + ".txt.concat"))) ||
-        (!TGlobalHolder::alphReduction && TGlobalHolder::indexIsFM && !fileExists(toCString(path + ".lf.drv.wtc.24")))))
-    {
-        std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
-                  << " failed.\n"
-                  << "It appears you tried to open an old index (created before 0.9.0) which "
-                  << "is not supported. Please remove the old files and create a new index with lambda_indexer!\n";
-        return 200;
-    }
+//     if ((TGlobalHolder::blastProgram != BlastProgram::BLASTN) && // BLASTN indexes are compatible
+//         ((TGlobalHolder::alphReduction && fileExists(toCString(path + ".txt.concat"))) ||
+//         (!TGlobalHolder::alphReduction && TGlobalHolder::indexIsFM && !fileExists(toCString(path + ".lf.drv.wtc.24")))))
+//     {
+//         std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
+//                   << " failed.\n"
+//                   << "It appears you tried to open an old index (created before 0.9.0) which "
+//                   << "is not supported. Please remove the old files and create a new index with lambda_indexer!\n";
+//         return 200;
+//     }
 
     int ret = open(globalHolder.dbIndex, path.c_str(), OPEN_RDONLY);
     if (ret != true)
@@ -336,54 +331,54 @@ loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
 // Function loadSegintervals()
 // --------------------------------------------------------------------------
 
-template <BlastTabularSpec h,
-          BlastProgram p,
-          typename TRedAlph,
-          typename TIndexSpec,
-          typename TOutFormat>
-inline int
-loadSegintervals(GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h>     & globalHolder,
-                 LambdaOptions                                            const & options)
-{
-
-    double start = sysTime();
-    std::string strIdent = "Loading Database Masking file...";
-    myPrint(options, 1, strIdent);
-
-    CharString segFileS = options.dbFile;
-    append(segFileS, ".binseg_s.concat");
-    CharString segFileE = options.dbFile;
-    append(segFileE, ".binseg_e.concat");
-    bool fail = false;
-    struct stat buffer;
-    // file exists
-    if ((stat(toCString(segFileS), &buffer) == 0) &&
-        (stat(toCString(segFileE), &buffer) == 0))
-    {
-        //cut off ".concat" again
-        resize(segFileS, length(segFileS) - 7);
-        resize(segFileE, length(segFileE) - 7);
-
-        fail = !open(globalHolder.segIntStarts, toCString(segFileS), OPEN_RDONLY);
-        if (!fail)
-            fail = !open(globalHolder.segIntEnds, toCString(segFileE), OPEN_RDONLY);
-    } else
-    {
-        fail = true;
-    }
-
-    if (fail)
-    {
-        std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
-                  << " failed.\n";
-        return 1;
-    }
-
-    double finish = sysTime() - start;
-    myPrint(options, 1, " done.\n");
-    myPrint(options, 2, "Runtime: ", finish, "s \n\n");
-    return 0;
-}
+// template <BlastTabularSpec h,
+//           BlastProgram p,
+//           typename TRedAlph,
+//           typename TIndexSpec,
+//           typename TOutFormat>
+// inline int
+// loadSegintervals(GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h>     & globalHolder,
+//                  LambdaOptions                                            const & options)
+// {
+//
+//     double start = sysTime();
+//     std::string strIdent = "Loading Database Masking file...";
+//     myPrint(options, 1, strIdent);
+//
+//     CharString segFileS = options.dbFile;
+//     append(segFileS, ".binseg_s.concat");
+//     CharString segFileE = options.dbFile;
+//     append(segFileE, ".binseg_e.concat");
+//     bool fail = false;
+//     struct stat buffer;
+//     // file exists
+//     if ((stat(toCString(segFileS), &buffer) == 0) &&
+//         (stat(toCString(segFileE), &buffer) == 0))
+//     {
+//         //cut off ".concat" again
+//         resize(segFileS, length(segFileS) - 7);
+//         resize(segFileE, length(segFileE) - 7);
+//
+//         fail = !open(globalHolder.segIntStarts, toCString(segFileS), OPEN_RDONLY);
+//         if (!fail)
+//             fail = !open(globalHolder.segIntEnds, toCString(segFileE), OPEN_RDONLY);
+//     } else
+//     {
+//         fail = true;
+//     }
+//
+//     if (fail)
+//     {
+//         std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
+//                   << " failed.\n";
+//         return 1;
+//     }
+//
+//     double finish = sysTime() - start;
+//     myPrint(options, 1, " done.\n");
+//     myPrint(options, 2, "Runtime: ", finish, "s \n\n");
+//     return 0;
+// }
 
 // --------------------------------------------------------------------------
 // Function loadQuery()

@@ -287,35 +287,7 @@ argConv4(LambdaOptions                        & options,
          TRedAlph                       const & /**/,
          TScoreExtension                const & /**/)
 {
-    int indexType = options.dbIndexType;
-//     if (indexType == -1) // autodetect
-//     {
-//         //TODO FIX THIS WITH NEW EXTENSIONS
-//         CharString file = options.dbFile;
-//         append(file, ".sa");
-//         struct stat buffer;
-//         if (stat(toCString(file), &buffer) == 0)
-//         {
-//             indexType = 0;
-//         } else
-//         {
-//             file = options.dbFile;
-//             append(file, ".sa.val"); // FM Index
-//             struct stat buffer;
-//             if (stat(toCString(file), &buffer) == 0)
-//             {
-//                 indexType = 1;
-//             } else
-//             {
-//                 std::cerr << "No Index file could be found, please make sure paths "
-//                         << "are correct and the files are readable.\n" << std::flush;
-// 
-//                 return -1;
-//             }
-//         }
-//     }
-
-    if (indexType == 0)
+    if (options.dbIndexType == DbIndexType::SUFFIX_ARRAY)
         return realMain<IndexSa<>>(options,
                                    TOutFormat(),
                                    BlastTabularSpecSelector<h>(),
@@ -376,9 +348,9 @@ realMain(LambdaOptions                        & options,
     if (ret)
         return ret;
 
-    ret = loadSegintervals(globalHolder, options);
-    if (ret)
-        return ret;
+//     ret = loadSegintervals(globalHolder, options);
+//     if (ret)
+//         return ret;
 
     ret = loadQuery(globalHolder, options);
     if (ret)

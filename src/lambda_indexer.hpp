@@ -113,8 +113,8 @@ loadSubjSeqsAndIds(TCDStringSet<String<TOrigAlph>> & originalSeqs,
     myPrint(options, 1, "Dumping Subj Ids...");
 
     //TODO save to TMPDIR instead
-    CharString _path = options.dbFile;
-    append(_path, ".ids");
+    CharString _path = options.indexDir;
+    append(_path, "/seq_ids");
     save(ids, toCString(_path));
 
     myPrint(options, 1, " done.\n");
@@ -139,8 +139,8 @@ _saveOriginalSeqLengths(TLimits limits, // we want copy!
 
     myPrint(options, 1, " dumping untranslated subject lengths...");
     //TODO save to TMPDIR instead
-    CharString _path = options.dbFile;
-    append(_path, ".untranslengths");
+    CharString _path = options.indexDir;
+    append(_path, "/untranslated_seq_lengths");
     save(limits, toCString(_path));
 }
 
@@ -184,7 +184,7 @@ dumpTranslatedSeqs(TCDStringSet<String<TTransAlph>> const & translatedSeqs,
     myPrint(options, 1, "Dumping unreduced Subj Sequences...");
 
     //TODO save to TMPDIR instead
-    std::string _path = options.dbFile + '.' + std::string(_alphName(TTransAlph()));
+    std::string _path = options.indexDir + "/translated_seqs";
     save(translatedSeqs, _path.c_str());
 
     myPrint(options, 1, " done.\n");
@@ -252,132 +252,132 @@ checkIndexSize(TCDStringSet<String<TRedAlph>> const & seqs)
     return true;
 }
 
-// --------------------------------------------------------------------------
-// Function loadSubj()
-// --------------------------------------------------------------------------
-
-inline int
-convertMaskingFile(uint64_t numberOfSeqs,
-                   LambdaIndexerOptions const & options)
-
-{
-    StringSet<String<unsigned>, Owner<ConcatDirect<>>> segIntStarts;
-    StringSet<String<unsigned>, Owner<ConcatDirect<>>> segIntEnds;
-//     resize(segIntervals, numberOfSeqs, Exact());
-
-    if (options.segFile != "")
-    {
-        myPrint(options, 1, "Constructing binary seqan masking from seg-file...");
-
-        std::ifstream stream;
-        stream.open(toCString(options.segFile));
-        if (!stream.is_open())
-        {
-            std::cerr << "ERROR: could not open seg file.\n";
-            return -1;
-        }
-
-        auto reader = directionIterator(stream, Input());
-
-//         StringSet<String<Tuple<unsigned, 2>>> _segIntervals;
-//         auto & _segIntervals = segIntervals;
-//         resize(_segIntervals, numberOfSeqs, Exact());
-        StringSet<String<unsigned>> _segIntStarts;
-        StringSet<String<unsigned>> _segIntEnds;
-        resize(_segIntStarts, numberOfSeqs, Exact());
-        resize(_segIntEnds, numberOfSeqs, Exact());
-        CharString buf;
-//         std::tuple<unsigned, unsigned> tup;
-
-//         auto curSeq = begin(_segIntervals);
-        unsigned curSeq = 0;
-        while (value(reader) == '>')
-        {
-//             if (curSeq == end(_segIntervals))
-//                 return -7;
-            if (curSeq == numberOfSeqs)
-            {
-                std::cerr << "ERROR: seg file has more entries then database.\n";
-                return -7;
-            }
-            skipLine(reader);
-            if (atEnd(reader))
-                break;
-
-            unsigned curInt = 0;
-            while ((!atEnd(reader)) && (value(reader) != '>'))
-            {
-                resize(_segIntStarts[curSeq], length(_segIntStarts[curSeq])+1);
-                resize(_segIntEnds[curSeq], length(_segIntEnds[curSeq])+1);
-                clear(buf);
-                readUntil(buf, reader, IsWhitespace());
-
-//                 std::get<0>(tup) = strtoumax(toCString(buf), 0, 10);
-                _segIntStarts[curSeq][curInt] = strtoumax(toCString(buf), 0, 10);
-                skipUntil(reader, IsDigit());
-
-                clear(buf);
-                readUntil(buf, reader, IsWhitespace());
-
-//                 std::get<1>(tup) = strtoumax(toCString(buf), 0, 10);
-                _segIntEnds[curSeq][curInt] = strtoumax(toCString(buf), 0, 10);
-
-//                 appendValue(*curSeq, tup);
-
-                skipLine(reader);
-                curInt++;
-            }
-            if (atEnd(reader))
-                break;
-            else
-                curSeq++;
-        }
-//         if (curSeq != end(_segIntervals))
-//             return -9;
-        if (curSeq != (numberOfSeqs - 1))
-        {
-            std::cerr << "ERROR: seg file has less entries (" << curSeq + 1
-                      << ") than database (" << numberOfSeqs << ").\n";
-            return -9;
-        }
-
-        segIntStarts.concat = concat(_segIntStarts);
-        segIntStarts.limits = stringSetLimits(_segIntStarts);
-        segIntEnds.concat = concat(_segIntEnds);
-        segIntEnds.limits = stringSetLimits(_segIntEnds);
-//         segIntEnds = _segIntEnds;
-//         segIntervals = _segIntervals; // non-concatdirect to concatdirect
-
-        stream.close();
-
-    } else
-    {
-        myPrint(options, 1, "No Seg-File specified, no masking will take place.\n");
-//         resize(segIntervals, numberOfSeqs, Exact());
-        resize(segIntStarts, numberOfSeqs, Exact());
-        resize(segIntEnds, numberOfSeqs, Exact());
-    }
-
-//     for (unsigned u = 0; u < length(segIntStarts); ++u)
+// // --------------------------------------------------------------------------
+// // Function loadSubj()
+// // --------------------------------------------------------------------------
+//
+// inline int
+// convertMaskingFile(uint64_t numberOfSeqs,
+//                    LambdaIndexerOptions const & options)
+//
+// {
+//     StringSet<String<unsigned>, Owner<ConcatDirect<>>> segIntStarts;
+//     StringSet<String<unsigned>, Owner<ConcatDirect<>>> segIntEnds;
+// //     resize(segIntervals, numberOfSeqs, Exact());
+//
+//     if (options.segFile != "")
 //     {
-//         myPrint(options, 1,u, ": ";
-//         for (unsigned v = 0; v < length(segIntStarts[u]); ++v)
+//         myPrint(options, 1, "Constructing binary seqan masking from seg-file...");
+//
+//         std::ifstream stream;
+//         stream.open(toCString(options.segFile));
+//         if (!stream.is_open())
 //         {
-//             myPrint(options, 1,'(', segIntStarts[u][v], ", ", segIntEnds[u][v], ")  ";
+//             std::cerr << "ERROR: could not open seg file.\n";
+//             return -1;
 //         }
-//         myPrint(options, 1,'\n';
+//
+//         auto reader = directionIterator(stream, Input());
+//
+// //         StringSet<String<Tuple<unsigned, 2>>> _segIntervals;
+// //         auto & _segIntervals = segIntervals;
+// //         resize(_segIntervals, numberOfSeqs, Exact());
+//         StringSet<String<unsigned>> _segIntStarts;
+//         StringSet<String<unsigned>> _segIntEnds;
+//         resize(_segIntStarts, numberOfSeqs, Exact());
+//         resize(_segIntEnds, numberOfSeqs, Exact());
+//         CharString buf;
+// //         std::tuple<unsigned, unsigned> tup;
+//
+// //         auto curSeq = begin(_segIntervals);
+//         unsigned curSeq = 0;
+//         while (value(reader) == '>')
+//         {
+// //             if (curSeq == end(_segIntervals))
+// //                 return -7;
+//             if (curSeq == numberOfSeqs)
+//             {
+//                 std::cerr << "ERROR: seg file has more entries then database.\n";
+//                 return -7;
+//             }
+//             skipLine(reader);
+//             if (atEnd(reader))
+//                 break;
+//
+//             unsigned curInt = 0;
+//             while ((!atEnd(reader)) && (value(reader) != '>'))
+//             {
+//                 resize(_segIntStarts[curSeq], length(_segIntStarts[curSeq])+1);
+//                 resize(_segIntEnds[curSeq], length(_segIntEnds[curSeq])+1);
+//                 clear(buf);
+//                 readUntil(buf, reader, IsWhitespace());
+//
+// //                 std::get<0>(tup) = strtoumax(toCString(buf), 0, 10);
+//                 _segIntStarts[curSeq][curInt] = strtoumax(toCString(buf), 0, 10);
+//                 skipUntil(reader, IsDigit());
+//
+//                 clear(buf);
+//                 readUntil(buf, reader, IsWhitespace());
+//
+// //                 std::get<1>(tup) = strtoumax(toCString(buf), 0, 10);
+//                 _segIntEnds[curSeq][curInt] = strtoumax(toCString(buf), 0, 10);
+//
+// //                 appendValue(*curSeq, tup);
+//
+//                 skipLine(reader);
+//                 curInt++;
+//             }
+//             if (atEnd(reader))
+//                 break;
+//             else
+//                 curSeq++;
+//         }
+// //         if (curSeq != end(_segIntervals))
+// //             return -9;
+//         if (curSeq != (numberOfSeqs - 1))
+//         {
+//             std::cerr << "ERROR: seg file has less entries (" << curSeq + 1
+//                       << ") than database (" << numberOfSeqs << ").\n";
+//             return -9;
+//         }
+//
+//         segIntStarts.concat = concat(_segIntStarts);
+//         segIntStarts.limits = stringSetLimits(_segIntStarts);
+//         segIntEnds.concat = concat(_segIntEnds);
+//         segIntEnds.limits = stringSetLimits(_segIntEnds);
+// //         segIntEnds = _segIntEnds;
+// //         segIntervals = _segIntervals; // non-concatdirect to concatdirect
+//
+//         stream.close();
+//
+//     } else
+//     {
+//         myPrint(options, 1, "No Seg-File specified, no masking will take place.\n");
+// //         resize(segIntervals, numberOfSeqs, Exact());
+//         resize(segIntStarts, numberOfSeqs, Exact());
+//         resize(segIntEnds, numberOfSeqs, Exact());
 //     }
-    myPrint(options, 1, "Dumping binary seqan mask file...");
-    CharString _path = options.dbFile;
-    append(_path, ".binseg_s");
-    save(segIntStarts, toCString(_path));
-    _path = options.dbFile;
-    append(_path, ".binseg_e");
-    save(segIntEnds, toCString(_path));
-    myPrint(options, 1, " done.\n");
-    myPrint(options, 2, "\n");
-    return 0;
-}
+//
+// //     for (unsigned u = 0; u < length(segIntStarts); ++u)
+// //     {
+// //         myPrint(options, 1,u, ": ";
+// //         for (unsigned v = 0; v < length(segIntStarts[u]); ++v)
+// //         {
+// //             myPrint(options, 1,'(', segIntStarts[u][v], ", ", segIntEnds[u][v], ")  ";
+// //         }
+// //         myPrint(options, 1,'\n';
+// //     }
+//     myPrint(options, 1, "Dumping binary seqan mask file...");
+//     CharString _path = options.dbFile;
+//     append(_path, ".binseg_s");
+//     save(segIntStarts, toCString(_path));
+//     _path = options.dbFile;
+//     append(_path, ".binseg_e");
+//     save(segIntEnds, toCString(_path));
+//     myPrint(options, 1, " done.\n");
+//     myPrint(options, 2, "\n");
+//     return 0;
+// }
 
 // --------------------------------------------------------------------------
 // Function createSuffixArray()
@@ -566,13 +566,10 @@ generateIndexAndDump(StringSet<TString, TSpec>        & seqs,
     // Dump Index
     myPrint(options, 1, "Writing Index to disk...");
     s = sysTime();
-    std::string path = toCString(options.dbFile);
-    path += '.' + std::string(_alphName(TRedAlph()));
-    if (indexIsFM)
-        path += ".fm";
-    else
-        path += ".sa";
+    std::string path = options.indexDir + "/index";
+
     save(dbIndex, path.c_str());
+
     e = sysTime() - s;
     myPrint(options, 1, " done.\n");
     myPrint(options, 2, "Runtime: ", e, "s \n");

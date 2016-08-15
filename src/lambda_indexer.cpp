@@ -19,8 +19,9 @@
 // lambda.cpp: Main File for the main application
 // ==========================================================================
 
-#include <seqan/basic.h>
+#include <initializer_list>
 
+#include <seqan/basic.h>
 #include <seqan/arg_parse.h>
 #include <seqan/seq_io.h>
 
@@ -178,24 +179,24 @@ realMain(LambdaIndexerOptions     const & options,
         if (sIsTranslated(p))
             _saveOriginalSeqLengths(originalSeqs.limits, options);
 
-        // convert the seg file to seqan binary format
-        ret = convertMaskingFile(length(originalSeqs), options);
-        if (ret)
-            return ret;
+//         // convert the seg file to seqan binary format
+//         ret = convertMaskingFile(length(originalSeqs), options);
+//         if (ret)
+//             return ret;
 
         // translate or swap depending on program
         translateOrSwap(translatedSeqs, originalSeqs, options);
     }
 
     // dump translated and unreduced sequences (except where they are included in index)
-    if ((options.alphReduction != 0) || (options.dbIndexType != 0))
+    if ((options.alphReduction != 0) || (options.dbIndexType == DbIndexType::FM_INDEX))
         dumpTranslatedSeqs(translatedSeqs, options);
 
     // see if final sequence set actually fits into index 
     if (!checkIndexSize(translatedSeqs))
         return -1;
 
-    if (options.dbIndexType == 1)
+    if (options.dbIndexType == DbIndexType::FM_INDEX)
     {
         using TIndexSpec = TFMIndex<TIndexSpecSpec>;
         generateIndexAndDump<TIndexSpec,TIndexSpecSpec>(translatedSeqs,
@@ -209,6 +210,19 @@ realMain(LambdaIndexerOptions     const & options,
                                                         options,
                                                         BlastProgramSelector<p>(),
                                                         TRedAlph());
+    }
+
+    // dump options
+    for (auto && s : std::initializer_list<std::string>
+            {
+                { options.indexDir + "/option:db_index_type:"  + std::string(_indexName(options.dbIndexType)) },
+                { options.indexDir + "/option:alph_original:"  + std::string(_alphName(OrigSubjAlph<p>())) },
+                { options.indexDir + "/option:alph_translated:"+ std::string(_alphName(TransAlph<p>())) },
+                { options.indexDir + "/option:alph_reduced:"   + std::string(_alphName(TRedAlph())) },
+                { options.indexDir + "/option:genetic_code:"   + std::to_string(options.geneticCode) }
+            })
+    {
+        open(s.c_str(), O_WRONLY|O_CREAT|O_NOCTTY|O_NONBLOCK, 0666);
     }
 
     return 0;
