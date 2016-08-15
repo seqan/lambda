@@ -207,21 +207,24 @@ void printStats(StatsHolder const & stats, LambdaOptions const & options)
                   << " sort:     " << stats.timeSort << "\n"
                   << " extend:   " << stats.timeExtend << "\n\n";
 
-        double _seedLengthSum       = std::accumulate(stats.seedLengths.begin(), stats.seedLengths.end(), 0.0);
-        double seedLengthMean       = _seedLengthSum / stats.seedLengths.size();
+        if (length(stats.seedLengths))
+        {
+            double _seedLengthSum       = std::accumulate(stats.seedLengths.begin(), stats.seedLengths.end(), 0.0);
+            double seedLengthMean       = _seedLengthSum / stats.seedLengths.size();
 
-        double _seedLengthMeanSqSum = std::inner_product(stats.seedLengths.begin(),
-                                                         stats.seedLengths.end(),
-                                                         stats.seedLengths.begin(),
-                                                         0.0);
-        double seedLengthStdDev     = std::sqrt(_seedLengthMeanSqSum / stats.seedLengths.size() -
-                                                seedLengthMean * seedLengthMean);
-        uint16_t seedLengthMax      = *std::max_element(stats.seedLengths.begin(), stats.seedLengths.end());
+            double _seedLengthMeanSqSum = std::inner_product(stats.seedLengths.begin(),
+                                                            stats.seedLengths.end(),
+                                                            stats.seedLengths.begin(),
+                                                            0.0);
+            double seedLengthStdDev     = std::sqrt(_seedLengthMeanSqSum / stats.seedLengths.size() -
+                                                    seedLengthMean * seedLengthMean);
+            uint16_t seedLengthMax      = *std::max_element(stats.seedLengths.begin(), stats.seedLengths.end());
 
-        std::cout << "SeedStats:\n"
-                  << " avgLength:   " << seedLengthMean << "\n"
-                  << " stddev:      " << seedLengthStdDev << "\n"
-                  << " max:         " << seedLengthMax << "\n\n";
+            std::cout << "SeedStats:\n"
+                    << " avgLength:   " << seedLengthMean << "\n"
+                    << " stddev:      " << seedLengthStdDev << "\n"
+                    << " max:         " << seedLengthMax << "\n\n";
+        }
     }
 
     if (options.verbosity >= 1)
