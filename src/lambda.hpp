@@ -625,7 +625,7 @@ loadQuery(GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h>      & global
     {
         if (maxLen <= 100)
         {
-        #if defined(SEQAN_SIMD_ENABLED) && defined(__AVX2__)
+        #if 0 // defined(SEQAN_SIMD_ENABLED) && defined(__AVX2__)
             options.extensionMode = LambdaOptions::ExtensionMode::FULL_SIMD;
             options.band = -1;
         #else
@@ -915,6 +915,8 @@ onFindVariable(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
 // Function search()
 // --------------------------------------------------------------------------
 
+//TODO experiment with tuned branch prediction
+
 template <typename TIndexIt, typename TNeedleIt, typename TLambda, typename TLambda2>
 inline void
 __goDownNoErrors(TIndexIt const & indexIt,
@@ -1148,18 +1150,13 @@ template <typename TLocalHolder>
 inline void
 search(TLocalHolder & lH)
 {
-    if (lH.options.adaptiveSeeding)
-        __serachAdaptive(lH, lH.options.seedLength);
-    else if (lH.options.maxSeedDist == 0)
+    //TODO implement adaptive seeding with 0-n mismatches
+    if (lH.options.maxSeedDist == 0)
         __search<Backtracking<Exact>>(lH);
-    else if (lH.options.hammingOnly)
-        __search<Backtracking<HammingDistance>>(lH);
+    else if (lH.options.adaptiveSeeding)
+        __serachAdaptive(lH, lH.options.seedLength);
     else
-#if 0 // reactivate if edit-distance seeding is readded
-        __search<Backtracking<EditDistance>>(lH);
-#else
-        return;
-#endif
+        __search<Backtracking<HammingDistance>>(lH);
 }
 
 // --------------------------------------------------------------------------
@@ -1630,7 +1627,7 @@ computeBlastMatch(TBlastMatch         & bm,
 
 template <typename TLocalHolder>
 inline int
-iterateMatches(TLocalHolder & lH)
+iterateMatchesExtend(TLocalHolder & lH)
 {
     using TGlobalHolder = typename TLocalHolder::TGlobalHolder;
 //     using TMatch        = typename TGlobalHolder::TMatch;
@@ -1936,7 +1933,6 @@ iterateMatches(TLocalHolder & lH)
 }
 
 #ifdef SEQAN_SIMD_ENABLED
-
 template <typename TLocalHolder>
 inline int
 iterateMatchesFullSimd(TLocalHolder & lH)
@@ -2120,9 +2116,6 @@ template <typename TLocalHolder>
 inline int
 iterateMatchesFullSerial(TLocalHolder & lH)
 {
-    if (length(lH.matches) == 0)
-        return 0;
-
     using TGlobalHolder = typename TLocalHolder::TGlobalHolder;
     using TMatch        = typename TGlobalHolder::TMatch;
     using TPos          = typename TMatch::TPos;
@@ -2231,6 +2224,21 @@ iterateMatchesFullSerial(TLocalHolder & lH)
     _writeRecord(record, lH);
 
     return 0;
+}
+
+template <typename TLocalHolder>
+inline int
+iterateMatches(TLocalHolder & lH)
+{
+#ifdef SEQAN_SIMD_ENABLED
+    if (lH.options.extensionMode == LambdaOptions::ExtensionMode::FULL_SIMD)
+        return iterateMatchesFullSimd(lH);
+    else
+#endif
+    if (lH.options.extensionMode == LambdaOptions::ExtensionMode::FULL_SERIAL)
+        return iterateMatchesFullSerial(lH);
+    else
+        return iterateMatchesExtend(lH);
 }
 
 #endif // HEADER GUARD

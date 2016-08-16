@@ -455,16 +455,8 @@ realMain(LambdaOptions                        & options,
 
             // extend
             buf = sysTime();
-#ifdef SEQAN_SIMD_ENABLED
-            if (options.extensionMode == LambdaOptions::ExtensionMode::FULL_SIMD)
-                res = iterateMatchesFullSimd(localHolder);
-            else
-#endif
-            if (options.extensionMode == LambdaOptions::ExtensionMode::FULL_SERIAL)
-                res = iterateMatchesFullSerial(localHolder);
-            else
+            if (length(localHolder.matches) > 0)
                 res = iterateMatches(localHolder);
-
             localHolder.stats.timeExtend += sysTime() - buf;
             if (res)
                 continue;
