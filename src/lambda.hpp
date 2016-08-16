@@ -2057,6 +2057,9 @@ template <typename TLocalHolder>
 inline int
 iterateMatchesFullSerial(TLocalHolder & lH)
 {
+    if (length(lH.matches) == 0)
+        return 0;
+
     using TGlobalHolder = typename TLocalHolder::TGlobalHolder;
     using TMatch        = typename TGlobalHolder::TMatch;
     using TPos          = typename TMatch::TPos;
