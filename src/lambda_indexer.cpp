@@ -213,16 +213,18 @@ realMain(LambdaIndexerOptions     const & options,
     }
 
     // dump options
-    for (auto && s : std::initializer_list<std::string>
-            {
-                { options.indexDir + "/option:db_index_type:"  + std::string(_indexName(options.dbIndexType)) },
-                { options.indexDir + "/option:alph_original:"  + std::string(_alphName(OrigSubjAlph<p>())) },
-                { options.indexDir + "/option:alph_translated:"+ std::string(_alphName(TransAlph<p>())) },
-                { options.indexDir + "/option:alph_reduced:"   + std::string(_alphName(TRedAlph())) },
-                { options.indexDir + "/option:genetic_code:"   + std::to_string(options.geneticCode) }
-            })
+    for (auto && s : std::initializer_list<std::pair<std::string, std::string>>
+         {
+             { options.indexDir + "/option:db_index_type",   std::to_string(static_cast<uint32_t>(options.dbIndexType))},
+             { options.indexDir + "/option:alph_original",   std::string(_alphName(OrigSubjAlph<p>())) },
+             { options.indexDir + "/option:alph_translated", std::string(_alphName(TransAlph<p>())) },
+             { options.indexDir + "/option:alph_reduced",    std::string(_alphName(TRedAlph())) },
+             { options.indexDir + "/option:genetic_code",    std::to_string(options.geneticCode) }
+         })
     {
-        open(s.c_str(), O_WRONLY|O_CREAT|O_NOCTTY|O_NONBLOCK, 0666);
+        std::ofstream f{std::get<0>(s).c_str(),  std::ios_base::out | std::ios_base::binary};
+        f << std::get<1>(s);
+        f.close();
     }
 
     return 0;

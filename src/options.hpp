@@ -1440,7 +1440,7 @@ _alphName(Dna5 const & /**/)
 // Function _indexName()
 // --------------------------------------------------------------------------
 
-constexpr const char *
+inline std::string
 _indexName(DbIndexType const t)
 {
     switch (t)

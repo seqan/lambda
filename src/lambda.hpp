@@ -95,6 +95,81 @@ struct Comp :
 // ============================================================================
 
 // --------------------------------------------------------------------------
+// Function readIndexOption()
+// --------------------------------------------------------------------------
+
+inline void
+readIndexOption(std::string            & optionString,
+                std::string      const & optionIdentifier,
+                LambdaOptions    const & options)
+{
+    std::ifstream f{(options.indexDir + "/option:" + optionIdentifier).c_str(),
+                    std::ios_base::in | std::ios_base::binary};
+    if (f.is_open())
+    {
+        auto fit = directionIterator(f, Input());
+        readLine(optionString, fit);
+        f.close();
+    }
+    else
+    {
+        throw std::runtime_error("ERROR: Expected option specifier:\n" + options.indexDir + "/option:" +
+                                 optionIdentifier + "\nYour index seems incompatible, try to recreate it "
+                                 "and report a bug if the issue persists.");
+    }
+}
+
+// --------------------------------------------------------------------------
+// Function validateIndexOptions()
+// --------------------------------------------------------------------------
+
+template <typename TRedAlph,
+          BlastProgram p>
+inline int
+validateIndexOptions(LambdaOptions const & options)
+{
+    std::string buffer;
+    readIndexOption(buffer, "alph_translated", options);
+    if (buffer != _alphName(TransAlph<p>()))
+    {
+        std::cerr << "ERROR: Your index is of translated alphabet type: " << buffer <<  "\n       But lambda expected: "
+                  << _alphName(TransAlph<p>()) << "\n       Did you specify the right -p parameter?\n\n";
+        return -1;
+
+    }
+    buffer.clear();
+    readIndexOption(buffer, "alph_reduced", options);
+    if (buffer != _alphName(TRedAlph()))
+    {
+        std::cerr << "ERROR: Your index is of reduced alphabet type: " << buffer << "\n       But lambda expected: "
+                  << _alphName(TRedAlph()) << "\n       Did you specify the right -ar parameter?\n\n";
+        return -1;
+    }
+    buffer.clear();
+    readIndexOption(buffer, "db_index_type", options);
+    unsigned long b = 0;
+    if ((!lexicalCast(b, buffer)) || (b != static_cast<unsigned long>(options.dbIndexType)))
+    {
+        std::cerr << "ERROR: Your index type is: " << _indexName(static_cast<DbIndexType>(std::stoul(buffer)))
+                  << "\n       But lambda expected: " << _indexName(options.dbIndexType)
+                  << "\n       Did you specify the right -di parameter?\n\n";
+        return -1;
+    }
+    if (qIsTranslated(p) && sIsTranslated(p))
+    {
+        buffer.clear();
+        readIndexOption(buffer, "genetic_code", options);
+        unsigned long b = 0;
+        if ((!lexicalCast(b, buffer)) || (b != static_cast<unsigned long>(options.geneticCode)))
+        {
+            std::cerr << "WARNING: The codon translation table used during indexing and during search are different. "
+                         "This is not a problem per se, but is likely not what you want.\n\n";
+        }
+    }
+    return 0;
+}
+
+// --------------------------------------------------------------------------
 // Function prepareScoring()
 // --------------------------------------------------------------------------
 
@@ -280,18 +355,6 @@ loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
     double start = sysTime();
     std::string path = toCString(options.indexDir);
     path += "/index";
-
-    // Check if the index is of the old format (pre 0.9.0) by looking for different files
-//     if ((TGlobalHolder::blastProgram != BlastProgram::BLASTN) && // BLASTN indexes are compatible
-//         ((TGlobalHolder::alphReduction && fileExists(toCString(path + ".txt.concat"))) ||
-//         (!TGlobalHolder::alphReduction && TGlobalHolder::indexIsFM && !fileExists(toCString(path + ".lf.drv.wtc.24")))))
-//     {
-//         std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
-//                   << " failed.\n"
-//                   << "It appears you tried to open an old index (created before 0.9.0) which "
-//                   << "is not supported. Please remove the old files and create a new index with lambda_indexer!\n";
-//         return 200;
-//     }
 
     int ret = open(globalHolder.dbIndex, path.c_str(), OPEN_RDONLY);
     if (ret != true)

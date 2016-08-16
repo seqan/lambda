@@ -330,13 +330,17 @@ realMain(LambdaOptions                        & options,
                       "\n======================================================"
                       "\nVersion ", SEQAN_APP_VERSION, "\n\n");
 
+    int ret = validateIndexOptions<TRedAlph, p>(options);
+    if (ret)
+        return ret;
+
     if (options.verbosity >= 2)
         printOptions<TLocalHolder>(options);
 
     TGlobalHolder globalHolder;
 //     context(globalHolder.outfile).scoringScheme._internalScheme = matr;
 
-    int ret = prepareScoring(globalHolder, options);
+    ret = prepareScoring(globalHolder, options);
     if (ret)
         return ret;
 
