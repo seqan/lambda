@@ -104,9 +104,10 @@ struct DefaultIndexStringSpec<StringSet<TString, TSpec>>
 template <typename TDirection, typename TStorageSpec>
 struct FormattedFileContext<FormattedFile<Bam, TDirection, BlastTabular>, TStorageSpec>
 {
-    typedef StringSet<Segment<String<char, MMap<> >, InfixSegment> >   TNameStore;
-    typedef NameStoreCache<TNameStore>                                  TNameStoreCache;
-    typedef BamIOContext<TNameStore, TNameStoreCache, TStorageSpec>     Type;
+    typedef typename DefaultIndexStringSpec<StringSet<void, void>>::Type TStringSpec; // see above
+    typedef StringSet<Segment<String<char, TStringSpec>, InfixSegment> > TNameStore;
+    typedef NameStoreCache<TNameStore>                                   TNameStoreCache;
+    typedef BamIOContext<TNameStore, TNameStoreCache, TStorageSpec>      Type;
 };
 
 }
