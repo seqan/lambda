@@ -86,7 +86,7 @@ message (STATUS "LAMBDA version is: ${SEQAN_APP_VERSION}")
 option (LAMBDA_FASTBUILD    "Build only blastp and blastx modes (speeds up build)."                             OFF)
 option (LAMBDA_NATIVE_BUILD "Architecture-specific optimizations, i.e. g++ -march=native."                      ON)
 option (LAMBDA_STATIC_BUILD "Include all libraries in the binaries."                                            OFF)
-option (LAMBDA_MMAPPED_DB   "Use mmapped access to the database."                                               ON)
+option (LAMBDA_MMAPPED_DB   "Use mmapped access to the database."                                               OFF)
 option (LAMBDA_LINGAPS_OPT  "Add optimized codepaths for linear gap costs (inc. bin size and compile time)."    OFF)
 
 if (LAMBDA_FASTBUILD)
