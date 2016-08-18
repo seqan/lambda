@@ -228,6 +228,7 @@ install (FILES ../LICENSE.rst
 # CPack Install
 # ----------------------------------------------------------------------------
 
+# Information
 set (CPACK_PACKAGE_NAME "lambda")
 set (CPACK_PACKAGE_DESCRIPTION_SUMMARY "lambda -- the local aligner for massive bioligical data")
 set (CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/../README.rst")
@@ -240,6 +241,7 @@ set (CPACK_PACKAGE_VERSION_PATCH "${SEQAN_APP_VERSION_PATCH}")
 set (CPACK_PACKAGE_VERSION "${SEQAN_APP_VERSION}")
 set (CPACK_PACKAGE_INSTALL_DIRECTORY "${CPACK_PACKAGE_NAME} ${CPACK_PACKAGE_VERSION}")
 
+# Package format(s)
 if (CMAKE_SYSTEM_NAME MATCHES "Windows")
     set(CPACK_GENERATOR "ZIP;NSIS")
 elseif (CMAKE_SYSTEM_NAME MATCHES "Darwin")
@@ -253,5 +255,21 @@ endif ()
 if (CMAKE_SYSTEM_NAME MATCHES "Linux")
     set(CPACK_GENERATOR "${CPACK_GENERATOR};DEB;RPM")
 endif ()
+
+# Package architecture
+if (CMAKE_SYSTEM_PROCESSOR STREQUAL "amd64")
+    set(CMAKE_SYSTEM_PROCESSOR "x86_64")
+    set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "amd64")
+endif ()
+if (CMAKE_CXX_FLAGS MATCHES "avx2")
+    set (CMAKE_SYSTEM_PROCESSOR "${CMAKE_SYSTEM_PROCESSOR}_avx2")
+elseif (CMAKE_CXX_FLAGS MATCHES "sse4")
+    set (CMAKE_SYSTEM_PROCESSOR "${CMAKE_SYSTEM_PROCESSOR}_sse4")
+endif()
+
+# Include architecture in package name
+if (NOT DEFINED CPACK_SYSTEM_NAME)
+  set(CPACK_SYSTEM_NAME "${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR}")
+endif (NOT DEFINED CPACK_SYSTEM_NAME)
 
 include (CPack)
