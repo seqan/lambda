@@ -2038,6 +2038,9 @@ iterateMatchesFullSimd(TLocalHolder & lH)
         appendValue(depSetV, source(bm.alignRow1));
 
         _setFrames(bm, *it, lH);
+
+        bm._n_qId = it->qryId / qNumFrames(TGlobalHolder::blastProgram);
+        bm._n_sId = it->subjId / sNumFrames(TGlobalHolder::blastProgram);
     }
 
     // fill up last batch
@@ -2219,6 +2222,9 @@ iterateMatchesFullSerial(TLocalHolder & lH)
         }
 
         _setFrames(bm, m, lH);
+
+        bm._n_qId = it->qryId / qNumFrames(TGlobalHolder::blastProgram);
+        bm._n_sId = it->subjId / sNumFrames(TGlobalHolder::blastProgram);
     }
 
     _writeRecord(record, lH);
