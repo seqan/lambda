@@ -82,7 +82,7 @@ After that running Lambda is as simple as
 
 ::
 
-    % bin/lambda -q query.fasta -d db.fasta
+    % bin/lambda -q query.fasta -i db.fasta.lambda
 
 
 For a list of options, see the help pages:
