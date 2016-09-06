@@ -993,6 +993,8 @@ __serachAdaptive(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
 
     for (size_t i = lH.indexBeginQry; i < lH.indexEndQry; ++i)
     {
+        if (length(lH.gH.redQrySeqs[i]) < seedLength)
+            continue;
         for (size_t seedBegin = 0; /* below */; seedBegin += lH.options.seedOffset)
         {
             // skip proteine 'X' or Dna 'N'
@@ -1009,7 +1011,7 @@ __serachAdaptive(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
             size_t desiredOccs = length(lH.matches) >= lH.options.maxMatches
                                     ? minResults
                                     : (lH.options.maxMatches - length(lH.matches)) * seedHeurFactor /
-                                        ((needlesSum - needlesPos - seedBegin) / lH.options.seedOffset);
+                                      std::max((needlesSum - needlesPos - seedBegin) / lH.options.seedOffset, 1ul);
 
             if (desiredOccs == 0)
                 desiredOccs = minResults;
