@@ -555,7 +555,7 @@ generateIndexAndDump(StringSet<TString, TSpec>        & seqs,
     {
         uint64_t _lastPercent = 0;
         indexCreateProgress(dbIndex, TFullFibre(),
-                            [&_lastPercent] (uint64_t curPerc)
+                            [_lastPercent] (uint64_t curPerc) mutable
                             {
                                 SEQAN_OMP_PRAGMA(critical(progressBar))
         //                         if (TID == 0)
