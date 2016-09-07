@@ -358,7 +358,7 @@ _radixSortWrapper(std::vector<std::tuple<TSAValue*, TSAValue*, TSize> > & stack,
 // TODO: double-check the effects of the new "secondStep"
 
 template <typename TSA, typename TText, typename TLambda>
-void inPlaceRadixSort(TSA & sa, TText const & text, TLambda const & progressCallback = [] (unsigned) {})
+void inPlaceRadixSort(TSA & sa, TText const & text, TLambda && progressCallback = [] (unsigned) mutable {})
 {
     typedef typename Value<typename Concatenator<TText>::Type>::Type    TAlphabet;
     typedef typename Value<TSA>::Type                                   TSAValue;
@@ -463,7 +463,7 @@ inline void
 createSuffixArray(TSA & SA,
                   StringSet<TString, TSSetSpec> const & s,
                   RadixSortSACreateTag const &,
-                  TLambda const & progressCallback)
+                  TLambda && progressCallback)
 {
     typedef typename Size<TSA>::Type TSize;
     typedef typename Iterator<TSA, Standard>::Type TIter;

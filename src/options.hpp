@@ -463,7 +463,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 //         "(auto means \"try sa first then fm\").",
         ArgParseArgument::STRING,
         "STR"));
-    setValidValues(parser, "db-index-type", "sa fm");
+    setValidValues(parser, "db-index-type", "sa fm bifm");
     setDefaultValue(parser, "db-index-type", "fm");
     setAdvanced(parser, "db-index-type");
 
@@ -1162,7 +1162,7 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
         "Suffix array or full-text minute space.",
         ArgParseArgument::STRING,
         "type"));
-    setValidValues(parser, "db-index-type", "sa fm");
+    setValidValues(parser, "db-index-type", "sa fm bifm");
     setDefaultValue(parser, "db-index-type", "fm");
     setAdvanced(parser, "db-index-type");
 

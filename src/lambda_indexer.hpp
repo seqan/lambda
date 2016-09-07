@@ -393,7 +393,7 @@ inline void
 createSuffixArray(TSA & SA,
                   StringSet<TString, TSSetSpec> const & s,
                   TAlgo const &,
-                  TLambda const &)
+                  TLambda &&)
 {
     return createSuffixArray(SA, s, TAlgo());
 }
@@ -406,7 +406,7 @@ template <typename TText, typename TSpec, typename TConfig, typename TLambda>
 inline bool
 indexCreateProgress(Index<TText, FMIndex<TSpec, TConfig> > & index,
                     FibreSALF const &,
-                    TLambda const & progressCallback)
+                    TLambda && progressCallback)
 {
     typedef Index<TText, FMIndex<TSpec, TConfig> >               TIndex;
     typedef typename Fibre<TIndex, FibreTempSA>::Type            TTempSA;
@@ -440,11 +440,28 @@ indexCreateProgress(Index<TText, FMIndex<TSpec, TConfig> > & index,
     return true;
 }
 
+template <typename TText, typename TSpec, typename TConfig, typename TLambda>
+inline bool
+indexCreateProgress(Index<TText, BidirectionalIndex<FMIndex<TSpec, TConfig> > > & index,
+                    FibreSALF const &,
+                    TLambda && progressCallback)
+{
+    auto progressCallback2 = progressCallback; // need second lambda because counter internally increased
+
+    std::cout << "Bi-Directional Index [forward]\n";
+    bool ret = indexCreateProgress(index.fwd, FibreSALF(), progressCallback);
+    if (!ret)
+        return ret;
+
+    std::cout << "Bi-Directional Index [backward]\n";
+    return indexCreateProgress(index.rev, FibreSALF(), progressCallback2);
+}
+
 template <typename TText, typename TSpec, typename TLambda>
 inline bool
 indexCreateProgress(Index<TText, IndexSa<TSpec> > & index,
                     FibreSA const &,
-                    TLambda const & progressCallback)
+                    TLambda && progressCallback)
 {
     typedef Index<TText, IndexSa<TSpec> >                        TIndex;
     typedef typename Fibre<TIndex, FibreSA>::Type                TSA;
@@ -496,9 +513,8 @@ generateIndexAndDump(StringSet<TString, TSpec>        & seqs,
     using TRedSeqsVirt  = StringSet<TRedSeqVirt, Owner<ConcatDirect<>>>;
 
     static bool constexpr
-    indexIsFM           = std::is_same<TIndexSpec,
-                                       TFMIndex<TIndexSpecSpec>
-                                       >::value;
+    indexIsFM           = std::is_same<TIndexSpec, TFMIndex<TIndexSpecSpec> >::value ||
+                          std::is_same<TIndexSpec, BidirectionalIndex<TFMIndex<TIndexSpecSpec> > >::value;
     static bool constexpr
     alphReduction       = !std::is_same<TransAlph<p>, TRedAlph>::value;
 

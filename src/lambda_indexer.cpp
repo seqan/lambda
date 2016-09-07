@@ -203,7 +203,16 @@ realMain(LambdaIndexerOptions     const & options,
                                                         options,
                                                         BlastProgramSelector<p>(),
                                                         TRedAlph());
-    } else
+    }
+    else if (options.dbIndexType == DbIndexType::BI_FM_INDEX)
+    {
+        using TIndexSpec = BidirectionalIndex<TFMIndex<TIndexSpecSpec>>;
+        generateIndexAndDump<TIndexSpec,TIndexSpecSpec>(translatedSeqs,
+                                                        options,
+                                                        BlastProgramSelector<p>(),
+                                                        TRedAlph());
+    }
+    else
     {
         using TIndexSpec = IndexSa<TIndexSpecSpec>;
         generateIndexAndDump<TIndexSpec,TIndexSpecSpec>(translatedSeqs,
