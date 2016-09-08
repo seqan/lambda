@@ -973,7 +973,7 @@ __goDownErrors(TIndexIt const & indexIt,
 template <typename TGlobalHolder,
           typename TScoreExtension>
 inline void
-__serachAdaptive(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
+__searchAdaptive(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
                  uint64_t const seedLength)
 {
     typedef typename Iterator<typename TGlobalHolder::TDbIndex, TopDown<> >::Type TIndexIt;
@@ -1156,7 +1156,7 @@ search(TLocalHolder & lH)
     if (lH.options.maxSeedDist == 0)
         __search<Backtracking<Exact>>(lH);
     else if (lH.options.adaptiveSeeding)
-        __serachAdaptive(lH, lH.options.seedLength);
+        __searchAdaptive(lH, lH.options.seedLength);
     else
         __search<Backtracking<HammingDistance>>(lH);
 }
