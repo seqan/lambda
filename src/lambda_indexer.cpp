@@ -189,7 +189,7 @@ realMain(LambdaIndexerOptions     const & options,
     }
 
     // dump translated and unreduced sequences (except where they are included in index)
-    if ((options.alphReduction != 0) || (options.dbIndexType == DbIndexType::FM_INDEX))
+    if ((options.alphReduction != 0) || (options.dbIndexType != DbIndexType::SUFFIX_ARRAY))
         dumpTranslatedSeqs(translatedSeqs, options);
 
     // see if final sequence set actually fits into index 
@@ -202,15 +202,28 @@ realMain(LambdaIndexerOptions     const & options,
         generateIndexAndDump<TIndexSpec,TIndexSpecSpec>(translatedSeqs,
                                                         options,
                                                         BlastProgramSelector<p>(),
-                                                        TRedAlph());
+                                                        TRedAlph(),
+                                                        Fwd());
     }
     else if (options.dbIndexType == DbIndexType::BI_FM_INDEX)
     {
-        using TIndexSpec = BidirectionalIndex<TFMIndex<TIndexSpecSpec>>;
+//         using TIndexSpec = BidirectionalIndex<TFMIndex<TIndexSpecSpec>>;
+        // use regular FM-index tag, because we just create two of them
+        using TIndexSpec = TFMIndex<TIndexSpecSpec>;
+        // first create the reverse index (which is actually unreversed)
+        myPrint(options, 1, "Bi-Directional Index [backward]\n");
         generateIndexAndDump<TIndexSpec,TIndexSpecSpec>(translatedSeqs,
                                                         options,
                                                         BlastProgramSelector<p>(),
-                                                        TRedAlph());
+                                                        TRedAlph(),
+                                                        Rev());
+        // then create the regular/forward fm-index (which is actually reversed)
+        myPrint(options, 1, "Bi-Directional Index [forward]\n");
+        generateIndexAndDump<TIndexSpec,TIndexSpecSpec>(translatedSeqs,
+                                                        options,
+                                                        BlastProgramSelector<p>(),
+                                                        TRedAlph(),
+                                                        Fwd());
     }
     else
     {
@@ -218,7 +231,8 @@ realMain(LambdaIndexerOptions     const & options,
         generateIndexAndDump<TIndexSpec,TIndexSpecSpec>(translatedSeqs,
                                                         options,
                                                         BlastProgramSelector<p>(),
-                                                        TRedAlph());
+                                                        TRedAlph(),
+                                                        Fwd());
     }
 
     // dump options

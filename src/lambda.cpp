@@ -294,6 +294,13 @@ argConv4(LambdaOptions                        & options,
                                    BlastProgramSelector<p>(),
                                    TRedAlph(),
                                    TScoreExtension());
+    else if (options.dbIndexType == DbIndexType::BI_FM_INDEX)
+        return realMain<BidirectionalIndex<TFMIndex<>>>(options,
+                                                        TOutFormat(),
+                                                        BlastTabularSpecSelector<h>(),
+                                                        BlastProgramSelector<p>(),
+                                                        TRedAlph(),
+                                                        TScoreExtension());
     else
         return realMain<TFMIndex<>>(options,
                                    TOutFormat(),
@@ -351,10 +358,6 @@ realMain(LambdaOptions                        & options,
     ret = loadDbIndexFromDisk(globalHolder, options);
     if (ret)
         return ret;
-
-//     ret = loadSegintervals(globalHolder, options);
-//     if (ret)
-//         return ret;
 
     ret = loadQuery(globalHolder, options);
     if (ret)

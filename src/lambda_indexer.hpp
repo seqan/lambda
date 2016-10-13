@@ -498,12 +498,14 @@ template <typename TIndexSpec,
           typename TString,
           typename TSpec,
           typename TRedAlph_,
+          typename TDirection,
           BlastProgram p>
 inline void
 generateIndexAndDump(StringSet<TString, TSpec>        & seqs,
                      LambdaIndexerOptions       const & options,
                      BlastProgramSelector<p>    const &,
-                     TRedAlph_                  const &)
+                     TRedAlph_                  const &,
+                     Tag<TDirection>            const &)
 {
     using TTransSeqs    = TCDStringSet<String<TransAlph<p>>>;
 
@@ -543,7 +545,7 @@ generateIndexAndDump(StringSet<TString, TSpec>        & seqs,
 //     std::cout << "indexIsFM: " << int(indexIsFM) << std::endl;
 
     // FM-Index needs reverse input
-    if (indexIsFM)
+    if (indexIsFM && std::is_same<Tag<TDirection>, Fwd>::value)
         reverse(seqs);
 
     TRedSeqsACT redSubjSeqs(seqs);
@@ -569,10 +571,19 @@ generateIndexAndDump(StringSet<TString, TSpec>        & seqs,
 
     // since we dumped unreduced sequences before and reduced sequences are
     // only "virtual" we clear them before dump
-    if (alphReduction || indexIsFM)
-        clear(seqs);
-    if (alphReduction)
-        clear(redSubjSeqs.limits); // limits part is not lightweight
+    std::decay_t<decltype(redSubjSeqs.limits)> tmpLimits;
+    if (alphReduction || !indexIsFM) // fm indexes don't dump them anyways
+    {
+        if (indexIsFM && (std::is_same<Tag<TDirection>, Rev>::value))
+        {
+            // these makes redSubjSeqs appear empty and deactivates output
+            swap(tmpLimits, redSubjSeqs.limits);
+        } else
+        {
+            clear(seqs);
+            clear(redSubjSeqs.limits); // limits part is not lightweight
+        }
+    }
 
     double e = sysTime() - s;
     if (!hasProgress)
@@ -584,11 +595,21 @@ generateIndexAndDump(StringSet<TString, TSpec>        & seqs,
     s = sysTime();
     std::string path = options.indexDir + "/index";
 
+    if (std::is_same<Tag<TDirection>, Rev>::value)
+        path += ".rev";
+
     save(dbIndex, path.c_str());
 
     e = sysTime() - s;
     myPrint(options, 1, " done.\n");
     myPrint(options, 2, "Runtime: ", e, "s \n");
+
+    if (alphReduction && indexIsFM && (std::is_same<Tag<TDirection>, Rev>::value))
+    {
+        // we swap back so that the sequences can be used for building the second index
+        swap(tmpLimits, redSubjSeqs.limits);
+//         redSubjSeqs.limits = tmpLimits;
+    }
 }
 
 #endif // header guard

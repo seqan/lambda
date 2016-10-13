@@ -271,7 +271,8 @@ public:
     using TMatch         = Match<TRedAlph>;
 
     static constexpr BlastProgram blastProgram  = p;
-    static constexpr bool indexIsFM             = std::is_same<TIndexSpec_, TFMIndex<>>::value;
+    static constexpr bool indexIsBiFM           = std::is_same<TIndexSpec_, BidirectionalIndex<TFMIndex<>>>::value;
+    static constexpr bool indexIsFM             = std::is_same<TIndexSpec_, TFMIndex<>>::value || indexIsBiFM;
     static constexpr bool alphReduction         = !std::is_same<TransAlph<p>, TRedAlph>::value;
 
     /* Sequence storage types */
@@ -353,9 +354,6 @@ public:
 
     TPositions          untransQrySeqLengths;   // used iff qIsTranslated(p)
     TPositions          untransSubjSeqLengths;  // used iff sIsTranslated(p)
-
-    TMasking            segIntStarts;
-    TMasking            segIntEnds;
 
     StatsHolder         stats;
 

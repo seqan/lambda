@@ -128,6 +128,7 @@ template <typename TRedAlph,
 inline int
 validateIndexOptions(LambdaOptions const & options)
 {
+    //TODO verify that index dir exists
     std::string buffer;
     readIndexOption(buffer, "alph_translated", options);
     if (buffer != _alphName(TransAlph<p>()))
@@ -372,8 +373,9 @@ loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
 
     double finish = sysTime() - start;
     myPrint(options, 1, " done.\n");
-    myPrint(options, 2, "Runtime: ", finish, "s \n", "No of Fibres: ",
-            length(indexSA(globalHolder.dbIndex)), "\n\n");
+// TODO reactivate
+//     myPrint(options, 2, "Runtime: ", finish, "s \n", "No of Fibres: ",
+//             length(indexSA(globalHolder.dbIndex)), "\n\n");
 
     // this is actually part of prepareScoring(), but the values are just available now
     if (sIsTranslated(TGlobalHolder::blastProgram ))
@@ -389,59 +391,6 @@ loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
 
     return 0;
 }
-
-// --------------------------------------------------------------------------
-// Function loadSegintervals()
-// --------------------------------------------------------------------------
-
-// template <BlastTabularSpec h,
-//           BlastProgram p,
-//           typename TRedAlph,
-//           typename TIndexSpec,
-//           typename TOutFormat>
-// inline int
-// loadSegintervals(GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h>     & globalHolder,
-//                  LambdaOptions                                            const & options)
-// {
-//
-//     double start = sysTime();
-//     std::string strIdent = "Loading Database Masking file...";
-//     myPrint(options, 1, strIdent);
-//
-//     CharString segFileS = options.dbFile;
-//     append(segFileS, ".binseg_s.concat");
-//     CharString segFileE = options.dbFile;
-//     append(segFileE, ".binseg_e.concat");
-//     bool fail = false;
-//     struct stat buffer;
-//     // file exists
-//     if ((stat(toCString(segFileS), &buffer) == 0) &&
-//         (stat(toCString(segFileE), &buffer) == 0))
-//     {
-//         //cut off ".concat" again
-//         resize(segFileS, length(segFileS) - 7);
-//         resize(segFileE, length(segFileE) - 7);
-//
-//         fail = !open(globalHolder.segIntStarts, toCString(segFileS), OPEN_RDONLY);
-//         if (!fail)
-//             fail = !open(globalHolder.segIntEnds, toCString(segFileE), OPEN_RDONLY);
-//     } else
-//     {
-//         fail = true;
-//     }
-//
-//     if (fail)
-//     {
-//         std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
-//                   << " failed.\n";
-//         return 1;
-//     }
-//
-//     double finish = sysTime() - start;
-//     myPrint(options, 1, " done.\n");
-//     myPrint(options, 2, "Runtime: ", finish, "s \n\n");
-//     return 0;
-// }
 
 // --------------------------------------------------------------------------
 // Function loadQuery()
@@ -851,27 +800,8 @@ onFind(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
               static_cast<typename TMatch::TPos>(getSeqOffset(subjOcc) + lH.options.seedLength)};
 
     bool discarded = false;
-    auto const halfSubjL = lH.options.seedLength /  2;
 
-    if (!sIsTranslated(TGlobalHolder::blastProgram))
-    {
-        for (unsigned k = 0; k < length(lH.gH.segIntStarts[m.subjId]); ++k)
-        {
-            // more than half of the seed falls into masked interval
-            if (intervalOverlap(m.subjStart,
-                                m.subjEnd,
-                                lH.gH.segIntStarts[m.subjId][k],
-                                lH.gH.segIntEnds[m.subjId][k])
-                    >= halfSubjL)
-            {
-                ++lH.stats.hitsMasked;
-                discarded = true;
-                break;
-            }
-        }
-    }
-
-     if ((!discarded) && (!seedLooksPromising(lH, m)))
+     if (!seedLooksPromising(lH, m))
      {
          discarded = true;
          ++lH.stats.hitsFailedPreExtendTest;
@@ -905,9 +835,12 @@ onFindVariable(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
               static_cast<typename TGlobalHolder::TMatch::TPos>(getSeqOffset(subjOcc)),
               static_cast<typename TGlobalHolder::TMatch::TPos>(getSeqOffset(subjOcc) + seedLength)};
 
-     if (!seedLooksPromising(lH, m))
-         ++lH.stats.hitsFailedPreExtendTest;
-     else
+    SEQAN_ASSERT_LT(m.qryStart,  m.qryEnd);
+    SEQAN_ASSERT_LT(m.subjStart, m.subjEnd);
+
+    if (!seedLooksPromising(lH, m))
+        ++lH.stats.hitsFailedPreExtendTest;
+    else
         lH.matches.emplace_back(m);
 }
 
@@ -917,9 +850,10 @@ onFindVariable(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
 
 //TODO experiment with tuned branch prediction
 
-template <typename TIndexIt, typename TNeedleIt, typename TLambda, typename TLambda2>
+template <typename TIndexIt, typename TGoDownTag, typename TNeedleIt, typename TLambda, typename TLambda2>
 inline void
 __goDownNoErrors(TIndexIt const & indexIt,
+                 TGoDownTag const &,
                  TNeedleIt const & needleIt,
                  TNeedleIt const & needleItEnd,
                  TLambda & continRunnable,
@@ -927,19 +861,20 @@ __goDownNoErrors(TIndexIt const & indexIt,
 {
     TIndexIt nextIndexIt(indexIt);
     if ((needleIt != needleItEnd) &&
-        goDown(nextIndexIt, *needleIt) &&
+        goDown(nextIndexIt, *needleIt, TGoDownTag()) &&
         continRunnable(indexIt, nextIndexIt))
     {
-        __goDownNoErrors(nextIndexIt, needleIt + 1, needleItEnd, continRunnable, reportRunnable);
+        __goDownNoErrors(nextIndexIt, TGoDownTag(), needleIt + 1, needleItEnd, continRunnable, reportRunnable);
     } else
     {
-        reportRunnable(indexIt);
+        reportRunnable(indexIt, true);
     }
 }
 
-template <typename TIndexIt, typename TNeedleIt, typename TLambda, typename TLambda2>
+template <typename TIndexIt, typename TGoDownTag, typename TNeedleIt, typename TLambda, typename TLambda2>
 inline void
 __goDownErrors(TIndexIt const & indexIt,
+               TGoDownTag const &,
                TNeedleIt const & needleIt,
                TNeedleIt const & needleItEnd,
                TLambda & continRunnable,
@@ -954,20 +889,20 @@ __goDownErrors(TIndexIt const & indexIt,
         for (unsigned i = 0; i < ValueSize<TAlph>::VALUE; ++i)
         {
             TIndexIt nextIndexIt(indexIt);
-            if (goDown(nextIndexIt, static_cast<TAlph>(i)) &&
+            if (goDown(nextIndexIt, static_cast<TAlph>(i), TGoDownTag()) &&
                 continRunnable(indexIt, nextIndexIt))
             {
                 ++contin;
                 if (ordValue(*needleIt) == i)
-                    __goDownErrors(nextIndexIt, needleIt + 1, needleItEnd, continRunnable, reportRunnable);
+                    __goDownErrors(nextIndexIt, TGoDownTag(), needleIt + 1, needleItEnd, continRunnable, reportRunnable);
                 else
-                    __goDownNoErrors(nextIndexIt, needleIt + 1, needleItEnd, continRunnable, reportRunnable);
+                    __goDownNoErrors(nextIndexIt, TGoDownTag(), needleIt + 1, needleItEnd, continRunnable, reportRunnable);
             }
         }
     }
 
     if (contin == 0)
-        reportRunnable(indexIt);
+        reportRunnable(indexIt, false);
 }
 
 template <typename TGlobalHolder,
@@ -995,6 +930,31 @@ __searchAdaptive(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
     {
         if (length(lH.gH.redQrySeqs[i]) < seedLength)
             continue;
+
+        size_t desiredOccs      = 0;
+
+        auto continRunnable = [&seedLength, &desiredOccs] (auto const & prevIndexIt, auto const & indexIt)
+        {
+//             // NON-ADAPTIVE
+//             return (repLength(indexIt) <= seedLength);
+            // ADAPTIVE SEEDING:
+
+            // always continue if minimum seed length not reached
+            if (repLength(indexIt) <= seedLength)
+                return true;
+
+            // always continue if it means not loosing hits
+            if (countOccurrences(indexIt) == countOccurrences(prevIndexIt))
+                return true;
+
+            // do vodoo heuristics to see if this hit is to frequent
+            if (countOccurrences(indexIt) < desiredOccs)
+                return false;
+
+            return true;
+        };
+
+        /* FORWARD SEARCH */
         for (size_t seedBegin = 0; /* below */; seedBegin += lH.options.seedOffset)
         {
             // skip proteine 'X' or Dna 'N'
@@ -1008,59 +968,96 @@ __searchAdaptive(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
 
             indexIt = root;
 
-            size_t desiredOccs = length(lH.matches) >= lH.options.maxMatches
-                                    ? minResults
-                                    : (lH.options.maxMatches - length(lH.matches)) * seedHeurFactor /
-                                      std::max((needlesSum - needlesPos - seedBegin) / lH.options.seedOffset, 1ul);
+            desiredOccs = length(lH.matches) >= lH.options.maxMatches
+                           ? minResults
+                           : (lH.options.maxMatches - length(lH.matches)) * seedHeurFactor /
+                             std::max((needlesSum - needlesPos - seedBegin) / lH.options.seedOffset, 1ul);
 
             if (desiredOccs == 0)
                 desiredOccs = minResults;
 
             // go down seedOffset number of characters without errors
-            for (size_t k = 0; k < lH.options.seedOffset; ++k)
+            for (size_t k = 0; k < seedLength / 2; ++k)
                 if (!goDown(indexIt, lH.gH.redQrySeqs[i][seedBegin + k]))
                     break;
             // if unsuccessful, move to next seed
-            if (repLength(indexIt) != lH.options.seedOffset)
+            if (repLength(indexIt) != seedLength / 2)
                 continue;
 
-            auto continRunnable = [&seedLength, &desiredOccs] (TIndexIt const & prevIndexIt, TIndexIt const & indexIt)
-            {
-                // NON-ADAPTIVE
-//                 return (repLength(indexIt) <= seedLength);
-                // ADAPTIVE SEEDING:
-
-                // always continue if minimum seed length not reached
-                if (repLength(indexIt) <= seedLength)
-                    return true;
-
-                // always continue if it means not loosing hits
-                if (countOccurrences(indexIt) == countOccurrences(prevIndexIt))
-                    return true;
-
-                // do vodoo heuristics to see if this hit is to frequent
-                if (countOccurrences(indexIt) < desiredOccs)
-                    return false;
-
-                return true;
-            };
-
-            auto reportRunnable = [&seedLength, &lH, &i, &seedBegin] (TIndexIt const & indexIt)
+            auto reportRunnable = [&seedLength, &lH, &i, &seedBegin] (auto const & indexIt, bool const hasOneError)
             {
                 if (repLength(indexIt) >= seedLength)
                 {
                     appendValue(lH.stats.seedLengths, repLength(indexIt));
                     lH.stats.hitsAfterSeeding += countOccurrences(indexIt);
-                    for (auto const & occ : getOccurrences(indexIt))
+                    for (auto occ : getOccurrences(indexIt))
                         onFindVariable(lH, occ, i, seedBegin, repLength(indexIt));
                 }
             };
 
             __goDownErrors(indexIt,
-                           begin(lH.gH.redQrySeqs[i], Standard()) + seedBegin + lH.options.seedOffset,
+                           Fwd(),
+                           begin(lH.gH.redQrySeqs[i], Standard()) + seedBegin + seedLength / 2,
                            end(lH.gH.redQrySeqs[i], Standard()),
                            continRunnable,
                            reportRunnable);
+        }
+
+        /* REVERSE SEARCH on BIDIRECTIONAL INDEXES */
+        if (TGlobalHolder::indexIsBiFM)
+        {
+            using   TRevNeedle      = ModifiedString<decltype(lH.gH.redQrySeqs[0]), ModReverse>;
+            TRevNeedle revNeedle{lH.gH.redQrySeqs[i]};
+            for (size_t seedBegin = seedLength - 1; /* below */; seedBegin += lH.options.seedOffset)
+            {
+
+                // skip proteine 'X' or Dna 'N'
+                while ((lH.gH.qrySeqs[i][seedBegin] == unknownValue<TransAlph<TGlobalHolder::blastProgram>>()) &&
+                    seedBegin < length(lH.gH.redQrySeqs[i]))                 // [different abort condition than above]
+                    ++seedBegin;
+
+                // termination criterium
+                if (seedBegin >= length(lH.gH.redQrySeqs[i]))                // [different abort condition than above]
+                    break;
+
+                indexIt = root;
+
+                desiredOccs = length(lH.matches) >= lH.options.maxMatches
+                               ? minResults
+                               : (lH.options.maxMatches - length(lH.matches)) * seedHeurFactor /
+                                 std::max((needlesSum - needlesPos - seedBegin) / lH.options.seedOffset, 1ul);
+
+                if (desiredOccs == 0)
+                    desiredOccs = minResults;
+
+                // go down seedOffset number of characters without errors
+                for (size_t k = 0; k < seedLength / 2; ++k)
+                    if (!goDown(indexIt, lH.gH.redQrySeqs[i][seedBegin - k], Rev())) // [rev and  - instead of fwd]
+                        break;
+                // if unsuccessful, move to next seed
+                if (repLength(indexIt) != seedLength / 2)
+                    continue;
+
+                auto reportRunnable = [&seedLength, &lH, &i, &seedBegin] (auto const & indexIt, bool const hasOneError)
+                {
+                    if ((repLength(indexIt) >= seedLength) && (hasOneError))        // [must have one error for rev]
+                    {
+                        appendValue(lH.stats.seedLengths, repLength(indexIt));
+                        lH.stats.hitsAfterSeeding += countOccurrences(indexIt);
+                        for (auto occ : getOccurrences(indexIt))                    // [different start pos]
+                            onFindVariable(lH, occ, i, seedBegin - repLength(indexIt) + 1,  repLength(indexIt));
+                    }
+                };
+
+                // [rev and reverse needle]
+                __goDownErrors(indexIt,
+                               Rev(),
+                               end(revNeedle, Standard()) - seedBegin + seedLength / 2 - 1,
+                               end(revNeedle, Standard()),
+                               continRunnable,
+                               reportRunnable);
+
+            }
         }
 
         needlesPos += length(lH.gH.redQrySeqs[i]);
@@ -1261,12 +1258,61 @@ _writeRecord(TBlastRecord & record,
         ++lH.stats.qrysWithHit;
         // sort and remove duplicates -> STL, yeah!
         auto const before = record.matches.size();
-        record.matches.sort();
+
         if (!lH.options.filterPutativeDuplicates)
         {
-            record.matches.unique();
+            record.matches.sort([] (auto const & m1, auto const & m2)
+            {
+                return std::tie(m1._n_sId,
+                                m1.qStart,
+                                m1.qEnd,
+                                m1.sStart,
+                                m1.sEnd,
+                                m1.qLength,
+                                m1.sLength,
+                                m1.qFrameShift,
+                                m1.sFrameShift) <
+                       std::tie(m2._n_sId,
+                                m2.qStart,
+                                m2.qEnd,
+                                m2.sStart,
+                                m2.sEnd,
+                                m2.qLength,
+                                m2.sLength,
+                                m2.qFrameShift,
+                                m2.sFrameShift);
+            });
+            record.matches.unique([] (auto const & m1, auto const & m2)
+            {
+                return std::tie(m1._n_sId,
+                                m1.qStart,
+                                m1.qEnd,
+                                m1.sStart,
+                                m1.sEnd,
+                                m1.qLength,
+                                m1.sLength,
+                                m1.qFrameShift,
+                                m1.sFrameShift) ==
+                       std::tie(m2._n_sId,
+                                m2.qStart,
+                                m2.qEnd,
+                                m2.sStart,
+                                m2.sEnd,
+                                m2.qLength,
+                                m2.sLength,
+                                m2.qFrameShift,
+                                m2.sFrameShift);
+            });
             lH.stats.hitsDuplicate += before - record.matches.size();
         }
+
+        // sort by evalue before writing
+        record.matches.sort([] (auto const & m1, auto const & m2)
+        {
+            return m1.bitScore > m2.bitScore;
+        });
+
+        // cutoff abundant
         if (record.matches.size() > lH.options.maxMatches)
         {
             lH.stats.hitsAbundant += record.matches.size() -
@@ -1656,6 +1702,31 @@ iterateMatchesExtend(TLocalHolder & lH)
         myPrint(lH.options, 1, lH.statusStr);
     }
 
+    // comperator that sorts by bitScore but also compensates for rounding errors
+    auto compe = [] (auto const & m1, auto const & m2)
+    {
+        return std::tie(m2.bitScore,
+                        m1._n_sId,
+                        m1.qStart,
+                        m1.qEnd,
+                        m1.sStart,
+                        m1.sEnd,
+                        m1.qLength,
+                        m1.sLength,
+                        m1.qFrameShift,
+                        m1.sFrameShift) <
+               std::tie(m1.bitScore,
+                        m2._n_sId,
+                        m2.qStart,
+                        m2.qEnd,
+                        m2.sStart,
+                        m2.sEnd,
+                        m2.qLength,
+                        m2.sLength,
+                        m2.qFrameShift,
+                        m2.sFrameShift);
+    };
+
     //DEBUG
 //     std::cout << "Length of matches:   " << length(lH.matches);
 //     for (auto const & m :  lH.matches)
@@ -1700,7 +1771,7 @@ iterateMatchesExtend(TLocalHolder & lH)
                     if (record.matches.size() / lH.options.maxMatches == 1)
                     {
                         // numMaxMatches found the first time
-                        record.matches.sort();
+                        record.matches.sort(compe);
                     }
                     else if (record.matches.size() / lH.options.maxMatches > 1)
                     {
@@ -1713,11 +1784,31 @@ iterateMatchesExtend(TLocalHolder & lH)
                         }
 
                         uint64_t before = record.matches.size();
-                        record.matches.sort();
+                        record.matches.sort(compe);
                         // if we filter putative duplicates we never need to check for real duplicates
                         if (!lH.options.filterPutativeDuplicates)
                         {
-                            record.matches.unique();
+                            record.matches.unique([] (auto const & m1, auto const & m2)
+                            {
+                                return std::tie(m1._n_sId,
+                                                m1.qStart,
+                                                m1.qEnd,
+                                                m1.sStart,
+                                                m1.sEnd,
+                                                m1.qLength,
+                                                m1.sLength,
+                                                m1.qFrameShift,
+                                                m1.sFrameShift) ==
+                                       std::tie(m2._n_sId,
+                                                m2.qStart,
+                                                m2.qEnd,
+                                                m2.sStart,
+                                                m2.sEnd,
+                                                m2.qLength,
+                                                m2.sLength,
+                                                m2.qFrameShift,
+                                                m2.sFrameShift);
+                            });
                             lH.stats.hitsDuplicate += before - record.matches.size();
                             before = record.matches.size();
                         }

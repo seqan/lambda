@@ -84,6 +84,12 @@ struct SAValue<StringSet<ModifiedString<String<TSpec1, TSpec2>, TFunctor>, TSpec
     typedef Pair<SizeTypeNum_<TSpec1>, SizeTypePos_<TSpec1>, Pack> Type;
 };
 
+template<typename TSpec1, typename TSpec2, typename TSpec3, typename TFunctor, typename TFunctor2>
+struct SAValue<StringSet<ModifiedString<ModifiedString<String<TSpec1, TSpec2>, TFunctor>, TFunctor2>, TSpec3> >
+{
+    typedef Pair<SizeTypeNum_<TSpec1>, SizeTypePos_<TSpec1>, Pack> Type;
+};
+
 template<typename TSpec1, typename TSpec2, typename TSpec3>
 struct SAValue<StringSet<String<TSpec1, TSpec2>, TSpec3> >
 {
@@ -124,7 +130,8 @@ struct LambdaFMIndexConfig
     using TAlloc    = Alloc<>;
 #endif
 //     using Bwt       = WaveletTree<void, WTRDConfig<LengthSum, TAlloc> >;
-    using Bwt       = Levels<void, LevelsRDConfig<LengthSum, TAlloc, 1, 3> >;
+    using Bwt       = Levels<void, LevelsPrefixRDConfig<LengthSum, TAlloc, 1, 3> >;
+//     using Bwt       = Levels<void, LevelsRDConfig<LengthSum, TAlloc, 1, 3> >;
     using Sentinels = Levels<void, LevelsRDConfig<LengthSum, TAlloc> >;
 
     static const unsigned SAMPLING = 10;
@@ -998,8 +1005,10 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     if (isSet(parser, "seed-offset"))
         getOptionValue(options.seedOffset, parser, "seed-offset");
-    else
+    else if ((options.dbIndexType != DbIndexType::BI_FM_INDEX) || (!options.adaptiveSeeding))
         options.seedOffset = options.seedLength / 2;
+    else
+        options.seedOffset = options.seedLength;
 
     if (isSet(parser, "seed-gravity"))
         getOptionValue(options.seedGravity, parser, "seed-gravity");
@@ -1476,9 +1485,7 @@ printOptions(LambdaOptions const & options)
               << " INPUT\n"
               << "  query file:               " << options.queryFile << "\n"
               << "  index directory:          " << options.indexDir << "\n"
-              << "  db index type:            " << (TGH::indexIsFM
-                                                    ? "FM-Index\n"
-                                                    : "SA-Index\n")
+              << "  db index type:            " << _indexName(options.dbIndexType) << "\n"
               << " OUTPUT (file)\n"
               << "  output file:              " << options.output << "\n"
               << "  minimum % identity:       " << options.idCutOff << "\n"
