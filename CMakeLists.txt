@@ -6,9 +6,21 @@ cmake_minimum_required (VERSION 3.0.0)
 string(ASCII 27 Esc)
 set(ColourBold  "${Esc}[1m")
 set(ColourReset "${Esc}[m")
+set(ColourRed   "${Esc}[31m")
+
 message ("${ColourBold}Compiler Detection${ColourReset}")
 
 project (lambda CXX)
+
+# ----------------------------------------------------------------------------
+# Make "Release" the default cmake build type
+# ----------------------------------------------------------------------------
+
+if (NOT CMAKE_BUILD_TYPE)
+    set (CMAKE_BUILD_TYPE Release CACHE STRING
+         "Choose the type of build, options are: Debug Release RelWithDebInfo"
+         FORCE)
+endif ()
 
 # ----------------------------------------------------------------------------
 # Begin of dependency detection
@@ -32,6 +44,14 @@ endif ()
 # ----------------------------------------------------------------------------
 
 add_subdirectory(src)
+
+# ----------------------------------------------------------------------------
+# Warn if cmake build type is not "Release"
+# ----------------------------------------------------------------------------
+
+if (NOT CMAKE_BUILD_TYPE STREQUAL Release)
+    message (STATUS "${ColourRed}CMAKE_BUILD_TYPE is not \"Release\", your binaries will be slow.${ColourReset}")
+endif ()
 
 # ----------------------------------------------------------------------------
 # Add Tests
