@@ -11,8 +11,8 @@ before_install:
  - test $(uname) = "Linux" && sudo apt-get install -qq -y g++-4.9 g++-5 g++-6 clang-3.8 clang-3.9 cmake cmake-data zlib1g-dev libbz2-dev || true
  - test $(uname) = "Darwin" && sudo brew update || true
  - test $(uname) = "Darwin" && sudo brew tap homebrew/versions || true
- - test $(uname) = "Darwin" && sudo brew install gcc5 || true
- - test $(uname) = "Darwin" && sudo brew install gcc6 || true
+ - test $(uname) = "Darwin" && brew install gcc5 || true
+ - test $(uname) = "Darwin" && brew install gcc6 || true
 matrix:
   include:
     - os: linux
