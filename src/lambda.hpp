@@ -701,16 +701,6 @@ inline bool
 seedLooksPromising(LocalDataHolder<TGlobalHolder, TScoreExtension> const & lH,
                    typename TGlobalHolder::TMatch const & m)
 {
-    // no pre-scoring, but still filter out XXX and NNN hits
-//     if (!lH.options.preScoring))
-//     {
-//         for (unsigned i = m.qryStart, count = 0; i < m.qryStart + lH.options.seedLength; ++i)
-//             if (lH.gH.qrySeqs[m.qryId][i] == unkownValue<typename TGlobalHolder::TRedAlph>())
-//                 if (++count > lH.options.maxSeedDist)
-//                     return false;
-//         return true;
-//     }
-
     int64_t effectiveQBegin = m.qryStart;
     int64_t effectiveSBegin = m.subjStart;
     uint64_t actualLength = m.qryEnd - m.qryStart;
@@ -719,11 +709,9 @@ seedLooksPromising(LocalDataHolder<TGlobalHolder, TScoreExtension> const & lH,
 
     if (effectiveLength > actualLength)
     {
-        effectiveQBegin -= (lH.options.preScoring - 1) *
-                           actualLength / 2;
-        effectiveSBegin -= (lH.options.preScoring - 1) *
-                           actualLength / 2;
-//         std::cout << effectiveQBegin << "\t" << effectiveSBegin << "\n";
+        effectiveQBegin -= (effectiveLength - actualLength) / 2;
+        effectiveSBegin -= (effectiveLength - actualLength) / 2;
+
         int64_t min = std::min(effectiveQBegin, effectiveSBegin);
         if (min < 0)
         {
@@ -736,8 +724,6 @@ seedLooksPromising(LocalDataHolder<TGlobalHolder, TScoreExtension> const & lH,
                             static_cast<uint64_t>(length(lH.gH.qrySeqs[m.qryId]) - effectiveQBegin),
                             static_cast<uint64_t>(length(lH.gH.subjSeqs[m.subjId]) - effectiveSBegin),
                             effectiveLength});
-//         std::cout << effectiveQBegin << "\t" << effectiveSBegin << "\t"
-//                   << effectiveLength << "\n";
     }
 
     auto const & qSeq = infix(lH.gH.qrySeqs[m.qryId],
@@ -746,25 +732,24 @@ seedLooksPromising(LocalDataHolder<TGlobalHolder, TScoreExtension> const & lH,
     auto const & sSeq = infix(lH.gH.subjSeqs[m.subjId],
                               effectiveSBegin,
                               effectiveSBegin + effectiveLength);
-    int maxScore = 0;
-
-    int scores[effectiveLength+1]; // C99, C++14, -Wno-vla before that
-    scores[0] = 0;
+    int             s = 0;
+    int      maxScore = 0;
+    int const thresh  = lH.options.preScoringThresh * effectiveLength;
 
     // score the diagonal
     for (uint64_t i = 0; i < effectiveLength; ++i)
     {
-        scores[i] += score(seqanScheme(context(lH.gH.outfile).scoringScheme), qSeq[i], sSeq[i]);
-        if (scores[i] < 0)
-            scores[i] = 0;
-        else if (scores[i] > maxScore)
-            maxScore = scores[i];
+        s += score(seqanScheme(context(lH.gH.outfile).scoringScheme), qSeq[i], sSeq[i]);
+        if (s < 0)
+            s = 0;
+        else if (s > maxScore)
+            maxScore = s;
 
-//         if (i < static_cast<uint64_t>(effectiveLength - 1)) // TODO remove
-        scores[i+1] = scores[i];
+        if (maxScore >= thresh)
+            return true;
     }
 
-    return (maxScore >= int(lH.options.preScoringThresh * effectiveLength));
+    return false;
 }
 
 // --------------------------------------------------------------------------
@@ -914,7 +899,7 @@ __searchAdaptive(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
     typedef typename Iterator<typename TGlobalHolder::TDbIndex, TopDown<> >::Type TIndexIt;
 
     // TODO optionize
-    size_t constexpr seedHeurFactor = 10;
+    size_t constexpr seedHeurFactor = /*TGlobalHolder::indexIsBiFM ? 5 :*/ 10;
     size_t constexpr minResults = 1;
 
     size_t needlesSum = lH.gH.redQrySeqs.limits[lH.indexEndQry] - lH.gH.redQrySeqs.limits[lH.indexBeginQry];
