@@ -199,7 +199,7 @@ void printStats(StatsHolder const & stats, LambdaOptions const & options)
                   << "\033[0m\n\n";
 
         if (rem != stats.hitsFinal)
-            std::cout << "WARNING: hits dont add up\n";
+            std::cout << "WARNING: hits don't add up\n";
 
         std::cout << "Detailed Non-Wall-Clock times:\n"
                   << " genSeeds: " << stats.timeGenSeeds << "\n"

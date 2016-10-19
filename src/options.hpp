@@ -622,14 +622,14 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 //         "STR"));
 //     setValidValues(parser, "query-alphabet", "dna5 aminoacid");
 //     setDefaultValue(parser, "query-alphabet", "dna5");
-// 
+//
 //     addOption(parser, ArgParseOption("da", "db-alphabet",
 //         "original alphabet of the subject sequences",
 //         ArgParseArgument::STRING,
 //         "STR"));
 //     setValidValues(parser, "db-alphabet", "dna5 aminoacid");
 //     setDefaultValue(parser, "db-alphabet", "aminoacid");
-// 
+//
 //     addOption(parser, ArgParseOption("sa", "seeding-alphabet",
 //         "alphabet to use during seeding (reduction possible)",
 //         ArgParseArgument::STRING,
@@ -761,7 +761,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     addSection(parser, "Scoring");
 
     addOption(parser, ArgParseOption("sc", "scoring-scheme",
-        "'45' for Blosum45; '62' for Blosum62 (default);  '80' for Blosum80; "
+        "use '45' for Blosum45; '62' for Blosum62 (default); '80' for Blosum80; "
         "[ignored for BlastN]",
         ArgParseArgument::INTEGER));
     setDefaultValue(parser, "scoring-scheme", "62");
@@ -1137,12 +1137,14 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
     // Setup ArgumentParser.
     ArgumentParser parser("lambda_indexer");
 
+    setShortDescription(parser, "indexer for creating lambda-compatible databases");
+
     // Define usage line and long description.
     addUsageLine(parser, "[\\fIOPTIONS\\fP] \\-d DATABASE.fasta [-i INDEX.lambda]\\fP");
 
     sharedSetup(parser);
 
-    addDescription(parser, "This is the indexer_binary for creating a lambda-compatible databases.");
+    addDescription(parser, "This is the indexer_binary for creating lambda-compatible databases.");
 
     addSection(parser, "Input Options");
     addOption(parser, ArgParseOption("d", "database",

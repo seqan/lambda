@@ -733,8 +733,8 @@ seedLooksPromising(LocalDataHolder<TGlobalHolder, TScoreExtension> const & lH,
         }
 
         effectiveLength = std::min({
-                            length(lH.gH.qrySeqs[m.qryId]) - effectiveQBegin,
-                            length(lH.gH.subjSeqs[m.subjId]) - effectiveSBegin,
+                            static_cast<uint64_t>(length(lH.gH.qrySeqs[m.qryId]) - effectiveQBegin),
+                            static_cast<uint64_t>(length(lH.gH.subjSeqs[m.subjId]) - effectiveSBegin),
                             effectiveLength});
 //         std::cout << effectiveQBegin << "\t" << effectiveSBegin << "\t"
 //                   << effectiveLength << "\n";
