@@ -237,6 +237,7 @@ struct SharedOptions
     unsigned    terminalCols = 80;
 
     unsigned        threads     = 1;
+    bool        hasSTaxIds;
 
     SharedOptions()
     {
@@ -332,6 +333,7 @@ struct LambdaIndexerOptions : public SharedOptions
     std::string     dbFile;
 //     std::string     segFile = "";
     std::string     algo = "";
+    std::string     accToTaxMapFile;
 
     bool            truncateIDs;
 
@@ -1154,6 +1156,12 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
     setRequired(parser, "database");
     setValidValues(parser, "database", toCString(concat(getFileExtensions(SeqFileIn()), ' ')));
 
+    addOption(parser, ArgParseOption("tx",
+        "acc-tax-map",
+        "An NCBI accession-to-taxid mapping file (optional).",
+        ArgParseArgument::INPUT_FILE));
+    setValidValues(parser, "acc-tax-map", ".accession2taxid");
+
 //     addOption(parser, ArgParseOption("s",
 //         "segfile",
 //         "SEG intervals for database"
@@ -1329,6 +1337,9 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
             return ArgumentParser::PARSE_ERROR;
         }
     }
+
+    getOptionValue(options.accToTaxMapFile, parser, "acc-tax-map");
+    options.hasSTaxIds = (options.accToTaxMapFile != "");
 
     return ArgumentParser::PARSE_OK;
 }

@@ -182,34 +182,29 @@ struct Truncate_;
 // Function readRecord(Fasta); an overload that truncates Ids at first Whitespace
 // ----------------------------------------------------------------------------
 
-template <typename TSeqStringSet, typename TSpec, typename TSize>
+template <typename TSeqStringSet, typename TSpec, typename TRunnable>
 inline void
-readRecords(TCDStringSet<String<char, Alloc<Truncate_>>> & meta,
-            TSeqStringSet & seq,
-            FormattedFile<Fastq, Input, TSpec> & file,
-            TSize maxRecords)
+_myReadRecordsImpl(TCDStringSet<String<char>> & meta,
+                   TSeqStringSet & seq,
+                   FormattedFile<Fastq, Input, TSpec> & file,
+                   TRunnable && runnable)
 {
     typedef typename SeqFileBuffer_<TSeqStringSet, TSpec>::Type TSeqBuffer;
 
     TSeqBuffer seqBuffer;
-    IsWhitespace func;
 
     // reuse the memory of context(file).buffer for seqBuffer (which has a different type but same sizeof(Alphabet))
     swapPtr(seqBuffer.data_begin, context(file).buffer[1].data_begin);
     swapPtr(seqBuffer.data_end, context(file).buffer[1].data_end);
     seqBuffer.data_capacity = context(file).buffer[1].data_capacity;
 
-    for (; !atEnd(file) && maxRecords > 0; --maxRecords)
+    for (uint64_t count = 0; !atEnd(file); ++count) // count not used for abort condition
     {
         readRecord(context(file).buffer[0], seqBuffer, file);
-        for (size_t i = 0; i < length(context(file).buffer[0]); ++i)
-        {
-            if (func(context(file).buffer[0][i]))
-            {
-                resize(context(file).buffer[0], i);
-                break;
-            }
-        }
+
+        // run whatever magic we are pushing in:
+        runnable(context(file).buffer[0], count);
+
         appendValue(meta, context(file).buffer[0]);
         appendValue(seq, seqBuffer);
     }
@@ -226,16 +221,19 @@ readRecords(TCDStringSet<String<char, Alloc<Truncate_>>> & meta,
 
 template <typename TSpec1,
           typename TSpec2,
-          typename TFile>
+          typename TFile,
+          typename TRunnable = std::function<void(typename Value<TCDStringSet<String<char, TSpec1>>>::Type const &,
+                                                  uint64_t const)> >
 inline int
 myReadRecords(TCDStringSet<String<char, TSpec1>> & ids,
               TCDStringSet<String<Dna5, TSpec2>> & seqs,
-              TFile                               & file)
+              TFile                              & file,
+              TRunnable                         && runnable = [] (auto const &, uint64_t const) {})
 {
     TCDStringSet<String<Iupac>> tmpSeqs; // all IUPAC nucleic acid characters are valid input
     try
     {
-        readRecords(ids, tmpSeqs, file);
+        _myReadRecordsImpl(ids, tmpSeqs, file, std::forward<TRunnable>(runnable));
     }
     catch(ParseError const & e)
     {
@@ -253,15 +251,18 @@ myReadRecords(TCDStringSet<String<char, TSpec1>> & ids,
 
 template <typename TSpec1,
           typename TSpec2,
-          typename TFile>
+          typename TFile,
+          typename TRunnable = std::function<void(typename Value<TCDStringSet<String<char, TSpec1>>>::Type const &,
+                                                  uint64_t const)> >
 inline int
 myReadRecords(TCDStringSet<String<char, TSpec1>>       & ids,
               TCDStringSet<String<AminoAcid, TSpec2>>  & seqs,
-              TFile                                     & file)
+              TFile                                    & file,
+              TRunnable                               && runnable = [] (auto const &, uint64_t const) {})
 {
     try
     {
-        readRecords(ids, seqs, file);
+        _myReadRecordsImpl(ids, seqs, file, std::forward<TRunnable>(runnable));
     }
     catch(ParseError const & e)
     {

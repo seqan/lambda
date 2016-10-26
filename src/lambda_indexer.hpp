@@ -46,13 +46,46 @@ using namespace seqan;
 template <typename TOrigAlph>
 inline int
 loadSubjSeqsAndIds(TCDStringSet<String<TOrigAlph>> & originalSeqs,
+                   std::unordered_map<std::string, uint64_t> & accToIdRank,
                    LambdaIndexerOptions const & options)
 {
     typedef TCDStringSet<String<char, Alloc<>>>             TIDs;
-    typedef TCDStringSet<String<char, Alloc<Truncate_>>>    TIDsTruncated;
-    TIDs ids;
-    // difference only in name, same layout in mem, so we can hack the type:
-    TIDsTruncated* tIds = static_cast<TIDsTruncated*>((void*)&ids);
+
+    TIDs ids; // the IDs
+
+    // see http://www.uniprot.org/help/accession_numbers
+    std::regex const accRegEx{"[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2}"};
+
+    // lambda that truncates IDs at first whitespace
+    auto truncateID = [] (auto && id, uint64_t const)
+    {
+        IsWhitespace isWhitespace;
+        for (size_t i = 0; i < length(id); ++i)
+        {
+            if (isWhitespace(id[i]))
+            {
+                resize(id, i);
+                break;
+            }
+        }
+    };
+
+    // lambda that extracts accession numbers and saves them in the map
+    auto extractAccIds = [&accToIdRank, &accRegEx] (auto && id, uint64_t const rank)
+    {
+        // TODO avoid copying here by specializing regex_iterator
+        std::string buf;
+        assign(buf, id);
+
+        for (auto it = std::sregex_iterator(buf.begin(), buf.end(), accRegEx), itEnd = std::sregex_iterator();
+             it != itEnd;
+             ++it)
+        {
+            SEQAN_ASSERT_MSG(accToIdRank.count(it->str()) == 0,
+                             "An accession number appeared twice in the file, but they should be unique.");
+            accToIdRank[it->str()] = rank;
+        }
+    };
 
     double start = sysTime();
     myPrint(options, 1, "Loading Subject Sequences and Ids...");
@@ -60,9 +93,25 @@ loadSubjSeqsAndIds(TCDStringSet<String<TOrigAlph>> & originalSeqs,
     SeqFileIn infile(toCString(options.dbFile));
     int ret;
     if (options.truncateIDs)
-        ret = myReadRecords(*tIds, originalSeqs, infile);
-    else
-        ret = myReadRecords(ids, originalSeqs, infile);
+    {
+        if (options.hasSTaxIds)
+        {
+            ret = myReadRecords(ids, originalSeqs, infile, [&] (auto && id, uint64_t const rank)
+            {
+                extractAccIds(std::forward<decltype(id)>(id), rank);
+                truncateID(std::forward<decltype(id)>(id), rank);
+            });
+        } else
+        {
+            ret = myReadRecords(ids, originalSeqs, infile, truncateID);
+        }
+    } else
+    {
+        if (options.hasSTaxIds)
+            ret = myReadRecords(ids, originalSeqs, infile, extractAccIds);
+        else
+            ret = myReadRecords(ids, originalSeqs, infile);
+    }
 
     if (ret)
         return ret;
@@ -252,132 +301,31 @@ checkIndexSize(TCDStringSet<String<TRedAlph>> const & seqs)
     return true;
 }
 
-// // --------------------------------------------------------------------------
-// // Function loadSubj()
-// // --------------------------------------------------------------------------
+// --------------------------------------------------------------------------
+// Function mapAndDumpTaxIDs()
+// --------------------------------------------------------------------------
+
+inline int
+mapAndDumpTaxIDs(std::unordered_map<std::string, uint64_t>       const & accToIdRank,
+                 uint64_t                                        const   numSubjects,
+                 LambdaIndexerOptions                            const & options)
+
+{
+//     StringSet<String<uint64_t>> sTaxIds; // not concat because we resize inbetween
+//     resize(sTaxIds, numSubjects);
 //
-// inline int
-// convertMaskingFile(uint64_t numberOfSeqs,
-//                    LambdaIndexerOptions const & options)
+//     // TODO
+//     // load accToTaxId mapAndDumpTaxIDs
+//     // on every line check if the col1 exists in accToIdRank
+//     //      then appendValue(sTaxIds[accToIdRank[col1]], col3);
 //
-// {
-//     StringSet<String<unsigned>, Owner<ConcatDirect<>>> segIntStarts;
-//     StringSet<String<unsigned>, Owner<ConcatDirect<>>> segIntEnds;
-// //     resize(segIntervals, numberOfSeqs, Exact());
+//     // Do something with the subjects that have no (valid) taxid?
 //
-//     if (options.segFile != "")
-//     {
-//         myPrint(options, 1, "Constructing binary seqan masking from seg-file...");
-//
-//         std::ifstream stream;
-//         stream.open(toCString(options.segFile));
-//         if (!stream.is_open())
-//         {
-//             std::cerr << "ERROR: could not open seg file.\n";
-//             return -1;
-//         }
-//
-//         auto reader = directionIterator(stream, Input());
-//
-// //         StringSet<String<Tuple<unsigned, 2>>> _segIntervals;
-// //         auto & _segIntervals = segIntervals;
-// //         resize(_segIntervals, numberOfSeqs, Exact());
-//         StringSet<String<unsigned>> _segIntStarts;
-//         StringSet<String<unsigned>> _segIntEnds;
-//         resize(_segIntStarts, numberOfSeqs, Exact());
-//         resize(_segIntEnds, numberOfSeqs, Exact());
-//         CharString buf;
-// //         std::tuple<unsigned, unsigned> tup;
-//
-// //         auto curSeq = begin(_segIntervals);
-//         unsigned curSeq = 0;
-//         while (value(reader) == '>')
-//         {
-// //             if (curSeq == end(_segIntervals))
-// //                 return -7;
-//             if (curSeq == numberOfSeqs)
-//             {
-//                 std::cerr << "ERROR: seg file has more entries then database.\n";
-//                 return -7;
-//             }
-//             skipLine(reader);
-//             if (atEnd(reader))
-//                 break;
-//
-//             unsigned curInt = 0;
-//             while ((!atEnd(reader)) && (value(reader) != '>'))
-//             {
-//                 resize(_segIntStarts[curSeq], length(_segIntStarts[curSeq])+1);
-//                 resize(_segIntEnds[curSeq], length(_segIntEnds[curSeq])+1);
-//                 clear(buf);
-//                 readUntil(buf, reader, IsWhitespace());
-//
-// //                 std::get<0>(tup) = strtoumax(toCString(buf), 0, 10);
-//                 _segIntStarts[curSeq][curInt] = strtoumax(toCString(buf), 0, 10);
-//                 skipUntil(reader, IsDigit());
-//
-//                 clear(buf);
-//                 readUntil(buf, reader, IsWhitespace());
-//
-// //                 std::get<1>(tup) = strtoumax(toCString(buf), 0, 10);
-//                 _segIntEnds[curSeq][curInt] = strtoumax(toCString(buf), 0, 10);
-//
-// //                 appendValue(*curSeq, tup);
-//
-//                 skipLine(reader);
-//                 curInt++;
-//             }
-//             if (atEnd(reader))
-//                 break;
-//             else
-//                 curSeq++;
-//         }
-// //         if (curSeq != end(_segIntervals))
-// //             return -9;
-//         if (curSeq != (numberOfSeqs - 1))
-//         {
-//             std::cerr << "ERROR: seg file has less entries (" << curSeq + 1
-//                       << ") than database (" << numberOfSeqs << ").\n";
-//             return -9;
-//         }
-//
-//         segIntStarts.concat = concat(_segIntStarts);
-//         segIntStarts.limits = stringSetLimits(_segIntStarts);
-//         segIntEnds.concat = concat(_segIntEnds);
-//         segIntEnds.limits = stringSetLimits(_segIntEnds);
-// //         segIntEnds = _segIntEnds;
-// //         segIntervals = _segIntervals; // non-concatdirect to concatdirect
-//
-//         stream.close();
-//
-//     } else
-//     {
-//         myPrint(options, 1, "No Seg-File specified, no masking will take place.\n");
-// //         resize(segIntervals, numberOfSeqs, Exact());
-//         resize(segIntStarts, numberOfSeqs, Exact());
-//         resize(segIntEnds, numberOfSeqs, Exact());
-//     }
-//
-// //     for (unsigned u = 0; u < length(segIntStarts); ++u)
-// //     {
-// //         myPrint(options, 1,u, ": ";
-// //         for (unsigned v = 0; v < length(segIntStarts[u]); ++v)
-// //         {
-// //             myPrint(options, 1,'(', segIntStarts[u][v], ", ", segIntEnds[u][v], ")  ";
-// //         }
-// //         myPrint(options, 1,'\n';
-// //     }
-//     myPrint(options, 1, "Dumping binary seqan mask file...");
-//     CharString _path = options.dbFile;
-//     append(_path, ".binseg_s");
-//     save(segIntStarts, toCString(_path));
-//     _path = options.dbFile;
-//     append(_path, ".binseg_e");
-//     save(segIntEnds, toCString(_path));
-//     myPrint(options, 1, " done.\n");
-//     myPrint(options, 2, "\n");
-//     return 0;
-// }
+//     // concat direct so that it's easier to read/write
+//     StringSet<String<uint64_t>, Owner<ConcatDirect<>>> outSTaxIds = sTaxIds;
+//     save(options.indexDir + "/staxids", outSTaxIds);
+    return 0;
+}
 
 // --------------------------------------------------------------------------
 // Function createSuffixArray()

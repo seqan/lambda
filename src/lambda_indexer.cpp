@@ -168,10 +168,11 @@ realMain(LambdaIndexerOptions     const & options,
 
     {
         TOrigSet originalSeqs;
+        std::unordered_map<std::string, uint64_t> accToIdRank;
         int ret = 0;
 
         // ids get saved to disk again immediately and are not kept in memory
-        ret = loadSubjSeqsAndIds(originalSeqs, options);
+        ret = loadSubjSeqsAndIds(originalSeqs, accToIdRank, options);
         if (ret)
             return ret;
 
@@ -179,10 +180,10 @@ realMain(LambdaIndexerOptions     const & options,
         if (sIsTranslated(p))
             _saveOriginalSeqLengths(originalSeqs.limits, options);
 
-//         // convert the seg file to seqan binary format
-//         ret = convertMaskingFile(length(originalSeqs), options);
-//         if (ret)
-//             return ret;
+        // read the mapping file and save relevant mappings to disk
+        ret = mapAndDumpTaxIDs(accToIdRank, length(originalSeqs), options);
+        if (ret)
+            return ret;
 
         // translate or swap depending on program
         translateOrSwap(translatedSeqs, originalSeqs, options);
