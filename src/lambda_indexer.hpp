@@ -54,7 +54,13 @@ loadSubjSeqsAndIds(TCDStringSet<String<TOrigAlph>> & originalSeqs,
     TIDs ids; // the IDs
 
     // see http://www.uniprot.org/help/accession_numbers
-    std::regex const accRegEx{"[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2}"};
+    // https://www.ncbi.nlm.nih.gov/Sequin/acc.html
+    // TODO: Refseq https://www.ncbi.nlm.nih.gov/refseq/about/
+    std::regex const accRegEx{"[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2}|" // UNIPROT
+                              "[A-Z][0-9]{5}|[A-Z]{2}[0-9]{6}|"                                       // NCBI nucl
+                              "[A-Z]{3}[0-9]{5}|"                                                     // NCBI prot
+                              "[A-Z]{4}[0-9]{8,10}|"                                                  // NCBI wgs
+                              "[A-Z]{5}[0-9]{7}"};                                                    // NCBI mga
 
     // lambda that truncates IDs at first whitespace
     auto truncateID = [] (auto && id, uint64_t const)
@@ -83,6 +89,7 @@ loadSubjSeqsAndIds(TCDStringSet<String<TOrigAlph>> & originalSeqs,
         {
             SEQAN_ASSERT_MSG(accToIdRank.count(it->str()) == 0,
                              "An accession number appeared twice in the file, but they should be unique.");
+            // TODO store acc outside as well
             accToIdRank[it->str()] = rank;
         }
     };
@@ -311,19 +318,89 @@ mapAndDumpTaxIDs(std::unordered_map<std::string, uint64_t>       const & accToId
                  LambdaIndexerOptions                            const & options)
 
 {
-//     StringSet<String<uint64_t>> sTaxIds; // not concat because we resize inbetween
-//     resize(sTaxIds, numSubjects);
-//
-//     // TODO
-//     // load accToTaxId mapAndDumpTaxIDs
-//     // on every line check if the col1 exists in accToIdRank
-//     //      then appendValue(sTaxIds[accToIdRank[col1]], col3);
-//
-//     // Do something with the subjects that have no (valid) taxid?
-//
-//     // concat direct so that it's easier to read/write
-//     StringSet<String<uint64_t>, Owner<ConcatDirect<>>> outSTaxIds = sTaxIds;
-//     save(options.indexDir + "/staxids", outSTaxIds);
+    StringSet<String<uint64_t>> sTaxIds; // not concat because we resize inbetween
+    resize(sTaxIds, numSubjects);
+
+    // c++ stream
+    std::ifstream fin(toCString(options.accToTaxMapFile), std::ios_base::in | std::ios_base::binary);
+    if (!fin.is_open())
+    {
+        std::cerr << "ERROR: Could not open acc-to-tax-map file at " << toCString(options.accToTaxMapFile) << '\n';
+        return -1;
+    }
+
+    // transparent decompressor
+    VirtualStream<char, Input> vfin {fin};
+    // stream iterator
+    auto fit = directionIterator(vfin, Input());
+
+    std::cout << "Parsing acc-to-tax-map file... " << std::flush;
+
+    // skip line with headers
+    skipLine(fit);
+
+    double start = sysTime();
+
+    //TODO this is too slow, investigate whether its the lookup or the allocs
+    std::string buf;
+    while (!atEnd(fit))
+    {
+        clear(buf);
+        // read accession number
+        readUntil(buf, fit, IsBlank());
+        // we have a sequence with this ID in our database
+        if (accToIdRank.count(buf) == 1)
+        {
+            auto & sTaxIdV = sTaxIds[accToIdRank.at(buf)];
+            // skip whitespace
+            skipUntil(fit, IsAlphaNum());
+            // skip versioned acc
+            skipUntil(fit, IsBlank());
+            // skip whitespace
+            skipUntil(fit, IsAlphaNum());
+            // read tax id
+            clear(buf);
+            readUntil(buf, fit, IsBlank());
+            try
+            {
+                appendValue(sTaxIdV, lexicalCast<uint64_t>(buf));
+            }
+            catch (BadLexicalCast const & badCast)
+            {
+                std::cerr << "Error: Expected taxonomical ID, but got something I couldn't read: "
+                          << badCast.what() << "\n";
+                return -1;
+            }
+        }
+
+        skipLine(fit);
+    }
+
+    std::cout << "done. Took " << sysTime() - start << "s\n";
+
+    // TODO do something with the subjects that have no (valid) taxid?
+
+    uint64_t nomap = 0;
+    uint64_t multi = 0;
+
+    for (auto const & s : sTaxIds)
+    {
+        if (length(s) == 0)
+            ++nomap;
+        else if (length(s) > 1)
+            ++multi;
+    }
+
+    std::cout << "Subjects without tax IDs:             " << nomap << "\n";
+    std::cout << "Subjects with more than one tax ID:   " << multi << "\n";
+
+
+    std::cout << "Dumping Subject Taxonomy IDs... ";
+    // concat direct so that it's easier to read/write
+    StringSet<String<uint64_t>, Owner<ConcatDirect<>>> outSTaxIds = sTaxIds;
+    save(outSTaxIds, std::string(options.indexDir + "/staxids").c_str());
+    std::cout << "done.\n";
+
     return 0;
 }
 

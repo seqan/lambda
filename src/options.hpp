@@ -1158,17 +1158,19 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
 
     addOption(parser, ArgParseOption("tx",
         "acc-tax-map",
-        "An NCBI accession-to-taxid mapping file (optional).",
+        "An NCBI accession-to-taxid mapping file. Download the correct one from "
+        "ftp://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/. ",
         ArgParseArgument::INPUT_FILE));
-    setValidValues(parser, "acc-tax-map", ".accession2taxid");
 
-//     addOption(parser, ArgParseOption("s",
-//         "segfile",
-//         "SEG intervals for database"
-//         "(optional).",
-//         ArgParseArgument::INPUT_FILE));
-//     setValidValues(parser, "segfile", "seg");
-//     hideOption(parser, "segfile"); // TODO remove completely
+    CharString taxExtensions = "accession2taxid";
+#ifdef SEQAN_HAS_ZLIB
+    taxExtensions+= " accession2taxid.gz";
+    taxExtensions+= " accession2taxid.bgzf";
+#endif
+#ifdef SEQAN_HAS_BZIP2
+    taxExtensions+= " accession2taxid.bz2";
+#endif
+    setValidValues(parser, "acc-tax-map", toCString(taxExtensions));
 
     addSection(parser, "Output Options");
     addOption(parser, ArgParseOption("i", "index",

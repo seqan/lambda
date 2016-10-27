@@ -180,10 +180,13 @@ realMain(LambdaIndexerOptions     const & options,
         if (sIsTranslated(p))
             _saveOriginalSeqLengths(originalSeqs.limits, options);
 
-        // read the mapping file and save relevant mappings to disk
-        ret = mapAndDumpTaxIDs(accToIdRank, length(originalSeqs), options);
-        if (ret)
-            return ret;
+        if (options.hasSTaxIds)
+        {
+            // read the mapping file and save relevant mappings to disk
+            ret = mapAndDumpTaxIDs(accToIdRank, length(originalSeqs), options);
+            if (ret)
+                return ret;
+        }
 
         // translate or swap depending on program
         translateOrSwap(translatedSeqs, originalSeqs, options);

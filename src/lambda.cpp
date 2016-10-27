@@ -359,6 +359,10 @@ realMain(LambdaOptions                        & options,
     if (ret)
         return ret;
 
+    ret = loadSTaxIds(globalHolder, options);
+    if (ret)
+        return ret;
+
     ret = loadQuery(globalHolder, options);
     if (ret)
         return ret;

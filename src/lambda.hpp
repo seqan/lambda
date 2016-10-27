@@ -373,9 +373,9 @@ loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
 
     double finish = sysTime() - start;
     myPrint(options, 1, " done.\n");
-// TODO reactivate
-//     myPrint(options, 2, "Runtime: ", finish, "s \n", "No of Fibres: ",
-//             length(indexSA(globalHolder.dbIndex)), "\n\n");
+    myPrint(options, 2, "Runtime: ", finish, "s \n\n");
+// TODO reactivate and remove one '\n' above
+//     myPrint(options, 2, "No of Fibres: ", length(indexSA(globalHolder.dbIndex)), "\n\n");
 
     // this is actually part of prepareScoring(), but the values are just available now
     if (sIsTranslated(TGlobalHolder::blastProgram ))
@@ -389,6 +389,42 @@ loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
         context(globalHolder.outfile).dbNumberOfSeqs = length(globalHolder.subjSeqs);
     }
 
+    return 0;
+}
+
+// --------------------------------------------------------------------------
+// Function loadSTaxIds()
+// --------------------------------------------------------------------------
+
+template <typename TGlobalHolder>
+inline int
+loadSTaxIds(TGlobalHolder       & globalHolder,
+            LambdaOptions       & options)
+{
+    std::string path = toCString(options.indexDir);
+    path += "/staxids";
+
+    //TODO in the future check all index things together
+    if (!fileExists((path + ".concat").c_str()))
+        return 0;
+
+    std::string strIdent = "Loading Subject Taxonomy IDs...";
+    myPrint(options, 1, strIdent);
+    double start = sysTime();
+
+
+    int ret = open(globalHolder.sTaxIds, path.c_str(), OPEN_RDONLY);
+    if (ret != true)
+    {
+        std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
+                  << " failed.\n";
+        return 1;
+    }
+
+    double finish = sysTime() - start;
+    myPrint(options, 1, " done.\n");
+    myPrint(options, 2, "Runtime: ", finish, "s \n\n");
+    options.hasSTaxIds = true;
     return 0;
 }
 
