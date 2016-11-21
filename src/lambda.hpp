@@ -399,32 +399,33 @@ loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
 template <typename TGlobalHolder>
 inline int
 loadSTaxIds(TGlobalHolder       & globalHolder,
-            LambdaOptions       & options)
+            LambdaOptions const & options)
 {
-    std::string path = toCString(options.indexDir);
-    path += "/staxids";
-
-    //TODO in the future check all index things together
-    if (!fileExists((path + ".concat").c_str()))
-        return 0;
-
-    std::string strIdent = "Loading Subject Taxonomy IDs...";
-    myPrint(options, 1, strIdent);
-    double start = sysTime();
-
-
-    int ret = open(globalHolder.sTaxIds, path.c_str(), OPEN_RDONLY);
-    if (ret != true)
+    if (options.hasSTaxIds)
     {
-        std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
-                  << " failed.\n";
-        return 1;
-    }
+        std::string path = toCString(options.indexDir);
+        path += "/staxids";
 
-    double finish = sysTime() - start;
-    myPrint(options, 1, " done.\n");
-    myPrint(options, 2, "Runtime: ", finish, "s \n\n");
-    options.hasSTaxIds = true;
+        //TODO in the future check all index things together
+
+        std::string strIdent = "Loading Subject Taxonomy IDs...";
+        myPrint(options, 1, strIdent);
+        double start = sysTime();
+
+
+        int ret = open(globalHolder.sTaxIds, path.c_str(), OPEN_RDONLY);
+        if (ret != true)
+        {
+            std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
+                      << " failed.\n"
+                      << "Your index does not provide them. Did you forget to specify a map file while indexing?\n";
+            return 1;
+        }
+
+        double finish = sysTime() - start;
+        myPrint(options, 1, " done.\n");
+        myPrint(options, 2, "Runtime: ", finish, "s \n\n");
+    }
     return 0;
 }
 
@@ -606,6 +607,7 @@ loadQuery(GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h>      & global
         return -1;
     }
 
+    // TODO: after changing this, make options const again
     if (options.extensionMode == LambdaOptions::ExtensionMode::AUTO)
     {
         if (maxLen <= 100)
@@ -1938,6 +1940,10 @@ iterateMatchesExtend(TLocalHolder & lH)
                             bm._n_qId = it->qryId / qNumFrames(TGlobalHolder::blastProgram);
                             bm._n_sId = it->subjId / sNumFrames(TGlobalHolder::blastProgram);
                         }
+
+                        if (lH.options.hasSTaxIds)
+                            bm.sTaxIds = lH.gH.sTaxIds[it->subjId / sNumFrames(TGlobalHolder::blastProgram)];
+
                         break;
                     case EVALUE:
                         ++lH.stats.hitsFailedExtendEValueTest;
@@ -2155,6 +2161,9 @@ iterateMatchesFullSimd(TLocalHolder & lH)
 
         bm._n_qId = it->qryId / qNumFrames(TGlobalHolder::blastProgram);
         bm._n_sId = it->subjId / sNumFrames(TGlobalHolder::blastProgram);
+
+        if (lH.options.hasSTaxIds)
+            bm.sTaxIds = lH.gH.sTaxIds[it->subjId / sNumFrames(TGlobalHolder::blastProgram)];
     }
 
     // fill up last batch
@@ -2339,6 +2348,9 @@ iterateMatchesFullSerial(TLocalHolder & lH)
 
         bm._n_qId = it->qryId / qNumFrames(TGlobalHolder::blastProgram);
         bm._n_sId = it->subjId / sNumFrames(TGlobalHolder::blastProgram);
+
+        if (lH.options.hasSTaxIds)
+            bm.sTaxIds = lH.gH.sTaxIds[it->subjId / sNumFrames(TGlobalHolder::blastProgram)];
     }
 
     _writeRecord(record, lH);

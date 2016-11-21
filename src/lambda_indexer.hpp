@@ -334,7 +334,7 @@ mapAndDumpTaxIDs(std::unordered_map<std::string, uint64_t>       const & accToId
     // stream iterator
     auto fit = directionIterator(vfin, Input());
 
-    std::cout << "Parsing acc-to-tax-map file... " << std::flush;
+    myPrint(options, 1, "Parsing acc-to-tax-map file... ");
 
     // skip line with headers
     skipLine(fit);
@@ -376,7 +376,9 @@ mapAndDumpTaxIDs(std::unordered_map<std::string, uint64_t>       const & accToId
         skipLine(fit);
     }
 
-    std::cout << "done. Took " << sysTime() - start << "s\n";
+    myPrint(options, 1, "done.\n");
+
+    myPrint(options, 2, "Runtime: ", sysTime() - start, "s \n");
 
     // TODO do something with the subjects that have no (valid) taxid?
 
@@ -391,15 +393,17 @@ mapAndDumpTaxIDs(std::unordered_map<std::string, uint64_t>       const & accToId
             ++multi;
     }
 
-    std::cout << "Subjects without tax IDs:             " << nomap << "\n";
-    std::cout << "Subjects with more than one tax ID:   " << multi << "\n";
+    myPrint(options, 2, "Subjects without tax IDs:             ", nomap, "\n",
+                        "Subjects with more than one tax ID:   ", multi, "\n\n");
+    if (numSubjects / nomap < 10)
+        myPrint(options, 1, "WARNING: ", double(nomap) * 100 / numSubjects, "% of subjects have no taxID.\n"
+                            "         Maybe you specified the wrong map file?\n\n");
 
-
-    std::cout << "Dumping Subject Taxonomy IDs... ";
+    myPrint(options, 1,"Dumping Subject Taxonomy IDs... ");
     // concat direct so that it's easier to read/write
     StringSet<String<uint64_t>, Owner<ConcatDirect<>>> outSTaxIds = sTaxIds;
     save(outSTaxIds, std::string(options.indexDir + "/staxids").c_str());
-    std::cout << "done.\n";
+    myPrint(options, 1, "done.\n");
 
     return 0;
 }

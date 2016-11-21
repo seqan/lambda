@@ -237,7 +237,7 @@ struct SharedOptions
     unsigned    terminalCols = 80;
 
     unsigned        threads     = 1;
-    bool        hasSTaxIds;
+    bool        hasSTaxIds = false;
 
     SharedOptions()
     {
@@ -939,6 +939,8 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
                 {
                     appendValue(options.columns, static_cast<BlastMatchField<>::Enum>(i));
                     resolved = true;
+                    if (static_cast<BlastMatchField<>::Enum>(i) == BlastMatchField<>::Enum::S_TAX_IDS)
+                        options.hasSTaxIds = true;
                     break;
                 }
             }
@@ -991,6 +993,9 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     if (((options.blastProgram == BlastProgram::BLASTP) || (options.blastProgram == BlastProgram::TBLASTN)) &&
         (!options.samBamTags[SamBamExtraTags<>::Q_AA_CIGAR]))
         options.samBamSeq = 0;
+
+    if (options.samBamTags[SamBamExtraTags<>::S_TAX_IDS])
+        options.hasSTaxIds = true;
 
     getOptionValue(buffer, parser, "version-to-outputfile");
     options.versionInformationToOutputFile = (buffer == "on");

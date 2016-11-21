@@ -41,13 +41,14 @@ struct SamBamExtraTags
         P_POS,
         Q_FRAME,
         S_FRAME,
+        S_TAX_IDS,
         Q_AA_SEQ,
         Q_AA_CIGAR,
         EDIT_DISTANCE,
         MATCH_COUNT
     };
 
-    static constexpr const std::array<std::pair<const char*, const char*>, 11> keyDescPairs
+    static constexpr const std::array<std::pair<const char*, const char*>, 12> keyDescPairs
     {
         {
 //             { "ZS", "query start (in DNA if original was DNA)" },       //  Q_START,
@@ -59,6 +60,7 @@ struct SamBamExtraTags
             { "ZP", "% positive (in protein space unless BLASTN)"},     //  P_POS,
             { "ZF", "query frame" },                                    //  Q_FRAME,
             { "YF", "subject frame" },                                  //  S_FRAME,
+            { "YT", "subject taxonomy IDs (* if n/a)" },                //  S_TAX_IDS,
             { "ZQ", "query protein sequence (* for BLASTN)"},          //  Q_AA_SEQ,
             { "OC", "query protein cigar (* for BLASTN)"},             //  Q_AA_CIGAR,
             { "NM", "edit distance (in protein space unless BLASTN)"}, //  EDIT_DISTANCE
@@ -69,7 +71,7 @@ struct SamBamExtraTags
 };
 
 template <typename TVoidSpec>
-constexpr const std::array<std::pair<const char*, const char*>, 11> SamBamExtraTags<TVoidSpec>::keyDescPairs;
+constexpr const std::array<std::pair<const char*, const char*>, 12> SamBamExtraTags<TVoidSpec>::keyDescPairs;
 
 // ----------------------------------------------------------------------------
 // Function _untranslatedClipPositions()
@@ -572,6 +574,27 @@ myWriteRecord(TLH & lH, TRecord const & record)
                 appendTagValue(bamR.tags,
                                std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::S_FRAME]),
                                int8_t(mIt->sFrameShift), 'c');
+            if (lH.options.samBamTags[SamBamExtraTags<>::S_TAX_IDS])
+            {
+                //TODO append integer array, instead of transforming to string
+                CharString buf;
+                auto it = begin(buf);
+                if (length(mIt->sTaxIds) == 0)
+                {
+                    buf = "*";
+                } else
+                {
+                    appendNumber(it, mIt->sTaxIds[0]);
+                    for (unsigned i = 1; i < length(mIt->sTaxIds); ++i)
+                    {
+                        write(it, ";");
+                        appendNumber(it, mIt->sTaxIds[i]);
+                    }
+                }
+                appendTagValue(bamR.tags,
+                               std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::Q_AA_SEQ]),
+                               buf, 'Z');
+            }
             if (lH.options.samBamTags[SamBamExtraTags<>::Q_AA_SEQ])
             {
                 if ((TGH::blastProgram == BlastProgram::BLASTN) || (!writeSeq))
