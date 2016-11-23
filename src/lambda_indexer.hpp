@@ -276,9 +276,9 @@ dumpTranslatedSeqs(TCDStringSet<String<TTransAlph>> const & translatedSeqs,
 // Function loadSubj()
 // --------------------------------------------------------------------------
 
-template <typename TRedAlph>
+template <typename TRedAlph, BlastProgram p>
 inline bool
-checkIndexSize(TCDStringSet<String<TRedAlph>> const & seqs)
+checkIndexSize(TCDStringSet<String<TRedAlph>> const & seqs, BlastProgramSelector<p> const &)
 {
     using SAV = typename SAValue<TCDStringSet<String<TRedAlph>>>::Type;
     uint64_t curNumSeq = length(seqs);
@@ -303,6 +303,12 @@ checkIndexSize(TCDStringSet<String<TRedAlph>> const & seqs)
         std::cerr << "Too long sequences to be indexed:\n  "
                   << "length" << maxLen << " present in file, but only "
                   << maxLenSeq << " supported by index.\n";
+        #ifndef LAMBDA_LONG_PROTEIN_SUBJ_SEQS
+        if (p != BlastProgram::BLASTN)
+            std::cout << "You can recompile Lambda and add -DLAMBDA_LONG_PROTEIN_SUBJ_SEQS=1 to activate\n"
+                         "support for longer protein sequences.\n";
+        #endif
+
         return false;
     }
     return true;

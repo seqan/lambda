@@ -197,7 +197,7 @@ realMain(LambdaIndexerOptions     const & options,
         dumpTranslatedSeqs(translatedSeqs, options);
 
     // see if final sequence set actually fits into index 
-    if (!checkIndexSize(translatedSeqs))
+    if (!checkIndexSize(translatedSeqs, BlastProgramSelector<p>()))
         return -1;
 
     if (options.dbIndexType == DbIndexType::FM_INDEX)
@@ -246,7 +246,8 @@ realMain(LambdaIndexerOptions     const & options,
              { options.indexDir + "/option:alph_original",   std::string(_alphName(OrigSubjAlph<p>())) },
              { options.indexDir + "/option:alph_translated", std::string(_alphName(TransAlph<p>())) },
              { options.indexDir + "/option:alph_reduced",    std::string(_alphName(TRedAlph())) },
-             { options.indexDir + "/option:genetic_code",    std::to_string(options.geneticCode) }
+             { options.indexDir + "/option:genetic_code",    std::to_string(options.geneticCode) },
+             { options.indexDir + "/option:subj_seq_len_bits", std::to_string(sizeof(SizeTypePos_<TRedAlph>) * 8)},
          })
     {
         std::ofstream f{std::get<0>(s).c_str(),  std::ios_base::out | std::ios_base::binary};

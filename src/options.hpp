@@ -54,7 +54,11 @@ using SizeTypeNum_ = uint32_t;
 template <typename T>
 struct SizeTypePosMeta_
 {
+#ifdef LAMBDA_LONG_PROTEIN_SUBJ_SEQS
+    using Type = uint32_t;
+#else
     using Type = uint16_t;
+#endif
 };
 
 template <>

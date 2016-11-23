@@ -128,7 +128,15 @@ template <typename TRedAlph,
 inline int
 validateIndexOptions(LambdaOptions const & options)
 {
-    //TODO verify that index dir exists
+    // Check that directory exists and is readable
+    struct stat path_stat;
+    stat(toCString(options.indexDir), &path_stat);
+    if (stat(toCString(options.indexDir), &path_stat) || !S_ISDIR(path_stat.st_mode))
+    {
+        std::cerr << "ERROR: Index directory does not exist or is not readable.\n";
+        return -1;
+    }
+
     std::string buffer;
     readIndexOption(buffer, "alph_translated", options);
     if (buffer != _alphName(TransAlph<p>()))
@@ -160,13 +168,30 @@ validateIndexOptions(LambdaOptions const & options)
     {
         buffer.clear();
         readIndexOption(buffer, "genetic_code", options);
-        unsigned long b = 0;
+        b = 0;
         if ((!lexicalCast(b, buffer)) || (b != static_cast<unsigned long>(options.geneticCode)))
         {
             std::cerr << "WARNING: The codon translation table used during indexing and during search are different. "
                          "This is not a problem per se, but is likely not what you want.\n\n";
         }
     }
+
+    buffer.clear();
+    readIndexOption(buffer, "subj_seq_len_bits", options);
+    b = 0;
+    if ((!lexicalCast(b, buffer)) || (b != static_cast<unsigned long>(sizeof(SizeTypePos_<TRedAlph>) * 8)))
+    {
+        #ifndef LAMBDA_LONG_PROTEIN_SUBJ_SEQS
+        std::cerr << "ERROR: Your lambda executable was built with LAMBDA_LONG_PROTEIN_SUBJ_SEQS,\n"
+                        "       but the index was created by an executable that was built without it.\n";
+        #else
+        std::cerr << "ERROR: Your lambda executable was built without LAMBDA_LONG_PROTEIN_SUBJ_SEQS,\n"
+                        "       but the index was created by an executable that was built with it.\n";
+        #endif
+        std::cerr << "       You need to recreate the index or rebuild Lambda.\n";
+        return -1;
+    }
+
     return 0;
 }
 
