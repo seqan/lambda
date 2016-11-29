@@ -359,7 +359,7 @@ realMain(LambdaOptions                        & options,
     if (ret)
         return ret;
 
-    ret = loadSTaxIds(globalHolder, options);
+    ret = loadTaxonomy(globalHolder, options);
     if (ret)
         return ret;
 

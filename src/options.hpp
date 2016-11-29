@@ -306,6 +306,8 @@ struct LambdaOptions : public SharedOptions
     int             idCutOff    = 0;
     unsigned long   maxMatches  = 500;
 
+    bool            computeLCA  = false;
+
     enum class ExtensionMode : uint8_t
     {
         AUTO,
@@ -338,6 +340,7 @@ struct LambdaIndexerOptions : public SharedOptions
 //     std::string     segFile = "";
     std::string     algo = "";
     std::string     accToTaxMapFile;
+    std::string     taxDumpDir;
 
     bool            truncateIDs;
 
@@ -945,6 +948,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
                     resolved = true;
                     if (static_cast<BlastMatchField<>::Enum>(i) == BlastMatchField<>::Enum::S_TAX_IDS)
                         options.hasSTaxIds = true;
+                    // TODO LCA_ID, LCA_TAX_ID
                     break;
                 }
             }
@@ -999,6 +1003,14 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         options.samBamSeq = 0;
 
     if (options.samBamTags[SamBamExtraTags<>::S_TAX_IDS])
+        options.hasSTaxIds = true;
+
+    // TODO LCA_ID
+    if (options.samBamTags[SamBamExtraTags<>::LCA_ID] || options.samBamTags[SamBamExtraTags<>::LCA_TAX_ID])
+        options.computeLCA = true;
+
+    // lca computation requires tax ids
+    if (options.computeLCA)
         options.hasSTaxIds = true;
 
     getOptionValue(buffer, parser, "version-to-outputfile");
@@ -1181,6 +1193,12 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
 #endif
     setValidValues(parser, "acc-tax-map", toCString(taxExtensions));
 
+    addOption(parser, ArgParseOption("tt",
+        "tax-dump-dir",
+        "A directory that contains nodes.dmp and names.dmp; unzipped from "
+        "ftp://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump.tar.gz",
+        ArgParseArgument::INPUT_FILE)); // TODO make INPUT_DIR
+
     addSection(parser, "Output Options");
     addOption(parser, ArgParseOption("i", "index",
         "The output directory for the index files (defaults to \"DATABASE.lambda\").",
@@ -1255,7 +1273,7 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
     addOption(parser, ArgParseOption("td", "tmp-dir",
         "temporary directory used by skew, defaults to working directory.",
         ArgParseArgument::STRING,
-        "STR"));
+        "STR")); //TODO make INPUT_DIR
     setDefaultValue(parser, "tmp-dir", tmpdir);
     setAdvanced(parser, "tmp-dir");
 
@@ -1351,6 +1369,19 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
 
     getOptionValue(options.accToTaxMapFile, parser, "acc-tax-map");
     options.hasSTaxIds = (options.accToTaxMapFile != "");
+
+    getOptionValue(options.taxDumpDir, parser, "tax-dump-dir");
+    if (!options.taxDumpDir.empty())
+    {
+        if (!options.hasSTaxIds)
+        {
+            std::cerr << "ERROR: There is no point in inclduing a taxonomic tree in the index, if\n"
+                         "       you don't also include taxonomic IDs for your sequences.\n";
+            return ArgumentParser::PARSE_ERROR;
+        }
+
+        //TODO check existance of directory
+    }
 
     return ArgumentParser::PARSE_OK;
 }
@@ -1517,6 +1548,8 @@ printOptions(LambdaOptions const & options)
               << "  max #matches per query:   " << options.maxMatches << "\n"
               << "  include subj names in sam:" << options.samWithRefHeader << "\n"
               << "  include seq in sam/bam:   " << options.samBamSeq << "\n"
+              << "  with subject tax ids:     " << options.hasSTaxIds << '\n'
+              << "  compute LCA:              " << options.computeLCA << '\n'
               << " OUTPUT (stdout)\n"
               << "  stdout is terminal:       " << options.isTerm << "\n"
               << "  terminal width:           " << options.terminalCols << "\n"

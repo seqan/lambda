@@ -448,6 +448,46 @@ computeEValueThreadSafe(TBlastMatch & match,
 }
 
 // ----------------------------------------------------------------------------
+// compute LCA
+// ----------------------------------------------------------------------------
+
+template <typename T>
+T trivialLCA(String<T> const & tree, T const n1, T const n2)
+{
+    if (n1 == n2)
+        return n1;
+
+    std::vector<T> hist1{n1};
+    std::vector<T> hist2{n2};
+
+    // gather histories
+    while (hist1.back() > 1)
+        hist1.push_back(tree[hist1.back()]);
+    while (hist2.back() > 1)
+        hist2.push_back(tree[hist2.back()]);
+
+    // make hist1 the longer list
+    if (hist2.size() > hist1.size())
+        std::swap(hist1, hist2);
+
+    // erase head from longer list (can't include LCA)
+    if (hist1.size() > hist2.size())
+        hist1.erase(hist1.begin(), hist1.begin() + (hist1.size() - hist2.size()));
+
+    // make sure the tree is correct
+    SEQAN_ASSERT_EQ(hist1.size(), hist2.size());
+    SEQAN_ASSERT_EQ(hist1.back(), 1);
+    SEQAN_ASSERT_EQ(hist2.back(), 1);
+
+    // simultaneously move up histories
+    for (T i = 0; i < hist1.size(); ++i)
+        if (hist1[i] == hist2[i])
+            return hist1[i];
+
+    SEQAN_FAIL("One of the paths didn't lead to root.");
+}
+
+// ----------------------------------------------------------------------------
 // remove tag type
 // ----------------------------------------------------------------------------
 

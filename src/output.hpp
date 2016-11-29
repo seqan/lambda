@@ -42,13 +42,15 @@ struct SamBamExtraTags
         Q_FRAME,
         S_FRAME,
         S_TAX_IDS,
+        LCA_ID,
+        LCA_TAX_ID,
         Q_AA_SEQ,
         Q_AA_CIGAR,
         EDIT_DISTANCE,
         MATCH_COUNT
     };
 
-    static constexpr const std::array<std::pair<const char*, const char*>, 12> keyDescPairs
+    static constexpr const std::array<std::pair<const char*, const char*>, 14> keyDescPairs
     {
         {
 //             { "ZS", "query start (in DNA if original was DNA)" },       //  Q_START,
@@ -60,7 +62,9 @@ struct SamBamExtraTags
             { "ZP", "% positive (in protein space unless BLASTN)"},     //  P_POS,
             { "ZF", "query frame" },                                    //  Q_FRAME,
             { "YF", "subject frame" },                                  //  S_FRAME,
-            { "YT", "subject taxonomy IDs (* if n/a)" },                //  S_TAX_IDS,
+            { "st", "subject taxonomy IDs (* if n/a)" },                //  S_TAX_IDS,
+            { "ls", "lowest common ancestor species" },                 //  LCA_ID,
+            { "lt", "lowest common ancestor taxonomy ID" },             //  LCA_TAX_ID,
             { "ZQ", "query protein sequence (* for BLASTN)"},          //  Q_AA_SEQ,
             { "OC", "query protein cigar (* for BLASTN)"},             //  Q_AA_CIGAR,
             { "NM", "edit distance (in protein space unless BLASTN)"}, //  EDIT_DISTANCE
@@ -71,7 +75,7 @@ struct SamBamExtraTags
 };
 
 template <typename TVoidSpec>
-constexpr const std::array<std::pair<const char*, const char*>, 12> SamBamExtraTags<TVoidSpec>::keyDescPairs;
+constexpr const std::array<std::pair<const char*, const char*>, 14> SamBamExtraTags<TVoidSpec>::keyDescPairs;
 
 // ----------------------------------------------------------------------------
 // Function _untranslatedClipPositions()
@@ -592,9 +596,14 @@ myWriteRecord(TLH & lH, TRecord const & record)
                     }
                 }
                 appendTagValue(bamR.tags,
-                               std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::Q_AA_SEQ]),
+                               std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::S_TAX_IDS]),
                                buf, 'Z');
             }
+            //TODO LCA_ID
+            if (lH.options.samBamTags[SamBamExtraTags<>::LCA_TAX_ID])
+                appendTagValue(bamR.tags,
+                               std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::LCA_TAX_ID]),
+                               uint32_t(record.lca), 'I');
             if (lH.options.samBamTags[SamBamExtraTags<>::Q_AA_SEQ])
             {
                 if ((TGH::blastProgram == BlastProgram::BLASTN) || (!writeSeq))

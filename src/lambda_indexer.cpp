@@ -186,6 +186,11 @@ realMain(LambdaIndexerOptions     const & options,
             ret = mapAndDumpTaxIDs(accToIdRank, length(originalSeqs), options);
             if (ret)
                 return ret;
+
+            // read the mapping file and save relevant mappings to disk
+            ret = parseAndDumpTaxTree(options);
+            if (ret)
+                return ret;
         }
 
         // translate or swap depending on program

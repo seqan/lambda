@@ -56,6 +56,7 @@ loadSubjSeqsAndIds(TCDStringSet<String<TOrigAlph>> & originalSeqs,
     // see http://www.uniprot.org/help/accession_numbers
     // https://www.ncbi.nlm.nih.gov/Sequin/acc.html
     // TODO: Refseq https://www.ncbi.nlm.nih.gov/refseq/about/
+    // TODO: make sure these don't trigger twice on one ID
     std::regex const accRegEx{"[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2}|" // UNIPROT
                               "[A-Z][0-9]{5}|[A-Z]{2}[0-9]{6}|"                                       // NCBI nucl
                               "[A-Z]{3}[0-9]{5}|"                                                     // NCBI prot
@@ -324,7 +325,7 @@ mapAndDumpTaxIDs(std::unordered_map<std::string, uint64_t>       const & accToId
                  LambdaIndexerOptions                            const & options)
 
 {
-    StringSet<String<uint64_t>> sTaxIds; // not concat because we resize inbetween
+    StringSet<String<uint32_t>> sTaxIds; // not concat because we resize inbetween
     resize(sTaxIds, numSubjects);
 
     // c++ stream
@@ -369,7 +370,7 @@ mapAndDumpTaxIDs(std::unordered_map<std::string, uint64_t>       const & accToId
             readUntil(buf, fit, IsBlank());
             try
             {
-                appendValue(sTaxIdV, lexicalCast<uint64_t>(buf));
+                appendValue(sTaxIdV, lexicalCast<uint32_t>(buf));
             }
             catch (BadLexicalCast const & badCast)
             {
@@ -399,17 +400,112 @@ mapAndDumpTaxIDs(std::unordered_map<std::string, uint64_t>       const & accToId
             ++multi;
     }
 
-    myPrint(options, 2, "Subjects without tax IDs:             ", nomap, "\n",
-                        "Subjects with more than one tax ID:   ", multi, "\n\n");
-    if (numSubjects / nomap < 10)
+    myPrint(options, 2, "Subjects without tax IDs:             ", nomap, '/', numSubjects, "\n",
+                        "Subjects with more than one tax ID:   ", multi, '/', numSubjects, "\n\n");
+    if (numSubjects / nomap < 5)
         myPrint(options, 1, "WARNING: ", double(nomap) * 100 / numSubjects, "% of subjects have no taxID.\n"
                             "         Maybe you specified the wrong map file?\n\n");
 
     myPrint(options, 1,"Dumping Subject Taxonomy IDs... ");
     // concat direct so that it's easier to read/write
-    StringSet<String<uint64_t>, Owner<ConcatDirect<>>> outSTaxIds = sTaxIds;
+    StringSet<String<uint32_t>, Owner<ConcatDirect<>>> outSTaxIds = sTaxIds;
     save(outSTaxIds, std::string(options.indexDir + "/staxids").c_str());
     myPrint(options, 1, "done.\n");
+
+    return 0;
+}
+
+// --------------------------------------------------------------------------
+// Function mapAndDumpTaxIDs()
+// --------------------------------------------------------------------------
+
+inline int
+parseAndDumpTaxTree(LambdaIndexerOptions const & options)
+
+{
+    String<uint32_t> tree; // ever position has the index of its parent node
+    reserve(tree, 2'000'000); // reserve 2million to save reallocs
+
+    std::string path = options.taxDumpDir + "/nodes.dmp";
+
+    std::ifstream fin(path.c_str(), std::ios_base::in | std::ios_base::binary);
+    if (!fin.is_open())
+    {
+        std::cerr << "ERROR: Could not open " << path << '\n';
+        return -1;
+    }
+
+    // transparent decompressor
+    VirtualStream<char, Input> vfin{fin};
+    // stream iterator
+    auto fit = directionIterator(vfin, Input());
+
+    myPrint(options, 1, "Parsing nodes.dmp... ");
+
+    double start = sysTime();
+
+    std::string buf;
+    std::regex const numRegEx{"\\b\\d+\\b"};
+
+    while (!atEnd(fit))
+    {
+        clear(buf);
+        // read line
+        readLine(buf, fit);
+
+        uint32_t n = 0;
+        uint32_t parent = 0;
+        unsigned i = 0;
+        for (auto it = std::sregex_iterator(buf.begin(), buf.end(), numRegEx), itEnd = std::sregex_iterator();
+             (it != itEnd) && (i < 2);
+             ++it, ++i)
+        {
+            try
+            {
+                if (i == 0)
+                    n = lexicalCast<uint64_t>(it->str());
+                else
+                    parent = lexicalCast<uint64_t>(it->str());
+            }
+            catch (BadLexicalCast const & badCast)
+            {
+                std::cerr << "Error: Expected taxonomical ID, but got something I couldn't read: "
+                          << badCast.what() << "\n";
+                return -1;
+            }
+        }
+        if (length(tree) <= n)
+            resize(tree, n +1, 0);
+        tree[n] = parent;
+    }
+
+    myPrint(options, 1, "done.\n");
+    myPrint(options, 2, "Runtime: ", sysTime() - start, "s\n");
+
+    if (options.verbosity >= 2)
+    {
+        uint32_t countmax = 0;
+        for (uint32_t i = 0; i < length(tree); ++i)
+        {
+            uint32_t count = 0;
+            uint32_t cur = tree[i];
+            while (cur > 1)
+            {
+                cur = tree[cur];
+                ++count;
+            }
+            countmax = std::max(countmax, count);
+        }
+        myPrint(options, 2, "Maximum Tree Height: ", countmax, "\n\n");
+    }
+
+    //TODO remove unused nodes from tree; flatten tree; save the heights?; use hash tables?
+
+    myPrint(options, 1,"Dumping Taxonomy Tree... ");
+    start = sysTime();
+    save(tree, std::string(options.indexDir + "/taxtree").c_str());
+    myPrint(options, 1, "done.\n");
+    myPrint(options, 2, "Runtime: ", sysTime() - start, "s\n\n");
 
     return 0;
 }

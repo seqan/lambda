@@ -423,34 +423,55 @@ loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
 
 template <typename TGlobalHolder>
 inline int
-loadSTaxIds(TGlobalHolder       & globalHolder,
-            LambdaOptions const & options)
+loadTaxonomy(TGlobalHolder       & globalHolder,
+             LambdaOptions const & options)
 {
-    if (options.hasSTaxIds)
+    if (!options.hasSTaxIds)
+        return 0;
+
+    std::string path = toCString(options.indexDir);
+    path += "/staxids";
+
+    std::string strIdent = "Loading Subject Taxonomy IDs...";
+    myPrint(options, 1, strIdent);
+    double start = sysTime();
+
+    int ret = open(globalHolder.sTaxIds, path.c_str(), OPEN_RDONLY);
+    if (ret != true)
     {
-        std::string path = toCString(options.indexDir);
-        path += "/staxids";
-
-        //TODO in the future check all index things together
-
-        std::string strIdent = "Loading Subject Taxonomy IDs...";
-        myPrint(options, 1, strIdent);
-        double start = sysTime();
-
-
-        int ret = open(globalHolder.sTaxIds, path.c_str(), OPEN_RDONLY);
-        if (ret != true)
-        {
-            std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
-                      << " failed.\n"
-                      << "Your index does not provide them. Did you forget to specify a map file while indexing?\n";
-            return 1;
-        }
-
-        double finish = sysTime() - start;
-        myPrint(options, 1, " done.\n");
-        myPrint(options, 2, "Runtime: ", finish, "s \n\n");
+        std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
+                    << " failed.\n"
+                    << "Your index does not provide them. Did you forget to specify a map file while indexing?\n";
+        return 1;
     }
+
+    double finish = sysTime() - start;
+    myPrint(options, 1, " done.\n");
+    myPrint(options, 2, "Runtime: ", finish, "s \n\n");
+
+    if (!options.computeLCA)
+        return 0;
+
+    path = toCString(options.indexDir);
+    path += "/taxtree";
+
+    strIdent = "Loading Subject Taxonomic Tree...";
+    myPrint(options, 1, strIdent);
+    start = sysTime();
+
+    ret = open(globalHolder.taxTree, path.c_str(), OPEN_RDONLY);
+    if (ret != true)
+    {
+        std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
+                    << " failed.\n"
+                    << "Your index does not provide it. Did you forget to include it while indexing?\n";
+        return 1;
+    }
+
+    finish = sysTime() - start;
+    myPrint(options, 1, " done.\n");
+    myPrint(options, 2, "Runtime: ", finish, "s \n\n");
+
     return 0;
 }
 
@@ -1368,6 +1389,26 @@ _writeRecord(TBlastRecord & record,
             record.matches.resize(lH.options.maxMatches);
         }
         lH.stats.hitsFinal += record.matches.size();
+
+        // compute LCA
+        if (lH.options.computeLCA)
+        {
+            record.lca = 0;
+            for (auto const & bm : record.matches)
+            {
+                if (length(lH.gH.sTaxIds[bm._n_sId]) > 0)
+                {
+                    record.lca = lH.gH.sTaxIds[bm._n_sId][0];
+                    break;
+                }
+            }
+
+            if (record.lca != 0)
+                for (auto const & bm : record.matches)
+                    for (uint32_t const sTaxId : lH.gH.sTaxIds[bm._n_sId])
+                        if (sTaxId != 0) // TODO do we want to skip unassigned subjects
+                            record.lca = trivialLCA(lH.gH.taxTree, sTaxId, record.lca);
+        }
 
         myWriteRecord(lH, record);
     }
