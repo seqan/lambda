@@ -18,6 +18,9 @@ set (SEQAN_APP_VERSION_PATCH "1")
 # don't change the following
 set (SEQAN_APP_VERSION "${SEQAN_APP_VERSION_MAJOR}.${SEQAN_APP_VERSION_MINOR}.${SEQAN_APP_VERSION_PATCH}")
 
+# adapt when necessary
+set (MINIMUM_SEQAN_VERSION "2.3.0")
+
 # ----------------------------------------------------------------------------
 # Dependencies (continued)
 # ----------------------------------------------------------------------------
@@ -26,7 +29,7 @@ set (SEQAN_APP_VERSION "${SEQAN_APP_VERSION_MAJOR}.${SEQAN_APP_VERSION_MINOR}.${
 find_package(OpenMP QUIET)
 find_package(ZLIB   QUIET)
 find_package(BZip2  QUIET)
-find_package(SeqAn  QUIET REQUIRED)
+find_package(SeqAn  QUIET REQUIRED CONFIG)
 
 message(STATUS "These dependencies where found:")
 message(   "     OPENMP     ${OPENMP_FOUND}      ${OpenMP_CXX_FLAGS}")
@@ -68,8 +71,8 @@ elseif (COMPILER_IS_INTEL)
     endif ()
 endif ()
 
-if (SEQAN_VERSION_STRING VERSION_LESS "2.2.0")
-    message (FATAL_ERROR "The minimum SeqAn verison required is 2.2.0!")
+if (SEQAN_VERSION_STRING VERSION_LESS "${MINIMUM_SEQAN_VERSION}")
+    message (FATAL_ERROR "The minimum SeqAn verison required is ${MINIMUM_SEQAN_VERSION}!")
     return ()
 endif ()
 

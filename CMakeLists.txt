@@ -32,9 +32,9 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/include/seqan/include/seqan/version.h")
     set (CMAKE_INCLUDE_PATH
         ${CMAKE_CURRENT_SOURCE_DIR}/include/seqan/include
         ${CMAKE_INCLUDE_PATH})
-    set (CMAKE_MODULE_PATH
+    set (CMAKE_PREFIX_PATH
         ${CMAKE_CURRENT_SOURCE_DIR}/include/seqan/util/cmake
-        ${CMAKE_MODULE_PATH})
+        ${CMAKE_PREFIX_PATH})
     message (STATUS "Found a local SeqAn library provided with the Lambda source code.")
     message (    "   This will be preferred over system global headers.")
 endif ()
