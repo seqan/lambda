@@ -948,7 +948,9 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
                     resolved = true;
                     if (static_cast<BlastMatchField<>::Enum>(i) == BlastMatchField<>::Enum::S_TAX_IDS)
                         options.hasSTaxIds = true;
-                    // TODO LCA_ID, LCA_TAX_ID
+                    else if ((static_cast<BlastMatchField<>::Enum>(i) == BlastMatchField<>::Enum::LCA_ID) ||
+                             (static_cast<BlastMatchField<>::Enum>(i) == BlastMatchField<>::Enum::LCA_TAX_ID))
+                        options.computeLCA = true;
                     break;
                 }
             }
@@ -1005,7 +1007,6 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     if (options.samBamTags[SamBamExtraTags<>::S_TAX_IDS])
         options.hasSTaxIds = true;
 
-    // TODO LCA_ID
     if (options.samBamTags[SamBamExtraTags<>::LCA_ID] || options.samBamTags[SamBamExtraTags<>::LCA_TAX_ID])
         options.computeLCA = true;
 

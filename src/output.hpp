@@ -109,10 +109,11 @@ _untranslateSequence(TSequence1                     & target,
 // Function blastMatchToCigar() convert seqan align to cigar
 // ----------------------------------------------------------------------------
 
-template <typename TCigar, typename TBlastMatch, typename TLocalHolder>
+template <typename TCigar, typename TBlastMatch, typename TBlastRecord, typename TLocalHolder>
 inline void
 blastMatchOneCigar(TCigar & cigar,
                    TBlastMatch const & m,
+                   TBlastRecord const & r,
                    TLocalHolder const & lH)
 {
     using TCElem = typename Value<TCigar>::Type;
@@ -124,7 +125,7 @@ blastMatchOneCigar(TCigar & cigar,
     unsigned const transFac       = qIsTranslated(TGlobalHolder::blastProgram) ? 3 : 1;
     // clips resulting from translation / frameshift are always hard clips
     unsigned const leftFrameClip  = std::abs(m.qFrameShift) - 1;
-    unsigned const rightFrameClip = qIsTranslated(TGlobalHolder::blastProgram) ? (m.qLength - leftFrameClip) % 3 : 0;
+    unsigned const rightFrameClip = qIsTranslated(TGlobalHolder::blastProgram) ? (r.qLength - leftFrameClip) % 3 : 0;
     // regular clipping from local alignment (regions outside match) can be hard or soft
     unsigned const leftClip       = m.qStart * transFac;
     unsigned const rightClip      = (length(source(m.alignRow0)) - m.qEnd) * transFac;
@@ -191,11 +192,12 @@ blastMatchOneCigar(TCigar & cigar,
 }
 
 // translation happened and we want both cigars
-template <typename TCigar, typename TBlastMatch, typename TLocalHolder>
+template <typename TCigar, typename TBlastMatch, typename TBlastRecord, typename TLocalHolder>
 inline void
 blastMatchTwoCigar(TCigar & dnaCigar,
                    TCigar & protCigar,
                    TBlastMatch const & m,
+                   TBlastRecord const & r,
                    TLocalHolder const & lH)
 {
     using TCElem = typename Value<TCigar>::Type;
@@ -205,7 +207,7 @@ blastMatchTwoCigar(TCigar & dnaCigar,
 
     // clips resulting from translation / frameshift are always hard clips
     unsigned const leftFrameClip  = std::abs(m.qFrameShift) - 1;            // in dna space
-    unsigned const rightFrameClip = (m.qLength - leftFrameClip) % 3;          // in dna space
+    unsigned const rightFrameClip = (r.qLength - leftFrameClip) % 3;          // in dna space
     // regular clipping from local alignment (regions outside match) can be hard or soft
     unsigned const leftClip       = m.qStart;                               // in protein space
     unsigned const rightClip      = length(source(m.alignRow0)) - m.qEnd;   // in protein space
@@ -458,7 +460,7 @@ myWriteRecord(TLH & lH, TRecord const & record)
             {
                 bamR.beginPos = mIt->sStart * 3 + std::abs(mIt->sFrameShift) - 1;
                 if (mIt->sFrameShift < 0)
-                    bamR.beginPos = mIt->qLength - bamR.beginPos;
+                    bamR.beginPos = record.qLength - bamR.beginPos;
             } else
             {
                 bamR.beginPos   = mIt->sStart;
@@ -468,11 +470,11 @@ myWriteRecord(TLH & lH, TRecord const & record)
             if (mIt->qFrameShift < 0)
                 bamR.flag   |= BAM_FLAG_RC;
             // truncated query name
-            bamR.qName      = prefix(mIt->qId,
-                                     std::find(begin(mIt->qId, Standard()),
-                                               end(mIt->qId, Standard()),
+            bamR.qName      = prefix(record.qId,
+                                     std::find(begin(record.qId, Standard()),
+                                               end(record.qId, Standard()),
                                                ' ')
-                                     - begin(mIt->qId, Standard()));
+                                     - begin(record.qId, Standard()));
             // reference ID
             bamR.rID        = mIt->_n_sId;
 
@@ -482,16 +484,16 @@ myWriteRecord(TLH & lH, TRecord const & record)
                 clear(protCigar);
                 // native protein
                 if ((TGH::blastProgram == BlastProgram::BLASTP) || (TGH::blastProgram == BlastProgram::TBLASTN))
-                    blastMatchOneCigar(protCigar, *mIt, lH);
+                    blastMatchOneCigar(protCigar, *mIt, record, lH);
                 else if (qIsTranslated(TGH::blastProgram)) // translated
-                    blastMatchTwoCigar(bamR.cigar, protCigar, *mIt, lH);
+                    blastMatchTwoCigar(bamR.cigar, protCigar, *mIt, record, lH);
                 else // BLASTN can't have protein sequence
-                    blastMatchOneCigar(bamR.cigar, *mIt, lH);
+                    blastMatchOneCigar(bamR.cigar, *mIt, record, lH);
             }
             else
             {
                 if ((TGH::blastProgram != BlastProgram::BLASTP) && (TGH::blastProgram != BlastProgram::TBLASTN))
-                    blastMatchOneCigar(bamR.cigar, *mIt, lH);
+                    blastMatchOneCigar(bamR.cigar, *mIt, record, lH);
             }
             // we want to include the seq
             bool writeSeq = false;
@@ -599,11 +601,14 @@ myWriteRecord(TLH & lH, TRecord const & record)
                                std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::S_TAX_IDS]),
                                buf, 'Z');
             }
-            //TODO LCA_ID
+            if (lH.options.samBamTags[SamBamExtraTags<>::LCA_ID])
+                appendTagValue(bamR.tags,
+                               std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::LCA_ID]),
+                               record.lcaId, 'Z');
             if (lH.options.samBamTags[SamBamExtraTags<>::LCA_TAX_ID])
                 appendTagValue(bamR.tags,
                                std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::LCA_TAX_ID]),
-                               uint32_t(record.lca), 'I');
+                               uint32_t(record.lcaTaxId), 'I');
             if (lH.options.samBamTags[SamBamExtraTags<>::Q_AA_SEQ])
             {
                 if ((TGH::blastProgram == BlastProgram::BLASTN) || (!writeSeq))
