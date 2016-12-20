@@ -182,13 +182,16 @@ realMain(LambdaIndexerOptions     const & options,
 
         if (options.hasSTaxIds)
         {
+            std::vector<bool> taxIdIsPresent;
+            taxIdIsPresent.reserve(2'000'000);
+
             // read the mapping file and save relevant mappings to disk
-            ret = mapAndDumpTaxIDs(accToIdRank, length(originalSeqs), options);
+            ret = mapAndDumpTaxIDs(taxIdIsPresent, accToIdRank, length(originalSeqs), options);
             if (ret)
                 return ret;
 
             // read the mapping file and save relevant mappings to disk
-            ret = parseAndDumpTaxTree(options);
+            ret = parseAndDumpTaxTree(taxIdIsPresent, options);
             if (ret)
                 return ret;
         }

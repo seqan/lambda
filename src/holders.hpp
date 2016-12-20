@@ -335,7 +335,8 @@ public:
     using TPositions    = typename StringSetLimits<TTransQrySeqs>::Type;
     using TMasking      = StringSet<String<unsigned>, Owner<ConcatDirect<>>>;
     using TTaxIDs       = StringSet<String<uint32_t>, Owner<ConcatDirect<>>>;
-    using TTaxTree      = String<uint32_t>;
+    using TTaxParents   = String<uint32_t>;
+    using TTaxHeights   = String<uint8_t>;
 
     /* the actual members */
     TDbIndex            dbIndex;
@@ -358,7 +359,8 @@ public:
     TPositions          untransSubjSeqLengths;  // used iff sIsTranslated(p)
 
     TTaxIDs             sTaxIds;
-    TTaxTree            taxTree;
+    TTaxParents         taxParents;
+    TTaxHeights         taxHeights;
 
     StatsHolder         stats;
 

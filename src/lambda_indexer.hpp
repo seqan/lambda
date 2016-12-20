@@ -320,7 +320,8 @@ checkIndexSize(TCDStringSet<String<TRedAlph>> const & seqs, BlastProgramSelector
 // --------------------------------------------------------------------------
 
 inline int
-mapAndDumpTaxIDs(std::unordered_map<std::string, uint64_t>       const & accToIdRank,
+mapAndDumpTaxIDs(std::vector<bool>                                     & taxIdIsPresent,
+                 std::unordered_map<std::string, uint64_t>       const & accToIdRank,
                  uint64_t                                        const   numSubjects,
                  LambdaIndexerOptions                            const & options)
 
@@ -368,9 +369,10 @@ mapAndDumpTaxIDs(std::unordered_map<std::string, uint64_t>       const & accToId
             // read tax id
             clear(buf);
             readUntil(buf, fit, IsBlank());
+            uint32_t idNum = 0;
             try
             {
-                appendValue(sTaxIdV, lexicalCast<uint32_t>(buf));
+                idNum = lexicalCast<uint32_t>(buf);
             }
             catch (BadLexicalCast const & badCast)
             {
@@ -378,10 +380,19 @@ mapAndDumpTaxIDs(std::unordered_map<std::string, uint64_t>       const & accToId
                           << badCast.what() << "\n";
                 return -1;
             }
+            appendValue(sTaxIdV, idNum);
+            if (taxIdIsPresent.size() < idNum + 1)
+                taxIdIsPresent.resize(idNum + 1);
+            taxIdIsPresent[idNum] = true;
         }
 
         skipLine(fit);
     }
+
+    // root node is always present
+    if (taxIdIsPresent.size() < 2)
+        taxIdIsPresent.resize(2);
+    taxIdIsPresent[1] = true;
 
     myPrint(options, 1, "done.\n");
 
@@ -407,11 +418,12 @@ mapAndDumpTaxIDs(std::unordered_map<std::string, uint64_t>       const & accToId
                             "         Maybe you specified the wrong map file?\n\n");
 
     myPrint(options, 1,"Dumping Subject Taxonomy IDs... ");
+    start = sysTime();
     // concat direct so that it's easier to read/write
     StringSet<String<uint32_t>, Owner<ConcatDirect<>>> outSTaxIds = sTaxIds;
     save(outSTaxIds, std::string(options.indexDir + "/staxids").c_str());
     myPrint(options, 1, "done.\n");
-
+    myPrint(options, 2, "Runtime: ", sysTime() - start, "s\n\n");
     return 0;
 }
 
@@ -420,11 +432,13 @@ mapAndDumpTaxIDs(std::unordered_map<std::string, uint64_t>       const & accToId
 // --------------------------------------------------------------------------
 
 inline int
-parseAndDumpTaxTree(LambdaIndexerOptions const & options)
+parseAndDumpTaxTree(std::vector<bool>    const & taxIdIsPresent,
+                    LambdaIndexerOptions const & options)
 
 {
-    String<uint32_t> tree; // ever position has the index of its parent node
-    reserve(tree, 2'000'000); // reserve 2million to save reallocs
+
+    String<uint32_t> taxonParentIDs; // ever position has the index of its parent node
+    reserve(taxonParentIDs, 2'000'000); // reserve 2million to save reallocs
 
     std::string path = options.taxDumpDir + "/nodes.dmp";
 
@@ -474,9 +488,9 @@ parseAndDumpTaxTree(LambdaIndexerOptions const & options)
                 return -1;
             }
         }
-        if (length(tree) <= n)
-            resize(tree, n +1, 0);
-        tree[n] = parent;
+        if (length(taxonParentIDs) <= n)
+            resize(taxonParentIDs, n +1, 0);
+        taxonParentIDs[n] = parent;
     }
 
     myPrint(options, 1, "done.\n");
@@ -484,26 +498,120 @@ parseAndDumpTaxTree(LambdaIndexerOptions const & options)
 
     if (options.verbosity >= 2)
     {
-        uint32_t countmax = 0;
-        for (uint32_t i = 0; i < length(tree); ++i)
+        uint32_t heightMax = 0;
+        uint32_t numNodes = 0;
+        for (uint32_t i = 0; i < length(taxonParentIDs); ++i)
         {
-            uint32_t count = 0;
-            uint32_t cur = tree[i];
-            while (cur > 1)
+            if (taxonParentIDs[i] > 0)
+                ++numNodes;
+            uint32_t height = 0;
+            uint32_t curPar = taxonParentIDs[i];
+            while (curPar > 1)
             {
-                cur = tree[cur];
-                ++count;
+                curPar = taxonParentIDs[curPar];
+                ++height;
             }
-            countmax = std::max(countmax, count);
+
+            heightMax = std::max(heightMax, height);
         }
-        myPrint(options, 2, "Maximum Tree Height: ", countmax, "\n\n");
+        myPrint(options, 2, "Number of nodes in tree: ", numNodes, "\n");
+        myPrint(options, 2, "Maximum Tree Height: ", heightMax, "\n\n");
     }
 
-    //TODO remove unused nodes from tree; flatten tree; save the heights?; use hash tables?
+    myPrint(options, 1, "Thinning and flattening Tree... ");
+    start = sysTime();
+
+    // taxIdIsPresent are all directly present taxIds
+    // taxIdIsPresentOrParent are also the (recursive) parents of the above
+    // we need to differentiate this later, because we will remove some intermediate nodes
+    // but we may not remove any that are directly present AND parents of directly present ones
+    std::vector<bool> taxIdIsPresentOrParent{taxIdIsPresent};
+    // mark parents as present, too
+    for (uint32_t i = 0; i < length(taxonParentIDs); ++i)
+    {
+        if (taxIdIsPresent[i])
+        {
+            // get ancestors:
+            uint32_t curPar = taxonParentIDs[i];
+            taxIdIsPresentOrParent[curPar] = true;
+            while (curPar > 1)
+            {
+                curPar = taxonParentIDs[curPar];
+                taxIdIsPresentOrParent[curPar] = true;
+            }
+        }
+    }
+
+    // set unpresent nodes to 0
+    SEQAN_OMP_PRAGMA(parallel for)
+    for (uint32_t i = 0; i < length(taxonParentIDs); ++i)
+        if (!taxIdIsPresentOrParent[i])
+            taxonParentIDs[i] = 0;
+
+    // count inDegrees
+    String<uint32_t> inDegrees;
+    resize(inDegrees, length(taxonParentIDs), 0);
+    for (uint32_t i = 0; i < length(taxonParentIDs); ++i)
+    {
+        // increase inDegree of parent
+        uint32_t curPar = taxonParentIDs[i];
+        ++inDegrees[curPar];
+    }
+
+    // skip parents with indegree 1 (flattening)
+    for (uint32_t i = 0; i < length(taxonParentIDs); ++i)
+    {
+        uint32_t curPar = taxonParentIDs[i];
+        // those intermediate nodes that themselve represent sequences may not be skipped
+        while ((curPar > 1) && (inDegrees[curPar] == 1) && (!taxIdIsPresent[curPar]))
+            curPar = taxonParentIDs[curPar];
+
+        taxonParentIDs[i] = curPar;
+    }
+    // remove nodes that are now disconnected
+    SEQAN_OMP_PRAGMA(parallel for)
+    for (uint32_t i = 0; i < length(taxonParentIDs); ++i)
+    {
+        // those intermediate nodes that themselve represent sequences may not be skipped
+        if ((inDegrees[i] == 1) && (!taxIdIsPresent[i]))
+        {
+            taxonParentIDs[i] = 0;
+            taxIdIsPresentOrParent[i] = false;
+        }
+    }
+
+    String<uint8_t> taxonHeights;
+    resize(taxonHeights, length(taxonParentIDs), 0);
+
+    {
+        uint32_t heightMax = 0;
+        uint32_t numNodes = 0;
+        for (uint32_t i = 0; i < length(taxonParentIDs); ++i)
+        {
+            if (taxonParentIDs[i] > 0)
+                ++numNodes;
+            uint32_t height = 0;
+            uint32_t curPar = taxonParentIDs[i];
+            while (curPar > 1)
+            {
+                curPar = taxonParentIDs[curPar];
+                ++height;
+            }
+            taxonHeights[i] = height;
+            heightMax = std::max(heightMax, height);
+        }
+
+        myPrint(options, 1, "done.\n");
+        myPrint(options, 2, "Runtime: ", sysTime() - start, "s\n");
+
+        myPrint(options, 2, "Number of nodes in tree: ", numNodes, "\n");
+        myPrint(options, 2, "Maximum Tree Height: ", heightMax, "\n\n");
+    }
 
     myPrint(options, 1,"Dumping Taxonomy Tree... ");
     start = sysTime();
-    save(tree, std::string(options.indexDir + "/taxtree").c_str());
+    save(taxonParentIDs, std::string(options.indexDir + "/tax_parents").c_str());
+    save(taxonHeights,   std::string(options.indexDir + "/tax_heights").c_str());
     myPrint(options, 1, "done.\n");
     myPrint(options, 2, "Runtime: ", sysTime() - start, "s\n\n");
 

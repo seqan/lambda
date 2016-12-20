@@ -449,17 +449,29 @@ loadTaxonomy(TGlobalHolder       & globalHolder,
     myPrint(options, 1, " done.\n");
     myPrint(options, 2, "Runtime: ", finish, "s \n\n");
 
+    SEQAN_ASSERT_EQ(length(globalHolder.sTaxIds), length(globalHolder.redSubjSeqs));
+
     if (!options.computeLCA)
         return 0;
-
-    path = toCString(options.indexDir);
-    path += "/taxtree";
 
     strIdent = "Loading Subject Taxonomic Tree...";
     myPrint(options, 1, strIdent);
     start = sysTime();
 
-    ret = open(globalHolder.taxTree, path.c_str(), OPEN_RDONLY);
+    path = toCString(options.indexDir);
+    path += "/tax_parents";
+    ret = open(globalHolder.taxParents, path.c_str(), OPEN_RDONLY);
+    if (ret != true)
+    {
+        std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
+                    << " failed.\n"
+                    << "Your index does not provide it. Did you forget to include it while indexing?\n";
+        return 1;
+    }
+
+    path = toCString(options.indexDir);
+    path += "/tax_heights";
+    ret = open(globalHolder.taxHeights, path.c_str(), OPEN_RDONLY);
     if (ret != true)
     {
         std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
@@ -1393,21 +1405,21 @@ _writeRecord(TBlastRecord & record,
         // compute LCA
         if (lH.options.computeLCA)
         {
-            record.lca = 0;
+            record.lcaTaxId = 0;
             for (auto const & bm : record.matches)
             {
                 if (length(lH.gH.sTaxIds[bm._n_sId]) > 0)
                 {
-                    record.lca = lH.gH.sTaxIds[bm._n_sId][0];
+                    record.lcaTaxId = lH.gH.sTaxIds[bm._n_sId][0];
                     break;
                 }
             }
 
-            if (record.lca != 0)
+            if (record.lcaTaxId != 0)
                 for (auto const & bm : record.matches)
                     for (uint32_t const sTaxId : lH.gH.sTaxIds[bm._n_sId])
                         if (sTaxId != 0) // TODO do we want to skip unassigned subjects
-                            record.lca = trivialLCA(lH.gH.taxTree, sTaxId, record.lca);
+                            record.lcaTaxId = computeLCA(lH.gH.taxParents, lH.gH.taxHeights, sTaxId, record.lcaTaxId);
         }
 
         myWriteRecord(lH, record);
@@ -1645,7 +1657,7 @@ computeBlastMatch(TBlastMatch         & bm,
         // we want to allow more gaps in longer query sequences
         switch (lH.options.band)
         {
-            case -3: maxDist = ceil(log2(qryLength)); break;
+            case -3: maxDist = ceil(std::log2(qryLength)); break;
             case -2: maxDist = floor(sqrt(qryLength)); break;
             case -1: break;
             default: maxDist = lH.options.band; break;
@@ -1884,7 +1896,6 @@ iterateMatchesExtend(TLocalHolder & lH)
                                                 m1.qEnd,
                                                 m1.sStart,
                                                 m1.sEnd,
-                                                m1.qLength,
                                                 m1.sLength,
                                                 m1.qFrameShift,
                                                 m1.sFrameShift) ==
@@ -1893,7 +1904,6 @@ iterateMatchesExtend(TLocalHolder & lH)
                                                 m2.qEnd,
                                                 m2.sStart,
                                                 m2.sEnd,
-                                                m2.qLength,
                                                 m2.sLength,
                                                 m2.qFrameShift,
                                                 m2.sFrameShift);
@@ -1934,8 +1944,7 @@ iterateMatchesExtend(TLocalHolder & lH)
                 }
 //                 std::cout << "BAX\n" << std::flush;
                 // create blastmatch in list without copy or move
-                record.matches.emplace_back(lH.gH.qryIds [trueQryId],
-                                            lH.gH.subjIds[trueSubjId]);
+                record.matches.emplace_back(lH.gH.subjIds[trueSubjId]);
 
                 auto & bm = back(record.matches);
 
@@ -1944,7 +1953,6 @@ iterateMatchesExtend(TLocalHolder & lH)
                 bm.sStart    = it->subjStart;
                 bm.sEnd      = it->subjEnd;//it->subjStart + lH.options.seedLength;
 
-                bm.qLength = record.qLength;
                 bm.sLength = sIsTranslated(TGlobalHolder::blastProgram)
                                 ? lH.gH.untransSubjSeqLengths[trueSubjId]
                                 : length(lH.gH.subjSeqs[it->subjId]);
@@ -2001,11 +2009,8 @@ iterateMatchesExtend(TLocalHolder & lH)
                 {
                     case COMPUTERESULT_::SUCCESS:
     //                     ++lH.stats.goodMatches;
-                        if (lH.options.outFileFormat > 0)
-                        {
-                            bm._n_qId = it->qryId / qNumFrames(TGlobalHolder::blastProgram);
-                            bm._n_sId = it->subjId / sNumFrames(TGlobalHolder::blastProgram);
-                        }
+                        bm._n_qId = it->qryId / qNumFrames(TGlobalHolder::blastProgram);
+                        bm._n_sId = it->subjId / sNumFrames(TGlobalHolder::blastProgram);
 
                         if (lH.options.hasSTaxIds)
                             bm.sTaxIds = lH.gH.sTaxIds[it->subjId / sNumFrames(TGlobalHolder::blastProgram)];
@@ -2175,7 +2180,7 @@ iterateMatchesFullSimd(TLocalHolder & lH)
     size_t maxDist = 0;
     switch (lH.options.band)
     {
-        case -3: maxDist = ceil(log2(record.qLength)); break;
+        case -3: maxDist = ceil(std::log2(record.qLength)); break;
         case -2: maxDist = floor(sqrt(record.qLength)); break;
         case -1: break;
         default: maxDist = lH.options.band; break;
@@ -2195,7 +2200,6 @@ iterateMatchesFullSimd(TLocalHolder & lH)
         auto & bm = back(record.matches);
         auto &  m = *it;
 
-        bm.qLength = record.qLength;
         bm.sLength = sIsTranslated(TGlobalHolder::blastProgram)
                         ? lH.gH.untransSubjSeqLengths[trueSubjId]
                         : length(lH.gH.subjSeqs[it->subjId]);
@@ -2331,7 +2335,7 @@ iterateMatchesFullSerial(TLocalHolder & lH)
     unsigned maxDist = 0;
     switch (lH.options.band)
     {
-        case -3: maxDist = ceil(log2(record.qLength)); break;
+        case -3: maxDist = ceil(std::log2(record.qLength)); break;
         case -2: maxDist = floor(sqrt(record.qLength)); break;
         case -1: break;
         default: maxDist = lH.options.band; break;
@@ -2349,7 +2353,6 @@ iterateMatchesFullSerial(TLocalHolder & lH)
         auto & bm = back(record.matches);
         auto &  m = *it;
 
-        bm.qLength = record.qLength;
         bm.sLength = sIsTranslated(TGlobalHolder::blastProgram)
                         ? lH.gH.untransSubjSeqLengths[trueSubjId]
                         : length(lH.gH.subjSeqs[it->subjId]);
