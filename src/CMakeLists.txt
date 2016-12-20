@@ -162,7 +162,7 @@ if(CMAKE_COMPILER_IS_GNUCXX)
     include(ProcessorCount)
     ProcessorCount(NCPU)
     if(NCPU GREATER 1)
-        set (SEQAN_CXX_FLAGS "${SEQAN_CXX_FLAGS} -flto=${NCPU}")
+        set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -flto=${NCPU}")
     endif()
 endif(CMAKE_COMPILER_IS_GNUCXX)
 
