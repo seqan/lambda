@@ -484,6 +484,21 @@ loadTaxonomy(TGlobalHolder       & globalHolder,
     myPrint(options, 1, " done.\n");
     myPrint(options, 2, "Runtime: ", finish, "s \n\n");
 
+    path = toCString(options.indexDir);
+    path += "/tax_names";
+    ret = open(globalHolder.taxNames, path.c_str(), OPEN_RDONLY);
+    if (ret != true)
+    {
+        std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
+                    << " failed.\n"
+                    << "Your index does not provide it. Did you forget to include it while indexing?\n";
+        return 1;
+    }
+
+    finish = sysTime() - start;
+    myPrint(options, 1, " done.\n");
+    myPrint(options, 2, "Runtime: ", finish, "s \n\n");
+
     return 0;
 }
 
@@ -1420,6 +1435,8 @@ _writeRecord(TBlastRecord & record,
                     for (uint32_t const sTaxId : lH.gH.sTaxIds[bm._n_sId])
                         if (sTaxId != 0) // TODO do we want to skip unassigned subjects
                             record.lcaTaxId = computeLCA(lH.gH.taxParents, lH.gH.taxHeights, sTaxId, record.lcaTaxId);
+
+            record.lcaId = lH.gH.taxNames[record.lcaTaxId];
         }
 
         myWriteRecord(lH, record);
@@ -1789,7 +1806,11 @@ iterateMatchesExtend(TLocalHolder & lH)
                            typename Value<typename TGlobalHolder::TQryIds>::Type,// const &,
                            typename Value<typename TGlobalHolder::TSubjIds>::Type// const &,
                            >;
-    using TBlastRecord  = BlastRecord<TBlastMatch>;
+    using TBlastRecord  = BlastRecord<TBlastMatch,
+                                      typename Value<typename TGlobalHolder::TQryIds>::Type,
+                                      std::vector<std::string>,
+                                      typename Value<typename TGlobalHolder::TTaxNames>::Type,
+                                      uint32_t>;
 
 //     constexpr TPos TPosMax = std::numeric_limits<TPos>::max();
 //     constexpr uint8_t qFactor = qHasRevComp(TGlobalHolder::blastProgram) ? 3 : 1;
@@ -2139,7 +2160,11 @@ iterateMatchesFullSimd(TLocalHolder & lH)
                            typename Value<typename TGlobalHolder::TQryIds>::Type,// const &,
                            typename Value<typename TGlobalHolder::TSubjIds>::Type// const &,
                            >;
-    using TBlastRecord  = BlastRecord<TBlastMatch>;
+    using TBlastRecord  = BlastRecord<TBlastMatch,
+                                      typename Value<typename TGlobalHolder::TQryIds>::Type,
+                                      std::vector<std::string>,
+                                      typename Value<typename TGlobalHolder::TTaxNames>::Type,
+                                      uint32_t>;
 
     typedef FreeEndGaps_<True, True, True, True> TFreeEndGaps;
     typedef AlignConfig2<LocalAlignment_<>,
@@ -2323,7 +2348,11 @@ iterateMatchesFullSerial(TLocalHolder & lH)
                            typename Value<typename TGlobalHolder::TQryIds>::Type,// const &,
                            typename Value<typename TGlobalHolder::TSubjIds>::Type// const &,
                            >;
-    using TBlastRecord  = BlastRecord<TBlastMatch>;
+    using TBlastRecord  = BlastRecord<TBlastMatch,
+                                      typename Value<typename TGlobalHolder::TQryIds>::Type,
+                                      std::vector<std::string>,
+                                      typename Value<typename TGlobalHolder::TTaxNames>::Type,
+                                      uint32_t>;
 
     auto const trueQryId = lH.matches[0].qryId / qNumFrames(TGlobalHolder::blastProgram);
 

@@ -337,6 +337,7 @@ public:
     using TTaxIDs       = StringSet<String<uint32_t>, Owner<ConcatDirect<>>>;
     using TTaxParents   = String<uint32_t>;
     using TTaxHeights   = String<uint8_t>;
+    using TTaxNames     = StringSet<CharString, Owner<ConcatDirect<>>>;
 
     /* the actual members */
     TDbIndex            dbIndex;
@@ -361,6 +362,7 @@ public:
     TTaxIDs             sTaxIds;
     TTaxParents         taxParents;
     TTaxHeights         taxHeights;
+    TTaxNames           taxNames;
 
     StatsHolder         stats;
 

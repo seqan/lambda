@@ -436,7 +436,6 @@ parseAndDumpTaxTree(std::vector<bool>    const & taxIdIsPresent,
                     LambdaIndexerOptions const & options)
 
 {
-
     String<uint32_t> taxonParentIDs; // ever position has the index of its parent node
     reserve(taxonParentIDs, 2'000'000); // reserve 2million to save reallocs
 
@@ -612,6 +611,105 @@ parseAndDumpTaxTree(std::vector<bool>    const & taxIdIsPresent,
     start = sysTime();
     save(taxonParentIDs, std::string(options.indexDir + "/tax_parents").c_str());
     save(taxonHeights,   std::string(options.indexDir + "/tax_heights").c_str());
+    myPrint(options, 1, "done.\n");
+    myPrint(options, 2, "Runtime: ", sysTime() - start, "s\n\n");
+
+    /** read the names **/
+
+    StringSet<CharString> taxonNames; // ever position has the index of its parent node
+    resize(taxonNames, length(taxonParentIDs));
+
+    path = options.taxDumpDir + "/names.dmp";
+
+    std::ifstream fin2(path.c_str(), std::ios_base::in | std::ios_base::binary);
+    if (!fin2.is_open())
+    {
+        std::cerr << "ERROR: Could not open " << path << '\n';
+        return -1;
+    }
+
+    // transparent decompressor
+    VirtualStream<char, Input> vfin2{fin2};
+    // stream iterator
+    fit = directionIterator(vfin2, Input());
+
+    myPrint(options, 1, "Parsing names.dmp... ");
+
+    start = sysTime();
+
+    std::regex const wordRegEx{R"([\w.,\"<> ]+)"};
+    std::string name;
+
+    while (!atEnd(fit))
+    {
+        clear(buf);
+        // read line
+        readLine(buf, fit);
+
+        uint32_t taxId = 0;
+
+        auto itWord = std::sregex_iterator(buf.begin(), buf.end(), wordRegEx);
+        if (itWord == std::sregex_iterator())
+        {
+            std::cerr << "Error: Expected taxonomical ID in first column, but couldn't find it.\n";
+            return -1;
+        } else
+        {
+            try
+            {
+                taxId = lexicalCast<uint64_t>(itWord->str());
+            }
+            catch (BadLexicalCast const & badCast)
+            {
+                std::cerr << "Error: Expected taxonomical ID in first column, but got something I couldn't read: "
+                          << badCast.what() << "\n";
+                return -1;
+            }
+
+            if (taxId >= length(taxonNames))
+            {
+                std::cerr << "Error: taxonomical ID is " << taxId << ", but no such taxon in tree.\n";
+                return -1;
+            }
+        }
+
+        // we don't need this name
+        if (!taxIdIsPresentOrParent[taxId])
+            continue;
+
+        if (++itWord == std::sregex_iterator())
+        {
+            std::cerr << "Error: Expected name in second column, but couldn't find it.\n";
+            return -1;
+        } else
+        {
+            name = itWord->str();
+        }
+
+        while (++itWord != std::sregex_iterator())
+        {
+            if (itWord->str() == "scientific name")
+                taxonNames[taxId] = name;
+        }
+    }
+
+    myPrint(options, 1, "done.\n");
+    myPrint(options, 2, "Runtime: ", sysTime() - start, "s\n");
+
+    for (uint32_t i = 0; i < length(taxonNames); ++i)
+    {
+        if (taxIdIsPresentOrParent[i] && empty(taxonNames[i]))
+        {
+            std::cerr << "Warning: Taxon with ID " << i << " has no name associated, defaulting to \"n/a\".\n";
+            taxonNames[i] = "n/a";
+        }
+    }
+
+    myPrint(options, 1,"Dumping Taxon names... ");
+    start = sysTime();
+    // concat direct so that it's easier to read/write
+    StringSet<CharString, Owner<ConcatDirect<>>> outTaxonNames = taxonNames;
+    save(outTaxonNames, std::string(options.indexDir + "/tax_names").c_str());
     myPrint(options, 1, "done.\n");
     myPrint(options, 2, "Runtime: ", sysTime() - start, "s\n\n");
 
