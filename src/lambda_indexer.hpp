@@ -432,7 +432,7 @@ mapAndDumpTaxIDs(std::vector<bool>                                     & taxIdIs
 // --------------------------------------------------------------------------
 
 inline int
-parseAndDumpTaxTree(std::vector<bool>    const & taxIdIsPresent,
+parseAndDumpTaxTree(std::vector<bool>          & taxIdIsPresent,
                     LambdaIndexerOptions const & options)
 
 {
@@ -476,9 +476,9 @@ parseAndDumpTaxTree(std::vector<bool>    const & taxIdIsPresent,
             try
             {
                 if (i == 0)
-                    n = lexicalCast<uint64_t>(it->str());
+                    n = lexicalCast<uint32_t>(it->str());
                 else
-                    parent = lexicalCast<uint64_t>(it->str());
+                    parent = lexicalCast<uint32_t>(it->str());
             }
             catch (BadLexicalCast const & badCast)
             {
@@ -491,6 +491,8 @@ parseAndDumpTaxTree(std::vector<bool>    const & taxIdIsPresent,
             resize(taxonParentIDs, n +1, 0);
         taxonParentIDs[n] = parent;
     }
+    // also resize these, since we get new, possibly higher cardinality nodes
+    taxIdIsPresent.resize(length(taxonParentIDs), false);
 
     myPrint(options, 1, "done.\n");
     myPrint(options, 2, "Runtime: ", sysTime() - start, "s\n");
@@ -531,13 +533,12 @@ parseAndDumpTaxTree(std::vector<bool>    const & taxIdIsPresent,
         if (taxIdIsPresent[i])
         {
             // get ancestors:
-            uint32_t curPar = taxonParentIDs[i];
-            taxIdIsPresentOrParent[curPar] = true;
-            while (curPar > 1)
+            uint32_t curPar = i;
+            do
             {
                 curPar = taxonParentIDs[curPar];
                 taxIdIsPresentOrParent[curPar] = true;
-            }
+            } while (curPar > 1);
         }
     }
 
@@ -567,6 +568,7 @@ parseAndDumpTaxTree(std::vector<bool>    const & taxIdIsPresent,
 
         taxonParentIDs[i] = curPar;
     }
+
     // remove nodes that are now disconnected
     SEQAN_OMP_PRAGMA(parallel for)
     for (uint32_t i = 0; i < length(taxonParentIDs); ++i)
@@ -613,6 +615,26 @@ parseAndDumpTaxTree(std::vector<bool>    const & taxIdIsPresent,
     save(taxonHeights,   std::string(options.indexDir + "/tax_heights").c_str());
     myPrint(options, 1, "done.\n");
     myPrint(options, 2, "Runtime: ", sysTime() - start, "s\n\n");
+
+    // DEBUG
+    #ifndef NDEBUG
+    for (uint32_t i = 0; i < length(taxonParentIDs); ++i)
+    {
+        if (!taxIdIsPresentOrParent[i] && (taxonParentIDs[i] != 0))
+            std::cout << "WARNING: TaxID " << i << " has parent, but shouldn't.\n";
+
+        if (taxIdIsPresentOrParent[i] && (taxonParentIDs[i] == 0))
+            std::cout << "WARNING: TaxID " << i << " has no parent, but should.\n";
+        if (taxIdIsPresent[i] && (taxonParentIDs[i] == 0))
+            std::cout << "WARNING: TaxID " << i << " has no parent, but should. 2\n";
+
+        if (taxIdIsPresent[i] && !taxIdIsPresentOrParent[i])
+            std::cout << "WARNING: TaxID " << i << " disappeared, but shouldn't have.\n";
+
+        if (!taxIdIsPresent[i] && taxIdIsPresentOrParent[i] && (inDegrees[i] == 1))
+            std::cout << "WARNING: TaxID " << i << " should have disappeared, but didn't.\n";
+    }
+    #endif
 
     /** read the names **/
 
@@ -696,6 +718,7 @@ parseAndDumpTaxTree(std::vector<bool>    const & taxIdIsPresent,
     myPrint(options, 1, "done.\n");
     myPrint(options, 2, "Runtime: ", sysTime() - start, "s\n");
 
+    taxonNames[0] = "invalid";
     for (uint32_t i = 0; i < length(taxonNames); ++i)
     {
         if (taxIdIsPresentOrParent[i] && empty(taxonNames[i]))
