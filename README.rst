@@ -1,11 +1,12 @@
 Lambda: the Local Aligner for Massive Biological DatA
 -----------------------------------------------------
 
-Lambda is a local aligner optimized for many query sequences and searches in protein space. It is...
+Lambda is a local aligner optimized for many query sequences and searches in protein space. It...
 
-* highly compatible to BLAST (bitscore and e-value statistics, tab seperated and verbose output formats)
-* much faster than BLAST and many other comparable tools
+* is highly compatible to BLAST (bitscore and e-value statistics, tab seperated and verbose output formats)
+* is much faster than BLAST and many other comparable tools
 * supports many other input and output formats, including standards-conformant ``.sam`` and ``.bam`` and many compression types
+* has special features for species annotation and taxonomic analysis
 
 versions
 --------
