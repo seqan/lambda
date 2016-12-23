@@ -19,7 +19,7 @@ set (SEQAN_APP_VERSION_PATCH "1")
 set (SEQAN_APP_VERSION "${SEQAN_APP_VERSION_MAJOR}.${SEQAN_APP_VERSION_MINOR}.${SEQAN_APP_VERSION_PATCH}")
 
 # adapt when necessary
-set (MINIMUM_SEQAN_VERSION "2.3.0")
+set (MINIMUM_SEQAN_VERSION "2.3.1")
 
 # ----------------------------------------------------------------------------
 # Dependencies (continued)
