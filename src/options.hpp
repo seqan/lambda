@@ -469,7 +469,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     addOption(parser, ArgParseOption("i", "index",
         "The database index (created by the lambda_indexer executable).",
-        ArgParseArgument::INPUT_FILE,
+        ArgParseArgument::INPUT_DIRECTORY,
         "IN"));
     setRequired(parser, "index");
     setValidValues(parser, "index", ".lambda");
@@ -538,9 +538,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         "BAM files require all subject names to be written to the header. For SAM this is not required, so Lambda does "
         "not automatically do it to save space (especially for protein database this is a lot!). If you still want "
         "them with SAM, e.g. for better BAM compatibility, use this option.",
-        ArgParseArgument::STRING,
-        "STR"));
-    setValidValues(parser, "sam-with-refheader", "on off");
+        ArgParseArgument::BOOL));
     setDefaultValue(parser, "sam-with-refheader", "off");
     setAdvanced(parser, "sam-with-refheader");
 
@@ -574,9 +572,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     addOption(parser, ArgParseOption("", "version-to-outputfile",
         "Write the Lambda program tag and version number to the output file.",
-        ArgParseArgument::STRING,
-        "STR"));
-    setValidValues(parser, "version-to-outputfile", "on off");
+        ArgParseArgument::BOOL));
     setDefaultValue(parser, "version-to-outputfile", "on");
     hideOption(parser, "version-to-outputfile");
 
@@ -673,9 +669,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     addOption(parser, ArgParseOption("as", "adaptive-seeding",
         "SECRET",
-        ArgParseArgument::STRING,
-        "STR"));
-    setValidValues(parser, "adaptive-seeding", "on off");
+        ArgParseArgument::BOOL));
     setDefaultValue(parser, "adaptive-seeding", "on");
     setAdvanced(parser, "adaptive-seeding");
 
@@ -730,24 +724,21 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     addOption(parser, ArgParseOption("pd", "filter-putative-duplicates",
         "filter hits that will likely duplicate a match already found.",
-        ArgParseArgument::STRING));
-    setValidValues(parser, "filter-putative-duplicates", "on off");
+        ArgParseArgument::BOOL));
     setDefaultValue(parser, "filter-putative-duplicates", "on");
     setAdvanced(parser, "filter-putative-duplicates");
 
     addOption(parser, ArgParseOption("pa", "filter-putative-abundant",
         "If the maximum number of matches per query are found already, "
         "stop searching if the remaining realm looks unfeasable.",
-        ArgParseArgument::STRING));
-    setValidValues(parser, "filter-putative-abundant", "on off");
+        ArgParseArgument::BOOL));
     setDefaultValue(parser, "filter-putative-abundant", "on");
     setAdvanced(parser, "filter-putative-abundant");
 
     addOption(parser, ArgParseOption("pm", "merge-putative-siblings",
         "Merge seed from one region, "
         "stop searching if the remaining realm looks unfeasable.",
-        ArgParseArgument::STRING));
-    setValidValues(parser, "merge-putative-siblings", "on off");
+        ArgParseArgument::BOOL));
     setDefaultValue(parser, "merge-putative-siblings", "on");
     setAdvanced(parser, "merge-putative-siblings");
 
@@ -898,9 +889,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     else
         options.outFileFormat = 0;
 
-    clear(buffer);
-    getOptionValue(buffer, parser, "sam-with-refheader");
-    options.samWithRefHeader = (buffer == "on");
+    getOptionValue(options.samWithRefHeader, parser, "sam-with-refheader");
 
     clear(buffer);
     getOptionValue(buffer, parser, "sam-bam-seq");
@@ -1014,12 +1003,8 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     if (options.computeLCA)
         options.hasSTaxIds = true;
 
-    getOptionValue(buffer, parser, "version-to-outputfile");
-    options.versionInformationToOutputFile = (buffer == "on");
-
-    clear(buffer);
-    getOptionValue(buffer, parser, "adaptive-seeding");
-    options.adaptiveSeeding = (buffer == "on");
+    getOptionValue(options.versionInformationToOutputFile, parser, "version-to-outputfile");
+    getOptionValue(options.adaptiveSeeding, parser, "adaptive-seeding");
 
     clear(buffer);
     getOptionValue(options.seedLength, parser, "seed-length");
@@ -1098,14 +1083,10 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         (options.blastProgram == BlastProgram::BLASTN))
         options.gapOpen = -5;
 
-    getOptionValue(buffer, parser, "filter-putative-duplicates");
-    options.filterPutativeDuplicates = (buffer == "on");
+    getOptionValue(options.filterPutativeDuplicates, parser, "filter-putative-duplicates");
+    getOptionValue(options.filterPutativeAbundant, parser, "filter-putative-abundant");
+    getOptionValue(options.mergePutativeSiblings, parser, "merge-putative-siblings");
 
-    getOptionValue(buffer, parser, "filter-putative-abundant");
-    options.filterPutativeAbundant = (buffer == "on");
-
-    getOptionValue(buffer, parser, "merge-putative-siblings");
-    options.mergePutativeSiblings = (buffer == "on");
 
     // TODO always prescore 1
     getOptionValue(options.preScoring, parser, "pre-scoring");
@@ -1198,12 +1179,12 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
         "tax-dump-dir",
         "A directory that contains nodes.dmp and names.dmp; unzipped from "
         "ftp://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump.tar.gz",
-        ArgParseArgument::INPUT_FILE)); // TODO make INPUT_DIR
+        ArgParseArgument::INPUT_DIRECTORY));
 
     addSection(parser, "Output Options");
     addOption(parser, ArgParseOption("i", "index",
         "The output directory for the index files (defaults to \"DATABASE.lambda\").",
-        ArgParseArgument::INPUT_FILE,
+        ArgParseArgument::OUTPUT_DIRECTORY,
         "OUT"));
     setValidValues(parser, "index", ".lambda");
 
@@ -1218,9 +1199,7 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
     addOption(parser, ArgParseOption("", "truncate-ids",
         "Truncate IDs at first whitespace. This saves a lot of space and is irrelevant for all LAMBDA output formats "
         "other than BLAST Pairwise (.m0).",
-        ArgParseArgument::STRING,
-        "STR"));
-    setValidValues(parser, "truncate-ids", "on off");
+        ArgParseArgument::BOOL));
     setDefaultValue(parser, "truncate-ids", "on");
 
     addSection(parser, "Alphabets and Translation");
@@ -1273,8 +1252,8 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
     getCwd(tmpdir);
     addOption(parser, ArgParseOption("td", "tmp-dir",
         "temporary directory used by skew, defaults to working directory.",
-        ArgParseArgument::STRING,
-        "STR")); //TODO make INPUT_DIR
+        ArgParseArgument::OUTPUT_DIRECTORY,
+        "STR"));
     setDefaultValue(parser, "tmp-dir", tmpdir);
     setAdvanced(parser, "tmp-dir");
 
@@ -1341,9 +1320,7 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
     getOptionValue(tmpdir, parser, "tmp-dir");
     setEnv("TMPDIR", tmpdir);
 
-    std::string buffer;
-    getOptionValue(buffer, parser, "truncate-ids");
-    options.truncateIDs = (buffer == "on");
+    getOptionValue(options.truncateIDs, parser, "truncate-ids");
 
 
     getOptionValue(options.dbFile, parser, "database");
