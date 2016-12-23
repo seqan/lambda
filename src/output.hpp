@@ -34,20 +34,20 @@ struct SamBamExtraTags
     {
 //         Q_START,
 //         S_START,
-        E_VALUE,
         BIT_SCORE,
+        Q_AA_CIGAR,
+        EDIT_DISTANCE,
+        MATCH_COUNT,
         SCORE,
+        E_VALUE,
         P_IDENT,
         P_POS,
         Q_FRAME,
+        Q_AA_SEQ,
         S_FRAME,
         S_TAX_IDS,
         LCA_ID,
-        LCA_TAX_ID,
-        Q_AA_SEQ,
-        Q_AA_CIGAR,
-        EDIT_DISTANCE,
-        MATCH_COUNT
+        LCA_TAX_ID
     };
 
     static constexpr const std::array<std::pair<const char*, const char*>, 14> keyDescPairs
@@ -55,20 +55,20 @@ struct SamBamExtraTags
         {
 //             { "ZS", "query start (in DNA if original was DNA)" },       //  Q_START,
 //             { "YS", "subject start (in DNA if original was DNA)" },  //  S_START,
-            { "ZE", "expect value" },                                   //  E_VALUE,
             { "AS", "bit score" },                                      //  BIT_SCORE,
-            { "ZR", "raw score" },                                      //  SCORE,
-            { "ZI", "% identity (in protein space unless BLASTN) " },  //  P_IDENT,
-            { "ZP", "% positive (in protein space unless BLASTN)"},     //  P_POS,
-            { "ZF", "query frame" },                                    //  Q_FRAME,
-            { "YF", "subject frame" },                                  //  S_FRAME,
-            { "st", "subject taxonomy IDs (* if n/a)" },                //  S_TAX_IDS,
-            { "ls", "lowest common ancestor species" },                 //  LCA_ID,
-            { "lt", "lowest common ancestor taxonomy ID" },             //  LCA_TAX_ID,
-            { "ZQ", "query protein sequence (* for BLASTN)"},          //  Q_AA_SEQ,
-            { "OC", "query protein cigar (* for BLASTN)"},             //  Q_AA_CIGAR,
-            { "NM", "edit distance (in protein space unless BLASTN)"}, //  EDIT_DISTANCE
+            { "OC", "query protein cigar (* for BLASTN)"},              //  Q_AA_CIGAR,
+            { "NM", "edit distance (in protein space unless BLASTN)"},  //  EDIT_DISTANCE
             { "IH", "number of matches this query has"},                //  MATCH_COUNT
+            { "ar", "raw score" },                                      //  SCORE,
+            { "ae", "expect value" },                                   //  E_VALUE,
+            { "ai", "% identity (in protein space unless BLASTN) " },   //  P_IDENT,
+            { "ap", "% positive (in protein space unless BLASTN)"},     //  P_POS,
+            { "qf", "query frame" },                                    //  Q_FRAME,
+            { "qs", "query protein sequence (* for BLASTN)"},           //  Q_AA_SEQ,
+            { "sf", "subject frame" },                                  //  S_FRAME,
+            { "st", "subject taxonomy IDs (* if n/a)" },                //  S_TAX_IDS,
+            { "ls", "lowest common ancestor scientific name" },         //  LCA_ID,
+            { "lt", "lowest common ancestor taxonomy ID" },             //  LCA_TAX_ID,
         }
     };
 

@@ -558,7 +558,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         "Write the specified optional columns to the SAM/BAM file. Call --sam-bam-tags help for more details.",
         ArgParseArgument::STRING,
         "STR"));
-    setDefaultValue(parser, "sam-bam-tags", "AS NM ZE ZI ZF");
+    setDefaultValue(parser, "sam-bam-tags", "AS NM ae ai qf");
     setAdvanced(parser, "sam-bam-tags");
 
     addOption(parser, ArgParseOption("", "sam-bam-clip",
