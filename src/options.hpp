@@ -361,8 +361,7 @@ void
 sharedSetup(ArgumentParser & parser)
 {
     // Set short description, version, and date.
-    std::string versionString = std::string(SEQAN_APP_VERSION) + " (Git commit " +
-                                std::string(SEQAN_REVISION) + ")";
+    std::string versionString = SEQAN_APP_VERSION;
     setVersion(parser, versionString);
     setDate(parser, __DATE__);
     setShortCopyright(parser, "2013-2016 Hannes Hauswedell, released under the GNU AGPL v3 (or later); "
