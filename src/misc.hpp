@@ -424,8 +424,9 @@ inline double
 computeEValueThreadSafe(TBlastMatch & match,
                         BlastIOContext<TScore, p, h> & context)
 {
-#if defined(__FreeBSD__) && defined(STDLIB_LLVM)
-    // https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=192320
+#if defined(__FreeBSD__)
+    // && version < 11 && defined(STDLIB_LLVM) because of https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=192320
+    // || version >= 11 && defined(STDLIB_GNU) because of https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=215709
     static std::vector<std::unordered_map<uint64_t, uint64_t>> _cachedLengthAdjustmentsArray(omp_get_num_threads());
     static std::unordered_map<uint64_t, uint64_t> & _cachedLengthAdjustments = _cachedLengthAdjustmentsArray[omp_get_thread_num()];
 #else
