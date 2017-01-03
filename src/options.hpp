@@ -320,6 +320,7 @@ struct LambdaOptions : public SharedOptions
     bool            filterPutativeDuplicates = true;
     bool            filterPutativeAbundant = true;
     bool            mergePutativeSiblings = true;
+    bool            seedHalfExact = false;
 
     int             preScoring = 0; // 0 = off, 1 = seed, 2 = region (
     double          preScoringThresh    = 0.0;
@@ -667,10 +668,10 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 //     setDefaultValue(parser, "ungapped-seeds", "1");
 
     addOption(parser, ArgParseOption("as", "adaptive-seeding",
-        "SECRET",
+        "Grow the seed if it has too many hits (low complexity filter).",
         ArgParseArgument::BOOL));
     setDefaultValue(parser, "adaptive-seeding", "on");
-    setAdvanced(parser, "adaptive-seeding");
+//     setAdvanced(parser, "adaptive-seeding");
 
     addOption(parser, ArgParseOption("sl", "seed-length",
         "Length of the seeds (default = 14 for BLASTN).",
@@ -682,7 +683,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         "Offset for seeding (if unset = seed-length, non-overlapping; "
         "default = 5 for BLASTN).",
         ArgParseArgument::INTEGER));
-    setDefaultValue(parser, "seed-offset", "5");
+    setDefaultValue(parser, "seed-offset", "10");
     setAdvanced(parser, "seed-offset");
 
     addOption(parser, ArgParseOption("sd", "seed-delta",
@@ -740,6 +741,12 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         ArgParseArgument::BOOL));
     setDefaultValue(parser, "merge-putative-siblings", "on");
     setAdvanced(parser, "merge-putative-siblings");
+
+    addOption(parser, ArgParseOption("sh", "seed-half-exact",
+        "Allow errors only in second half of seed.",
+        ArgParseArgument::BOOL));
+    setDefaultValue(parser, "seed-half-exact", "off");
+    setAdvanced(parser, "seed-half-exact");
 
 //     addOption(parser, ArgParseOption("se",
 //                                             "seedminevalue",
@@ -825,7 +832,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
                     "reduction has a strong "
                     "influence on both speed and sensitivity. We recommend the "
                     "following alternative profiles for protein searches:");
-    addText(parser, "fast (high similarity):       -ar none -sl 7 -sd 0");
+    addText(parser, "fast (high similarity):       -so 5 -sh on");
     addText(parser, "sensitive (lower similarity): -so 5");
 
     addText(parser, "For further information see the wiki: <https://github.com/seqan/lambda/wiki>");
@@ -1011,13 +1018,6 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         (options.blastProgram == BlastProgram::BLASTN))
         options.seedLength = 14;
 
-    if (isSet(parser, "seed-offset"))
-        getOptionValue(options.seedOffset, parser, "seed-offset");
-    else if ((options.dbIndexType != DbIndexType::BI_FM_INDEX) || (!options.adaptiveSeeding))
-        options.seedOffset = options.seedLength / 2;
-    else
-        options.seedOffset = options.seedLength;
-
     if (isSet(parser, "seed-gravity"))
         getOptionValue(options.seedGravity, parser, "seed-gravity");
     else
@@ -1030,6 +1030,17 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     getOptionValue(options.maxSeedDist, parser, "seed-delta");
 
+    if (options.maxSeedDist == 0)
+    {
+        // the whole seed is exact, so it is also half-exact :)
+        options.seedHalfExact = true;
+
+        if (options.dbIndexType == DbIndexType::BI_FM_INDEX)
+        {
+            std::cerr << "WARNING: Exact seeeding doesn't benefit from bi-fm-index, so regular index is used.\n";
+            options.dbIndexType = DbIndexType::FM_INDEX;
+        }
+    }
 
     getOptionValue(buffer, parser, "query-index-type");
     options.doubleIndexing = (buffer == "radix");
@@ -1085,7 +1096,15 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     getOptionValue(options.filterPutativeDuplicates, parser, "filter-putative-duplicates");
     getOptionValue(options.filterPutativeAbundant, parser, "filter-putative-abundant");
     getOptionValue(options.mergePutativeSiblings, parser, "merge-putative-siblings");
+    getOptionValue(options.seedHalfExact, parser, "seed-half-exact");
 
+    if (options.dbIndexType == DbIndexType::BI_FM_INDEX)
+    {
+        if (options.seedHalfExact)
+            std::cerr << "WARNING: seedHalfExact is already implied by bidirectional indexes.\n";
+        else
+            options.seedHalfExact = true;
+    }
 
     // TODO always prescore 1
     getOptionValue(options.preScoring, parser, "pre-scoring");
@@ -1577,6 +1596,9 @@ printOptions(LambdaOptions const & options)
                                                     ? std::string("on")
                                                     : std::string("off")) << "\n"
               << "  putative-duplicates:      " << (options.filterPutativeDuplicates
+                                                    ? std::string("on")
+                                                    : std::string("off")) << "\n"
+              << "  seed half exact:          " << (options.seedHalfExact
                                                     ? std::string("on")
                                                     : std::string("off")) << "\n"
 

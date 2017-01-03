@@ -944,8 +944,7 @@ onFindVariable(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
 // Function search()
 // --------------------------------------------------------------------------
 
-//TODO experiment with tuned branch prediction
-
+//TODO make for loop here instead of recursion
 template <typename TIndexIt, typename TGoDownTag, typename TNeedleIt, typename TLambda, typename TLambda2>
 inline void
 __goDownNoErrors(TIndexIt const & indexIt,
@@ -967,6 +966,7 @@ __goDownNoErrors(TIndexIt const & indexIt,
     }
 }
 
+//TODO make number of errors configurable
 template <typename TIndexIt, typename TGoDownTag, typename TNeedleIt, typename TLambda, typename TLambda2>
 inline void
 __goDownErrors(TIndexIt const & indexIt,
@@ -1022,6 +1022,20 @@ __searchAdaptive(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
     TIndexIt root(lH.gH.dbIndex);
     TIndexIt indexIt = root;
 
+    std::function<bool(TIndexIt const &, TIndexIt const &)> continRunnable;
+
+    /* It is important to note some option dependencies:
+     * lH.options.maxSeedDist == 0 -> lH.options.seedHalfExact == true
+     * lH.options.maxSeedDist == 0 -> TGlobalHolder::indexIsBiFM == false
+     * TGlobalHolder::indexIsBiFM  -> lH.options.seedHalfExact == true
+     * [these are enforced in options.hpp and save us some comparisons here
+     */
+    SEQAN_ASSERT((lH.options.maxSeedDist != 0) || lH.options.seedHalfExact);
+    SEQAN_ASSERT((lH.options.maxSeedDist != 0) || TGlobalHolder::indexIsBiFM);
+    SEQAN_ASSERT((!TGlobalHolder::indexIsBiFM) || lH.options.seedHalfExact);
+
+    size_t const goExactLength = lH.options.seedHalfExact ? (seedLength / 2) : 0;
+
     for (size_t i = lH.indexBeginQry; i < lH.indexEndQry; ++i)
     {
         if (length(lH.gH.redQrySeqs[i]) < seedLength)
@@ -1029,26 +1043,34 @@ __searchAdaptive(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
 
         size_t desiredOccs      = 0;
 
-        auto continRunnable = [&seedLength, &desiredOccs] (auto const & prevIndexIt, auto const & indexIt)
+        if (lH.options.adaptiveSeeding)
         {
-//             // NON-ADAPTIVE
-//             return (repLength(indexIt) <= seedLength);
-            // ADAPTIVE SEEDING:
+            continRunnable = [&seedLength, &desiredOccs] (auto const & prevIndexIt, auto const & indexIt)
+            {
+                // ADAPTIVE SEEDING:
 
-            // always continue if minimum seed length not reached
-            if (repLength(indexIt) <= seedLength)
+                // always continue if minimum seed length not reached
+                if (repLength(indexIt) <= seedLength)
+                    return true;
+
+                // always continue if it means not loosing hits
+                if (countOccurrences(indexIt) == countOccurrences(prevIndexIt))
+                    return true;
+
+                // do vodoo heuristics to see if this hit is to frequent
+                if (countOccurrences(indexIt) < desiredOccs)
+                    return false;
+
                 return true;
-
-            // always continue if it means not loosing hits
-            if (countOccurrences(indexIt) == countOccurrences(prevIndexIt))
-                return true;
-
-            // do vodoo heuristics to see if this hit is to frequent
-            if (countOccurrences(indexIt) < desiredOccs)
-                return false;
-
-            return true;
-        };
+            };
+        } else
+        {
+            continRunnable = [&seedLength] (auto const &, auto const & indexIt)
+            {
+                // NON-ADAPTIVE
+                return (repLength(indexIt) <= seedLength);
+            };
+        }
 
         /* FORWARD SEARCH */
         for (size_t seedBegin = 0; /* below */; seedBegin += lH.options.seedOffset)
@@ -1064,20 +1086,23 @@ __searchAdaptive(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
 
             indexIt = root;
 
-            desiredOccs = length(lH.matches) >= lH.options.maxMatches
-                           ? minResults
-                           : (lH.options.maxMatches - length(lH.matches)) * seedHeurFactor /
-                             std::max((needlesSum - needlesPos - seedBegin) / lH.options.seedOffset, 1ul);
+            if (lH.options.adaptiveSeeding)
+            {
+                desiredOccs = length(lH.matches) >= lH.options.maxMatches
+                            ? minResults
+                            : (lH.options.maxMatches - length(lH.matches)) * seedHeurFactor /
+                                std::max((needlesSum - needlesPos - seedBegin) / lH.options.seedOffset, 1ul);
 
-            if (desiredOccs == 0)
-                desiredOccs = minResults;
+                if (desiredOccs == 0)
+                    desiredOccs = minResults;
+            }
 
-            // go down seedOffset number of characters without errors
-            for (size_t k = 0; k < seedLength / 2; ++k)
+            // go down some characters without errors if bidirectional or halfExact
+            for (size_t k = 0; k < goExactLength; ++k)
                 if (!goDown(indexIt, lH.gH.redQrySeqs[i][seedBegin + k]))
                     break;
             // if unsuccessful, move to next seed
-            if (repLength(indexIt) != seedLength / 2)
+            if (repLength(indexIt) != goExactLength)
                 continue;
 
             auto reportRunnable = [&seedLength, &lH, &i, &seedBegin] (auto const & indexIt, bool const hasOneError)
@@ -1091,12 +1116,20 @@ __searchAdaptive(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
                 }
             };
 
-            __goDownErrors(indexIt,
-                           Fwd(),
-                           begin(lH.gH.redQrySeqs[i], Standard()) + seedBegin + seedLength / 2,
-                           end(lH.gH.redQrySeqs[i], Standard()),
-                           continRunnable,
-                           reportRunnable);
+            if (lH.options.maxSeedDist)
+                __goDownErrors(indexIt,
+                               Fwd(),
+                               begin(lH.gH.redQrySeqs[i], Standard()) + seedBegin + goExactLength,
+                               end(lH.gH.redQrySeqs[i], Standard()),
+                               continRunnable,
+                               reportRunnable);
+            else
+                __goDownNoErrors(indexIt,
+                                 Fwd(),
+                                 begin(lH.gH.redQrySeqs[i], Standard()) + seedBegin + goExactLength,
+                                 end(lH.gH.redQrySeqs[i], Standard()),
+                                 continRunnable,
+                                 reportRunnable);
         }
 
         /* REVERSE SEARCH on BIDIRECTIONAL INDEXES */
@@ -1118,20 +1151,23 @@ __searchAdaptive(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
 
                 indexIt = root;
 
-                desiredOccs = length(lH.matches) >= lH.options.maxMatches
-                               ? minResults
-                               : (lH.options.maxMatches - length(lH.matches)) * seedHeurFactor /
-                                 std::max((needlesSum - needlesPos - seedBegin) / lH.options.seedOffset, 1ul);
+                if (lH.options.adaptiveSeeding)
+                {
+                    desiredOccs = length(lH.matches) >= lH.options.maxMatches
+                                ? minResults
+                                : (lH.options.maxMatches - length(lH.matches)) * seedHeurFactor /
+                                    std::max((needlesSum - needlesPos - seedBegin) / lH.options.seedOffset, 1ul);
 
-                if (desiredOccs == 0)
-                    desiredOccs = minResults;
+                    if (desiredOccs == 0)
+                        desiredOccs = minResults;
+                }
 
                 // go down seedOffset number of characters without errors
-                for (size_t k = 0; k < seedLength / 2; ++k)
+                for (size_t k = 0; k < (seedLength - goExactLength); ++k)
                     if (!goDown(indexIt, lH.gH.redQrySeqs[i][seedBegin - k], Rev())) // [rev and  - instead of fwd]
                         break;
                 // if unsuccessful, move to next seed
-                if (repLength(indexIt) != seedLength / 2)
+                if (repLength(indexIt) != (seedLength - goExactLength))
                     continue;
 
                 auto reportRunnable = [&seedLength, &lH, &i, &seedBegin] (auto const & indexIt, bool const hasOneError)
@@ -1148,7 +1184,7 @@ __searchAdaptive(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
                 // [rev and reverse needle]
                 __goDownErrors(indexIt,
                                Rev(),
-                               end(revNeedle, Standard()) - seedBegin + seedLength / 2 - 1,
+                               end(revNeedle, Standard()) - seedBegin + seedLength - goExactLength - 1,
                                end(revNeedle, Standard()),
                                continRunnable,
                                reportRunnable);
@@ -1248,10 +1284,10 @@ search(TLocalHolder & lH)
     //TODO implement adaptive seeding with 0-n mismatches
     if (lH.options.maxSeedDist == 0)
         __search<Backtracking<Exact>>(lH);
-    else if (lH.options.adaptiveSeeding)
+    else //if (lH.options.adaptiveSeeding)
         __searchAdaptive(lH, lH.options.seedLength);
-    else
-        __search<Backtracking<HammingDistance>>(lH);
+//     else
+//         __search<Backtracking<HammingDistance>>(lH);
 }
 
 // --------------------------------------------------------------------------

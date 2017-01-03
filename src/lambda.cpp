@@ -428,7 +428,7 @@ realMain(LambdaOptions                        & options,
 
             // seed
             double buf = sysTime();
-            if (!options.adaptiveSeeding)
+            if (options.doubleIndexing || (options.maxSeedDist == 0))
             {
                 res = generateSeeds(localHolder);
                 if (res)
