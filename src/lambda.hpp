@@ -1447,12 +1447,13 @@ _writeRecord(TBlastRecord & record,
 // Function computeBlastMatch()
 // --------------------------------------------------------------------------
 
-template <typename TBlastMatch,
+template <typename TBlastRecord,
           typename TLocalHolder>
 inline int
-computeBlastMatch(TBlastMatch         & bm,
+computeBlastMatch(typename TBlastRecord::TBlastMatch  & bm,
                   typename TLocalHolder::TMatch const & m,
-                  TLocalHolder        & lH)
+                  TBlastRecord                  const & record,
+                  TLocalHolder                        & lH)
 {
     using TMatch = typename TLocalHolder::TMatch;
     using TPos   = typename TMatch::TPos;
@@ -1781,7 +1782,7 @@ computeBlastMatch(TBlastMatch         & bm,
 //     const unsigned long qryLength = length(row0);
     computeBitScore(bm, context(lH.gH.outfile));
 
-    computeEValueThreadSafe(bm, context(lH.gH.outfile));
+    computeEValueThreadSafe(bm, record.qLength, context(lH.gH.outfile));
     if (bm.eValue > lH.options.eCutOff)
         return EVALUE;
 
@@ -2024,7 +2025,7 @@ iterateMatchesExtend(TLocalHolder & lH)
                 }
 
                 // do the extension and statistics
-                int lret = computeBlastMatch(bm, *it, lH);
+                int lret = computeBlastMatch(bm, *it, record, lH);
 
                 switch (lret)
                 {
@@ -2314,7 +2315,7 @@ iterateMatchesFullSimd(TLocalHolder & lH)
 
         computeBitScore(bm, context(lH.gH.outfile));
 
-        computeEValueThreadSafe(bm, context(lH.gH.outfile));
+        computeEValueThreadSafe(bm, record.qLength, context(lH.gH.outfile));
 
         if (bm.eValue > lH.options.eCutOff)
         {
@@ -2433,7 +2434,7 @@ iterateMatchesFullSerial(TLocalHolder & lH)
 
         computeBitScore(bm, context(lH.gH.outfile));
 
-        computeEValueThreadSafe(bm, context(lH.gH.outfile));
+        computeEValueThreadSafe(bm, record.qLength, context(lH.gH.outfile));
 
         if (bm.eValue > lH.options.eCutOff)
         {

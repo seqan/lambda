@@ -422,6 +422,7 @@ template <typename TBlastMatch,
           BlastTabularSpec h>
 inline double
 computeEValueThreadSafe(TBlastMatch & match,
+                        uint64_t ql,
                         BlastIOContext<TScore, p, h> & context)
 {
 #if defined(__FreeBSD__)
@@ -434,7 +435,7 @@ computeEValueThreadSafe(TBlastMatch & match,
 #endif
 
     // convert to 64bit and divide for translated sequences
-    uint64_t ql = match.qLength / (qIsTranslated(context.blastProgram) ? 3 : 1);
+    ql = ql / (qIsTranslated(context.blastProgram) ? 3 : 1);
     // length adjustment not yet computed
     if (_cachedLengthAdjustments.find(ql) == _cachedLengthAdjustments.end())
         _cachedLengthAdjustments[ql] = _lengthAdjustment(context.dbTotalLength, ql, context.scoringScheme);
