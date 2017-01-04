@@ -428,15 +428,12 @@ realMain(LambdaOptions                        & options,
 
             // seed
             double buf = sysTime();
-            if (options.doubleIndexing || (options.maxSeedDist == 0))
+            if (options.doubleIndexing)
             {
                 res = generateSeeds(localHolder);
                 if (res)
                     continue;
-            }
 
-            if (options.doubleIndexing)
-            {
                 res = generateTrieOverSeeds(localHolder);
                 if (res)
                     continue;

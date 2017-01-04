@@ -1018,6 +1018,11 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         (options.blastProgram == BlastProgram::BLASTN))
         options.seedLength = 14;
 
+    if (isSet(parser, "seed-offset"))
+        getOptionValue(options.seedOffset, parser, "seed-offset");
+    else
+        options.seedOffset = options.seedLength;
+
     if (isSet(parser, "seed-gravity"))
         getOptionValue(options.seedGravity, parser, "seed-gravity");
     else

@@ -1236,58 +1236,14 @@ __searchDoubleIndex(TLocalHolder & lH)
     myPrint(lH.options, 1, lH.statusStr);
 }
 
-template <typename BackSpec, typename TLocalHolder>
-inline void
-__searchSingleIndex(TLocalHolder & lH)
-{
-    typedef typename Iterator<decltype(lH.seeds) const, Rooted>::Type TSeedsIt;
-    typedef typename Iterator<decltype(lH.gH.dbIndex),TopDown<>>::Type TIndexIt;
-
-//     SEQAN_OMP_PRAGMA(critical(stdout))
-//     {
-//         std::cout << "ReadId: " << lH.i << std::endl;
-//         for (auto const & seed : lH.seeds)
-//             std::cout << "\"" << toCString(CharString(seed)) << "\" ";
-//         std::cout << std::endl;
-//     }
-    auto delegate = [&lH] (TIndexIt & indexIt,
-                           TSeedsIt const & seedsIt,
-                           int /*score*/)
-    {
-        auto qryOcc = position(seedsIt);
-        auto subjOccs = getOccurrences(indexIt);
-
-        lH.stats.hitsAfterSeeding += length(subjOccs);
-
-        for (unsigned j = 0; j < length(subjOccs); ++j)
-            onFind(lH, qryOcc, subjOccs[j]);
-    };
-
-    find(lH.gH.dbIndex, lH.seeds, int(lH.options.maxSeedDist), delegate,
-         Backtracking<BackSpec>());
-}
-
-template <typename BackSpec, typename TLocalHolder>
-inline void
-__search(TLocalHolder & lH)
-{
-    if (lH.options.doubleIndexing)
-        __searchDoubleIndex<BackSpec>(lH);
-    else
-        __searchSingleIndex<BackSpec>(lH);
-}
-
 template <typename TLocalHolder>
 inline void
 search(TLocalHolder & lH)
 {
-    //TODO implement adaptive seeding with 0-n mismatches
-    if (lH.options.maxSeedDist == 0)
-        __search<Backtracking<Exact>>(lH);
-    else //if (lH.options.adaptiveSeeding)
+    if (lH.options.doubleIndexing)
+        __searchDoubleIndex<Backtracking<HammingDistance>>(lH);
+    else
         __searchAdaptive(lH, lH.options.seedLength);
-//     else
-//         __search<Backtracking<HammingDistance>>(lH);
 }
 
 // --------------------------------------------------------------------------
