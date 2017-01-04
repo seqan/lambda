@@ -671,12 +671,13 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         "Grow the seed if it has too many hits (low complexity filter).",
         ArgParseArgument::BOOL));
     setDefaultValue(parser, "adaptive-seeding", "on");
-//     setAdvanced(parser, "adaptive-seeding");
+    setAdvanced(parser, "adaptive-seeding");
 
     addOption(parser, ArgParseOption("sl", "seed-length",
         "Length of the seeds (default = 14 for BLASTN).",
         ArgParseArgument::INTEGER));
     setDefaultValue(parser, "seed-length", "10");
+    setMinValue(parser, "seed-length", "3");
     setAdvanced(parser, "seed-length");
 
     addOption(parser, ArgParseOption("so", "seed-offset",
@@ -685,12 +686,21 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         ArgParseArgument::INTEGER));
     setDefaultValue(parser, "seed-offset", "10");
     setAdvanced(parser, "seed-offset");
+    setMinValue(parser, "seed-offset", "1");
 
     addOption(parser, ArgParseOption("sd", "seed-delta",
         "maximum seed distance.",
         ArgParseArgument::INTEGER));
     setDefaultValue(parser, "seed-delta", "1");
     setAdvanced(parser, "seed-delta");
+    setMinValue(parser, "seed-delta", "0");
+    setMaxValue(parser, "seed-delta", "1");
+
+    addOption(parser, ArgParseOption("sh", "seed-half-exact",
+        "Allow errors only in second half of seed.",
+        ArgParseArgument::BOOL));
+    setDefaultValue(parser, "seed-half-exact", "off");
+    setAdvanced(parser, "seed-half-exact");
 
     addOption(parser, ArgParseOption("sg", "seed-gravity",
         "Seeds closer than this are merged into region (if unset = "
@@ -741,12 +751,6 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         ArgParseArgument::BOOL));
     setDefaultValue(parser, "merge-putative-siblings", "on");
     setAdvanced(parser, "merge-putative-siblings");
-
-    addOption(parser, ArgParseOption("sh", "seed-half-exact",
-        "Allow errors only in second half of seed.",
-        ArgParseArgument::BOOL));
-    setDefaultValue(parser, "seed-half-exact", "off");
-    setAdvanced(parser, "seed-half-exact");
 
 //     addOption(parser, ArgParseOption("se",
 //                                             "seedminevalue",
