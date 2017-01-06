@@ -365,7 +365,7 @@ sharedSetup(ArgumentParser & parser)
     std::string versionString = SEQAN_APP_VERSION;
     setVersion(parser, versionString);
     setDate(parser, __DATE__);
-    setShortCopyright(parser, "2013-2017 Hannes Hauswedell, released under the GNU GPL v3 (or later); "
+    setShortCopyright(parser, "2013-2017 Hannes Hauswedell, released under the GNU AGPL v3 (or later); "
                               "2016-2017 Knut Reinert and Freie Universität Berlin, released under the 3-clause-BSDL");
 
     setCitation(parser, "Hauswedell et al (2014); doi: 10.1093/bioinformatics/btu439");
