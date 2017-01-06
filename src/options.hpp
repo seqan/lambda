@@ -321,13 +321,13 @@ sharedSetup(ArgumentParser & parser)
                                 std::string(SEQAN_REVISION) + ")";
     setVersion(parser, versionString);
     setDate(parser, __DATE__);
-    setShortCopyright(parser, "2013-2016 Hannes Hauswedell, released under the GNU GPL v3 (or later); "
-                              "2016 Knut Reinert and Freie Universität Berlin, released under the 3-clause-BSDL");
+    setShortCopyright(parser, "2013-2017 Hannes Hauswedell, released under the GNU GPL v3 (or later); "
+                              "2016-2017 Knut Reinert and Freie Universität Berlin, released under the 3-clause-BSDL");
 
     setCitation(parser, "Hauswedell et al (2014); doi: 10.1093/bioinformatics/btu439");
 
     setLongCopyright(parser,
-        " Copyright (c) 2013-2016, Hannes Hauswedell\n"
+        " Copyright (c) 2013-2017, Hannes Hauswedell\n"
         " All rights reserved.\n"
         "\n"
         " Lambda is free software: you can redistribute it and/or modify\n"
@@ -343,7 +343,7 @@ sharedSetup(ArgumentParser & parser)
         " You should have received a copy of the GNU General Public License\n"
         " along with Lambda.  If not, see <http://www.gnu.org/licenses/>.\n"
         "\n"
-        " Copyright (c) 2016 Knut Reinert and Freie Universität Berlin\n"
+        " Copyright (c) 2016-2017 Knut Reinert and Freie Universität Berlin\n"
         " All rights reserved.\n"
         "\n"
         " Redistribution and use in source and binary forms, with or without\n"
