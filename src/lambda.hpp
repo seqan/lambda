@@ -944,26 +944,24 @@ onFindVariable(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
 // Function search()
 // --------------------------------------------------------------------------
 
-//TODO make for loop here instead of recursion
 template <typename TIndexIt, typename TGoDownTag, typename TNeedleIt, typename TLambda, typename TLambda2>
 inline void
-__goDownNoErrors(TIndexIt const & indexIt,
+__goDownNoErrors(TIndexIt & indexIt,
                  TGoDownTag const &,
-                 TNeedleIt const & needleIt,
+                 TNeedleIt needleIt,
                  TNeedleIt const & needleItEnd,
                  TLambda & continRunnable,
                  TLambda2 & reportRunnable)
 {
-    TIndexIt nextIndexIt(indexIt);
-    if ((needleIt != needleItEnd) &&
-        goDown(nextIndexIt, *needleIt, TGoDownTag()) &&
-        continRunnable(indexIt, nextIndexIt))
-    {
-        __goDownNoErrors(nextIndexIt, TGoDownTag(), needleIt + 1, needleItEnd, continRunnable, reportRunnable);
-    } else
-    {
-        reportRunnable(indexIt, true);
-    }
+    TIndexIt prevIndexIt;
+
+    do
+        prevIndexIt = indexIt;
+    while ((needleIt != needleItEnd) &&
+           goDown(indexIt, *(needleIt++), TGoDownTag()) &&
+           continRunnable(prevIndexIt, indexIt));
+
+    reportRunnable(prevIndexIt, true);
 }
 
 //TODO make number of errors configurable
@@ -1004,8 +1002,7 @@ __goDownErrors(TIndexIt const & indexIt,
 template <typename TGlobalHolder,
           typename TScoreExtension>
 inline void
-__searchAdaptive(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
-                 uint64_t const seedLength)
+_searchSingleIndex(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH)
 {
     typedef typename Iterator<typename TGlobalHolder::TDbIndex, TopDown<> >::Type TIndexIt;
 
@@ -1034,23 +1031,23 @@ __searchAdaptive(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
     SEQAN_ASSERT((lH.options.maxSeedDist != 0) || TGlobalHolder::indexIsBiFM);
     SEQAN_ASSERT((!TGlobalHolder::indexIsBiFM) || lH.options.seedHalfExact);
 
-    size_t const goExactLength = lH.options.seedHalfExact ? (seedLength / 2) : 0;
+    size_t const goExactLength = lH.options.seedHalfExact ? (lH.options.seedLength / 2) : 0;
 
     for (size_t i = lH.indexBeginQry; i < lH.indexEndQry; ++i)
     {
-        if (length(lH.gH.redQrySeqs[i]) < seedLength)
+        if (length(lH.gH.redQrySeqs[i]) < lH.options.seedLength)
             continue;
 
         size_t desiredOccs      = 0;
 
         if (lH.options.adaptiveSeeding)
         {
-            continRunnable = [&seedLength, &desiredOccs] (auto const & prevIndexIt, auto const & indexIt)
+            continRunnable = [&lH, &desiredOccs] (auto const & prevIndexIt, auto const & indexIt)
             {
                 // ADAPTIVE SEEDING:
 
                 // always continue if minimum seed length not reached
-                if (repLength(indexIt) <= seedLength)
+                if (repLength(indexIt) <= lH.options.seedLength)
                     return true;
 
                 // always continue if it means not loosing hits
@@ -1065,10 +1062,10 @@ __searchAdaptive(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
             };
         } else
         {
-            continRunnable = [&seedLength] (auto const &, auto const & indexIt)
+            continRunnable = [&lH] (auto const &, auto const & indexIt)
             {
                 // NON-ADAPTIVE
-                return (repLength(indexIt) <= seedLength);
+                return (repLength(indexIt) <= lH.options.seedLength);
             };
         }
 
@@ -1077,11 +1074,11 @@ __searchAdaptive(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
         {
             // skip proteine 'X' or Dna 'N'
             while ((lH.gH.qrySeqs[i][seedBegin] == unknownValue<TransAlph<TGlobalHolder::blastProgram>>()) &&
-                   (seedBegin <= length(lH.gH.redQrySeqs[i]) - seedLength))
+                   (seedBegin <= length(lH.gH.redQrySeqs[i]) - lH.options.seedLength))
                 ++seedBegin;
 
             // termination criterium
-            if (seedBegin > length(lH.gH.redQrySeqs[i]) - seedLength)
+            if (seedBegin > length(lH.gH.redQrySeqs[i]) - lH.options.seedLength)
                 break;
 
             indexIt = root;
@@ -1105,9 +1102,9 @@ __searchAdaptive(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
             if (repLength(indexIt) != goExactLength)
                 continue;
 
-            auto reportRunnable = [&seedLength, &lH, &i, &seedBegin] (auto const & indexIt, bool const hasOneError)
+            auto reportRunnable = [&lH, &i, &seedBegin] (auto const & indexIt, bool const)
             {
-                if (repLength(indexIt) >= seedLength)
+                if (repLength(indexIt) >= lH.options.seedLength)
                 {
                     appendValue(lH.stats.seedLengths, repLength(indexIt));
                     lH.stats.hitsAfterSeeding += countOccurrences(indexIt);
@@ -1137,7 +1134,7 @@ __searchAdaptive(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
         {
             using   TRevNeedle      = ModifiedString<decltype(lH.gH.redQrySeqs[0]), ModReverse>;
             TRevNeedle revNeedle{lH.gH.redQrySeqs[i]};
-            for (size_t seedBegin = seedLength - 1; /* below */; seedBegin += lH.options.seedOffset)
+            for (size_t seedBegin = lH.options.seedLength - 1; /* below */; seedBegin += lH.options.seedOffset)
             {
 
                 // skip proteine 'X' or Dna 'N'
@@ -1163,16 +1160,16 @@ __searchAdaptive(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
                 }
 
                 // go down seedOffset number of characters without errors
-                for (size_t k = 0; k < (seedLength - goExactLength); ++k)
+                for (size_t k = 0; k < (lH.options.seedLength - goExactLength); ++k)
                     if (!goDown(indexIt, lH.gH.redQrySeqs[i][seedBegin - k], Rev())) // [rev and  - instead of fwd]
                         break;
                 // if unsuccessful, move to next seed
-                if (repLength(indexIt) != (seedLength - goExactLength))
+                if (repLength(indexIt) != (lH.options.seedLength - goExactLength))
                     continue;
 
-                auto reportRunnable = [&seedLength, &lH, &i, &seedBegin] (auto const & indexIt, bool const hasOneError)
+                auto reportRunnable = [&lH, &i, &seedBegin] (auto const & indexIt, bool const hasOneError)
                 {
-                    if ((repLength(indexIt) >= seedLength) && (hasOneError))        // [must have one error for rev]
+                    if ((repLength(indexIt) >= lH.options.seedLength) && (hasOneError))        // [must have one error for rev]
                     {
                         appendValue(lH.stats.seedLengths, repLength(indexIt));
                         lH.stats.hitsAfterSeeding += countOccurrences(indexIt);
@@ -1184,7 +1181,7 @@ __searchAdaptive(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
                 // [rev and reverse needle]
                 __goDownErrors(indexIt,
                                Rev(),
-                               end(revNeedle, Standard()) - seedBegin + seedLength - goExactLength - 1,
+                               end(revNeedle, Standard()) - seedBegin + lH.options.seedLength - goExactLength - 1,
                                end(revNeedle, Standard()),
                                continRunnable,
                                reportRunnable);
@@ -1196,9 +1193,9 @@ __searchAdaptive(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
     }
 }
 
-template <typename BackSpec, typename TLocalHolder>
+template <typename TLocalHolder>
 inline void
-__searchDoubleIndex(TLocalHolder & lH)
+_searchDoubleIndex(TLocalHolder & lH)
 {
     appendToStatus(lH.statusStr, lH.options, 1, "Seeding...");
     if (lH.options.isTerm)
@@ -1208,9 +1205,7 @@ __searchDoubleIndex(TLocalHolder & lH)
 
     using LambdaFinder = Finder_<decltype(lH.gH.dbIndex),
                                  decltype(lH.seedIndex),
-                                 typename std::conditional<std::is_same<BackSpec, Backtracking<Exact>>::value,
-                                                           Backtracking<HammingDistance>,
-                                                           BackSpec>::type >;
+                                 Backtracking<HammingDistance> >;
 
     LambdaFinder finder;
 
@@ -1241,9 +1236,9 @@ inline void
 search(TLocalHolder & lH)
 {
     if (lH.options.doubleIndexing)
-        __searchDoubleIndex<Backtracking<HammingDistance>>(lH);
+        _searchDoubleIndex(lH);
     else
-        __searchAdaptive(lH, lH.options.seedLength);
+        _searchSingleIndex(lH);
 }
 
 // --------------------------------------------------------------------------
