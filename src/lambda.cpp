@@ -1,8 +1,8 @@
 // ==========================================================================
 //                                  lambda
 // ==========================================================================
-// Copyright (c) 2013-2016, Hannes Hauswedell <h2 @ fsfe.org>
-// Copyright (c) 2016, Knut Reinert and Freie Universität Berlin
+// Copyright (c) 2013-2017, Hannes Hauswedell <h2 @ fsfe.org>
+// Copyright (c) 2016-2017, Knut Reinert and Freie Universität Berlin
 // All rights reserved.
 //
 // This file is part of Lambda.
