@@ -222,13 +222,12 @@ _myReadRecordsImpl(TCDStringSet<String<char>> & meta,
 template <typename TSpec1,
           typename TSpec2,
           typename TFile,
-          typename TRunnable = std::function<void(typename Value<TCDStringSet<String<char, TSpec1>>>::Type const &,
-                                                  uint64_t const)> >
+          typename TRunnable>
 inline int
 myReadRecords(TCDStringSet<String<char, TSpec1>> & ids,
               TCDStringSet<String<Dna5, TSpec2>> & seqs,
               TFile                              & file,
-              TRunnable                         && runnable = [] (auto const &, uint64_t const) {})
+              TRunnable                         && runnable)
 {
     TCDStringSet<String<Iupac>> tmpSeqs; // all IUPAC nucleic acid characters are valid input
     try
@@ -252,13 +251,12 @@ myReadRecords(TCDStringSet<String<char, TSpec1>> & ids,
 template <typename TSpec1,
           typename TSpec2,
           typename TFile,
-          typename TRunnable = std::function<void(typename Value<TCDStringSet<String<char, TSpec1>>>::Type const &,
-                                                  uint64_t const)> >
+          typename TRunnable>
 inline int
 myReadRecords(TCDStringSet<String<char, TSpec1>>       & ids,
               TCDStringSet<String<AminoAcid, TSpec2>>  & seqs,
               TFile                                    & file,
-              TRunnable                               && runnable = [] (auto const &, uint64_t const) {})
+              TRunnable                               && runnable)
 {
     try
     {
@@ -280,6 +278,18 @@ myReadRecords(TCDStringSet<String<char, TSpec1>>       & ids,
     }
 
     return 0;
+}
+
+template <typename TSpec1,
+          typename TCharSpec,
+          typename TSpec2,
+          typename TFile>
+inline int
+myReadRecords(TCDStringSet<String<char, TSpec1>>       & ids,
+              TCDStringSet<String<TCharSpec, TSpec2>>  & seqs,
+              TFile                                    & file)
+{
+    return  myReadRecords(ids, seqs, file, [] (auto const &, uint64_t const) {});
 }
 
 // ----------------------------------------------------------------------------
