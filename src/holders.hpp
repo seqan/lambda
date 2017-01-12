@@ -77,6 +77,11 @@ struct StatsHolder
     double timeSort;
     double timeExtend;
 
+// extension counters
+    uint64_t numQueryWithExt;
+    uint64_t numExtScore;
+    uint64_t numExtAli;
+
     StatsHolder()
     {
         clear();
@@ -106,6 +111,10 @@ struct StatsHolder
         timeSearch = 0;
         timeSort = 0;
         timeExtend = 0;
+
+        numQueryWithExt = 0;
+        numExtScore = 0;
+        numExtAli = 0;
     }
 
     StatsHolder plus(StatsHolder const & rhs)
@@ -133,6 +142,9 @@ struct StatsHolder
         timeSort     += rhs.timeSort;
         timeExtend   += rhs.timeExtend;
 
+        numQueryWithExt += rhs.numQueryWithExt;
+        numExtScore += rhs.numExtScore;
+        numExtAli += rhs.numExtAli;
         return *this;
     }
 
@@ -225,6 +237,12 @@ void printStats(StatsHolder const & stats, LambdaOptions const & options)
                     << " stddev:      " << seedLengthStdDev << "\n"
                     << " max:         " << seedLengthMax << "\n\n";
         }
+    #ifdef SEQAN_SIMD_ENABLED
+        std::cout << "Number of Extensions stats:\n"
+                  << " # queries with Extensions:    " << stats.numQueryWithExt << "\n"
+                  << " avg # extensions without Ali: " << stats.numExtScore / stats.numQueryWithExt << "\n"
+                  << " avg # extensions with    Ali: " << stats.numExtAli / stats.numQueryWithExt << "\n\n";
+    #endif
     }
 
     if (options.verbosity >= 1)

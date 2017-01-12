@@ -2159,6 +2159,10 @@ iterateMatchesFullSimd(TLocalHolder & lH)
                          DPBandConfig<BandOff>,
                          TFreeEndGaps,
                          TracebackOn<TracebackConfig_<CompleteTrace, GapsLeft> > > TAlignConfig;
+    typedef AlignConfig2<LocalAlignment_<>,
+                         DPBandConfig<BandOff>,
+                         TFreeEndGaps,
+                         TracebackOff> TAlignConfigNoTrace;
 
     typedef int TScoreValue; //TODO don't hardcode
     typedef typename Size<typename TLocalHolder::TAlignRow0>::Type      TSize;
@@ -2166,9 +2170,12 @@ iterateMatchesFullSimd(TLocalHolder & lH)
 
     typedef typename SimdVector<int16_t>::Type                          TSimdAlign;
 
-    unsigned const numAlignments = length(lH.matches);
+    unsigned numAlignments = length(lH.matches);
     unsigned const sizeBatch = LENGTH<TSimdAlign>::VALUE;
-    unsigned const fullSize = sizeBatch * ((numAlignments + sizeBatch - 1) / sizeBatch);
+    unsigned fullSize = sizeBatch * ((numAlignments + sizeBatch - 1) / sizeBatch);
+
+    ++lH.stats.numQueryWithExt;
+    lH.stats.numExtScore += numAlignments;
 
     String<TScoreValue> results;
     resize(results, numAlignments);
@@ -2190,14 +2197,15 @@ iterateMatchesFullSimd(TLocalHolder & lH)
                         ? lH.gH.untransQrySeqLengths[trueQryId]
                         : length(lH.gH.qrySeqs[lH.matches[0].qryId]));
 
-    size_t maxDist = 0;
-    switch (lH.options.band)
-    {
-        case -3: maxDist = ceil(std::log2(record.qLength)); break;
-        case -2: maxDist = floor(sqrt(record.qLength)); break;
-        case -1: break;
-        default: maxDist = lH.options.band; break;
-    }
+// BAND NOT YET SUPPORTED BY SIMD
+//     size_t maxDist = 0;
+//     switch (lH.options.band)
+//     {
+//         case -3: maxDist = ceil(std::log2(record.qLength)); break;
+//         case -2: maxDist = floor(sqrt(record.qLength)); break;
+//         case -1: break;
+//         default: maxDist = lH.options.band; break;
+//     }
 
     TAlignConfig config;//(-maxDist, maxDist);
 
@@ -2233,9 +2241,10 @@ iterateMatchesFullSimd(TLocalHolder & lH)
         }
         TPos sEnd   = std::min(sStart + length(lH.gH.qrySeqs[it->qryId]), length(lH.gH.subjSeqs[it->subjId]));
 
+        //TODO filter out duplicates here so long as we are aligning whole query
+
         assignSource(bm.alignRow0, infix(lH.gH.qrySeqs[it->qryId],   qStart, length(lH.gH.qrySeqs[it->qryId])));
         assignSource(bm.alignRow1, infix(lH.gH.subjSeqs[it->subjId], sStart, sEnd));
-
 
         appendValue(depSetH, source(bm.alignRow0));
         appendValue(depSetV, source(bm.alignRow1));
@@ -2256,17 +2265,82 @@ iterateMatchesFullSimd(TLocalHolder & lH)
         appendValue(depSetV, source(back(record.matches).alignRow1));
     }
 
-    // Run alignments in batches.
+    // Run extensions WITHOUT ALIGNMENT
+    {
+        auto matchIt = record.matches.begin();
+        StringSet<String<TTraceSegment> > trace;
+        resize(trace, sizeBatch, Exact());
+
+        for (auto pos = 0u; pos < fullSize; pos += sizeBatch)
+        {
+            auto infSetH = infixWithLength(depSetH, pos, sizeBatch);
+            auto infSetV = infixWithLength(depSetV, pos, sizeBatch);
+
+            TSimdAlign resultsBatch;
+
+            _prepareAndRunSimdAlignment(resultsBatch, trace, infSetH, infSetV, simdScoringScheme, TAlignConfigNoTrace(), typename TLocalHolder::TScoreExtension());
+
+            // copy results and finish traceback
+            // TODO(rrahn): Could be parallelized!
+            // to for_each call
+            for(auto x = pos; x < pos + sizeBatch && x < numAlignments; ++x)
+            {
+                matchIt->alignStats.alignmentScore = resultsBatch[x - pos];
+                ++matchIt;
+            }
+        }
+
+        // clear the simd vectors
+        clear(depSetH);
+        clear(depSetV);
+
+        // remove matches with poor scores
+        for (auto it = record.matches.begin(), itEnd = record.matches.end(); it != itEnd; /*below*/)
+        {
+            TBlastMatch & bm = *it;
+
+            computeEValueThreadSafe(bm, record.qLength, context(lH.gH.outfile));
+
+            if (bm.eValue > lH.options.eCutOff)
+            {
+                ++lH.stats.hitsFailedExtendEValueTest;
+                it = record.matches.erase(it);
+                continue;
+            }
+
+            appendValue(depSetH, source(bm.alignRow0));
+            appendValue(depSetV, source(bm.alignRow1));
+
+            ++it;
+        }
+
+        numAlignments = length(record.matches);
+
+        lH.stats.numExtAli += numAlignments;
+
+        if (numAlignments == 0)
+            return 0;
+
+        fullSize = sizeBatch * ((numAlignments + sizeBatch - 1) / sizeBatch);
+
+        // fill up last batch
+        for (size_t i = numAlignments; i < fullSize; ++i)
+        {
+            appendValue(depSetH, source(back(record.matches).alignRow0));
+            appendValue(depSetV, source(back(record.matches).alignRow1));
+        }
+    }
+
+    // Run extensions WITH ALIGNMENT
     auto matchIt = record.matches.begin();
+    StringSet<String<TTraceSegment> > trace;
+    resize(trace, sizeBatch, Exact());
     for (auto pos = 0u; pos < fullSize; pos += sizeBatch)
     {
         auto infSetH = infixWithLength(depSetH, pos, sizeBatch);
         auto infSetV = infixWithLength(depSetV, pos, sizeBatch);
 
         TSimdAlign resultsBatch;
-
-        StringSet<String<TTraceSegment> > trace;
-        resize(trace, sizeBatch, Exact());
 
         _prepareAndRunSimdAlignment(resultsBatch, trace, infSetH, infSetV, simdScoringScheme, config, typename TLocalHolder::TScoreExtension());
 
@@ -2275,7 +2349,6 @@ iterateMatchesFullSimd(TLocalHolder & lH)
         // to for_each call
         for(auto x = pos; x < pos + sizeBatch && x < numAlignments; ++x)
         {
-            results[x] = resultsBatch[x - pos];
             _adaptTraceSegmentsTo(matchIt->alignRow0, matchIt->alignRow1, trace[x - pos]);
             ++matchIt;
         }
@@ -2302,14 +2375,7 @@ iterateMatchesFullSimd(TLocalHolder & lH)
 
         computeBitScore(bm, context(lH.gH.outfile));
 
-        computeEValueThreadSafe(bm, record.qLength, context(lH.gH.outfile));
-
-        if (bm.eValue > lH.options.eCutOff)
-        {
-            ++lH.stats.hitsFailedExtendEValueTest;
-            it = record.matches.erase(it);
-            continue;
-        }
+        // evalue computed previously
 
         ++it;
     }
