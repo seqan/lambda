@@ -2133,6 +2133,110 @@ iterateMatchesExtend(TLocalHolder & lH)
 }
 
 #ifdef SEQAN_SIMD_ENABLED
+
+template <typename TDepSetH,
+          typename TDepSetV,
+          typename TBlastMatches>
+inline void
+_setupDepSets(TDepSetH & depSetH, TDepSetV & depSetV, TBlastMatches const & blastMatches)
+{
+    using TSimdAlign    = typename SimdVector<int16_t>::Type;
+    unsigned constexpr sizeBatch = LENGTH<TSimdAlign>::VALUE;
+    unsigned const      fullSize = sizeBatch * ((length(blastMatches) + sizeBatch - 1) / sizeBatch);
+
+    clear(depSetH);
+    clear(depSetV);
+    reserve(depSetH, fullSize);
+    reserve(depSetV, fullSize);
+
+    for (auto const & bm : blastMatches)
+    {
+        appendValue(depSetH, source(bm.alignRow0));
+        appendValue(depSetV, source(bm.alignRow1));
+    }
+
+    // fill up last batch
+    for (size_t i = length(blastMatches); i < fullSize; ++i)
+    {
+        appendValue(depSetH, source(back(blastMatches).alignRow0));
+        appendValue(depSetV, source(back(blastMatches).alignRow1));
+    }
+}
+
+template <typename TDepSetH,
+          typename TDepSetV,
+          typename TBlastMatches,
+          typename TLocalHolder,
+          bool withTrace>
+inline void
+_performAlignment(TDepSetH & depSetH,
+                  TDepSetV & depSetV,
+                  TBlastMatches & blastMatches,
+                  TLocalHolder const & lH,
+                  std::integral_constant<bool, withTrace> const &)
+{
+    using TGlobalHolder = typename TLocalHolder::TGlobalHolder;
+    using TAlignConfig  = AlignConfig2<LocalAlignment_<>,
+                                       DPBandConfig<BandOff>,
+                                       FreeEndGaps_<True, True, True, True>,
+                                       std::conditional_t<withTrace,
+                                                          TracebackOn<TracebackConfig_<CompleteTrace, GapsLeft> >,
+                                                          TracebackOff> >;
+    using TSimdAlign    = typename SimdVector<int16_t>::Type;
+    using TSimdScore    = Score<TSimdAlign, ScoreSimdWrapper<typename TGlobalHolder::TScoreScheme> >;
+    using TSize         = typename Size<typename TLocalHolder::TAlignRow0>::Type;
+    using TMatch        = typename TGlobalHolder::TMatch;
+    using TPos          = typename TMatch::TPos;
+    using TTraceSegment = TraceSegment_<TPos, TSize>;
+
+    unsigned constexpr sizeBatch = LENGTH<TSimdAlign>::VALUE;
+    unsigned const      fullSize = sizeBatch * ((length(blastMatches) + sizeBatch - 1) / sizeBatch);
+
+    // TODO possible move this block outside
+    TSimdScore simdScoringScheme(seqanScheme(context(lH.gH.outfile).scoringScheme));
+    StringSet<String<TTraceSegment> > trace;
+    resize(trace, sizeBatch, Exact());
+    // BAND NOT YET SUPPORTED BY SIMD
+//     size_t maxDist = 0;
+//     switch (lH.options.band)
+//     {
+//         case -3: maxDist = ceil(std::log2(record.qLength)); break;
+//         case -2: maxDist = floor(sqrt(record.qLength)); break;
+//         case -1: break;
+//         default: maxDist = lH.options.band; break;
+//     }
+   TAlignConfig config;//(-maxDist, maxDist);
+
+    auto matchIt = blastMatches.begin();
+    for (auto pos = 0u; pos < fullSize; pos += sizeBatch)
+    {
+        auto infSetH = infixWithLength(depSetH, pos, sizeBatch);
+        auto infSetV = infixWithLength(depSetV, pos, sizeBatch);
+
+        TSimdAlign resultsBatch;
+
+        _prepareAndRunSimdAlignment(resultsBatch,
+                                    trace,
+                                    infSetH,
+                                    infSetV,
+                                    simdScoringScheme,
+                                    config,
+                                    typename TLocalHolder::TScoreExtension());
+
+        for(auto x = pos; x < pos + sizeBatch && x < length(blastMatches); ++x)
+        {
+            //TODO if constexpr
+            if (withTrace)
+                _adaptTraceSegmentsTo(matchIt->alignRow0, matchIt->alignRow1, trace[x - pos]);
+            else
+                matchIt->alignStats.alignmentScore = resultsBatch[x - pos];
+
+            ++matchIt;
+        }
+    }
+
+}
+
 template <typename TLocalHolder>
 inline int
 iterateMatchesFullSimd(TLocalHolder & lH)
@@ -2153,209 +2257,131 @@ iterateMatchesFullSimd(TLocalHolder & lH)
                                       std::vector<std::string>,
                                       typename Value<typename TGlobalHolder::TTaxNames>::Type,
                                       uint32_t>;
-
-    typedef FreeEndGaps_<True, True, True, True> TFreeEndGaps;
-    typedef AlignConfig2<LocalAlignment_<>,
-                         DPBandConfig<BandOff>,
-                         TFreeEndGaps,
-                         TracebackOn<TracebackConfig_<CompleteTrace, GapsLeft> > > TAlignConfig;
-    typedef AlignConfig2<LocalAlignment_<>,
-                         DPBandConfig<BandOff>,
-                         TFreeEndGaps,
-                         TracebackOff> TAlignConfigNoTrace;
-
-    typedef int TScoreValue; //TODO don't hardcode
-    typedef typename Size<typename TLocalHolder::TAlignRow0>::Type      TSize;
-    typedef TraceSegment_<TPos, TSize>                                  TTraceSegment;
-
-    typedef typename SimdVector<int16_t>::Type                          TSimdAlign;
-
-    unsigned numAlignments = length(lH.matches);
-    unsigned const sizeBatch = LENGTH<TSimdAlign>::VALUE;
-    unsigned fullSize = sizeBatch * ((numAlignments + sizeBatch - 1) / sizeBatch);
-
+    // statistics
     ++lH.stats.numQueryWithExt;
-    lH.stats.numExtScore += numAlignments;
-
-    String<TScoreValue> results;
-    resize(results, numAlignments);
-
-    // Create a SIMD scoring scheme.
-    Score<TSimdAlign, ScoreSimdWrapper<typename TGlobalHolder::TScoreScheme> > simdScoringScheme(seqanScheme(context(lH.gH.outfile).scoringScheme));
+    lH.stats.numExtScore += length(lH.matches);
 
     // Prepare string sets with sequences.
     StringSet<typename Source<typename TLocalHolder::TAlignRow0>::Type, Dependent<> > depSetH;
     StringSet<typename Source<typename TLocalHolder::TAlignRow1>::Type, Dependent<> > depSetV;
-    reserve(depSetH, fullSize);
-    reserve(depSetV, fullSize);
 
-
-    auto const trueQryId = lH.matches[0].qryId / qNumFrames(TGlobalHolder::blastProgram);
-
-    TBlastRecord record(lH.gH.qryIds[trueQryId]);
-    record.qLength = (qIsTranslated(TGlobalHolder::blastProgram)
-                        ? lH.gH.untransQrySeqLengths[trueQryId]
-                        : length(lH.gH.qrySeqs[lH.matches[0].qryId]));
-
-// BAND NOT YET SUPPORTED BY SIMD
-//     size_t maxDist = 0;
-//     switch (lH.options.band)
-//     {
-//         case -3: maxDist = ceil(std::log2(record.qLength)); break;
-//         case -2: maxDist = floor(sqrt(record.qLength)); break;
-//         case -1: break;
-//         default: maxDist = lH.options.band; break;
-//     }
-
-    TAlignConfig config;//(-maxDist, maxDist);
+    // container of blastMatches (possibly from multiple queries
+    decltype(TBlastRecord().matches) blastMatches;
 
     // create blast matches
     for (auto it = lH.matches.begin(), itEnd = lH.matches.end(); it != itEnd; ++it)
     {
+        auto const trueQryId  = it->qryId  / qNumFrames(TGlobalHolder::blastProgram);
         auto const trueSubjId = it->subjId / sNumFrames(TGlobalHolder::blastProgram);
 
         // create blastmatch in list without copy or move
-        record.matches.emplace_back(lH.gH.qryIds [trueQryId],
-                                    lH.gH.subjIds[trueSubjId]);
+        blastMatches.emplace_back(lH.gH.qryIds[trueQryId], lH.gH.subjIds[trueSubjId]);
 
-        auto & bm = back(record.matches);
+        auto & bm = back(blastMatches);
         auto &  m = *it;
 
         bm.sLength = sIsTranslated(TGlobalHolder::blastProgram)
                         ? lH.gH.untransSubjSeqLengths[trueSubjId]
                         : length(lH.gH.subjSeqs[it->subjId]);
 
-        long lenDiff = (long)it->subjStart - (long)it->qryStart;
+        int64_t startMod = (long)it->subjStart - (long)it->qryStart;
 
-        TPos sStart;
-        TPos qStart;
-        if (lenDiff >= 0)
+        TPos band = 5; //TODO softcode
+        bm.qEnd = length(lH.gH.qrySeqs[it->qryId]);
+        if (startMod >= 0)
         {
-            sStart = lenDiff;
-            qStart = 0;
+            bm.sStart = startMod;
+            bm.qStart = 0;
         }
         else
         {
-            sStart = 0;
-            qStart = -lenDiff;
+            bm.sStart = 0;
+            bm.qStart = -startMod;
         }
-        TPos sEnd   = std::min(sStart + length(lH.gH.qrySeqs[it->qryId]), length(lH.gH.subjSeqs[it->subjId]));
+        bm.sEnd = _min(bm.sStart + bm.qEnd - bm.qStart + band, length(lH.gH.subjSeqs[it->subjId]));
 
-        //TODO filter out duplicates here so long as we are aligning whole query
+        if (bm.sStart >= band)
+            bm.sStart -= band;
+        else
+            bm.sStart = 0;
 
-        assignSource(bm.alignRow0, infix(lH.gH.qrySeqs[it->qryId],   qStart, length(lH.gH.qrySeqs[it->qryId])));
-        assignSource(bm.alignRow1, infix(lH.gH.subjSeqs[it->subjId], sStart, sEnd));
-
-        appendValue(depSetH, source(bm.alignRow0));
-        appendValue(depSetV, source(bm.alignRow1));
+        assignSource(bm.alignRow0, infix(lH.gH.qrySeqs[it->qryId],   bm.qStart, bm.qEnd));
+        assignSource(bm.alignRow1, infix(lH.gH.subjSeqs[it->subjId], bm.sStart, bm.sEnd));
 
         _setFrames(bm, *it, lH);
 
-        bm._n_qId = it->qryId / qNumFrames(TGlobalHolder::blastProgram);
-        bm._n_sId = it->subjId / sNumFrames(TGlobalHolder::blastProgram);
+        bm._n_qId = trueQryId;
+        bm._n_sId = trueSubjId;
 
         if (lH.options.hasSTaxIds)
-            bm.sTaxIds = lH.gH.sTaxIds[it->subjId / sNumFrames(TGlobalHolder::blastProgram)];
+            bm.sTaxIds = lH.gH.sTaxIds[trueSubjId];
     }
 
-    // fill up last batch
-    for (size_t i = numAlignments; i < fullSize; ++i)
-    {
-        appendValue(depSetH, source(back(record.matches).alignRow0));
-        appendValue(depSetV, source(back(record.matches).alignRow1));
-    }
+//     // filter out duplicates
+//     blastMatches.sort([] (auto const & l, auto const & r)
+//     {
+//         return std::tie(l._n_qId, l._n_sId, l.sStart, l.sEnd, l.qStart, l.qEnd, l.qFrameShift, l.sFrameShift) <
+//                std::tie(r._n_qId, r._n_sId, r.sStart, r.sEnd, r.qStart, r.qEnd, r.qFrameShift, r.sFrameShift);
+//     });
+//     blastMatches.unique([] (auto const & l, auto const & r)
+//     {
+//         return std::tie(l._n_qId, l._n_sId, l.sStart, l.sEnd, l.qStart, l.qEnd, l.qFrameShift, l.sFrameShift) ==
+//                std::tie(r._n_qId, r._n_sId, r.sStart, r.sEnd, r.qStart, r.qEnd, r.qFrameShift, r.sFrameShift);
+//     });
+//
+//     // sort by lengths to minimize padding in SIMD [TODO this changes the results slightly  :o ]
+//     blastMatches.sort([] (auto const & l, auto const & r)
+//     {
+//         return std::make_tuple(length(source(l.alignRow0)), length(source(l.alignRow1))) <
+//                std::make_tuple(length(source(r.alignRow0)), length(source(r.alignRow1)));
+//     });
+
+    // fill batches
+    _setupDepSets(depSetH, depSetV, blastMatches);
 
     // Run extensions WITHOUT ALIGNMENT
+    _performAlignment(depSetH, depSetV, blastMatches, lH, std::false_type());
+
+    // copmute evalues and filter based on evalue
+    for (auto it = blastMatches.begin(), itEnd = blastMatches.end(); it != itEnd; /*below*/)
     {
-        auto matchIt = record.matches.begin();
-        StringSet<String<TTraceSegment> > trace;
-        resize(trace, sizeBatch, Exact());
+        TBlastMatch & bm = *it;
 
-        for (auto pos = 0u; pos < fullSize; pos += sizeBatch)
+        computeEValueThreadSafe(bm,
+                                qIsTranslated(TGlobalHolder::blastProgram)
+                                    ? lH.gH.untransQrySeqLengths[it->_n_qId]
+                                    : length(lH.gH.qrySeqs[it->_n_qId]),
+                                context(lH.gH.outfile));
+
+        if (bm.eValue > lH.options.eCutOff)
         {
-            auto infSetH = infixWithLength(depSetH, pos, sizeBatch);
-            auto infSetV = infixWithLength(depSetV, pos, sizeBatch);
-
-            TSimdAlign resultsBatch;
-
-            _prepareAndRunSimdAlignment(resultsBatch, trace, infSetH, infSetV, simdScoringScheme, TAlignConfigNoTrace(), typename TLocalHolder::TScoreExtension());
-
-            // copy results and finish traceback
-            // TODO(rrahn): Could be parallelized!
-            // to for_each call
-            for(auto x = pos; x < pos + sizeBatch && x < numAlignments; ++x)
-            {
-                matchIt->alignStats.alignmentScore = resultsBatch[x - pos];
-                ++matchIt;
-            }
+            ++lH.stats.hitsFailedExtendEValueTest;
+            it = blastMatches.erase(it);
+            continue;
         }
 
-        // clear the simd vectors
-        clear(depSetH);
-        clear(depSetV);
-
-        // remove matches with poor scores
-        for (auto it = record.matches.begin(), itEnd = record.matches.end(); it != itEnd; /*below*/)
-        {
-            TBlastMatch & bm = *it;
-
-            computeEValueThreadSafe(bm, record.qLength, context(lH.gH.outfile));
-
-            if (bm.eValue > lH.options.eCutOff)
-            {
-                ++lH.stats.hitsFailedExtendEValueTest;
-                it = record.matches.erase(it);
-                continue;
-            }
-
-            appendValue(depSetH, source(bm.alignRow0));
-            appendValue(depSetV, source(bm.alignRow1));
-
-            ++it;
-        }
-
-        numAlignments = length(record.matches);
-
-        lH.stats.numExtAli += numAlignments;
-
-        if (numAlignments == 0)
-            return 0;
-
-        fullSize = sizeBatch * ((numAlignments + sizeBatch - 1) / sizeBatch);
-
-        // fill up last batch
-        for (size_t i = numAlignments; i < fullSize; ++i)
-        {
-            appendValue(depSetH, source(back(record.matches).alignRow0));
-            appendValue(depSetV, source(back(record.matches).alignRow1));
-        }
+        ++it;
     }
+    if (length(blastMatches) == 0)
+        return 0;
+
+    // statistics
+    lH.stats.numExtAli += length(blastMatches);
+
+    // reset and fill batches
+    _setupDepSets(depSetH, depSetV, blastMatches);
 
     // Run extensions WITH ALIGNMENT
-    auto matchIt = record.matches.begin();
-    StringSet<String<TTraceSegment> > trace;
-    resize(trace, sizeBatch, Exact());
-    for (auto pos = 0u; pos < fullSize; pos += sizeBatch)
+    _performAlignment(depSetH, depSetV, blastMatches, lH, std::true_type());
+
+    // sort by query
+    blastMatches.sort([] (auto const & lhs, auto const & rhs)
     {
-        auto infSetH = infixWithLength(depSetH, pos, sizeBatch);
-        auto infSetV = infixWithLength(depSetV, pos, sizeBatch);
+        return lhs._n_qId < rhs._n_qId;
+    });
 
-        TSimdAlign resultsBatch;
-
-        _prepareAndRunSimdAlignment(resultsBatch, trace, infSetH, infSetV, simdScoringScheme, config, typename TLocalHolder::TScoreExtension());
-
-        // copy results and finish traceback
-        // TODO(rrahn): Could be parallelized!
-        // to for_each call
-        for(auto x = pos; x < pos + sizeBatch && x < numAlignments; ++x)
-        {
-            _adaptTraceSegmentsTo(matchIt->alignRow0, matchIt->alignRow1, trace[x - pos]);
-            ++matchIt;
-        }
-    }
-
-    // TODO share this code with above function
-    for (auto it = record.matches.begin(), itEnd = record.matches.end(); it != itEnd; /*below*/)
+    // compute the rest of the match properties
+    for (auto it = blastMatches.begin(), itEnd = blastMatches.end(); it != itEnd; /*below*/)
     {
         TBlastMatch & bm = *it;
 
@@ -2369,7 +2395,7 @@ iterateMatchesFullSimd(TLocalHolder & lH)
         if (bm.alignStats.alignmentIdentity < lH.options.idCutOff)
         {
             ++lH.stats.hitsFailedExtendPercentIdentTest;
-            it = record.matches.erase(it);
+            it = blastMatches.erase(it);
             continue;
         }
 
@@ -2379,8 +2405,37 @@ iterateMatchesFullSimd(TLocalHolder & lH)
 
         ++it;
     }
+    if (length(blastMatches) == 0)
+        return 0;
 
-    _writeRecord(record, lH);
+    // devide matches into records (per query) and write
+    for (auto it = blastMatches.begin(), itLast = blastMatches.begin();
+         length(blastMatches) > 0;
+         /*below*/)
+    {
+        if ((it == blastMatches.end()) || ((it != blastMatches.begin()) && (it->_n_qId != itLast->_n_qId)))
+        {
+            // create a record for each query
+            TBlastRecord record(lH.gH.qryIds[itLast->_n_qId]);
+            record.qLength = (qIsTranslated(TGlobalHolder::blastProgram)
+                                ? lH.gH.untransQrySeqLengths[itLast->_n_qId]
+                                : length(lH.gH.qrySeqs[itLast->_n_qId]));
+            // move the matches into the record
+            record.matches.splice(record.matches.begin(),
+                                  blastMatches,
+                                  blastMatches.begin(),
+                                  it);
+            // write to file
+            _writeRecord(record, lH);
+
+            it = blastMatches.begin();
+            itLast = blastMatches.begin();
+        } else
+        {
+            itLast = it;
+            ++it;
+        }
+    }
 
     return 0;
 }
