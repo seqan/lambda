@@ -497,16 +497,22 @@ myWriteRecord(TLH & lH, TRecord const & record)
             }
             // we want to include the seq
             bool writeSeq = false;
-            if ((lH.options.samBamSeq > 1) || (mIt == begin(record.matches, Standard())))
+            if (lH.options.samBamSeq > 1)
             {
                 writeSeq = true;
             }
-            else if ((lH.options.samBamSeq == 1))// && lH.options.samBamHardClip)// only uniq sequences
+            else if (lH.options.samBamSeq == 1) // only uniq sequences
             {
-                decltype(mIt) mPrevIt = mIt - 1;
-                writeSeq = ((mIt->qFrameShift              != mPrevIt->qFrameShift) ||
-                            (beginPosition(mIt->alignRow0) != beginPosition(mPrevIt->alignRow0)) ||
-                            (endPosition(mIt->alignRow0)   != endPosition(mPrevIt->alignRow0)));
+                if (mIt == begin(record.matches, Standard()))
+                {
+                    writeSeq = true;
+                } else
+                {
+                    decltype(mIt) mPrevIt = mIt - 1;
+                    writeSeq = ((mIt->qFrameShift              != mPrevIt->qFrameShift) ||
+                                (beginPosition(mIt->alignRow0) != beginPosition(mPrevIt->alignRow0)) ||
+                                (endPosition(mIt->alignRow0)   != endPosition(mPrevIt->alignRow0)));
+                }
             }
 
             if (TGH::blastProgram == BlastProgram::BLASTN)
