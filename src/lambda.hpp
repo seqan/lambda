@@ -1351,8 +1351,6 @@ _writeRecord(TBlastRecord & record,
                                 m1.qEnd,
                                 m1.sStart,
                                 m1.sEnd,
-                                m1.qLength,
-                                m1.sLength,
                                 m1.qFrameShift,
                                 m1.sFrameShift) <
                        std::tie(m2._n_sId,
@@ -1360,8 +1358,6 @@ _writeRecord(TBlastRecord & record,
                                 m2.qEnd,
                                 m2.sStart,
                                 m2.sEnd,
-                                m2.qLength,
-                                m2.sLength,
                                 m2.qFrameShift,
                                 m2.sFrameShift);
             });
@@ -1372,8 +1368,6 @@ _writeRecord(TBlastRecord & record,
                                 m1.qEnd,
                                 m1.sStart,
                                 m1.sEnd,
-                                m1.qLength,
-                                m1.sLength,
                                 m1.qFrameShift,
                                 m1.sFrameShift) ==
                        std::tie(m2._n_sId,
@@ -1381,8 +1375,6 @@ _writeRecord(TBlastRecord & record,
                                 m2.qEnd,
                                 m2.sStart,
                                 m2.sEnd,
-                                m2.qLength,
-                                m2.sLength,
                                 m2.qFrameShift,
                                 m2.sFrameShift);
             });
@@ -1659,14 +1651,7 @@ computeBlastMatch(typename TBlastRecord::TBlastMatch  & bm,
     if (((bm.qStart > 0) && (bm.sStart > 0)) ||
         ((bm.qEnd < qryLength - 1) && (bm.sEnd < length(lH.gH.subjSeqs[m.subjId]) -1)))
     {
-        // we want to allow more gaps in longer query sequences
-        switch (lH.options.band)
-        {
-            case -3: maxDist = ceil(std::log2(qryLength)); break;
-            case -2: maxDist = floor(sqrt(qryLength)); break;
-            case -1: break;
-            default: maxDist = lH.options.band; break;
-        }
+        maxDist = _bandSize(qryLength, lH);
 
         Tuple<decltype(bm.qStart), 4> positions =
                 { { bm.qStart, bm.sStart, bm.qEnd, bm.sEnd} };
@@ -2132,6 +2117,107 @@ iterateMatchesExtend(TLocalHolder & lH)
     return 0;
 }
 
+template <typename TBlastMatch,
+          typename TLocalHolder>
+inline void
+_setupAlignInfix(TBlastMatch & bm,
+                 typename TLocalHolder::TMatch const & m,
+                 TLocalHolder & lH)
+{
+    int64_t startMod = (int64_t)m.subjStart - (int64_t)m.qryStart;
+
+    bm.qEnd = length(lH.gH.qrySeqs[m.qryId]);
+    decltype(bm.qEnd) band = _bandSize(bm.qEnd , lH);
+    if (startMod >= 0)
+    {
+        bm.sStart = startMod;
+        bm.qStart = 0;
+    }
+    else
+    {
+        bm.sStart = 0;
+        bm.qStart = -startMod;
+    }
+    bm.sEnd = _min(bm.sStart + bm.qEnd - bm.qStart + band, length(lH.gH.subjSeqs[m.subjId]));
+
+    if (bm.sStart >= band)
+        bm.sStart -= band;
+    else
+        bm.sStart = 0;
+
+    assignSource(bm.alignRow0, infix(lH.gH.qrySeqs[m.qryId],   bm.qStart, bm.qEnd));
+    assignSource(bm.alignRow1, infix(lH.gH.subjSeqs[m.subjId], bm.sStart, bm.sEnd));
+}
+
+template <typename TBlastMatch,
+          typename TLocalHolder>
+inline auto
+_untrueQryId(TBlastMatch & bm,
+             TLocalHolder const &)
+{
+    if (qIsTranslated(TLocalHolder::TGlobalHolder::blastProgram))
+    {
+        if (bm.qFrameShift > 0)
+            return bm._n_qId * 6 + bm.qFrameShift - 1;
+        else
+            return bm._n_qId * 6 - bm.qFrameShift + 2;
+    } else if (qHasRevComp(TLocalHolder::TGlobalHolder::blastProgram))
+    {
+        if (bm.qFrameShift > 0)
+            return bm._n_qId * 2;
+        else
+            return bm._n_qId * 2 + 1;
+    } else
+    {
+        return bm._n_qId;
+    }
+}
+
+template <typename TBlastMatch,
+          typename TLocalHolder>
+inline void
+_expandAlign(TBlastMatch & bm,
+             TLocalHolder const & lH)
+{
+    auto oldQLen = length(source(bm.alignRow0));
+    auto oldSLen = length(source(bm.alignRow1));
+
+    // replace source from underneath without triggereng reset
+    value(bm.alignRow0._source) = lH.gH.qrySeqs[_untrueQryId(bm, lH)];
+    value(bm.alignRow1._source) = lH.gH.subjSeqs[bm._n_sId]; //WARNING not safe when subj translated → untrue-ify
+
+    // insert fields into array gaps
+    if (bm.alignRow0._array[0] == 0)
+        bm.alignRow0._array[1] += bm.qStart;
+    else
+        insert(bm.alignRow0._array, 0, std::vector<uint64_t>{0, bm.qStart});
+    if (bm.alignRow0._array[length(bm.alignRow0._array) - 1] == 0)
+        bm.alignRow0._array[length(bm.alignRow0._array) - 2] += length(source(bm.alignRow0)) - oldQLen;
+    else
+        append(bm.alignRow0._array, std::vector<uint64_t>{length(source(bm.alignRow0)) - oldQLen, 0});
+
+    if (bm.alignRow1._array[0] == 0)
+        bm.alignRow1._array[1] += bm.sStart;
+    else
+        insert(bm.alignRow1._array, 0, std::vector<uint64_t>{0, bm.sStart});
+    if (bm.alignRow1._array[length(bm.alignRow1._array) - 1] == 0)
+        bm.alignRow1._array[length(bm.alignRow1._array) - 2] += length(source(bm.alignRow1)) - oldSLen;
+    else
+        append(bm.alignRow1._array, std::vector<uint64_t>{length(source(bm.alignRow1)) - oldSLen, 0});
+
+    // the begin positions from the align object are relative to the infix created above
+    bm.qEnd   = bm.qStart + endPosition(bm.alignRow0);
+    bm.qStart = bm.qStart + beginPosition(bm.alignRow0);
+    bm.sEnd   = bm.sStart + endPosition(bm.alignRow1);
+    bm.sStart = bm.sStart + beginPosition(bm.alignRow1);
+
+    // set clipping positions on new gaps objects
+    setBeginPosition(bm.alignRow0, bm.qStart);
+    setEndPosition(bm.alignRow0, bm.qEnd);
+    setBeginPosition(bm.alignRow1, bm.sStart);
+    setEndPosition(bm.alignRow1, bm.sEnd);
+}
+
 #ifdef SEQAN_SIMD_ENABLED
 
 template <typename TDepSetH,
@@ -2172,7 +2258,7 @@ inline void
 _performAlignment(TDepSetH & depSetH,
                   TDepSetV & depSetV,
                   TBlastMatches & blastMatches,
-                  TLocalHolder const & lH,
+                  TLocalHolder & lH,
                   std::integral_constant<bool, withTrace> const &)
 {
     using TGlobalHolder = typename TLocalHolder::TGlobalHolder;
@@ -2192,20 +2278,11 @@ _performAlignment(TDepSetH & depSetH,
     unsigned constexpr sizeBatch = LENGTH<TSimdAlign>::VALUE;
     unsigned const      fullSize = sizeBatch * ((length(blastMatches) + sizeBatch - 1) / sizeBatch);
 
-    // TODO possible move this block outside
     TSimdScore simdScoringScheme(seqanScheme(context(lH.gH.outfile).scoringScheme));
     StringSet<String<TTraceSegment> > trace;
-    resize(trace, sizeBatch, Exact());
-    // BAND NOT YET SUPPORTED BY SIMD
-//     size_t maxDist = 0;
-//     switch (lH.options.band)
-//     {
-//         case -3: maxDist = ceil(std::log2(record.qLength)); break;
-//         case -2: maxDist = floor(sqrt(record.qLength)); break;
-//         case -1: break;
-//         default: maxDist = lH.options.band; break;
-//     }
-   TAlignConfig config;//(-maxDist, maxDist);
+
+    // TODO when band is available, create inside block with band
+    TAlignConfig config;//(0, 2*band)
 
     auto matchIt = blastMatches.begin();
     for (auto pos = 0u; pos < fullSize; pos += sizeBatch)
@@ -2214,6 +2291,9 @@ _performAlignment(TDepSetH & depSetH,
         auto infSetV = infixWithLength(depSetV, pos, sizeBatch);
 
         TSimdAlign resultsBatch;
+
+        clear(trace);
+        resize(trace, sizeBatch, Exact());
 
         _prepareAndRunSimdAlignment(resultsBatch,
                                     trace,
@@ -2271,70 +2351,48 @@ iterateMatchesFullSimd(TLocalHolder & lH)
     // create blast matches
     for (auto it = lH.matches.begin(), itEnd = lH.matches.end(); it != itEnd; ++it)
     {
-        auto const trueQryId  = it->qryId  / qNumFrames(TGlobalHolder::blastProgram);
-        auto const trueSubjId = it->subjId / sNumFrames(TGlobalHolder::blastProgram);
-
         // create blastmatch in list without copy or move
-        blastMatches.emplace_back(lH.gH.qryIds[trueQryId], lH.gH.subjIds[trueSubjId]);
+        blastMatches.emplace_back(lH.gH.qryIds [it->qryId / qNumFrames(TGlobalHolder::blastProgram)],
+                                    lH.gH.subjIds[it->subjId / sNumFrames(TGlobalHolder::blastProgram)]);
 
         auto & bm = back(blastMatches);
         auto &  m = *it;
 
+        bm._n_qId = it->qryId / qNumFrames(TGlobalHolder::blastProgram);
+        bm._n_sId = it->subjId / sNumFrames(TGlobalHolder::blastProgram);
+
         bm.sLength = sIsTranslated(TGlobalHolder::blastProgram)
-                        ? lH.gH.untransSubjSeqLengths[trueSubjId]
+                        ? lH.gH.untransSubjSeqLengths[bm._n_sId]
                         : length(lH.gH.subjSeqs[it->subjId]);
 
-        int64_t startMod = (long)it->subjStart - (long)it->qryStart;
-
-        TPos band = 5; //TODO softcode
-        bm.qEnd = length(lH.gH.qrySeqs[it->qryId]);
-        if (startMod >= 0)
-        {
-            bm.sStart = startMod;
-            bm.qStart = 0;
-        }
-        else
-        {
-            bm.sStart = 0;
-            bm.qStart = -startMod;
-        }
-        bm.sEnd = _min(bm.sStart + bm.qEnd - bm.qStart + band, length(lH.gH.subjSeqs[it->subjId]));
-
-        if (bm.sStart >= band)
-            bm.sStart -= band;
-        else
-            bm.sStart = 0;
-
-        assignSource(bm.alignRow0, infix(lH.gH.qrySeqs[it->qryId],   bm.qStart, bm.qEnd));
-        assignSource(bm.alignRow1, infix(lH.gH.subjSeqs[it->subjId], bm.sStart, bm.sEnd));
+        _setupAlignInfix(bm, *it, lH);
 
         _setFrames(bm, *it, lH);
 
-        bm._n_qId = trueQryId;
-        bm._n_sId = trueSubjId;
-
         if (lH.options.hasSTaxIds)
-            bm.sTaxIds = lH.gH.sTaxIds[trueSubjId];
+            bm.sTaxIds = lH.gH.sTaxIds[bm._n_sId];
     }
 
-//     // filter out duplicates
-//     blastMatches.sort([] (auto const & l, auto const & r)
-//     {
-//         return std::tie(l._n_qId, l._n_sId, l.sStart, l.sEnd, l.qStart, l.qEnd, l.qFrameShift, l.sFrameShift) <
-//                std::tie(r._n_qId, r._n_sId, r.sStart, r.sEnd, r.qStart, r.qEnd, r.qFrameShift, r.sFrameShift);
-//     });
-//     blastMatches.unique([] (auto const & l, auto const & r)
-//     {
-//         return std::tie(l._n_qId, l._n_sId, l.sStart, l.sEnd, l.qStart, l.qEnd, l.qFrameShift, l.sFrameShift) ==
-//                std::tie(r._n_qId, r._n_sId, r.sStart, r.sEnd, r.qStart, r.qEnd, r.qFrameShift, r.sFrameShift);
-//     });
-//
-//     // sort by lengths to minimize padding in SIMD [TODO this changes the results slightly  :o ]
-//     blastMatches.sort([] (auto const & l, auto const & r)
-//     {
-//         return std::make_tuple(length(source(l.alignRow0)), length(source(l.alignRow1))) <
-//                std::make_tuple(length(source(r.alignRow0)), length(source(r.alignRow1)));
-//     });
+    // filter out duplicates
+    auto before = length(blastMatches);
+    blastMatches.sort([] (auto const & l, auto const & r)
+    {
+        return std::tie(l._n_qId, l._n_sId, l.sStart, l.sEnd, l.qStart, l.qEnd, l.qFrameShift, l.sFrameShift) <
+               std::tie(r._n_qId, r._n_sId, r.sStart, r.sEnd, r.qStart, r.qEnd, r.qFrameShift, r.sFrameShift);
+    });
+    blastMatches.unique([] (auto const & l, auto const & r)
+    {
+        return std::tie(l._n_qId, l._n_sId, l.sStart, l.sEnd, l.qStart, l.qEnd, l.qFrameShift, l.sFrameShift) ==
+               std::tie(r._n_qId, r._n_sId, r.sStart, r.sEnd, r.qStart, r.qEnd, r.qFrameShift, r.sFrameShift);
+    });
+    lH.stats.hitsDuplicate += length(blastMatches) - before;
+
+    // sort by lengths to minimize padding in SIMD
+    blastMatches.sort([] (auto const & l, auto const & r)
+    {
+        return std::make_tuple(length(source(l.alignRow0)), length(source(l.alignRow1))) <
+               std::make_tuple(length(source(r.alignRow0)), length(source(r.alignRow1)));
+    });
 
     // fill batches
     _setupDepSets(depSetH, depSetV, blastMatches);
@@ -2347,10 +2405,11 @@ iterateMatchesFullSimd(TLocalHolder & lH)
     {
         TBlastMatch & bm = *it;
 
+         //WARNING this is not blastn-safe, also check all other qIsTranslated() places
         computeEValueThreadSafe(bm,
                                 qIsTranslated(TGlobalHolder::blastProgram)
-                                    ? lH.gH.untransQrySeqLengths[it->_n_qId]
-                                    : length(lH.gH.qrySeqs[it->_n_qId]),
+                                    ? lH.gH.untransQrySeqLengths[bm._n_qId]
+                                    : length(lH.gH.qrySeqs[bm._n_qId]),
                                 context(lH.gH.outfile));
 
         if (bm.eValue > lH.options.eCutOff)
@@ -2385,10 +2444,7 @@ iterateMatchesFullSimd(TLocalHolder & lH)
     {
         TBlastMatch & bm = *it;
 
-        bm.sStart = beginPosition(bm.alignRow1);
-        bm.qStart = beginPosition(bm.alignRow0);
-        bm.sEnd   = endPosition(bm.alignRow1);
-        bm.qEnd   = endPosition(bm.alignRow0);
+        _expandAlign(bm, lH);
 
         computeAlignmentStats(bm, context(lH.gH.outfile));
 
@@ -2470,49 +2526,28 @@ iterateMatchesFullSerial(TLocalHolder & lH)
                         ? lH.gH.untransQrySeqLengths[trueQryId]
                         : length(lH.gH.qrySeqs[lH.matches[0].qryId]));
 
-    unsigned maxDist = 0;
-    switch (lH.options.band)
-    {
-        case -3: maxDist = ceil(std::log2(record.qLength)); break;
-        case -2: maxDist = floor(sqrt(record.qLength)); break;
-        case -1: break;
-        default: maxDist = lH.options.band; break;
-    }
+    unsigned band = _bandSize(record.qLength, lH);
 
     // create blast matches
     for (auto it = lH.matches.begin(), itEnd = lH.matches.end(); it != itEnd; ++it)
     {
-        auto const trueSubjId = it->subjId / sNumFrames(TGlobalHolder::blastProgram);
-
         // create blastmatch in list without copy or move
-        record.matches.emplace_back(lH.gH.qryIds [trueQryId],
-                                    lH.gH.subjIds[trueSubjId]);
+        record.matches.emplace_back(lH.gH.qryIds [it->qryId / qNumFrames(TGlobalHolder::blastProgram)],
+                                    lH.gH.subjIds[it->subjId / sNumFrames(TGlobalHolder::blastProgram)]);
 
         auto & bm = back(record.matches);
         auto &  m = *it;
 
+        bm._n_qId = it->qryId / qNumFrames(TGlobalHolder::blastProgram);
+        bm._n_sId = it->subjId / sNumFrames(TGlobalHolder::blastProgram);
+
         bm.sLength = sIsTranslated(TGlobalHolder::blastProgram)
-                        ? lH.gH.untransSubjSeqLengths[trueSubjId]
+                        ? lH.gH.untransSubjSeqLengths[bm._n_sId]
                         : length(lH.gH.subjSeqs[it->subjId]);
 
-        long lenDiff = (long)it->subjStart - (long)it->qryStart;
+        _setupAlignInfix(bm, *it, lH);
 
-        TPos sStart;
-        TPos qStart;
-        if (lenDiff >= 0)
-        {
-            sStart = lenDiff;
-            qStart = 0;
-        }
-        else
-        {
-            sStart = 0;
-            qStart = -lenDiff;
-        }
-        TPos sEnd   = std::min(sStart + length(lH.gH.qrySeqs[it->qryId]), length(lH.gH.subjSeqs[it->subjId]));
-
-        assignSource(bm.alignRow0, infix(lH.gH.qrySeqs[it->qryId],   qStart, length(lH.gH.qrySeqs[it->qryId])));
-        assignSource(bm.alignRow1, infix(lH.gH.subjSeqs[it->subjId], sStart, sEnd));
+        _setFrames(bm, m, lH);
 
 //         localAlignment2(bm.alignRow0,
 //                         bm.alignRow1,
@@ -2523,13 +2558,10 @@ iterateMatchesFullSerial(TLocalHolder & lH)
         localAlignment(bm.alignRow0,
                        bm.alignRow1,
                        seqanScheme(context(lH.gH.outfile).scoringScheme),
-                       -maxDist,
-                       maxDist);
+                       -band,
+                       +band);
 
-        bm.sStart = beginPosition(bm.alignRow1);
-        bm.qStart = beginPosition(bm.alignRow0);
-        bm.sEnd   = endPosition(bm.alignRow1);
-        bm.qEnd   = endPosition(bm.alignRow0);
+        _expandAlign(bm, lH);
 
         computeAlignmentStats(bm, context(lH.gH.outfile));
 
@@ -2551,13 +2583,8 @@ iterateMatchesFullSerial(TLocalHolder & lH)
             continue;
         }
 
-        _setFrames(bm, m, lH);
-
-        bm._n_qId = it->qryId / qNumFrames(TGlobalHolder::blastProgram);
-        bm._n_sId = it->subjId / sNumFrames(TGlobalHolder::blastProgram);
-
         if (lH.options.hasSTaxIds)
-            bm.sTaxIds = lH.gH.sTaxIds[it->subjId / sNumFrames(TGlobalHolder::blastProgram)];
+            bm.sTaxIds = lH.gH.sTaxIds[bm._n_sId];
     }
 
     _writeRecord(record, lH);

@@ -238,10 +238,11 @@ void printStats(StatsHolder const & stats, LambdaOptions const & options)
                     << " max:         " << seedLengthMax << "\n\n";
         }
     #ifdef SEQAN_SIMD_ENABLED
-        std::cout << "Number of Extensions stats:\n"
-                  << " # queries with Extensions:    " << stats.numQueryWithExt << "\n"
-                  << " avg # extensions without Ali: " << stats.numExtScore / stats.numQueryWithExt << "\n"
-                  << " avg # extensions with    Ali: " << stats.numExtAli / stats.numQueryWithExt << "\n\n";
+        if (stats.numQueryWithExt > 0)
+            std::cout << "Number of Extensions stats:\n"
+                    << " # queries with Extensions:    " << stats.numQueryWithExt << "\n"
+                    << " avg # extensions without Ali: " << stats.numExtScore / stats.numQueryWithExt << "\n"
+                    << " avg # extensions with    Ali: " << stats.numExtAli / stats.numQueryWithExt << "\n\n";
     #endif
     }
 
@@ -466,6 +467,8 @@ public:
 
     TAliExtContext      alignContext;
 
+    // map from sequence length to band size
+    std::unordered_map<uint64_t, int> bandTable;
 
     // regarding the gathering of stats
     StatsHolder         stats;

@@ -1140,7 +1140,6 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         options.filterPutativeDuplicates = false;
         options.mergePutativeSiblings = false;
         options.xDropOff = -1;
-        options.band = -1;
     }
     else if (buffer == "fullSerial")
     {
