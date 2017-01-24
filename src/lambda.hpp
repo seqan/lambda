@@ -1010,11 +1010,9 @@ _searchSingleIndex(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH)
     size_t constexpr seedHeurFactor = /*TGlobalHolder::indexIsBiFM ? 5 :*/ 10;
     size_t constexpr minResults = 1;
 
-    size_t needlesSum = lH.gH.redQrySeqs.limits[lH.indexEndQry] - lH.gH.redQrySeqs.limits[lH.indexBeginQry];
-    // BROKEN:lengthSum(infix(lH.gH.redQrySeqs, lH.indexBeginQry, lH.indexEndQry));
-    // the above is faster anyway (but only works on concatdirect sets)
-
+    size_t needlesSum = 0;
     size_t needlesPos = 0;
+    size_t oldTotalMatches = 0;
 
     TIndexIt root(lH.gH.dbIndex);
     TIndexIt indexIt = root;
@@ -1039,6 +1037,17 @@ _searchSingleIndex(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH)
             continue;
 
         size_t desiredOccs      = 0;
+
+        // the next sequences belong to a new set of query sequences
+        if ((i % qNumFrames(TGlobalHolder::blastProgram)) == 0)
+        {
+            needlesSum = lH.gH.redQrySeqs.limits[i + qNumFrames(TGlobalHolder::blastProgram)] - lH.gH.redQrySeqs.limits[i];
+            // BROKEN:lengthSum(infix(lH.gH.redQrySeqs, lH.indexBeginQry, lH.indexEndQry));
+            // the above is faster anyway (but only works on concatdirect sets)
+
+            needlesPos = 0;
+            oldTotalMatches = length(lH.matches); // need to subtract matchcount from other queries
+        }
 
         if (lH.options.adaptiveSeeding)
         {
@@ -1085,9 +1094,9 @@ _searchSingleIndex(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH)
 
             if (lH.options.adaptiveSeeding)
             {
-                desiredOccs = length(lH.matches) >= lH.options.maxMatches
+                desiredOccs = (length(lH.matches) - oldTotalMatches) >= lH.options.maxMatches
                             ? minResults
-                            : (lH.options.maxMatches - length(lH.matches)) * seedHeurFactor /
+                            : (lH.options.maxMatches - (length(lH.matches) - oldTotalMatches)) * seedHeurFactor /
                                 std::max((needlesSum - needlesPos - seedBegin) / lH.options.seedOffset, 1ul);
 
                 if (desiredOccs == 0)
@@ -1150,9 +1159,9 @@ _searchSingleIndex(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH)
 
                 if (lH.options.adaptiveSeeding)
                 {
-                    desiredOccs = length(lH.matches) >= lH.options.maxMatches
+                    desiredOccs = (length(lH.matches) - oldTotalMatches) >= lH.options.maxMatches
                                 ? minResults
-                                : (lH.options.maxMatches - length(lH.matches)) * seedHeurFactor /
+                                : (lH.options.maxMatches - (length(lH.matches) - oldTotalMatches)) * seedHeurFactor /
                                     std::max((needlesSum - needlesPos - seedBegin) / lH.options.seedOffset, 1ul);
 
                     if (desiredOccs == 0)
@@ -1171,6 +1180,7 @@ _searchSingleIndex(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH)
                 {
                     if ((repLength(indexIt) >= lH.options.seedLength) && (hasOneError))        // [must have one error for rev]
                     {
+                        //TODO remove debug stuff
                         appendValue(lH.stats.seedLengths, repLength(indexIt));
                         lH.stats.hitsAfterSeeding += countOccurrences(indexIt);
                         for (auto occ : getOccurrences(indexIt))                    // [different start pos]
@@ -2105,6 +2115,8 @@ iterateMatchesExtend(TLocalHolder & lH)
         _writeRecord(record, lH);
     }
 
+    lH.stats.timeExtendTrace += sysTime() - start;
+
     if (lH.options.doubleIndexing)
     {
         double finish = sysTime() - start;
@@ -2341,6 +2353,8 @@ iterateMatchesFullSimd(TLocalHolder & lH)
     ++lH.stats.numQueryWithExt;
     lH.stats.numExtScore += length(lH.matches);
 
+    double start = sysTime();
+
     // Prepare string sets with sequences.
     StringSet<typename Source<typename TLocalHolder::TAlignRow0>::Type, Dependent<> > depSetH;
     StringSet<typename Source<typename TLocalHolder::TAlignRow1>::Type, Dependent<> > depSetV;
@@ -2372,8 +2386,11 @@ iterateMatchesFullSimd(TLocalHolder & lH)
         if (lH.options.hasSTaxIds)
             bm.sTaxIds = lH.gH.sTaxIds[bm._n_sId];
     }
+    lH.stats.timeExtend      += sysTime() - start;
+    lH.stats.timeExtendTrace += sysTime() - start;
 
     // filter out duplicates
+    start = sysTime();
     auto before = length(blastMatches);
     blastMatches.sort([] (auto const & l, auto const & r)
     {
@@ -2385,7 +2402,7 @@ iterateMatchesFullSimd(TLocalHolder & lH)
         return std::tie(l._n_qId, l._n_sId, l.sStart, l.sEnd, l.qStart, l.qEnd, l.qFrameShift, l.sFrameShift) ==
                std::tie(r._n_qId, r._n_sId, r.sStart, r.sEnd, r.qStart, r.qEnd, r.qFrameShift, r.sFrameShift);
     });
-    lH.stats.hitsDuplicate += length(blastMatches) - before;
+    lH.stats.hitsDuplicate += (before - length(blastMatches));
 
     // sort by lengths to minimize padding in SIMD
     blastMatches.sort([] (auto const & l, auto const & r)
@@ -2393,7 +2410,9 @@ iterateMatchesFullSimd(TLocalHolder & lH)
         return std::make_tuple(length(source(l.alignRow0)), length(source(l.alignRow1))) <
                std::make_tuple(length(source(r.alignRow0)), length(source(r.alignRow1)));
     });
+    lH.stats.timeSort += sysTime() - start;
 
+    start = sysTime();
     // fill batches
     _setupDepSets(depSetH, depSetV, blastMatches);
 
@@ -2426,6 +2445,8 @@ iterateMatchesFullSimd(TLocalHolder & lH)
 
     // statistics
     lH.stats.numExtAli += length(blastMatches);
+    lH.stats.timeExtend += sysTime() - start;
+    start = sysTime();
 
     // reset and fill batches
     _setupDepSets(depSetH, depSetV, blastMatches);
@@ -2461,6 +2482,9 @@ iterateMatchesFullSimd(TLocalHolder & lH)
 
         ++it;
     }
+
+    lH.stats.timeExtendTrace += sysTime() - start;
+
     if (length(blastMatches) == 0)
         return 0;
 
@@ -2528,6 +2552,8 @@ iterateMatchesFullSerial(TLocalHolder & lH)
 
     unsigned band = _bandSize(record.qLength, lH);
 
+    double start = sysTime();
+
     // create blast matches
     for (auto it = lH.matches.begin(), itEnd = lH.matches.end(); it != itEnd; ++it)
     {
@@ -2586,6 +2612,8 @@ iterateMatchesFullSerial(TLocalHolder & lH)
         if (lH.options.hasSTaxIds)
             bm.sTaxIds = lH.gH.sTaxIds[bm._n_sId];
     }
+
+    lH.stats.timeExtendTrace += sysTime() - start;
 
     _writeRecord(record, lH);
 

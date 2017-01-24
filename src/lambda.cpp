@@ -406,13 +406,6 @@ realMain(LambdaOptions                        & options,
     }
     double start = sysTime();
 
-    // at least a block for each thread on double-indexing,
-    // otherwise a block for each original query (contains 6 queries if
-    // translation is used)
-    uint64_t nBlocks = (options.doubleIndexing
-                        ? options.queryPart
-                        : length(globalHolder.qryIds));
-
     uint64_t lastPercent = 0;
 
     SEQAN_OMP_PRAGMA(parallel)
@@ -420,7 +413,7 @@ realMain(LambdaOptions                        & options,
         TLocalHolder localHolder(options, globalHolder);
 
         SEQAN_OMP_PRAGMA(for schedule(dynamic))
-        for (uint64_t t = 0; t < nBlocks; ++t)
+        for (uint64_t t = 0; t < localHolder.nBlocks; ++t)
         {
             int res = 0;
 
@@ -458,17 +451,16 @@ realMain(LambdaOptions                        & options,
             }
 
             // extend
-            buf = sysTime();
             if (length(localHolder.matches) > 0)
                 res = iterateMatches(localHolder);
-            localHolder.stats.timeExtend += sysTime() - buf;
+
             if (res)
                 continue;
 
             if ((!options.doubleIndexing) && (TID == 0) &&
                 (options.verbosity >= 1))
             {
-                unsigned curPercent = ((t * 50) / nBlocks) * 2; // round to even
+                unsigned curPercent = ((t * 50) / localHolder.nBlocks) * 2; // round to even
                 printProgressBar(lastPercent, curPercent);
             }
 

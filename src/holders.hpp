@@ -76,6 +76,7 @@ struct StatsHolder
     double timeSearch;
     double timeSort;
     double timeExtend;
+    double timeExtendTrace;
 
 // extension counters
     uint64_t numQueryWithExt;
@@ -111,6 +112,7 @@ struct StatsHolder
         timeSearch = 0;
         timeSort = 0;
         timeExtend = 0;
+        timeExtendTrace = 0;
 
         numQueryWithExt = 0;
         numExtScore = 0;
@@ -141,6 +143,7 @@ struct StatsHolder
         timeSearch   += rhs.timeSearch;
         timeSort     += rhs.timeSort;
         timeExtend   += rhs.timeExtend;
+        timeExtendTrace += rhs.timeExtendTrace;
 
         numQueryWithExt += rhs.numQueryWithExt;
         numExtScore += rhs.numExtScore;
@@ -214,10 +217,11 @@ void printStats(StatsHolder const & stats, LambdaOptions const & options)
             std::cout << "WARNING: hits don't add up\n";
 
         std::cout << "Detailed Non-Wall-Clock times:\n"
-                  << " genSeeds: " << stats.timeGenSeeds << "\n"
-                  << " search:   " << stats.timeSearch << "\n"
-                  << " sort:     " << stats.timeSort << "\n"
-                  << " extend:   " << stats.timeExtend << "\n\n";
+                  << " genSeeds:    " << stats.timeGenSeeds << "\n"
+                  << " search:      " << stats.timeSearch << "\n"
+                  << " sort:        " << stats.timeSort << "\n"
+                  << " extend:      " << stats.timeExtend << "\n"
+                  << " extendTrace: " << stats.timeExtendTrace << "\n\n";
 
         if (length(stats.seedLengths))
         {
@@ -444,6 +448,7 @@ public:
 
     // this is the localHolder for the i-th part of the queries
     uint64_t            i;
+    uint64_t            nBlocks;
 
     // regarding range of queries
     uint64_t            indexBeginQry;
@@ -480,12 +485,25 @@ public:
     LocalDataHolder(LambdaOptions     const & _options,
                     TGlobalHolder     /*const*/ & _globalHolder) :
         options(_options), gH(_globalHolder), stats()
-    {}
+    {
+        if (options.doubleIndexing)
+        {
+            nBlocks = options.queryPart;
+        } else if (options.extensionMode == LambdaOptions::ExtensionMode::FULL_SIMD)
+        {
+            //TODO round up and safeguard against overflow below
+            nBlocks = length(gH.redQrySeqs) / qNumFrames(blastProgram) / 10;
+        } else
+        {
+            nBlocks = length(gH.redQrySeqs) / qNumFrames(blastProgram);
+        }
+    }
 
     // copy constructor SHALLOW COPY ONLY, REQUIRED FOR firsprivate()
     LocalDataHolder(LocalDataHolder const & rhs) :
         options(rhs.options), gH(rhs.gH), stats()
-    {}
+    {
+    }
 
     void init(uint64_t const _i)
     {
@@ -500,6 +518,11 @@ public:
             // make sure different frames of one sequence in same interval
             indexBeginQry -= (indexBeginQry % qNumFrames(blastProgram));
             indexEndQry -= (indexEndQry % qNumFrames(blastProgram));
+        } else if (options.extensionMode == LambdaOptions::ExtensionMode::FULL_SIMD)
+        {
+            //TODO safeguard against overflow below
+            indexBeginQry = qNumFrames(blastProgram) * i * 10;
+            indexEndQry = std::min(qNumFrames(blastProgram) * (i+1) * 10, length(gH.qrySeqs));
         } else
         {
             indexBeginQry = qNumFrames(blastProgram) * i;
