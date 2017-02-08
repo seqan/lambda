@@ -522,7 +522,7 @@ public:
         {
             //TODO safeguard against overflow below
             indexBeginQry = qNumFrames(blastProgram) * i * 10;
-            indexEndQry = std::min(qNumFrames(blastProgram) * (i+1) * 10, length(gH.qrySeqs));
+            indexEndQry = _min(qNumFrames(blastProgram) * (i+1) * 10, length(gH.qrySeqs));
         } else
         {
             indexBeginQry = qNumFrames(blastProgram) * i;
