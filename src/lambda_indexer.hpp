@@ -55,13 +55,15 @@ loadSubjSeqsAndIds(TCDStringSet<String<TOrigAlph>> & originalSeqs,
 
     // see http://www.uniprot.org/help/accession_numbers
     // https://www.ncbi.nlm.nih.gov/Sequin/acc.html
-    // TODO: Refseq https://www.ncbi.nlm.nih.gov/refseq/about/
+    // https://www.ncbi.nlm.nih.gov/refseq/about/
     // TODO: make sure these don't trigger twice on one ID
     std::regex const accRegEx{"[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2}|" // UNIPROT
                               "[A-Z][0-9]{5}|[A-Z]{2}[0-9]{6}|"                                       // NCBI nucl
                               "[A-Z]{3}[0-9]{5}|"                                                     // NCBI prot
                               "[A-Z]{4}[0-9]{8,10}|"                                                  // NCBI wgs
-                              "[A-Z]{5}[0-9]{7}"};                                                    // NCBI mga
+                              "[A-Z]{5}[0-9]{7}|"                                                     // NCBI mga
+                              "(NC|AC|NG|NT|NW|NZ|NM|NR|XM|XR|NP|AP|XP|YP|ZP)_[0-9]+|"                // RefSeq
+                              "UPI[A-F0-9]{10}"};                                                     // UniParc
 
     // lambda that truncates IDs at first whitespace
     auto truncateID = [] (auto && id, uint64_t const)
