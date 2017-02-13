@@ -79,21 +79,32 @@ loadSubjSeqsAndIds(TCDStringSet<String<TOrigAlph>> & originalSeqs,
         }
     };
 
+    uint64_t noAcc = 0;
+    uint64_t multiAcc = 0;
+
     // lambda that extracts accession numbers and saves them in the map
-    auto extractAccIds = [&accToIdRank, &accRegEx] (auto && id, uint64_t const rank)
+    auto extractAccIds = [&accToIdRank, &accRegEx, &noAcc, &multiAcc] (auto && id, uint64_t const rank)
     {
         // TODO avoid copying here by specializing regex_iterator
         std::string buf;
         assign(buf, id);
 
+        uint64_t count = 0;
         for (auto it = std::sregex_iterator(buf.begin(), buf.end(), accRegEx), itEnd = std::sregex_iterator();
              it != itEnd;
-             ++it)
+             ++it, ++count)
         {
             SEQAN_ASSERT_MSG(accToIdRank.count(it->str()) == 0,
                              "An accession number appeared twice in the file, but they should be unique.");
             // TODO store acc outside as well
             accToIdRank[it->str()] = rank;
+        }
+
+        switch (count)
+        {
+            case 0: ++noAcc; break;
+            case 1: break;
+            default: ++multiAcc; break;
         }
     };
 
@@ -150,7 +161,7 @@ loadSubjSeqsAndIds(TCDStringSet<String<TOrigAlph>> & originalSeqs,
         }
     }
     myPrint(options, 2, "Number of sequences read: ", length(originalSeqs),
-            "\nLongest sequence read: ", maxLen, "\n\n");
+            "\nLongest sequence read: ", maxLen, "\n");
 
     if (length(originalSeqs) * 6 >= std::numeric_limits<SizeTypeNum_<TOrigAlph>>::max())
     {
@@ -167,6 +178,14 @@ loadSubjSeqsAndIds(TCDStringSet<String<TOrigAlph>> & originalSeqs,
                   << ".\n";
         return -1;
     }
+
+    if (options.hasSTaxIds)
+    {
+        myPrint(options, 2, "Subjects without acc numbers:             ", noAcc, '/', length(ids), "\n",
+                            "Subjects with more than one acc number:   ", multiAcc, '/', length(ids), "\n");
+    }
+
+    myPrint(options, 2, "\n");
 
 
     myPrint(options, 1, "Dumping Subj Ids...");
