@@ -141,4 +141,180 @@ struct ComparisonCounter<TText, std::true_type>
 };
 #endif
 
+
+// ----------------------------------------------------------------------------
+// function _readMappingFileNCBI
+// ----------------------------------------------------------------------------
+
+template <typename TInputIterator,
+          typename TStaxIDs>
+inline int
+_readMappingFileUniProt(TInputIterator                                        & fit,
+                        TStaxIDs                                              & sTaxIds,
+                        std::vector<bool>                                     & taxIdIsPresent,
+                        std::unordered_map<std::string, uint64_t>       const & accToIdRank)
+{
+    // skip line with headers
+    skipLine(fit);
+
+    //TODO this is too slow, investigate whether its the lookup or the allocs
+    std::string acc;
+    std::string nextColumn;
+    while (!atEnd(fit))
+    {
+        clear(acc);
+        clear(nextColumn);
+
+        // read accession number
+        readUntil(acc, fit, IsBlank());
+        // skip whitespace
+        skipUntil(fit, IsAlphaNum());
+        // read accession number
+        readUntil(nextColumn, fit, IsBlank());
+
+        if ((nextColumn == "NCBI_TaxID") && (accToIdRank.count(acc) == 1))
+        {
+            auto & sTaxIdV = sTaxIds[accToIdRank.at(acc)];
+            // skip whitespace
+            skipUntil(fit, IsAlphaNum());
+            // read tax id
+            clear(nextColumn);
+            readUntil(nextColumn, fit, IsWhitespace());
+            uint32_t idNum = 0;
+            try
+            {
+                idNum = lexicalCast<uint32_t>(nextColumn);
+            }
+            catch (BadLexicalCast const & badCast)
+            {
+                std::cerr << "Error: Expected taxonomical ID, but got something I couldn't read: "
+                          << badCast.what() << "\n";
+                return -1;
+            }
+            appendValue(sTaxIdV, idNum);
+            if (taxIdIsPresent.size() < idNum + 1)
+                taxIdIsPresent.resize(idNum + 1);
+            taxIdIsPresent[idNum] = true;
+        }
+
+        skipLine(fit);
+    }
+
+    return 0;
+}
+
+template <typename TInputIterator,
+          typename TStaxIDs>
+inline int
+_readMappingFileNCBI(TInputIterator                                        & fit,
+                     TStaxIDs                                              & sTaxIds,
+                     std::vector<bool>                                     & taxIdIsPresent,
+                     std::unordered_map<std::string, uint64_t>       const & accToIdRank)
+{
+    // skip line with headers
+    skipLine(fit);
+
+    //TODO this is too slow, investigate whether its the lookup or the allocs
+    std::string buf;
+    while (!atEnd(fit))
+    {
+        clear(buf);
+        // read accession number
+        readUntil(buf, fit, IsBlank());
+        // we have a sequence with this ID in our database
+        if (accToIdRank.count(buf) == 1)
+        {
+            auto & sTaxIdV = sTaxIds[accToIdRank.at(buf)];
+            // skip whitespace
+            skipUntil(fit, IsAlphaNum());
+            // skip versioned acc
+            skipUntil(fit, IsBlank());
+            // skip whitespace
+            skipUntil(fit, IsAlphaNum());
+            // read tax id
+            clear(buf);
+            readUntil(buf, fit, IsBlank());
+            uint32_t idNum = 0;
+            try
+            {
+                idNum = lexicalCast<uint32_t>(buf);
+            }
+            catch (BadLexicalCast const & badCast)
+            {
+                std::cerr << "Error: Expected taxonomical ID, but got something I couldn't read: "
+                          << badCast.what() << "\n";
+                return -1;
+            }
+            appendValue(sTaxIdV, idNum);
+            if (taxIdIsPresent.size() < idNum + 1)
+                taxIdIsPresent.resize(idNum + 1);
+            taxIdIsPresent[idNum] = true;
+        }
+
+        skipLine(fit);
+    }
+
+    return 0;
+}
+
+/// REGEX version is 5x slower, but verifies file format correctness
+// template <typename TInputIterator,
+//           typename TStaxIDs>
+// inline int
+// _readMappingFileNCBI2(TInputIterator                                        & fit,
+//                      TStaxIDs                                              & sTaxIds,
+//                      std::vector<bool>                                     & taxIdIsPresent,
+//                      std::unordered_map<std::string, uint64_t>       const & accToIdRank)
+// {
+//     // skip line with headers
+//     skipLine(fit);
+//
+//     std::string buf;
+//     //                        ACC       ACC.VERSION    taxid     gi
+//     std::regex const lineRE{"(\\w+)\\s(\\w+\\.?\\d*)\\s(\\d+)\\s(\\d+)"};
+//     std::smatch baseMatch;
+//     uint32_t idNum = 0;
+//     StringSet<std::string>
+//
+//     while (!atEnd(fit))
+//     {
+//         clear(buf);
+//         // read line
+//         readLine(buf, fit);
+//
+//         if (std::regex_match(buf, baseMatch, lineRE) && (baseMatch.size() == 5))
+//         {
+//             // we have a sequence with this ID in our database
+//             if (accToIdRank.count(baseMatch[1]) == 1)
+//             {
+//                 auto & sTaxIdV = sTaxIds[accToIdRank.at(baseMatch[1])];
+//                 idNum = 0;
+//                 try
+//                 {
+//                     idNum = lexicalCast<uint32_t>(std::string(baseMatch[3]));
+//                 }
+//                 catch (BadLexicalCast const & badCast)
+//                 {
+//                     std::cerr << "Error: Expected taxonomical ID, but got something I couldn't read: "
+//                             << badCast.what() << "\n";
+//                     return -1;
+//                 }
+//
+//                 appendValue(sTaxIdV, idNum);
+//                 if (taxIdIsPresent.size() < idNum + 1)
+//                     taxIdIsPresent.resize(idNum + 1);
+//                 taxIdIsPresent[idNum] = true;
+//             }
+//
+//         } else
+//         {
+//             std::cerr << "ERROR: The following line in the mapping file, did not satisfy the regex!\n"
+//                       << "       " << buf << "\n\n";
+//             return -1;
+//         }
+//     }
+//
+//     return 0;
+// }
+
 #endif // LAMBDA_INDEXER_MISC_HPP_

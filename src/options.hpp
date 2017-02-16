@@ -1187,17 +1187,21 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
 
     addOption(parser, ArgParseOption("tx",
         "acc-tax-map",
-        "An NCBI accession-to-taxid mapping file. Download the correct one from "
-        "ftp://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/. ",
+        "An NCBI or UniProt accession-to-taxid mapping file. Download from "
+        "ftp://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/ or "
+        "ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/idmapping/ .",
         ArgParseArgument::INPUT_FILE));
 
-    CharString taxExtensions = "accession2taxid";
+    CharString taxExtensions = "accession2taxid dat";
 #ifdef SEQAN_HAS_ZLIB
     taxExtensions+= " accession2taxid.gz";
     taxExtensions+= " accession2taxid.bgzf";
+    taxExtensions+= " dat.gz";
+    taxExtensions+= " dat.bgzf";
 #endif
 #ifdef SEQAN_HAS_BZIP2
     taxExtensions+= " accession2taxid.bz2";
+    taxExtensions+= " dat.bz2";
 #endif
     setValidValues(parser, "acc-tax-map", toCString(taxExtensions));
 

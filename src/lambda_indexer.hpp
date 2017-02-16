@@ -365,50 +365,24 @@ mapAndDumpTaxIDs(std::vector<bool>                                     & taxIdIs
 
     myPrint(options, 1, "Parsing acc-to-tax-map file... ");
 
-    // skip line with headers
-    skipLine(fit);
-
     double start = sysTime();
 
-    //TODO this is too slow, investigate whether its the lookup or the allocs
-    std::string buf;
-    while (!atEnd(fit))
-    {
-        clear(buf);
-        // read accession number
-        readUntil(buf, fit, IsBlank());
-        // we have a sequence with this ID in our database
-        if (accToIdRank.count(buf) == 1)
-        {
-            auto & sTaxIdV = sTaxIds[accToIdRank.at(buf)];
-            // skip whitespace
-            skipUntil(fit, IsAlphaNum());
-            // skip versioned acc
-            skipUntil(fit, IsBlank());
-            // skip whitespace
-            skipUntil(fit, IsAlphaNum());
-            // read tax id
-            clear(buf);
-            readUntil(buf, fit, IsBlank());
-            uint32_t idNum = 0;
-            try
-            {
-                idNum = lexicalCast<uint32_t>(buf);
-            }
-            catch (BadLexicalCast const & badCast)
-            {
-                std::cerr << "Error: Expected taxonomical ID, but got something I couldn't read: "
-                          << badCast.what() << "\n";
-                return -1;
-            }
-            appendValue(sTaxIdV, idNum);
-            if (taxIdIsPresent.size() < idNum + 1)
-                taxIdIsPresent.resize(idNum + 1);
-            taxIdIsPresent[idNum] = true;
-        }
+    int ret = 0;
 
-        skipLine(fit);
+    if (std::regex_match(options.accToTaxMapFile, std::regex{R"raw(.*\.accession2taxid(\.(gz|bgzf|bz2))?)raw"}))
+    {
+        ret = _readMappingFileNCBI(fit, sTaxIds, taxIdIsPresent, accToIdRank);
+    } else if (std::regex_match(options.accToTaxMapFile, std::regex{R"raw(.*\.dat(\.(gz|bgzf|bz2))?)raw"}))
+    {
+        ret = _readMappingFileUniProt(fit, sTaxIds, taxIdIsPresent, accToIdRank);
+    } else
+    {
+        std::cerr << "ERROR: extension of acc-to-tax-map file not handled.\n";
+        return -1;
     }
+
+    if (ret)
+        return ret;
 
     // root node is always present
     if (taxIdIsPresent.size() < 2)
@@ -434,7 +408,7 @@ mapAndDumpTaxIDs(std::vector<bool>                                     & taxIdIs
 
     myPrint(options, 2, "Subjects without tax IDs:             ", nomap, '/', numSubjects, "\n",
                         "Subjects with more than one tax ID:   ", multi, '/', numSubjects, "\n\n");
-    if (numSubjects / nomap < 5)
+    if ((nomap > 0) && ((numSubjects / nomap) < 5))
         myPrint(options, 1, "WARNING: ", double(nomap) * 100 / numSubjects, "% of subjects have no taxID.\n"
                             "         Maybe you specified the wrong map file?\n\n");
 
