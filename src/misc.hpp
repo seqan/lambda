@@ -22,6 +22,7 @@
 #ifndef SEQAN_LAMBDA_MISC_H_
 #define SEQAN_LAMBDA_MISC_H_
 
+#include <unistd.h>
 #include <type_traits>
 #include <forward_list>
 
@@ -520,6 +521,65 @@ T computeLCA(String<T> const & taxParents, String<T2> const & taxHeights, T n1, 
     SEQAN_FAIL("One of the paths didn't lead to root.");
     return 0; // avoid warnings on clang
 }
+
+// ----------------------------------------------------------------------------
+// Function fileSize()
+// ----------------------------------------------------------------------------
+
+auto fileSize(char const * fileName)
+{
+    struct stat st;
+    if (stat(fileName, &st) != 0)
+        throw std::runtime_error{"ERROR: Could not read File!"};
+    return st.st_size;
+}
+
+// ----------------------------------------------------------------------------
+// Function dirSize()
+// ----------------------------------------------------------------------------
+
+unsigned long long dirSize(char const * dirName)
+{
+    DIR *d;
+    struct dirent *de;
+    struct stat buf;
+    int exists;
+    unsigned long long total_size;
+
+    d = opendir(dirName);
+    if (d == NULL)
+        throw std::runtime_error{"ERROR: Could not read index directory!"};
+
+    total_size = 0;
+
+    for (de = readdir(d); de != NULL; de = readdir(d))
+    {
+        std::string curPath = dirName + std::string{"/"} + de->d_name;
+        exists = stat(curPath.c_str(), &buf);
+        if (exists < 0)
+        {
+            closedir(d);
+            throw std::runtime_error{"ERROR: Could not read index directory!"};
+        } else
+        {
+            total_size += buf.st_size;
+        }
+    }
+    closedir(d);
+    return total_size;
+}
+
+// ----------------------------------------------------------------------------
+// Function fileSize()
+// ----------------------------------------------------------------------------
+
+unsigned long long getTotalSystemMemory()
+{
+    long pages = sysconf(_SC_PHYS_PAGES);
+    long page_size = sysconf(_SC_PAGE_SIZE);
+    return pages * page_size;
+}
+
 
 // ----------------------------------------------------------------------------
 // remove tag type

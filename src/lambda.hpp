@@ -196,6 +196,53 @@ validateIndexOptions(LambdaOptions const & options)
 }
 
 // --------------------------------------------------------------------------
+// Function checkRAM()
+// --------------------------------------------------------------------------
+
+inline int
+checkRAM(LambdaOptions const & options)
+{
+    myPrint(options, 1, "Checking memory requirements... ");
+    uint64_t ram = getTotalSystemMemory();
+    uint64_t sizeIndex = 0;
+    uint64_t sizeQuery = 0;
+    try
+    {
+        sizeIndex = dirSize(toCString(options.indexDir));
+    } catch (std::runtime_error e)
+    {
+        std::cerr << "\nERROR: could not read index during size computation.\n"
+                  << "       Do you have the proper permissions?\n";
+        return -1;
+    }
+
+    try
+    {
+        sizeQuery = fileSize(toCString(options.queryFile));
+    } catch (std::runtime_error e)
+    {
+        std::cerr << "\nERROR: could not read query file during size computation.\n"
+                  << "       Do you have the proper permissions?\n";
+        return -1;
+    }
+
+    uint64_t requiredRAM = ((sizeIndex + sizeQuery) * 11) / 10; // give it +10% TODO verify
+
+    if (requiredRAM >= ram)
+    {
+        myPrint(options, 1, "done.\n");
+        std::cerr << "WARNING: You need approximately " << requiredRAM / 1024 / 1024 << "MB of memory, "
+                  << "but you have only " << ram / 1024 / 1024
+                  << " :'(\nYou should abort this run and try on a machine with more memory!";
+        return -1;
+    }
+
+    myPrint(options, 1, "met.\n");
+    myPrint(options, 2, "Detected: ", ram / 1024 / 1024, "MB, Estimated: ", requiredRAM / 1024 / 1024, "MB\n\n");
+    return 0;
+}
+
+// --------------------------------------------------------------------------
 // Function prepareScoring()
 // --------------------------------------------------------------------------
 

@@ -165,11 +165,11 @@ realMain(LambdaIndexerOptions     const & options,
     using TTransSet = TCDStringSet<String<TransAlph<p>>>;
 
     TTransSet translatedSeqs;
+    int ret = 0;
 
     {
         TOrigSet originalSeqs;
         std::unordered_map<std::string, uint64_t> accToIdRank;
-        int ret = 0;
 
         // ids get saved to disk again immediately and are not kept in memory
         ret = loadSubjSeqsAndIds(originalSeqs, accToIdRank, options);
@@ -205,8 +205,9 @@ realMain(LambdaIndexerOptions     const & options,
         dumpTranslatedSeqs(translatedSeqs, options);
 
     // see if final sequence set actually fits into index 
-    if (!checkIndexSize(translatedSeqs, BlastProgramSelector<p>()))
-        return -1;
+    ret = checkIndexSize(translatedSeqs, options, BlastProgramSelector<p>());
+    if (ret)
+        return ret;
 
     if (options.dbIndexType == DbIndexType::FM_INDEX)
     {

@@ -49,6 +49,17 @@ loadSubjSeqsAndIds(TCDStringSet<String<TOrigAlph>> & originalSeqs,
                    std::unordered_map<std::string, uint64_t> & accToIdRank,
                    LambdaIndexerOptions const & options)
 {
+    // Make sure we have enough RAM to load the file
+    auto ram = getTotalSystemMemory();
+    auto fS = fileSize(toCString(options.dbFile));
+
+    if (fS >= ram)
+        std::cerr << "WARNING: Your sequence file is already larger than your physical memory!\n"
+                  << "         This means you will likely encounter a crash with \"bad_alloc\".\n"
+                  << "         Split you sequence file into many smaller ones or use a computer\n"
+                  << "         with more memory!\n";
+
+
     typedef TCDStringSet<String<char, Alloc<>>>             TIDs;
 
     TIDs ids; // the IDs
@@ -299,9 +310,14 @@ dumpTranslatedSeqs(TCDStringSet<String<TTransAlph>> const & translatedSeqs,
 // --------------------------------------------------------------------------
 
 template <typename TRedAlph, BlastProgram p>
-inline bool
-checkIndexSize(TCDStringSet<String<TRedAlph>> const & seqs, BlastProgramSelector<p> const &)
+inline int
+checkIndexSize(TCDStringSet<String<TRedAlph>> const & seqs,
+               LambdaIndexerOptions const & options,
+               BlastProgramSelector<p> const &)
 {
+    myPrint(options, 1, "Checking parameters of to-be-built index...");
+
+    // check number of sequences
     using SAV = typename SAValue<TCDStringSet<String<TRedAlph>>>::Type;
     uint64_t curNumSeq = length(seqs);
     uint64_t maxNumSeq = std::numeric_limits<typename Value<SAV, 1>::Type>::max();
@@ -311,9 +327,10 @@ checkIndexSize(TCDStringSet<String<TRedAlph>> const & seqs, BlastProgramSelector
         std::cerr << "Too many sequences to be indexed:\n  "
                   << length(seqs) << " in file, but only "
                   << maxNumSeq << " supported by index.\n";
-        return false;
+        return -1;
     }
 
+    // check length of sequences
     uint64_t maxLenSeq = std::numeric_limits<typename Value<SAV, 2>::Type>::max();
     uint64_t maxLen = 0ul;
     for (auto const & s : seqs)
@@ -331,9 +348,34 @@ checkIndexSize(TCDStringSet<String<TRedAlph>> const & seqs, BlastProgramSelector
                          "support for longer protein sequences.\n";
         #endif
 
-        return false;
+        return -1;
     }
-    return true;
+
+    // check available RAM
+    auto ram = getTotalSystemMemory();
+    auto lS = lengthSum(seqs);
+    unsigned long long factor = 0;
+    if (options.algo == "radixsort")
+        factor = sizeof(SizeTypeNum_<TRedAlph>) + sizeof(SizeTypePos_<TRedAlph>) + 5; // 5 is good heuristic
+    else if (options.algo == "skew7ext")
+        factor = 7; // TODO do some tests!
+    auto estimatedSize = lS * factor;
+
+    myPrint(options, 1, "done.\n");
+    if (estimatedSize >= ram)
+    {
+        std::cerr << "WARNING: Lambda estimates that it will need " << estimatedSize / 1024 / 1024 << "MB\n"
+                  << "         of memory to index this file, but you have only " << ram / 1024 / 1024 << "MB\n"
+                  << "         available on your system.\n"
+                  << "         This means you will likely encounter a crash with \"bad_alloc\".\n"
+                  << "         Split you sequence file into many smaller ones or use a computer\n"
+                  << "         with more memory!\n";
+    } else
+    {
+        myPrint(options, 2, "Detected: ", ram / 1024 / 1024, "MB, Estimated: ", estimatedSize / 1024 / 1024, "MB\n\n");
+    }
+
+    return 0;
 }
 
 // --------------------------------------------------------------------------

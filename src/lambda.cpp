@@ -344,6 +344,10 @@ realMain(LambdaOptions                        & options,
     if (options.verbosity >= 2)
         printOptions<TLocalHolder>(options);
 
+    ret = checkRAM(options);
+    if (ret)
+        return ret;
+
     TGlobalHolder globalHolder;
 //     context(globalHolder.outfile).scoringScheme._internalScheme = matr;
 
