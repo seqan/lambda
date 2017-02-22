@@ -2622,12 +2622,32 @@ iterateMatchesFullSerial(TLocalHolder & lH)
 
         _setFrames(bm, m, lH);
 
-//         localAlignment2(bm.alignRow0,
-//                         bm.alignRow1,
-//                         seqanScheme(context(lH.gH.outfile).scoringScheme),
-//                         -maxDist,
-//                         maxDist,
-//                         lH.alignContext);
+        // Run extension WITHOUT TRACEBACK
+        typedef AlignConfig2<LocalAlignment_<>,
+                            DPBandConfig<BandOn>,
+                            FreeEndGaps_<True, True, True, True>,
+                            TracebackOff> TAlignConfig;
+
+        DPScoutState_<Default> scoutState;
+
+        bm.alignStats.alignmentScore = _setUpAndRunAlignment(lH.alignContext.dpContext,
+                                                             lH.alignContext.traceSegment,
+                                                             scoutState,
+                                                             source(bm.alignRow0),
+                                                             source(bm.alignRow1),
+                                                             seqanScheme(context(lH.gH.outfile).scoringScheme),
+                                                             TAlignConfig(-band, +band));
+
+        computeEValueThreadSafe(bm, record.qLength, context(lH.gH.outfile));
+
+        if (bm.eValue > lH.options.eCutOff)
+        {
+            ++lH.stats.hitsFailedExtendEValueTest;
+            record.matches.pop_back();
+            continue;
+        }
+
+        // Run extension WITH TRACEBACK
         localAlignment(bm.alignRow0,
                        bm.alignRow1,
                        seqanScheme(context(lH.gH.outfile).scoringScheme),
@@ -2646,15 +2666,6 @@ iterateMatchesFullSerial(TLocalHolder & lH)
         }
 
         computeBitScore(bm, context(lH.gH.outfile));
-
-        computeEValueThreadSafe(bm, record.qLength, context(lH.gH.outfile));
-
-        if (bm.eValue > lH.options.eCutOff)
-        {
-            ++lH.stats.hitsFailedExtendEValueTest;
-            record.matches.pop_back();
-            continue;
-        }
 
         if (lH.options.hasSTaxIds)
             bm.sTaxIds = lH.gH.sTaxIds[bm._n_sId];
