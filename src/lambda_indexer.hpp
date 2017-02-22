@@ -358,7 +358,7 @@ checkIndexSize(TCDStringSet<String<TRedAlph>> const & seqs,
     if (options.algo == "radixsort")
         factor = sizeof(SizeTypeNum_<TRedAlph>) + sizeof(SizeTypePos_<TRedAlph>) + 5; // 5 is good heuristic
     else if (options.algo == "skew7ext")
-        factor = 7; // TODO do some tests!
+        factor = 6; // TODO do some tests!
     auto estimatedSize = lS * factor;
 
     myPrint(options, 1, "done.\n");
@@ -372,7 +372,8 @@ checkIndexSize(TCDStringSet<String<TRedAlph>> const & seqs,
                   << "         with more memory!\n";
     } else
     {
-        myPrint(options, 2, "Detected: ", ram / 1024 / 1024, "MB, Estimated: ", estimatedSize / 1024 / 1024, "MB\n\n");
+        myPrint(options, 2, "Detected RAM: ", ram / 1024 / 1024, "MB, Estimated RAM usage: ",
+                estimatedSize / 1024 / 1024, "MB\n\n");
     }
 
     return 0;
