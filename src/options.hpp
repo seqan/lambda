@@ -527,12 +527,14 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         ArgParseArgument::DOUBLE));
     setDefaultValue(parser, "e-value", "0.1");
     setMinValue(parser, "e-value", "0");
+    setMaxValue(parser, "e-value", "100");
 
     addOption(parser, ArgParseOption("nm", "num-matches",
         "Print at most this number of matches per query.",
         ArgParseArgument::INTEGER));
     setDefaultValue(parser, "num-matches", "500");
     setMinValue(parser, "num-matches", "1");
+    setMaxValue(parser, "num-matches", "10000");
 
     addOption(parser, ArgParseOption("", "sam-with-refheader",
         "BAM files require all subject names to be written to the header. For SAM this is not required, so Lambda does "
@@ -582,11 +584,15 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         "number of threads to run concurrently.",
         ArgParseArgument::INTEGER));
     setDefaultValue(parser, "threads", omp_get_max_threads());
+    setMinValue(parser, "threads", "1");
+    setMaxValue(parser, "threads", std::to_string(omp_get_max_threads() * 10));
 #else
     addOption(parser, ArgParseOption("t", "threads",
         "LAMBDA BUILT WITHOUT OPENMP; setting this option has no effect.",
         ArgParseArgument::INTEGER));
-    setDefaultValue(parser, "threads", 1);
+    setDefaultValue(parser, "threads", "1");
+    setMinValue(parser, "threads", "1");
+    setMaxValue(parser, "threads", "1");
 #endif
     setAdvanced(parser, "threads");
 
@@ -605,7 +611,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 #ifdef _OPENMP
     setDefaultValue(parser, "query-partitions", omp_get_max_threads());
 #else
-    setDefaultValue(parser, "query-partitions", 1);
+    setDefaultValue(parser, "query-partitions", "1");
 #endif
     hideOption(parser, "query-partitions"); // HIDDEN
 
@@ -678,6 +684,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         ArgParseArgument::INTEGER));
     setDefaultValue(parser, "seed-length", "10");
     setMinValue(parser, "seed-length", "3");
+    setMaxValue(parser, "seed-length", "50");
     setAdvanced(parser, "seed-length");
 
     addOption(parser, ArgParseOption("so", "seed-offset",
@@ -687,6 +694,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setDefaultValue(parser, "seed-offset", "10");
     setAdvanced(parser, "seed-offset");
     setMinValue(parser, "seed-offset", "1");
+    setMaxValue(parser, "seed-offset", "50");
 
     addOption(parser, ArgParseOption("sd", "seed-delta",
         "maximum seed distance.",
@@ -723,6 +731,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         "around seed, as well; default = 1 if no reduction is used).",
         ArgParseArgument::INTEGER));
     setMinValue(parser, "pre-scoring", "1");
+    setMaxValue(parser, "pre-scoring", "10");
     setDefaultValue(parser, "pre-scoring", "2");
     setAdvanced(parser, "pre-scoring");
 
@@ -730,6 +739,8 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         "minimum average score per position in pre-scoring region.",
         ArgParseArgument::DOUBLE));
     setDefaultValue(parser, "pre-scoring-threshold", "2");
+    setMinValue(parser, "pre-scoring-threshold", "0");
+    setMaxValue(parser, "pre-scoring-threshold", "20");
     setAdvanced(parser, "pre-scoring-threshold");
 
     addOption(parser, ArgParseOption("pd", "filter-putative-duplicates",
@@ -781,24 +792,32 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         "Score per gap character (default = -2 for BLASTN).",
         ArgParseArgument::INTEGER));
     setDefaultValue(parser, "score-gap", "-1");
+    setMinValue(parser, "score-gap", "-1000");
+    setMaxValue(parser, "score-gap", "1000");
     setAdvanced(parser, "score-gap");
 
     addOption(parser, ArgParseOption("go", "score-gap-open",
         "Additional cost for opening gap (default = -5 for BLASTN).",
         ArgParseArgument::INTEGER));
     setDefaultValue(parser, "score-gap-open", "-11");
+    setMinValue(parser, "score-gap-open", "-1000");
+    setMaxValue(parser, "score-gap-open", "1000");
     setAdvanced(parser, "score-gap-open");
 
     addOption(parser, ArgParseOption("ma", "score-match",
         "Match score [only BLASTN])",
         ArgParseArgument::INTEGER));
     setDefaultValue(parser, "score-match", "2");
+    setMinValue(parser, "score-match", "-1000");
+    setMaxValue(parser, "score-match", "1000");
     setAdvanced(parser, "score-match");
 
     addOption(parser, ArgParseOption("mi", "score-mismatch",
         "Mismatch score [only BLASTN]",
         ArgParseArgument::INTEGER));
     setDefaultValue(parser, "score-mismatch", "-3");
+    setMinValue(parser, "score-mismatch", "-1000");
+    setMaxValue(parser, "score-mismatch", "1000");
     setAdvanced(parser, "score-mismatch");
 
     addSection(parser, "Extension");
@@ -809,6 +828,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         ArgParseArgument::INTEGER));
     setDefaultValue(parser, "x-drop", "30");
     setMinValue(parser, "x-drop", "-1");
+    setMaxValue(parser, "x-drop", "1000");
     setAdvanced(parser, "x-drop");
 
     addOption(parser, ArgParseOption("b", "band",
@@ -818,6 +838,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         ArgParseArgument::INTEGER));
     setDefaultValue(parser, "band", "-3");
     setMinValue(parser, "band", "-3");
+    setMaxValue(parser, "band", "1000");
     setAdvanced(parser, "band");
 
     addOption(parser, ArgParseOption("em", "extension-mode",
@@ -1269,12 +1290,16 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
     addOption(parser, ArgParseOption("t", "threads",
         "number of threads to run concurrently (ignored if a == skew7ext).",
         ArgParseArgument::INTEGER));
-    setDefaultValue(parser, "threads", omp_get_max_threads());
+    setDefaultValue(parser, "threads", std::to_string(omp_get_max_threads()));
+    setMinValue(parser, "threads", "1");
+    setMaxValue(parser, "threads", std::to_string(omp_get_max_threads() * 10));
 #else
     addOption(parser, ArgParseOption("t", "threads",
         "LAMBDA BUILT WITHOUT OPENMP; setting this option has no effect.",
         ArgParseArgument::INTEGER));
-    setDefaultValue(parser, "threads", 1);
+    setDefaultValue(parser, "threads", "1");
+    setMinValue(parser, "threads", "1");
+    setMaxValue(parser, "threads", "1");
 #endif
     setAdvanced(parser, "threads");
 
