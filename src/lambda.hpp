@@ -2403,8 +2403,8 @@ iterateMatchesFullSimd(TLocalHolder & lH)
     double start = sysTime();
 
     // Prepare string sets with sequences.
-    StringSet<typename Source<typename TLocalHolder::TAlignRow0>::Type, Dependent<> > depSetH;
-    StringSet<typename Source<typename TLocalHolder::TAlignRow1>::Type, Dependent<> > depSetV;
+    StringSet<typename Source<typename TLocalHolder::TAlignRow0>::Type> depSetH;
+    StringSet<typename Source<typename TLocalHolder::TAlignRow1>::Type> depSetV;
 
     // container of blastMatches (possibly from multiple queries
     decltype(TBlastRecord().matches) blastMatches;
