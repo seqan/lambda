@@ -295,12 +295,12 @@ argConv4(LambdaOptions                        & options,
                                    TRedAlph(),
                                    TScoreExtension());
     else if (options.dbIndexType == DbIndexType::BI_FM_INDEX)
-        return realMain<BidirectionalIndex<TFMIndex<>>>(options,
-                                                        TOutFormat(),
-                                                        BlastTabularSpecSelector<h>(),
-                                                        BlastProgramSelector<p>(),
-                                                        TRedAlph(),
-                                                        TScoreExtension());
+        return realMain<BidirectionalIndex<TFMIndexInBi<>>>(options,
+                                                            TOutFormat(),
+                                                            BlastTabularSpecSelector<h>(),
+                                                            BlastProgramSelector<p>(),
+                                                            TRedAlph(),
+                                                            TScoreExtension());
     else
         return realMain<TFMIndex<>>(options,
                                    TOutFormat(),

@@ -914,7 +914,7 @@ generateIndexAndDump(StringSet<TString, TSpec>        & seqs,
 
     static bool constexpr
     indexIsFM           = std::is_same<TIndexSpec, TFMIndex<TIndexSpecSpec> >::value ||
-                          std::is_same<TIndexSpec, BidirectionalIndex<TFMIndex<TIndexSpecSpec> > >::value;
+                          std::is_same<TIndexSpec, TFMIndexInBi<TIndexSpecSpec> >::value;
     static bool constexpr
     alphReduction       = !std::is_same<TransAlph<p>, TRedAlph>::value;
 

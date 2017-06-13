@@ -294,7 +294,7 @@ public:
     using TMatch         = Match<TRedAlph>;
 
     static constexpr BlastProgram blastProgram  = p;
-    static constexpr bool indexIsBiFM           = std::is_same<TIndexSpec_, BidirectionalIndex<TFMIndex<>>>::value;
+    static constexpr bool indexIsBiFM           = std::is_same<TIndexSpec_, BidirectionalIndex<TFMIndexInBi<>>>::value;
     static constexpr bool indexIsFM             = std::is_same<TIndexSpec_, TFMIndex<>>::value || indexIsBiFM;
     static constexpr bool alphReduction         = !std::is_same<TransAlph<p>, TRedAlph>::value;
 

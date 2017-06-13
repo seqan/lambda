@@ -133,16 +133,23 @@ struct LambdaFMIndexConfig
 #else
     using TAlloc    = Alloc<>;
 #endif
-//     using Bwt       = WaveletTree<void, WTRDConfig<LengthSum, TAlloc> >;
-    using Bwt       = Levels<void, LevelsPrefixRDConfig<LengthSum, TAlloc, 1, 3> >;
-//     using Bwt       = Levels<void, LevelsRDConfig<LengthSum, TAlloc, 1, 3> >;
+
+    using Bwt       = Levels<void, LevelsRDConfig<LengthSum, TAlloc, 3, 3> >;
     using Sentinels = Levels<void, LevelsRDConfig<LengthSum, TAlloc> >;
 
     static const unsigned SAMPLING = 10;
 };
 
+struct LambdaFMIndexConfigInBi : LambdaFMIndexConfig
+{
+    using Bwt       = Levels<void, LevelsPrefixRDConfig<LengthSum, TAlloc, 3, 3> >;
+};
+
 template <typename TSpec = void>
 using TFMIndex = FMIndex<TSpec, LambdaFMIndexConfig>;
+
+template <typename TSpec = void>
+using TFMIndexInBi = FMIndex<TSpec, LambdaFMIndexConfigInBi>;
 
 // lazy...
 template <typename TString>

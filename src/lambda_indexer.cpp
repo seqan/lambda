@@ -222,7 +222,7 @@ realMain(LambdaIndexerOptions     const & options,
     {
 //         using TIndexSpec = BidirectionalIndex<TFMIndex<TIndexSpecSpec>>;
         // use regular FM-index tag, because we just create two of them
-        using TIndexSpec = TFMIndex<TIndexSpecSpec>;
+        using TIndexSpec = TFMIndexInBi<TIndexSpecSpec>;
         // first create the reverse index (which is actually unreversed)
         myPrint(options, 1, "Bi-Directional Index [backward]\n");
         generateIndexAndDump<TIndexSpec,TIndexSpecSpec>(translatedSeqs,
