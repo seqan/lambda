@@ -424,7 +424,9 @@ realMain(LambdaOptions                        & options,
             localHolder.init(t);
 
             // seed
+        #ifdef LAMBDA_MICRO_STATS
             double buf = sysTime();
+        #endif
             if (options.doubleIndexing)
             {
                 res = generateSeeds(localHolder);
@@ -435,12 +437,16 @@ realMain(LambdaOptions                        & options,
                 if (res)
                     continue;
             }
+        #ifdef LAMBDA_MICRO_STATS
             localHolder.stats.timeGenSeeds += sysTime() - buf;
 
             // search
             buf = sysTime();
+        #endif
             search(localHolder); //TODO seed refining if iterateMatches gives 0 results
+        #ifdef LAMBDA_MICRO_STATS
             localHolder.stats.timeSearch += sysTime() - buf;
+        #endif
 
 //             // TODO DEBUG
 //             for (auto const & m : localHolder.matches)
@@ -449,9 +455,15 @@ realMain(LambdaOptions                        & options,
             // sort
             if (options.filterPutativeAbundant || options.filterPutativeDuplicates || options.mergePutativeSiblings)
             {
+            #ifdef LAMBDA_MICRO_STATS
                 buf = sysTime();
+            #endif
+
                 sortMatches(localHolder);
+
+            #ifdef LAMBDA_MICRO_STATS
                 localHolder.stats.timeSort += sysTime() - buf;
+            #endif
             }
 
             // extend

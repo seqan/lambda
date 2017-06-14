@@ -54,7 +54,9 @@ struct StatsHolder
     uint64_t hitsMerged;
     uint64_t hitsTooShort;
     uint64_t hitsMasked;
+#ifdef LAMBDA_MICRO_STATS
     std::vector<uint16_t> seedLengths;
+#endif
 
 // pre-extension
     uint64_t hitsFailedPreExtendTest;
@@ -71,6 +73,7 @@ struct StatsHolder
     uint64_t hitsFinal;
     uint64_t qrysWithHit;
 
+#ifdef LAMBDA_MICRO_STATS
 // times
     double timeGenSeeds;
     double timeSearch;
@@ -82,6 +85,7 @@ struct StatsHolder
     uint64_t numQueryWithExt;
     uint64_t numExtScore;
     uint64_t numExtAli;
+#endif
 
     StatsHolder()
     {
@@ -94,7 +98,6 @@ struct StatsHolder
         hitsMerged = 0;
         hitsTooShort = 0;
         hitsMasked = 0;
-        seedLengths.clear();
 
         hitsFailedPreExtendTest = 0;
         hitsPutativeDuplicate = 0;
@@ -108,6 +111,8 @@ struct StatsHolder
         hitsFinal = 0;
         qrysWithHit = 0;
 
+    #ifdef LAMBDA_MICRO_STATS
+        seedLengths.clear();
         timeGenSeeds = 0;
         timeSearch = 0;
         timeSort = 0;
@@ -117,6 +122,7 @@ struct StatsHolder
         numQueryWithExt = 0;
         numExtScore = 0;
         numExtAli = 0;
+    #endif
     }
 
     StatsHolder plus(StatsHolder const & rhs)
@@ -125,7 +131,6 @@ struct StatsHolder
         hitsMerged += rhs.hitsMerged;
         hitsTooShort += rhs.hitsTooShort;
         hitsMasked += rhs.hitsMasked;
-        append(seedLengths, rhs.seedLengths);
 
         hitsFailedPreExtendTest += rhs.hitsFailedPreExtendTest;
         hitsPutativeDuplicate += rhs.hitsPutativeDuplicate;
@@ -139,6 +144,8 @@ struct StatsHolder
         hitsFinal += rhs.hitsFinal;
         qrysWithHit += rhs.qrysWithHit;
 
+    #ifdef LAMBDA_MICRO_STATS
+        append(seedLengths, rhs.seedLengths);
         timeGenSeeds += rhs.timeGenSeeds;
         timeSearch   += rhs.timeSearch;
         timeSort     += rhs.timeSort;
@@ -148,6 +155,7 @@ struct StatsHolder
         numQueryWithExt += rhs.numQueryWithExt;
         numExtScore += rhs.numExtScore;
         numExtAli += rhs.numExtAli;
+    #endif
         return *this;
     }
 
@@ -205,17 +213,18 @@ void printStats(StatsHolder const & stats, LambdaOptions const & options)
         std::cout << "\n - failed e-value test      " << R
                   << stats.hitsFailedExtendEValueTest << RR
                   << (rem -= stats.hitsFailedExtendEValueTest);
-        std::cout << "\n - abundant                 " << R
-                  << stats.hitsAbundant << RR
-                  << (rem -= stats.hitsAbundant);
         std::cout << "\n - duplicates               " << R
-                  << stats.hitsDuplicate << "\033[1m" << RR
-                  << (rem -= stats.hitsDuplicate)
+                  << stats.hitsDuplicate              << RR
+                  << (rem -= stats.hitsDuplicate);
+        std::cout << "\n - abundant                 " << R
+                  << stats.hitsAbundant << "\033[1m"  << RR
+                  << (rem -= stats.hitsAbundant)
                   << "\033[0m\n\n";
 
         if (rem != stats.hitsFinal)
             std::cout << "WARNING: hits don't add up\n";
 
+    #ifdef LAMBDA_MICRO_STATS
         std::cout << "Detailed Non-Wall-Clock times:\n"
                   << " genSeeds:    " << stats.timeGenSeeds << "\n"
                   << " search:      " << stats.timeSearch << "\n"
@@ -247,6 +256,7 @@ void printStats(StatsHolder const & stats, LambdaOptions const & options)
                     << " # queries with Extensions:    " << stats.numQueryWithExt << "\n"
                     << " avg # extensions without Ali: " << stats.numExtScore / stats.numQueryWithExt << "\n"
                     << " avg # extensions with    Ali: " << stats.numExtAli / stats.numQueryWithExt << "\n\n";
+    #endif
     #endif
     }
 

@@ -1162,7 +1162,9 @@ _searchSingleIndex(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH)
             {
                 if (repLength(indexIt) >= lH.options.seedLength)
                 {
+                #ifdef LAMBDA_MICRO_STATS
                     appendValue(lH.stats.seedLengths, repLength(indexIt));
+                #endif
                     lH.stats.hitsAfterSeeding += countOccurrences(indexIt);
                     for (auto occ : getOccurrences(indexIt))
                         onFindVariable(lH, occ, i, seedBegin, repLength(indexIt));
@@ -1228,7 +1230,9 @@ _searchSingleIndex(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH)
                     if ((repLength(indexIt) >= lH.options.seedLength) && (hasOneError))        // [must have one error for rev]
                     {
                         //TODO remove debug stuff
+                    #ifdef LAMBDA_MICRO_STATS
                         appendValue(lH.stats.seedLengths, repLength(indexIt));
+                    #endif
                         lH.stats.hitsAfterSeeding += countOccurrences(indexIt);
                         for (auto occ : getOccurrences(indexIt))                    // [different start pos]
                             onFindVariable(lH, occ, i, seedBegin - repLength(indexIt) + 1,  repLength(indexIt));
@@ -2162,7 +2166,9 @@ iterateMatchesExtend(TLocalHolder & lH)
         _writeRecord(record, lH);
     }
 
+#ifdef LAMBDA_MICRO_STATS
     lH.stats.timeExtendTrace += sysTime() - start;
+#endif
 
     if (lH.options.doubleIndexing)
     {
@@ -2397,10 +2403,12 @@ iterateMatchesFullSimd(TLocalHolder & lH)
                                       typename Value<typename TGlobalHolder::TTaxNames>::Type,
                                       uint32_t>;
     // statistics
+#ifdef LAMBDA_MICRO_STATS
     ++lH.stats.numQueryWithExt;
     lH.stats.numExtScore += length(lH.matches);
 
     double start = sysTime();
+#endif
 
     // Prepare string sets with sequences.
     StringSet<typename Source<typename TLocalHolder::TAlignRow0>::Type> depSetH;
@@ -2433,11 +2441,13 @@ iterateMatchesFullSimd(TLocalHolder & lH)
         if (lH.options.hasSTaxIds)
             bm.sTaxIds = lH.gH.sTaxIds[bm._n_sId];
     }
+#ifdef LAMBDA_MICRO_STATS
     lH.stats.timeExtend      += sysTime() - start;
     lH.stats.timeExtendTrace += sysTime() - start;
 
     // filter out duplicates
     start = sysTime();
+#endif
     auto before = length(blastMatches);
     blastMatches.sort([] (auto const & l, auto const & r)
     {
@@ -2457,9 +2467,11 @@ iterateMatchesFullSimd(TLocalHolder & lH)
         return std::make_tuple(length(source(l.alignRow0)), length(source(l.alignRow1))) <
                std::make_tuple(length(source(r.alignRow0)), length(source(r.alignRow1)));
     });
+#ifdef LAMBDA_MICRO_STATS
     lH.stats.timeSort += sysTime() - start;
 
     start = sysTime();
+#endif
     // fill batches
     _setupDepSets(depSetH, depSetV, blastMatches);
 
@@ -2491,9 +2503,11 @@ iterateMatchesFullSimd(TLocalHolder & lH)
         return 0;
 
     // statistics
+#ifdef LAMBDA_MICRO_STATS
     lH.stats.numExtAli += length(blastMatches);
     lH.stats.timeExtend += sysTime() - start;
     start = sysTime();
+#endif
 
     // reset and fill batches
     _setupDepSets(depSetH, depSetV, blastMatches);
@@ -2529,8 +2543,9 @@ iterateMatchesFullSimd(TLocalHolder & lH)
 
         ++it;
     }
-
+#ifdef LAMBDA_MICRO_STATS
     lH.stats.timeExtendTrace += sysTime() - start;
+#endif
 
     if (length(blastMatches) == 0)
         return 0;
@@ -2599,7 +2614,9 @@ iterateMatchesFullSerial(TLocalHolder & lH)
 
     unsigned band = _bandSize(record.qLength, lH);
 
+#ifdef LAMBDA_MICRO_STATS
     double start = sysTime();
+#endif
 
     // create blast matches
     for (auto it = lH.matches.begin(), itEnd = lH.matches.end(); it != itEnd; ++it)
@@ -2671,7 +2688,9 @@ iterateMatchesFullSerial(TLocalHolder & lH)
             bm.sTaxIds = lH.gH.sTaxIds[bm._n_sId];
     }
 
+#ifdef LAMBDA_MICRO_STATS
     lH.stats.timeExtendTrace += sysTime() - start;
+#endif
 
     _writeRecord(record, lH);
 
