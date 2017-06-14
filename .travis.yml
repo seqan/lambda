@@ -10,8 +10,10 @@ before_install:
  - test $(uname) = "Linux" && sudo apt-get update -y || true
  - test $(uname) = "Linux" && sudo apt-get install -qq -y g++-4.9 g++-5 g++-6 clang-3.8 clang-3.9 cmake cmake-data zlib1g-dev libbz2-dev || true
  - test $(uname) = "Darwin" && brew update || true
- - test $(uname) = "Darwin" && brew install gcc@5 || true
- - test $(uname) = "Darwin" && brew install gcc@6 || true
+ - test $(uname) = "Darwin" && brew install gcc@4.9 || true
+ #- test $(uname) = "Darwin" && brew install gcc@5 || true
+ #- test $(uname) = "Darwin" && brew install gcc@6 || true
+ - test $(uname) = "Darwin" && brew install gcc || true
 matrix:
   include:
     - os: linux
@@ -35,13 +37,17 @@ matrix:
       compiler: gcc-4.9
       install: export CXX="g++-4.9"
       env: CMAKE_ARGS="-DLAMBDA_FASTBUILD=1 -DLAMBDA_STATIC_BUILD=1"
+    #- os: osx
+      #compiler: gcc-5
+      #install: export CXX="g++-5"
+      #env: CMAKE_ARGS="-DLAMBDA_FASTBUILD=1"
+    #- os: osx
+      #compiler: gcc-6
+      #install: export CXX="g++-6"
+      #env: CMAKE_ARGS="-DLAMBDA_FASTBUILD=1"
     - os: osx
-      compiler: gcc-5
-      install: export CXX="g++-5"
-      env: CMAKE_ARGS="-DLAMBDA_FASTBUILD=1"
-    - os: osx
-      compiler: gcc-6
-      install: export CXX="g++-6"
+      compiler: gcc-7
+      install: export CXX="g++-7"
       env: CMAKE_ARGS="-DLAMBDA_FASTBUILD=1"
 
     #- os: osx
