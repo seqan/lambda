@@ -1043,6 +1043,8 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     getOptionValue(options.versionInformationToOutputFile, parser, "version-to-outputfile");
     getOptionValue(options.adaptiveSeeding, parser, "adaptive-seeding");
+    if (options.blastProgram == BlastProgram::BLASTN)
+        options.adaptiveSeeding = false;
 
     clear(buffer);
     getOptionValue(options.seedLength, parser, "seed-length");
