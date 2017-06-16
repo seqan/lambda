@@ -138,6 +138,19 @@ validateIndexOptions(LambdaOptions const & options)
     }
 
     std::string buffer;
+    uint64_t b = 0;
+
+    readIndexOption(buffer, "generation", options);
+    b = 0;
+    if ((!lexicalCast(b, buffer)) || (b != static_cast<uint64_t>(indexGeneration)))
+    {
+        std::cerr << "ERROR: Your index was created with an incompatible version of Lambda.\n"
+                  << "       Please re-create it.\n\n";
+        return -1;
+
+    }
+
+    buffer.clear();
     readIndexOption(buffer, "alph_translated", options);
     if (buffer != _alphName(TransAlph<p>()))
     {
@@ -146,6 +159,7 @@ validateIndexOptions(LambdaOptions const & options)
         return -1;
 
     }
+
     buffer.clear();
     readIndexOption(buffer, "alph_reduced", options);
     if (buffer != _alphName(TRedAlph()))
@@ -154,10 +168,11 @@ validateIndexOptions(LambdaOptions const & options)
                   << _alphName(TRedAlph()) << "\n       Did you specify the right -ar parameter?\n\n";
         return -1;
     }
+
     buffer.clear();
     readIndexOption(buffer, "db_index_type", options);
-    unsigned long b = 0;
-    if ((!lexicalCast(b, buffer)) || (b != static_cast<unsigned long>(options.dbIndexType)))
+    b = 0;
+    if ((!lexicalCast(b, buffer)) || (b != static_cast<uint64_t>(options.dbIndexType)))
     {
         std::cerr << "ERROR: Your index type is: " << _indexName(static_cast<DbIndexType>(std::stoul(buffer)))
                   << "\n       But lambda expected: " << _indexName(options.dbIndexType)
@@ -169,7 +184,7 @@ validateIndexOptions(LambdaOptions const & options)
         buffer.clear();
         readIndexOption(buffer, "genetic_code", options);
         b = 0;
-        if ((!lexicalCast(b, buffer)) || (b != static_cast<unsigned long>(options.geneticCode)))
+        if ((!lexicalCast(b, buffer)) || (b != static_cast<uint64_t>(options.geneticCode)))
         {
             std::cerr << "WARNING: The codon translation table used during indexing and during search are different. "
                          "This is not a problem per se, but is likely not what you want.\n\n";
@@ -179,7 +194,7 @@ validateIndexOptions(LambdaOptions const & options)
     buffer.clear();
     readIndexOption(buffer, "subj_seq_len_bits", options);
     b = 0;
-    if ((!lexicalCast(b, buffer)) || (b != static_cast<unsigned long>(sizeof(SizeTypePos_<TRedAlph>) * 8)))
+    if ((!lexicalCast(b, buffer)) || (b != static_cast<uint64_t>(sizeof(SizeTypePos_<TRedAlph>) * 8)))
     {
         #ifndef LAMBDA_LONG_PROTEIN_SUBJ_SEQS
         std::cerr << "ERROR: Your lambda executable was built with LAMBDA_LONG_PROTEIN_SUBJ_SEQS,\n"

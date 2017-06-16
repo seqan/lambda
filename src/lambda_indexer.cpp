@@ -257,6 +257,7 @@ realMain(LambdaIndexerOptions     const & options,
              { options.indexDir + "/option:alph_reduced",    std::string(_alphName(TRedAlph())) },
              { options.indexDir + "/option:genetic_code",    std::to_string(options.geneticCode) },
              { options.indexDir + "/option:subj_seq_len_bits", std::to_string(sizeof(SizeTypePos_<TRedAlph>) * 8)},
+             { options.indexDir + "/option:generation",      std::to_string(indexGeneration) },
          })
     {
         std::ofstream f{std::get<0>(s).c_str(),  std::ios_base::out | std::ios_base::binary};
