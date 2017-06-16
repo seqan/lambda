@@ -143,8 +143,10 @@ message(   "     LAMBDA_STATIC_BUILD             ${LAMBDA_STATIC_BUILD}")
 message(STATUS "Run 'cmake -LH' to get a comment on each option.")
 message(STATUS "Remove CMakeCache.txt and re-run cmake with -DOPTIONNAME=ON|OFF to change an option.")
 
-# deactivate the version check until all issues are resolved
-add_definitions (-DSEQAN_DISABLE_VERSION_CHECK="YES")
+# deactivate the version check on broken seqan releases
+if (SEQAN_VERSION_STRING VERSION_LESS "2.3.2")
+    add_definitions (-DSEQAN_DISABLE_VERSION_CHECK="YES")
+endif ()
 
 # ----------------------------------------------------------------------------
 # Compiler specifics
