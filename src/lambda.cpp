@@ -131,7 +131,22 @@ int main(int argc, char const ** argv)
 
     if (std::string(CMAKE_BUILD_TYPE) != "Release")
         std::cerr << "WARNING: This binary is not built in release mode and will be much slower than it should be!\n";
-    return argConv0(options);
+    bool ret = 0;
+    try
+    {
+        ret = argConv0(options);
+    } catch (std::bad_alloc const & e)
+    {
+        std::cerr << "ERROR: Lambda ran out of memory :(\n"
+                     "       You need split your file into smaller segments or search against a smaller database.\n";
+        ret = 1;
+    } catch (Exception const e)
+    {
+        std::cerr << e.what();
+        ret = 1;
+    }
+
+    return ret;
 }
 
 // CONVERT Run-time options to compile-time Format-Type
