@@ -501,8 +501,8 @@ public:
             nBlocks = options.queryPart;
         } else if (options.extensionMode == LambdaOptions::ExtensionMode::FULL_SIMD)
         {
-            //TODO round up and safeguard against overflow below
-            nBlocks = length(gH.redQrySeqs) / qNumFrames(blastProgram) / 10;
+            // division with rounding up
+            nBlocks = (length(gH.redQrySeqs) + qNumFrames(blastProgram) * 10 - 1) / (qNumFrames(blastProgram) * 10);
         } else
         {
             nBlocks = length(gH.redQrySeqs) / qNumFrames(blastProgram);
@@ -530,7 +530,6 @@ public:
             indexEndQry -= (indexEndQry % qNumFrames(blastProgram));
         } else if (options.extensionMode == LambdaOptions::ExtensionMode::FULL_SIMD)
         {
-            //TODO safeguard against overflow below
             indexBeginQry = qNumFrames(blastProgram) * i * 10;
             indexEndQry = _min(qNumFrames(blastProgram) * (i+1) * 10, length(gH.qrySeqs));
         } else
