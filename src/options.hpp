@@ -742,11 +742,11 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     addOption(parser, ArgParseOption("ps", "pre-scoring",
         "evaluate score of a region NUM times the size of the seed "
         "before extension (0 -> no pre-scoring, 1 -> evaluate seed, n-> area "
-        "around seed, as well; default = 1 if no reduction is used).",
+        "around seed, as well; -1 -> automatic).",
         ArgParseArgument::INTEGER));
-    setMinValue(parser, "pre-scoring", "1");
+    setMinValue(parser, "pre-scoring", "-1");
     setMaxValue(parser, "pre-scoring", "10");
-    setDefaultValue(parser, "pre-scoring", "2");
+    setDefaultValue(parser, "pre-scoring", "-1");
     setAdvanced(parser, "pre-scoring");
 
     addOption(parser, ArgParseOption("pt", "pre-scoring-threshold",
@@ -1152,14 +1152,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
             options.seedHalfExact = true;
     }
 
-    // TODO always prescore 1
     getOptionValue(options.preScoring, parser, "pre-scoring");
-    if ((!isSet(parser, "pre-scoring")) &&
-        (options.alphReduction == 0))
-        options.preScoring = 1;
-    // for adaptive seeding we take the full resized seed (and no surroundings)
-//     if (options.adaptiveSeeding)
-//         options.preScoring = 1;
 
     getOptionValue(options.preScoringThresh, parser, "pre-scoring-threshold");
 //     if (options.preScoring == 0)
@@ -1636,11 +1629,12 @@ printOptions(LambdaOptions const & options)
               << "  pre-scoring:              " << (options.preScoring
                                                     ? std::string("on")
                                                     : std::string("off")) << "\n"
-              << "  pre-scoring-region:       " << (options.preScoring
+              << "  pre-scoring-region:       " << (options.preScoring == -1 ? std::string("auto") :
+                                                   (options.preScoring
                                                     ? std::to_string(
                                                         options.preScoring *
                                                         options.seedLength)
-                                                    : std::string("n/a")) << "\n"
+                                                    : std::string("n/a"))) << "\n"
               << "  pre-scoring-threshold:    " << (options.preScoring
                                                     ? std::to_string(
                                                        options.preScoringThresh)
@@ -1691,7 +1685,7 @@ printOptions(LambdaOptions const & options)
             std::cout
               << "  extensionMode:            batch with SIMD\n"
               << "  x-drop:                   not used\n"
-              << "  band:                     not used\n";
+              << "  band:                     " << bandStr << "\n";
             break;
     }
     std::cout << " BUILD OPTIONS:\n"
