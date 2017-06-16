@@ -747,9 +747,8 @@ loadQuery(GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h>      & global
     {
         if (maxLen <= 100)
         {
-        #if 0 // defined(SEQAN_SIMD_ENABLED) && defined(__AVX2__)
+        #if defined(SEQAN_SIMD_ENABLED)
             options.extensionMode = LambdaOptions::ExtensionMode::FULL_SIMD;
-            options.band = -1;
         #else
             options.extensionMode = LambdaOptions::ExtensionMode::FULL_SERIAL;
         #endif
