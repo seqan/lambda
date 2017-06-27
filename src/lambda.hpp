@@ -693,6 +693,12 @@ loadQuery(GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h>      & global
         return -1;
     }
 
+    if (length(origSeqs) == 0)
+    {
+        std::cerr << "ERROR: Zero sequences submitted. Aborting.\n";
+        return -1;
+    }
+
     // translate
     loadQueryImplTrans(globalHolder.qrySeqs,
                        origSeqs,
@@ -719,12 +725,6 @@ loadQuery(GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h>      & global
             "Number of effective query sequences: ",
             length(globalHolder.qrySeqs), "\nLongest query sequence: ",
             maxLen, "\n\n");
-
-    if (length(globalHolder.qrySeqs) == 0)
-    {
-        std::cerr << "ERROR: Zero sequences submitted. Aborting.\n";
-        return -1;
-    }
 
     if (length(globalHolder.qrySeqs) >= std::numeric_limits<typename TGH::TMatch::TQId>::max())
     {
