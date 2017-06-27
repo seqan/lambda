@@ -1129,6 +1129,8 @@ _searchSingleIndex(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH)
                 // always continue if minimum seed length not reached
                 if (repLength(indexIt) <= lH.options.seedLength)
                     return true;
+                else if (repLength(indexIt) > 2000) // maximum recursion depth
+                    return false;
 
                 // always continue if it means not loosing hits
                 if (countOccurrences(indexIt) == countOccurrences(prevIndexIt))
@@ -1145,7 +1147,7 @@ _searchSingleIndex(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH)
             continRunnable = [&lH] (auto const &, auto const & indexIt)
             {
                 // NON-ADAPTIVE
-                return (repLength(indexIt) <= lH.options.seedLength);
+                return (repLength(indexIt) <= lH.options.seedLength) && (repLength(indexIt) < 2000);
             };
         }
 
