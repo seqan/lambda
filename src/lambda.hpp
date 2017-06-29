@@ -2233,7 +2233,7 @@ _setupAlignInfix(TBlastMatch & bm,
 template <typename TBlastMatch,
           typename TLocalHolder>
 inline auto
-_untrueQryId(TBlastMatch & bm,
+_untrueQryId(TBlastMatch const & bm,
              TLocalHolder const &)
 {
     if (qIsTranslated(TLocalHolder::TGlobalHolder::blastProgram))
@@ -2256,6 +2256,30 @@ _untrueQryId(TBlastMatch & bm,
 
 template <typename TBlastMatch,
           typename TLocalHolder>
+inline auto
+_untrueSubjId(TBlastMatch const & bm,
+              TLocalHolder const &)
+{
+    if (sIsTranslated(TLocalHolder::TGlobalHolder::blastProgram))
+    {
+        if (bm.sFrameShift > 0)
+            return bm._n_sId * 6 + bm.sFrameShift - 1;
+        else
+            return bm._n_sId * 6 - bm.sFrameShift + 2;
+    } else if (sHasRevComp(TLocalHolder::TGlobalHolder::blastProgram))
+    {
+        if (bm.sFrameShift > 0)
+            return bm._n_sId * 2;
+        else
+            return bm._n_sId * 2 + 1;
+    } else
+    {
+        return bm._n_sId;
+    }
+}
+
+template <typename TBlastMatch,
+          typename TLocalHolder>
 inline void
 _expandAlign(TBlastMatch & bm,
              TLocalHolder const & lH)
@@ -2265,7 +2289,7 @@ _expandAlign(TBlastMatch & bm,
 
     // replace source from underneath without triggereng reset
     value(bm.alignRow0._source) = lH.gH.qrySeqs[_untrueQryId(bm, lH)];
-    value(bm.alignRow1._source) = lH.gH.subjSeqs[bm._n_sId]; //WARNING not safe when subj translated → untrue-ify
+    value(bm.alignRow1._source) = lH.gH.subjSeqs[_untrueSubjId(bm, lH)];
 
     // insert fields into array gaps
     if (bm.alignRow0._array[0] == 0)
@@ -2499,7 +2523,6 @@ iterateMatchesFullSimd(TLocalHolder & lH)
     {
         TBlastMatch & bm = *it;
 
-         //WARNING this is not blastn-safe, also check all other qIsTranslated() places
         computeEValueThreadSafe(bm,
                                 qIsTranslated(TGlobalHolder::blastProgram)
                                     ? lH.gH.untransQrySeqLengths[bm._n_qId]
