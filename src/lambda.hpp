@@ -763,16 +763,6 @@ loadQuery(GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h>      & global
         }
     }
 
-    if (options.preScoring == -1)
-    {
-        if (options.alphReduction == 0)
-            options.preScoring = 1;
-        else if (maxLen <= 100)
-            options.preScoring = 3;
-        else
-            options.preScoring = 2;
-    }
-
     return 0;
 }
 
