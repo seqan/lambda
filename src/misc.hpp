@@ -25,6 +25,7 @@
 #include <unistd.h>
 #include <type_traits>
 #include <forward_list>
+#include <sys/sysctl.h>
 
 #include <seqan/basic.h>
 #include <seqan/sequence.h>
@@ -575,9 +576,18 @@ unsigned long long dirSize(char const * dirName)
 
 unsigned long long getTotalSystemMemory()
 {
+#if defined(__APPLE__)
+    uint64_t mem;
+    size_t len = sizeof(mem);
+    sysctlbyname("hw.memsize", &mem, &len, NULL, 0);
+    return mem;
+#elif defined(__unix__)
     long pages = sysconf(_SC_PHYS_PAGES);
     long page_size = sysconf(_SC_PAGE_SIZE);
     return pages * page_size;
+#else
+#   error "no way to get phys pages"
+#endif
 }
 
 
