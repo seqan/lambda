@@ -881,6 +881,21 @@ indexCreateProgress(Index<TText, IndexSa<TSpec> > & index,
     return true;
 }
 
+template <typename T>
+inline void
+_clearSparseSuffixArray(T &, std::false_type const &)
+{}
+
+template <typename T>
+inline void
+_clearSparseSuffixArray(T & dbIndex, std::true_type const &)
+{
+    // reverse index does not require sampled suffix array, but its size :|
+    clear(getFibre(getFibre(getFibre(dbIndex, FibreSA()), FibreSparseString()), FibreValues()));
+    clear(getFibre(getFibre(getFibre(dbIndex, FibreSA()), FibreSparseString()), FibreIndicators()));
+}
+
+
 // --------------------------------------------------------------------------
 // Function generateIndexAndDump()
 // --------------------------------------------------------------------------
@@ -976,6 +991,8 @@ generateIndexAndDump(StringSet<TString, TSpec>        & seqs,
         {
             // these makes redSubjSeqs appear empty and deactivates output
             swap(tmpLimits, redSubjSeqs.limits);
+
+            _clearSparseSuffixArray(dbIndex, std::integral_constant<bool, indexIsFM>{});
         } else
         {
             clear(seqs);
