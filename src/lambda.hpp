@@ -1020,7 +1020,7 @@ __goDownNoErrors(TIndexIt & indexIt,
         prevIndexIt = indexIt;
     while ((needleIt != needleItEnd) &&
            goDown(indexIt, *(needleIt++), TGoDownTag()) &&
-           continRunnable(prevIndexIt, indexIt));
+           continRunnable(prevIndexIt, indexIt, true));
 
     reportRunnable(prevIndexIt, true);
 }
@@ -1045,7 +1045,7 @@ __goDownErrors(TIndexIt const & indexIt,
         {
             TIndexIt nextIndexIt(indexIt);
             if (goDown(nextIndexIt, static_cast<TAlph>(i), TGoDownTag()) &&
-                continRunnable(indexIt, nextIndexIt))
+                continRunnable(indexIt, nextIndexIt, ordValue(*needleIt) == i))
             {
                 ++contin;
                 if (ordValue(*needleIt) == i)
@@ -1078,7 +1078,7 @@ _searchSingleIndex(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH)
     TIndexIt root(lH.gH.dbIndex);
     TIndexIt indexIt = root;
 
-    std::function<bool(TIndexIt const &, TIndexIt const &)> continRunnable;
+    std::function<bool(TIndexIt const &, TIndexIt const &, bool const)> continRunnable;
 
     /* It is important to note some option dependencies:
      * lH.options.maxSeedDist == 0 -> lH.options.seedHalfExact == true
@@ -1112,12 +1112,12 @@ _searchSingleIndex(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH)
 
         if (lH.options.adaptiveSeeding)
         {
-            continRunnable = [&lH, &desiredOccs] (auto const & prevIndexIt, auto const & indexIt)
+            continRunnable = [&lH, &desiredOccs] (auto const & prevIndexIt, auto const & indexIt, bool const hasError)
             {
                 // ADAPTIVE SEEDING:
 
                 // always continue if minimum seed length not reached
-                if (repLength(indexIt) <= lH.options.seedLength)
+                if (repLength(indexIt) <= (lH.options.seedLength +1))//- 1 + 2*hasError))
                     return true;
                 else if (repLength(indexIt) > 2000) // maximum recursion depth
                     return false;
@@ -1134,10 +1134,10 @@ _searchSingleIndex(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH)
             };
         } else
         {
-            continRunnable = [&lH] (auto const &, auto const & indexIt)
+            continRunnable = [&lH] (auto const &, auto const & indexIt, bool const hasError)
             {
                 // NON-ADAPTIVE
-                return (repLength(indexIt) <= lH.options.seedLength) && (repLength(indexIt) < 2000);
+                return (repLength(indexIt) <= (lH.options.seedLength - 1 + 2*hasError));
             };
         }
 
@@ -1174,9 +1174,9 @@ _searchSingleIndex(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH)
             if (repLength(indexIt) != goExactLength)
                 continue;
 
-            auto reportRunnable = [&lH, &i, &seedBegin] (auto const & indexIt, bool const)
+            auto reportRunnable = [&lH, &i, &seedBegin] (auto const & indexIt, bool const hasError)
             {
-                if (repLength(indexIt) >= lH.options.seedLength)
+                if (repLength(indexIt) >= lH.options.seedLength - 1 + 2*hasError)
                 {
                 #ifdef LAMBDA_MICRO_STATS
                     appendValue(lH.stats.seedLengths, repLength(indexIt));
@@ -1188,12 +1188,14 @@ _searchSingleIndex(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH)
             };
 
             if (lH.options.maxSeedDist)
+            {
                 __goDownErrors(indexIt,
                                Fwd(),
                                begin(lH.gH.redQrySeqs[i], Standard()) + seedBegin + goExactLength,
                                end(lH.gH.redQrySeqs[i], Standard()),
                                continRunnable,
                                reportRunnable);
+            }
             else
                 __goDownNoErrors(indexIt,
                                  Fwd(),
