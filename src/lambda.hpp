@@ -1045,7 +1045,7 @@ __goDownErrors(TIndexIt const & indexIt,
         {
             TIndexIt nextIndexIt(indexIt);
             if (goDown(nextIndexIt, static_cast<TAlph>(i), TGoDownTag()) &&
-                continRunnable(indexIt, nextIndexIt, ordValue(*needleIt) == i))
+                continRunnable(indexIt, nextIndexIt, ordValue(*needleIt) != i))
             {
                 ++contin;
                 if (ordValue(*needleIt) == i)
@@ -1117,7 +1117,8 @@ _searchSingleIndex(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH)
                 // ADAPTIVE SEEDING:
 
                 // always continue if minimum seed length not reached
-                if (repLength(indexIt) <= (lH.options.seedLength +1))//- 1 + 2*hasError))
+                // TODO currently unclear why considering hasError provides no benefit, and why +1 does
+                if (repLength(indexIt) <= (lH.options.seedLength + /*hasError* */ lH.options.seedDeltaIncreasesLength))
                     return true;
                 else if (repLength(indexIt) > 2000) // maximum recursion depth
                     return false;
@@ -1137,7 +1138,8 @@ _searchSingleIndex(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH)
             continRunnable = [&lH] (auto const &, auto const & indexIt, bool const hasError)
             {
                 // NON-ADAPTIVE
-                return (repLength(indexIt) <= (lH.options.seedLength - 1 + 2*hasError));
+                return (repLength(indexIt) <= (lH.options.seedLength +
+                                               /*hasError* */ lH.options.seedDeltaIncreasesLength));
             };
         }
 
@@ -1176,7 +1178,7 @@ _searchSingleIndex(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH)
 
             auto reportRunnable = [&lH, &i, &seedBegin] (auto const & indexIt, bool const hasError)
             {
-                if (repLength(indexIt) >= lH.options.seedLength - 1 + 2*hasError)
+                if (repLength(indexIt) >= lH.options.seedLength + hasError * lH.options.seedDeltaIncreasesLength)
                 {
                 #ifdef LAMBDA_MICRO_STATS
                     appendValue(lH.stats.seedLengths, repLength(indexIt));

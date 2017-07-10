@@ -302,6 +302,7 @@ struct LambdaOptions : public SharedOptions
     int             seedGravity     = 0;
     unsigned        seedOffset      = 0;
     unsigned        minSeedLength   = 0;
+    bool            seedDeltaIncreasesLength = true;
 
 //     unsigned int    minSeedEVal     = 0;
 //     double          minSeedBitS     = -1;
@@ -718,6 +719,12 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setMinValue(parser, "seed-delta", "0");
     setMaxValue(parser, "seed-delta", "1");
 
+    addOption(parser, ArgParseOption("", "seed-delta-increases-length",
+        "Seed delta increases the min. seed length (for affected seeds).",
+        ArgParseArgument::BOOL));
+    setDefaultValue(parser, "seed-delta-increases-length", "off");
+    hideOption(parser, "seed-delta-increases-length");
+
     addOption(parser, ArgParseOption("sh", "seed-half-exact",
         "Allow errors only in second half of seed.",
         ArgParseArgument::BOOL));
@@ -1087,6 +1094,8 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
             options.dbIndexType = DbIndexType::FM_INDEX;
         }
     }
+
+    getOptionValue(options.seedDeltaIncreasesLength, parser, "seed-delta-increases-length");
 
     getOptionValue(buffer, parser, "query-index-type");
     options.doubleIndexing = (buffer == "radix");
@@ -1632,6 +1641,9 @@ printOptions(LambdaOptions const & options)
               << "  seeds ungapped:           " << uint(options.hammingOnly) << "\n"
               << "  seed gravity:             " << uint(options.seedGravity) << "\n"
               << "  min seed length:          " << uint(options.minSeedLength) << "\n"
+              << "  seed delta length inc.:   " << (options.seedDeltaIncreasesLength
+                                                    ? std::string("on")
+                                                    : std::string("off")) << "\n"
               << " MISCELLANEOUS HEURISTICS\n"
               << "  pre-scoring:              " << (options.preScoring
                                                     ? std::string("on")
