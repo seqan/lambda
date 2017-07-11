@@ -703,10 +703,10 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setAdvanced(parser, "seed-length");
 
     addOption(parser, ArgParseOption("so", "seed-offset",
-        "Offset for seeding (if unset = seed-length, non-overlapping; "
+        "Offset for seeding (if unset = seed-length/2; "
         "default = 5 for BLASTN).",
         ArgParseArgument::INTEGER));
-    setDefaultValue(parser, "seed-offset", "10");
+    setDefaultValue(parser, "seed-offset", "5");
     setAdvanced(parser, "seed-offset");
     setMinValue(parser, "seed-offset", "1");
     setMaxValue(parser, "seed-offset", "50");
@@ -723,12 +723,12 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         "Seed delta increases the min. seed length (for affected seeds).",
         ArgParseArgument::BOOL));
     setDefaultValue(parser, "seed-delta-increases-length", "off");
-    hideOption(parser, "seed-delta-increases-length");
+    setAdvanced(parser, "seed-delta-increases-length");
 
     addOption(parser, ArgParseOption("sh", "seed-half-exact",
         "Allow errors only in second half of seed.",
         ArgParseArgument::BOOL));
-    setDefaultValue(parser, "seed-half-exact", "off");
+    setDefaultValue(parser, "seed-half-exact", "on");
     setAdvanced(parser, "seed-half-exact");
 
     addOption(parser, ArgParseOption("sg", "seed-gravity",
@@ -878,8 +878,8 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
                     "reduction has a strong "
                     "influence on both speed and sensitivity. We recommend the "
                     "following alternative profiles for protein searches:");
-    addText(parser, "fast (high similarity):       -so 5 -sh on");
-    addText(parser, "sensitive (lower similarity): -so 5");
+    addText(parser, "fast (high similarity):       --seed-delta-increases-length on");
+    addText(parser, "sensitive (lower similarity): --seed-offset 3");
 
     addText(parser, "For further information see the wiki: <https://github.com/seqan/lambda/wiki>");
 //         addTextSection(parser, "Speed VS memory requirements");
@@ -1069,7 +1069,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     if (isSet(parser, "seed-offset"))
         getOptionValue(options.seedOffset, parser, "seed-offset");
     else
-        options.seedOffset = options.seedLength;
+        options.seedOffset = options.seedLength / 2;
 
     if (isSet(parser, "seed-gravity"))
         getOptionValue(options.seedGravity, parser, "seed-gravity");
