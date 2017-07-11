@@ -540,14 +540,14 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     addOption(parser, ArgParseOption("e", "e-value",
         "Output only matches that score below this threshold.",
         ArgParseArgument::DOUBLE));
-    setDefaultValue(parser, "e-value", "0.1");
+    setDefaultValue(parser, "e-value", "1e-04");
     setMinValue(parser, "e-value", "0");
     setMaxValue(parser, "e-value", "100");
 
     addOption(parser, ArgParseOption("nm", "num-matches",
         "Print at most this number of matches per query.",
         ArgParseArgument::INTEGER));
-    setDefaultValue(parser, "num-matches", "500");
+    setDefaultValue(parser, "num-matches", "256");
     setMinValue(parser, "num-matches", "1");
     setMaxValue(parser, "num-matches", "10000");
 
