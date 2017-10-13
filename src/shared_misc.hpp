@@ -33,7 +33,7 @@
 #include <seqan/align.h>
 #include <seqan/blast.h>
 
-#include "options.hpp"
+#include "shared_options.hpp"
 
 using namespace seqan;
 

@@ -31,11 +31,11 @@
 #include <seqan/translation.h>
 #include <seqan/reduced_aminoacid.h>
 
-#include "output.hpp" //TODO only needed because options are in one file, remove later
-#include "misc.hpp"
-#include "options.hpp"
-#include "radix_inplace.h"
-#include "lambda_indexer_misc.hpp"
+#include "mkindex_misc.hpp"
+#include "mkindex_saca.hpp"
+#include "shared_misc.hpp"
+#include "shared_options.hpp"
+#include "search_output.hpp" //TODO only needed because options are in one file, remove later
 
 using namespace seqan;
 

@@ -197,23 +197,22 @@ add_definitions (-DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}")
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
 
 # Update the list of file names below if you add source files to your application.
-add_executable (lambda lambda.cpp
-                lambda.hpp
-                misc.hpp
-                match.hpp
-                options.hpp
-                holders.hpp
-                output.hpp)
-
-add_executable (lambda_indexer lambda_indexer.cpp
-                lambda_indexer.hpp
-                options.hpp
-                lambda_indexer_misc.hpp
-                radix_inplace.h)
+add_executable (lambda2 lambda.cpp
+                    shared_misc.hpp
+                    shared_options.hpp
+                search.hpp
+                    search_algo.hpp
+                    search_datastructures.hpp
+                    search_match.hpp
+                    search_output.hpp
+                mkindex.hpp
+                    mkindex_algo.hpp
+                    mkindex_misc.hpp
+                    mkindex_saca.hpp)
 
 # Add dependencies found by find_package (SeqAn).
-target_link_libraries (lambda ${SEQAN_LIBRARIES})
-target_link_libraries (lambda_indexer ${SEQAN_LIBRARIES})
+target_link_libraries (lambda2 ${SEQAN_LIBRARIES})
+# target_link_libraries (lambda_indexer ${SEQAN_LIBRARIES})
 
 # Add CXX flags found by find_package (SeqAn).
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN_CXX_FLAGS}")
@@ -225,7 +224,7 @@ set(BUILD_SHARED_LIBS OFF)
 # ----------------------------------------------------------------------------
 
 # Install lambda in ${PREFIX}/bin directory
-install (TARGETS lambda lambda_indexer
+install (TARGETS lambda2
          DESTINATION bin)
 
 # Install non-binary files for the package to share/lambda
@@ -233,14 +232,14 @@ install (FILES ../LICENSE.rst
                ../LICENSE-BSD.rst
                ../LICENSE-AGPL3.rst
                ../README.rst
-         DESTINATION "share/doc/lambda")
+         DESTINATION "share/doc/lambda2")
 
 # ----------------------------------------------------------------------------
 # CPack Install
 # ----------------------------------------------------------------------------
 
 # Information
-set (CPACK_PACKAGE_NAME "lambda")
+set (CPACK_PACKAGE_NAME "lambda2")
 set (CPACK_PACKAGE_DESCRIPTION_SUMMARY "lambda -- the local aligner for massive bioligical data")
 set (CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/../README.rst")
 set (CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/../LICENSE.rst")

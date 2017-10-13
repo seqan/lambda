@@ -38,9 +38,10 @@
 
 #include <seqan/align_extend.h>
 
-#include "options.hpp"
-#include "match.hpp"
-#include "misc.hpp"
+#include "search_output.hpp"
+#include "search_match.hpp"
+#include "shared_misc.hpp"
+#include "shared_options.hpp"
 
 using namespace seqan;
 

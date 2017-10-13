@@ -26,7 +26,7 @@
 // #include <unordered_map>
 #include <vector>
 
-#include "options.hpp"
+#include "shared_options.hpp"
 
 using namespace seqan;
 

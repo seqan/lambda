@@ -24,8 +24,8 @@
 
 #include <seqan/align_extend.h>
 
-#include "options.hpp"
-#include "match.hpp"
+#include "search_match.hpp"
+#include "shared_options.hpp"
 
 // ============================================================================
 // Forwards

@@ -33,6 +33,8 @@
 #include <seqan/index.h>
 #include <seqan/blast.h>
 
+using namespace seqan;
+
 // ==========================================================================
 // Forwards
 // ==========================================================================
@@ -121,8 +123,6 @@ struct FormattedFileContext<FormattedFile<Bam, TDirection, BlastTabular>, TStora
 };
 
 }
-
-using namespace seqan;
 
 // Index Specs
 struct LambdaFMIndexConfig
@@ -429,14 +429,6 @@ sharedSetup(ArgumentParser & parser)
         " OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH\n"
         " DAMAGE.\n");
 
-    addOption(parser, ArgParseOption("v", "verbosity",
-        "Display more/less diagnostic output during operation: 0 [only errors]; 1 [default]; 2 "
-        "[+run-time, options and statistics].",
-        ArgParseArgument::INTEGER));
-    setDefaultValue(parser, "verbosity", "1");
-    setMinValue(parser, "verbosity", "0");
-    setMaxValue(parser, "verbosity", "2");
-
     addDescription(parser, "Lambda is a local aligner optimized for many query "
         "sequences and searches in protein space. It is compatible to BLAST, but "
         "much faster than BLAST and many other comparable tools.");
@@ -462,7 +454,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     eraseBack(options.commandLine);
 
     // Setup ArgumentParser.
-    ArgumentParser parser("lambda");
+    ArgumentParser parser("lambda2 search");
     // Set short description, version, and date.
     setShortDescription(parser, "the Local Aligner for Massive Biological "
     "DatA");
@@ -473,6 +465,18 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
                          "[\\fI-o output.m8\\fP]");
 
     sharedSetup(parser);
+
+    // version checker initiated by top-level arg parser
+    setDefaultValue(parser, "version-check", "0");
+    hideOption(parser, "version-check");
+
+    addOption(parser, ArgParseOption("v", "verbosity",
+        "Display more/less diagnostic output during operation: 0 [only errors]; 1 [default]; 2 "
+        "[+run-time, options and statistics].",
+        ArgParseArgument::INTEGER));
+    setDefaultValue(parser, "verbosity", "1");
+    setMinValue(parser, "verbosity", "0");
+    setMaxValue(parser, "verbosity", "2");
 
     addSection(parser, "Input Options");
     addOption(parser, ArgParseOption("q", "query",
@@ -1212,7 +1216,7 @@ ArgumentParser::ParseResult
 parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
 {
     // Setup ArgumentParser.
-    ArgumentParser parser("lambda_indexer");
+    ArgumentParser parser("lambda2 indexer");
 
     setShortDescription(parser, "indexer for creating lambda-compatible databases");
 
@@ -1220,6 +1224,18 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
     addUsageLine(parser, "[\\fIOPTIONS\\fP] \\-d DATABASE.fasta [-i INDEX.lambda]\\fP");
 
     sharedSetup(parser);
+
+    // version checker initiated by top-level arg parser
+    setDefaultValue(parser, "version-check", "0");
+    hideOption(parser, "version-check");
+
+    addOption(parser, ArgParseOption("v", "verbosity",
+        "Display more/less diagnostic output during operation: 0 [only errors]; 1 [default]; 2 "
+        "[+run-time, options and statistics].",
+        ArgParseArgument::INTEGER));
+    setDefaultValue(parser, "verbosity", "1");
+    setMinValue(parser, "verbosity", "0");
+    setMaxValue(parser, "verbosity", "2");
 
     addDescription(parser, "This is the indexer_binary for creating lambda-compatible databases.");
 

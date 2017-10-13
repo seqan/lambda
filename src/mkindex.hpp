@@ -29,7 +29,7 @@
 
 #define LAMBDA_INDEXER 1 // some things are different for the indexer binary
 
-#include "lambda_indexer.hpp"
+#include "mkindex_algo.hpp"
 
 using namespace seqan;
 
@@ -70,7 +70,7 @@ realMain(LambdaIndexerOptions     const & options,
 
 // Program entry point.
 
-int main(int argc, char const ** argv)
+int mkindexMain(int const argc, char const ** argv)
 {
     // Parse the command line.
     seqan::ArgumentParser parser;
