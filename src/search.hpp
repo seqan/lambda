@@ -28,9 +28,15 @@
 #include <seqan/reduced_aminoacid.h>
 #include <seqan/misc/terminal.h>
 
-#include "search_algo.hpp"
-#include "search_datastructures.hpp"
+#include "shared_definitions.hpp"
 #include "shared_options.hpp"
+#include "shared_misc.hpp"
+
+#include "search_output.hpp"
+#include "search_options.hpp"
+#include "search_datastructures.hpp"
+#include "search_misc.hpp"
+#include "search_algo.hpp"
 
 // forwards
 
@@ -115,11 +121,11 @@ int searchMain(int const argc, char const ** argv)
     {
         std::cerr << "ERROR: Lambda ran out of memory :(\n"
                      "       You need to split your file into smaller segments or search against a smaller database.\n";
-        ret = 1;
+        return -1;
     } catch (std::exception const & e)
     {
-        std::cerr << e.what() << '\n';
-        ret = 1;
+        std::cerr << "\n\n**An exception was thrown**\n" << e.what() << '\n';
+        return -1;
     }
     return ret;
 #else
@@ -132,6 +138,91 @@ int searchMain(int const argc, char const ** argv)
 inline int
 argConv0(LambdaOptions & options)
 {
+    myPrint(options, 1, "LAMBDA - the Local Aligner for Massive Biological DatA"
+                        "\n======================================================"
+                        "\nVersion ", SEQAN_APP_VERSION, "\n\n");
+
+    // Index
+    myPrint(options, 1, "Reading index properties... ");
+    readIndexOptions(options);
+    myPrint(options, 1, "done.\n");
+
+#ifndef LAMBDA_LEGACY_PATHS
+    if (options.dbIndexType == DbIndexType::SUFFIX_ARRAY)
+        throw std::runtime_error("ERROR: The index is of type suffix array, but support was removed.\n"
+                                 "       Either rebuild lambda2 with '-DLAMBDA_LEGACY_PATHS=1' or re-create the index.\n");
+#endif // LAMBDA_LEGACY_PATHS
+
+    myPrint(options, 2, "Index properties\n"
+                        "  type:                ", _indexEnumToName(options.dbIndexType), "\n",
+                        "  original   alphabet: ", _alphabetEnumToName(options.subjOrigAlphabet), "\n");
+    if (_alphabetEnumToName(options.subjOrigAlphabet) == _alphabetEnumToName(options.transAlphabet))
+    {
+        myPrint(options, 2, "  translated alphabet: not translated\n");
+    }
+    else
+    {
+        myPrint(options, 2, "  translated alphabet: ", _alphabetEnumToName(options.transAlphabet), "\n");
+        myPrint(options, 2, "    translation code:  ", options.geneticCode, "\n");
+    }
+
+    if (_alphabetEnumToName(options.transAlphabet) == _alphabetEnumToName(options.reducedAlphabet))
+    {
+        myPrint(options, 2, "  reduced    alphabet:  not reduced\n");
+    }
+    else
+    {
+        myPrint(options, 2, "  reduced    alphabet: ", _alphabetEnumToName(options.reducedAlphabet), "\n\n");
+    }
+
+    if ((options.blastProgram == BlastProgram::BLASTN) &&
+        (options.reducedAlphabet != AlphabetEnum::DNA4))
+    {
+        throw std::runtime_error("ERROR: You are attempting a nucleotide search on a protein index.\n");
+    }
+
+    // query file
+    if (options.qryOrigAlphabet == AlphabetEnum::DNA4) // means "auto", as dna4 not valid as argument to --query-alphabet
+    {
+        myPrint(options, 1, "Detecting query alphabet... ");
+        options.qryOrigAlphabet = detectSeqFileAlphabet(options.queryFile);
+        myPrint(options, 1, _alphabetEnumToName(options.qryOrigAlphabet), " detected.\n");
+    }
+
+    // set blastProgram
+    if (options.blastProgram == BlastProgram::UNKNOWN)
+    {
+        if ((options.transAlphabet == AlphabetEnum::DNA5) && (options.qryOrigAlphabet == AlphabetEnum::AMINO_ACID))
+        {
+            throw std::runtime_error("ERROR: Query file is protein, but index is nucleotide. "
+                                    "Re-create the index with 'lambda mkindexp'.\n");
+        }
+        else if ((options.transAlphabet == AlphabetEnum::DNA5) && (options.qryOrigAlphabet == AlphabetEnum::DNA5))
+        {
+            options.blastProgram = BlastProgram::BLASTN;
+        }
+        else if ((options.qryOrigAlphabet == AlphabetEnum::DNA5)) // query will be translated
+        {
+            if (options.subjOrigAlphabet == options.transAlphabet)
+                options.blastProgram = BlastProgram::BLASTX;
+            else
+                options.blastProgram = BlastProgram::TBLASTX;
+        }
+        else // query is aminoacid already
+        {
+            if (options.subjOrigAlphabet == options.transAlphabet)
+                options.blastProgram = BlastProgram::BLASTP;
+            else
+                options.blastProgram = BlastProgram::TBLASTN;
+        }
+    }
+
+    // sizes
+    int ret = checkRAM(options);
+    if (ret)
+        return ret;
+
+    // output
     CharString output = options.output;
     if (endsWith(output, ".gz"))
         output = prefix(output, length(output) - 3);
@@ -210,11 +301,12 @@ argConv2(LambdaOptions                        & options,
 {
     using Th = BlastTabularSpecSelector<h>;
     using Tp = BlastProgramSelector<p>;
-    switch (options.alphReduction)
+
+    switch (options.reducedAlphabet)
     {
-        case 0:
+        case AlphabetEnum::AMINO_ACID:
             return argConv3(options, TOutFormat(), Th(), Tp(), AminoAcid());
-        case 2:
+        case AlphabetEnum::MURPHY10:
             return argConv3(options, TOutFormat(), Th(), Tp(), ReducedAminoAcid<Murphy10>());
 #if 0
         case 10:
@@ -281,6 +373,7 @@ argConv4(LambdaOptions                        & options,
          TRedAlph                       const & /**/,
          TScoreExtension                const & /**/)
 {
+#ifdef LAMBDA_LEGACY_PATHS
     if (options.dbIndexType == DbIndexType::SUFFIX_ARRAY)
         return realMain<IndexSa<>>(options,
                                    TOutFormat(),
@@ -288,7 +381,9 @@ argConv4(LambdaOptions                        & options,
                                    BlastProgramSelector<p>(),
                                    TRedAlph(),
                                    TScoreExtension());
-    else if (options.dbIndexType == DbIndexType::BI_FM_INDEX)
+    else
+#endif // LAMBDA_LEGACY_PATHS
+    if (options.dbIndexType == DbIndexType::BI_FM_INDEX)
         return realMain<BidirectionalIndex<TFMIndexInBi<>>>(options,
                                                             TOutFormat(),
                                                             BlastTabularSpecSelector<h>(),
@@ -327,25 +422,13 @@ realMain(LambdaOptions                        & options,
     using TGlobalHolder = GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h>;
     using TLocalHolder = LocalDataHolder<TGlobalHolder, TScoreExtension>;
 
-    myPrint(options, 1, "LAMBDA - the Local Aligner for Massive Biological DatA"
-                      "\n======================================================"
-                      "\nVersion ", SEQAN_APP_VERSION, "\n\n");
-
-    int ret = validateIndexOptions<TRedAlph, p>(options);
-    if (ret)
-        return ret;
-
     if (options.verbosity >= 2)
         printOptions<TLocalHolder>(options);
-
-    ret = checkRAM(options);
-    if (ret)
-        return ret;
 
     TGlobalHolder globalHolder;
 //     context(globalHolder.outfile).scoringScheme._internalScheme = matr;
 
-    ret = prepareScoring(globalHolder, options);
+    int ret = prepareScoring(globalHolder, options);
     if (ret)
         return ret;
 

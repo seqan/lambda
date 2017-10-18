@@ -19,29 +19,75 @@
 // holders.hpp: Data container structs
 // ==========================================================================
 
-#ifndef SEQAN_LAMBDA_HOLDERS_H_
-#define SEQAN_LAMBDA_HOLDERS_H_
+#ifndef LAMBDA_SEARCH_DATASTRUCTURES_H_
+#define LAMBDA_SEARCH_DATASTRUCTURES_H_
 
 #include <seqan/align_extend.h>
-
-#include "search_match.hpp"
-#include "shared_options.hpp"
-
-// ============================================================================
-// Forwards
-// ============================================================================
-
-// ============================================================================
-// Metafunctions
-// ============================================================================
-
-// ============================================================================
-// Functions
-// ============================================================================
 
 // ============================================================================
 // Tags, Classes, Enums
 // ============================================================================
+
+// ----------------------------------------------------------------------------
+// struct Match
+// ----------------------------------------------------------------------------
+
+template<typename TAlph>
+struct Match
+{
+    typedef SizeTypeNum_<TAlph>    TQId;
+    typedef SizeTypeNum_<TAlph>    TSId;
+    typedef SizeTypePos_<TAlph>    TPos;
+
+    TQId qryId;
+    TSId subjId;
+    TPos qryStart;
+    TPos qryEnd;
+
+    TPos subjStart;
+    TPos subjEnd;
+
+    inline bool operator== (Match const & m2) const
+    {
+         return std::tie(qryId, subjId, qryStart, subjStart, qryEnd, subjEnd)
+             == std::tie(m2.qryId, m2.subjId, m2.qryStart, m2.subjStart, m2.qryEnd, m2.subjEnd);
+    }
+    inline bool operator< (Match const & m2) const
+    {
+         return std::tie(qryId, subjId, qryStart, subjStart, qryEnd, subjEnd)
+              < std::tie(m2.qryId, m2.subjId, m2.qryStart, m2.subjStart, m2.qryEnd, m2.subjEnd);
+    }
+};
+
+template <typename TAlph>
+inline void
+setToSkip(Match<TAlph> & m)
+{
+    using TPos          = typename Match<TAlph>::TPos;
+    constexpr TPos posMax = std::numeric_limits<TPos>::max();
+    m.qryStart = posMax;
+    m.subjStart = posMax;
+}
+
+template <typename TAlph>
+inline bool
+isSetToSkip(Match<TAlph> const & m)
+{
+    using TPos          = typename Match<TAlph>::TPos;
+    constexpr TPos posMax = std::numeric_limits<TPos>::max();
+    return (m.qryStart == posMax) && (m.subjStart == posMax);
+}
+
+template <typename TAlph>
+inline void
+_printMatch(Match<TAlph> const & m)
+{
+    std::cout << "MATCH  Query " << m.qryId
+              << "(" << m.qryStart << ", " << m.qryEnd
+              << ")   on Subject "<< m.subjId
+              << "(" << m.subjStart << ", " << m.subjEnd
+              << ")" <<  std::endl << std::flush;
+}
 
 // ----------------------------------------------------------------------------
 // struct StatsHolder
@@ -549,4 +595,4 @@ public:
     }
 };
 
-#endif // SEQAN_LAMBDA_HOLDERS_H_
+#endif // LAMBDA_SEARCH_DATASTRUCTURES_H_

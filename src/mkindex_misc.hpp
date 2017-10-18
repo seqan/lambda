@@ -22,6 +22,30 @@
 #ifndef LAMBDA_INDEXER_MISC_HPP_
 #define LAMBDA_INDEXER_MISC_HPP_
 
+template <typename TString>
+void getCwd(TString & string)
+{
+    char cwd[1000];
+
+#ifdef PLATFORM_WINDOWS
+    _getcwd(cwd, 1000);
+#else
+    getcwd(cwd, 1000);
+#endif
+
+    assign(string, cwd);
+}
+
+template <typename TString, typename TValue>
+bool setEnv(TString const & key, TValue & value)
+{
+#ifdef PLATFORM_WINDOWS
+    return !_putenv_s(toCString(key), toCString(value));
+#else
+    return !setenv(toCString(key), toCString(value), true);
+#endif
+}
+
 // ----------------------------------------------------------------------------
 // Class ComparisonCounter
 // ----------------------------------------------------------------------------
@@ -148,7 +172,7 @@ struct ComparisonCounter<TText, std::true_type>
 
 template <typename TInputIterator,
           typename TStaxIDs>
-inline int
+void
 _readMappingFileUniProt(TInputIterator                                        & fit,
                         TStaxIDs                                              & sTaxIds,
                         std::vector<bool>                                     & taxIdIsPresent,
@@ -187,9 +211,9 @@ _readMappingFileUniProt(TInputIterator                                        & 
             }
             catch (BadLexicalCast const & badCast)
             {
-                std::cerr << "Error: Expected taxonomical ID, but got something I couldn't read: "
-                          << badCast.what() << "\n";
-                return -1;
+                throw std::runtime_error(
+                    std::string("Error: Expected taxonomical ID, but got something I couldn't read: ") +
+                    std::string(badCast.what()) + "\n");
             }
             appendValue(sTaxIdV, idNum);
             if (taxIdIsPresent.size() < idNum + 1)
@@ -199,13 +223,11 @@ _readMappingFileUniProt(TInputIterator                                        & 
 
         skipLine(fit);
     }
-
-    return 0;
 }
 
 template <typename TInputIterator,
           typename TStaxIDs>
-inline int
+void
 _readMappingFileNCBI(TInputIterator                                        & fit,
                      TStaxIDs                                              & sTaxIds,
                      std::vector<bool>                                     & taxIdIsPresent,
@@ -241,9 +263,9 @@ _readMappingFileNCBI(TInputIterator                                        & fit
             }
             catch (BadLexicalCast const & badCast)
             {
-                std::cerr << "Error: Expected taxonomical ID, but got something I couldn't read: "
-                          << badCast.what() << "\n";
-                return -1;
+                throw std::runtime_error(
+                    std::string("Error: Expected taxonomical ID, but got something I couldn't read: ") +
+                    std::string(badCast.what()) + "\n");
             }
             appendValue(sTaxIdV, idNum);
             if (taxIdIsPresent.size() < idNum + 1)
@@ -253,8 +275,6 @@ _readMappingFileNCBI(TInputIterator                                        & fit
 
         skipLine(fit);
     }
-
-    return 0;
 }
 
 /// REGEX version is 5x slower, but verifies file format correctness

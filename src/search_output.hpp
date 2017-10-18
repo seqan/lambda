@@ -19,8 +19,8 @@
 // output.hpp: contains routines for file-writing
 // ==========================================================================
 
-#ifndef SEQAN_LAMBDA_OUTPUT_H_
-#define SEQAN_LAMBDA_OUTPUT_H_
+#ifndef LAMBDA_SEARCH_OUTPUT_H_
+#define LAMBDA_SEARCH_OUTPUT_H_
 
 #include <seqan/blast.h>
 #include <seqan/bam_io.h>
@@ -691,4 +691,4 @@ myWriteFooter(TGH & globalHolder, TLambdaOptions const & options)
     }
 }
 
-#endif // SEQAN_LAMBDA_OUTPUT_H_
+#endif // LAMBDA_SEARCH_OUTPUT_H_

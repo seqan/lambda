@@ -29,6 +29,13 @@
 
 #define LAMBDA_INDEXER 1 // some things are different for the indexer binary
 
+#include "shared_misc.hpp"
+#include "shared_definitions.hpp"
+#include "shared_options.hpp"
+
+#include "mkindex_misc.hpp"
+#include "mkindex_options.hpp"
+#include "mkindex_saca.hpp"
 #include "mkindex_algo.hpp"
 
 using namespace seqan;
@@ -37,17 +44,17 @@ using namespace seqan;
 // Forwards
 // ==========================================================================
 
-inline int
-argConv0(LambdaIndexerOptions const & options);
+void
+argConv0(LambdaIndexerOptions           & options);
 
 template <BlastProgram p>
-inline int
-argConv1(LambdaIndexerOptions           const & options,
-         BlastProgramSelector<p>        const &);
+void
+argConv1(LambdaIndexerOptions     const & options,
+         BlastProgramSelector<p>  const &);
 
 template <BlastProgram p,
           typename TRedAlph>
-inline int
+void
 argConv2(LambdaIndexerOptions     const & options,
          BlastProgramSelector<p>  const &,
          TRedAlph                 const &);
@@ -55,7 +62,7 @@ argConv2(LambdaIndexerOptions     const & options,
 template <BlastProgram p,
           typename TRedAlph,
           typename TIndexSpecSpec>
-inline int
+void
 realMain(LambdaIndexerOptions     const & options,
          BlastProgramSelector<p>  const &,
          TRedAlph                 const &,
@@ -87,61 +94,73 @@ int mkindexMain(int const argc, char const ** argv)
         std::cerr << "WARNING: This binary is not built in release mode and will be much slower than it should be!\n";
 
 #ifdef NDEBUG
-    int ret = 0;
     try
     {
-        ret = argConv0(options);
+        argConv0(options);
     } catch (std::bad_alloc const & e)
     {
         std::cerr << "ERROR: Lambda ran out of memory :(\n"
                      "       You need to split your file into smaller segments.\n";
-        ret = 1;
+        return -1;
     } catch (std::exception const & e)
     {
-        std::cerr << e.what() << '\n';
-        ret = 1;
+        std::cerr << "\n\n**An exception was thrown**\n" << e.what() << '\n';
+        return -1;
     }
-    return ret;
 #else
     // In debug mode we don't catch the exceptions so that we get a backtrace from SeqAn's handler
-    return argConv0(options);
+    argConv0(options);
 #endif
+    return 0;
 }
 
-inline int
-argConv0(LambdaIndexerOptions const & options)
+void
+argConv0(LambdaIndexerOptions & options)
 {
+    // set blastProgram
+    if (options.blastProgram == BlastProgram::UNKNOWN) // already implies != BLASTN
+    {
+        myPrint(options, 1, "Detecting database alphabet... ");
+        options.subjOrigAlphabet = detectSeqFileAlphabet(options.dbFile);
+        myPrint(options, 1, _alphabetEnumToName(options.subjOrigAlphabet), " detected.\n");
+        if (options.subjOrigAlphabet == AlphabetEnum::DNA5) // needs to be translated
+            options.blastProgram = BlastProgram::TBLASTX;
+            // or TBLASTX, but difference is irrelevant for indexer
+        else
+            options.blastProgram = BlastProgram::BLASTX;
+            // or BLASTP, but difference is irrelevant for indexer
+    }
+
     switch(options.blastProgram)
     {
         case BlastProgram::BLASTN:
-            return argConv1(options, BlastProgramSelector<BlastProgram::BLASTN>());
-        case BlastProgram::BLASTP:
-            return argConv1(options, BlastProgramSelector<BlastProgram::BLASTP>());
+            return argConv2(options, BlastProgramSelector<BlastProgram::BLASTN>(), Dna5{});
+//         case BlastProgram::BLASTP:
+//             return argConv1(options, BlastProgramSelector<BlastProgram::BLASTP>());
         case BlastProgram::BLASTX:
             return argConv1(options, BlastProgramSelector<BlastProgram::BLASTX>());
-        case BlastProgram::TBLASTN:
-            return argConv1(options, BlastProgramSelector<BlastProgram::TBLASTN>());
+//         case BlastProgram::TBLASTN:
+//             return argConv1(options, BlastProgramSelector<BlastProgram::TBLASTN>());
         case BlastProgram::TBLASTX:
             return argConv1(options, BlastProgramSelector<BlastProgram::TBLASTX>());
         default:
             break;
     }
-    return -1;
+    throw std::invalid_argument("ERROR: Could not determine blast program mode.\n");
 }
 
-/// Alphabet reduction
+/// Alphabet reduction (skipped in case == BLASTN)
 template <BlastProgram p>
-inline int
+void
 argConv1(LambdaIndexerOptions           const & options,
          BlastProgramSelector<p>        const &)
 {
-    using TUnred = typename std::conditional<p == BlastProgram::BLASTN, Dna5, AminoAcid>::type;
     using Tp = BlastProgramSelector<p>;
-    switch (options.alphReduction)
+    switch (options.reducedAlphabet)
     {
-        case 0:
-            return argConv2(options, Tp(), TUnred());
-        case 2:
+        case AlphabetEnum::AMINO_ACID:
+            return argConv2(options, Tp(), AminoAcid());
+        case AlphabetEnum::MURPHY10:
             return argConv2(options, Tp(), ReducedAminoAcid<Murphy10>());
 #if 0
         case 10:
@@ -154,14 +173,14 @@ argConv1(LambdaIndexerOptions           const & options,
             return argConv2(options, ReducedAminoAcid<ClusterReduction<12>>());
 #endif
         default:
-            return -1;
+            break;
     }
-    return -1;
+    throw std::invalid_argument("ERROR: Could not determine alphabet reduction.\n");
 }
 
 template <BlastProgram p,
           typename TRedAlph>
-inline int
+void
 argConv2(LambdaIndexerOptions     const & options,
          BlastProgramSelector<p>  const &,
          TRedAlph                 const &)
@@ -175,7 +194,7 @@ argConv2(LambdaIndexerOptions     const & options,
 template <BlastProgram p,
           typename TRedAlph,
           typename TIndexSpecSpec>
-inline int
+void
 realMain(LambdaIndexerOptions     const & options,
          BlastProgramSelector<p>  const &,
          TRedAlph                 const &,
@@ -185,16 +204,13 @@ realMain(LambdaIndexerOptions     const & options,
     using TTransSet = TCDStringSet<String<TransAlph<p>>>;
 
     TTransSet translatedSeqs;
-    int ret = 0;
 
     {
         TOrigSet originalSeqs;
         std::unordered_map<std::string, uint64_t> accToIdRank;
 
         // ids get saved to disk again immediately and are not kept in memory
-        ret = loadSubjSeqsAndIds(originalSeqs, accToIdRank, options);
-        if (ret)
-            return ret;
+        loadSubjSeqsAndIds(originalSeqs, accToIdRank, options);
 
         // preserve lengths of untranslated sequences
         if (sIsTranslated(p))
@@ -206,14 +222,10 @@ realMain(LambdaIndexerOptions     const & options,
             taxIdIsPresent.reserve(2'000'000);
 
             // read the mapping file and save relevant mappings to disk
-            ret = mapAndDumpTaxIDs(taxIdIsPresent, accToIdRank, length(originalSeqs), options);
-            if (ret)
-                return ret;
+            mapAndDumpTaxIDs(taxIdIsPresent, accToIdRank, length(originalSeqs), options);
 
             // read the mapping file and save relevant mappings to disk
-            ret = parseAndDumpTaxTree(taxIdIsPresent, options);
-            if (ret)
-                return ret;
+            parseAndDumpTaxTree(taxIdIsPresent, options);
         }
 
         // translate or swap depending on program
@@ -225,9 +237,7 @@ realMain(LambdaIndexerOptions     const & options,
         dumpTranslatedSeqs(translatedSeqs, options);
 
     // see if final sequence set actually fits into index 
-    ret = checkIndexSize(translatedSeqs, options, BlastProgramSelector<p>());
-    if (ret)
-        return ret;
+    checkIndexSize(translatedSeqs, options, BlastProgramSelector<p>());
 
     if (options.dbIndexType == DbIndexType::FM_INDEX)
     {
@@ -272,9 +282,9 @@ realMain(LambdaIndexerOptions     const & options,
     for (auto && s : std::initializer_list<std::pair<std::string, std::string>>
          {
              { options.indexDir + "/option:db_index_type",   std::to_string(static_cast<uint32_t>(options.dbIndexType))},
-             { options.indexDir + "/option:alph_original",   std::string(_alphName(OrigSubjAlph<p>())) },
-             { options.indexDir + "/option:alph_translated", std::string(_alphName(TransAlph<p>())) },
-             { options.indexDir + "/option:alph_reduced",    std::string(_alphName(TRedAlph())) },
+             { options.indexDir + "/option:alph_original",   std::string(_alphTypeToName(OrigSubjAlph<p>())) },
+             { options.indexDir + "/option:alph_translated", std::string(_alphTypeToName(TransAlph<p>())) },
+             { options.indexDir + "/option:alph_reduced",    std::string(_alphTypeToName(TRedAlph())) },
              { options.indexDir + "/option:genetic_code",    std::to_string(options.geneticCode) },
              { options.indexDir + "/option:subj_seq_len_bits", std::to_string(sizeof(SizeTypePos_<TRedAlph>) * 8)},
              { options.indexDir + "/option:generation",      std::to_string(indexGeneration) },
@@ -285,6 +295,6 @@ realMain(LambdaIndexerOptions     const & options,
         f.close();
     }
 
-    return 0;
+
 }
 

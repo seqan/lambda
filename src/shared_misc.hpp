@@ -19,8 +19,8 @@
 // store.h: contains types and definitions for storing sequences and indices
 // ==========================================================================
 
-#ifndef SEQAN_LAMBDA_MISC_H_
-#define SEQAN_LAMBDA_MISC_H_
+#ifndef LAMBDA_SHARED_MISC_H_
+#define LAMBDA_SHARED_MISC_H_
 
 #include <unistd.h>
 #include <type_traits>
@@ -32,8 +32,6 @@
 #include <seqan/index.h>
 #include <seqan/align.h>
 #include <seqan/blast.h>
-
-#include "shared_options.hpp"
 
 using namespace seqan;
 
@@ -53,29 +51,6 @@ using MyEnableIf = typename std::enable_if<condition, int>::type;
 // Functions for translation and retranslation
 // ============================================================================
 
-// template <typename TString, typename TSpec>
-// inline void
-// assign(StringSet<ModifiedString<TString, TSpec>, Owner<ConcatDirect<>> > & target,
-//        StringSet<TString, Owner<ConcatDirect<>> > & source)
-// {
-//     target.limits = source.limits;
-//     target.concat._host = &source.concat;
-// }
-
-/*
-template <typename T>
-inline uint64_t
-length(std::deque<T> const & list)
-{
-    return list.size();
-}
-template <typename T>
-inline uint64_t
-length(std::forward_list<T> const & list)
-{
-    return std::distance(list.begin(), list.end());
-}*/
-
 template <typename TAlph>
 inline std::basic_ostream<char> &
 operator<<(std::basic_ostream<char> & out,
@@ -85,22 +60,6 @@ operator<<(std::basic_ostream<char> & out,
 {
     out << *it;
     return out;
-}
-
-
-template <typename T1, typename T2>
-inline uint64_t
-quickHamming(T1 const & s1, T2 const & s2)
-{
-    SEQAN_ASSERT_EQ(length(s1), length(s2));
-
-    uint64_t ret = 0;
-
-    for (uint64_t i = 0; i < length(s1); ++i)
-        if (s1[i] != s2[i])
-            ++ret;
-
-    return ret;
 }
 
 template <typename TPos>
@@ -139,46 +98,37 @@ printProgressBar(uint64_t & lastPercent, uint64_t curPerc)
 }
 
 
-template <typename TSource0, typename TGapsSpec0,
-          typename TSource1, typename TGapsSpec1,
-          typename TScoreValue, typename TScoreSpec,
-          typename TAlignContext>
-inline TScoreValue
-localAlignment2(Gaps<TSource0, TGapsSpec0> & row0,
-                Gaps<TSource1, TGapsSpec1> & row1,
-                Score<TScoreValue, TScoreSpec> const & scoringScheme,
-                int const lowerDiag,
-                int const upperDiag,
-                TAlignContext & alignContext)
+AlphabetEnum detectSeqFileAlphabet(std::string const & path)
 {
-    clear(alignContext.traceSegment);
+    SeqFileIn infile(path.c_str());
 
-    typedef FreeEndGaps_<True, True, True, True> TFreeEndGaps;
-    typedef AlignConfig2<LocalAlignment_<>,
-                         DPBand,
-                         TFreeEndGaps,
-                         TracebackOn<TracebackConfig_<CompleteTrace,
-                                                      GapsLeft> > > TAlignConfig;
+    CharString meta;
+    CharString seq;
 
-    TScoreValue score;
-    DPScoutState_<Default> scoutState;
-    score = _setUpAndRunAlignment(alignContext.dpContext,
-                                  alignContext.traceSegment,
-                                  scoutState,
-                                  row0,
-                                  row1,
-                                  scoringScheme,
-                                  TAlignConfig(lowerDiag, upperDiag));
+    readRecord(meta, seq, infile);
 
-    _adaptTraceSegmentsTo(row0, row1, alignContext.traceSegment);
-    return score;
+    if ((CharString(String<Dna5>(seq)) == seq) || (CharString(String<Rna5>(seq)) == seq))
+    {
+        return AlphabetEnum::DNA5;
+    }
+    else if (CharString(String<Iupac>(seq)) == seq)
+    {
+        std::cerr << "\nWARNING: You query file was detected as non-standard DNA, but it could be AminoAcid, too.\n"
+                    "To explicitly read as AminoAcid, add '--query-alphabet aminoacid'.\n"
+                    "To ignore and disable this warning, add '--query-alphabet dna5'.\n";
+        return AlphabetEnum::DNA5;
+    }
+    else if (CharString(String<AminoAcid>(seq)) == seq)
+    {
+        return AlphabetEnum::AMINO_ACID;
+    }
+
+    throw std::runtime_error("ERROR: Your query file contains illegal characters in "
+                                 "the first sequence.\n");
+
+    // unreachable
+    return AlphabetEnum::AMINO_ACID;
 }
-
-// ----------------------------------------------------------------------------
-// Tag Truncate_ (private tag to signify truncating of IDs while reading)
-// ----------------------------------------------------------------------------
-
-struct Truncate_;
 
 // ----------------------------------------------------------------------------
 // Function readRecord(Fasta); an overload that truncates Ids at first Whitespace
@@ -225,7 +175,7 @@ template <typename TSpec1,
           typename TSpec2,
           typename TFile,
           typename TRunnable>
-inline int
+void
 myReadRecords(TCDStringSet<String<char, TSpec1>> & ids,
               TCDStringSet<String<Dna5, TSpec2>> & seqs,
               TFile                              & file,
@@ -238,23 +188,23 @@ myReadRecords(TCDStringSet<String<char, TSpec1>> & ids,
     }
     catch(ParseError const & e)
     {
-        std::cerr << "\nParseError thrown: " << e.what() << '\n'
-                  << "Make sure that the file is standards compliant. If you get an unexpected character warning "
-                  << "make sure you have set the right program parameter (-p), i.e. "
-                  << "Lambda expected nucleic acid alphabet, maybe the file was protein?\n";
-        return -1;
+        std::string err;
+        err += "\nParseError thrown: ";
+        err += e.what();
+        err += "\nMake sure that the file is standards compliant. If you get an unexpected character warning "
+               "make sure you have set the right program parameter (-p), i.e. "
+               "Lambda expected nucleic acid alphabet, maybe the file was protein?\n";
+        throw std::runtime_error(err);
     }
 
     seqs = tmpSeqs; // convert IUPAC alphabet to Dna5
-
-    return 0;
 }
 
 template <typename TSpec1,
           typename TSpec2,
           typename TFile,
           typename TRunnable>
-inline int
+void
 myReadRecords(TCDStringSet<String<char, TSpec1>>       & ids,
               TCDStringSet<String<AminoAcid, TSpec2>>  & seqs,
               TFile                                    & file,
@@ -266,9 +216,11 @@ myReadRecords(TCDStringSet<String<char, TSpec1>>       & ids,
     }
     catch(ParseError const & e)
     {
-        std::cerr << "\nParseError thrown: " << e.what() << '\n'
-                  << "Make sure that the file is standards compliant.\n";
-        return -1;
+        std::string err;
+        err += "\nParseError thrown: ";
+        err += e.what();
+        err += "\nMake sure that the file is standards compliant.\n";
+        throw std::runtime_error(err);
     }
 
     if (length(seqs) > 0)
@@ -278,78 +230,23 @@ myReadRecords(TCDStringSet<String<char, TSpec1>>       & ids,
             std::cout << "\nWarning: The first query sequence looks like nucleic acid, but amino acid is expected.\n"
                          "           Make sure you have set the right program parameter (-p).\n";
     }
-
-    return 0;
 }
 
 template <typename TSpec1,
           typename TCharSpec,
           typename TSpec2,
           typename TFile>
-inline int
+void
 myReadRecords(TCDStringSet<String<char, TSpec1>>       & ids,
               TCDStringSet<String<TCharSpec, TSpec2>>  & seqs,
               TFile                                    & file)
 {
-    return  myReadRecords(ids, seqs, file, [] (auto const &, uint64_t const) {});
+    myReadRecords(ids, seqs, file, [] (auto const &, uint64_t const) {});
 }
-
-template <typename TLocalHolder>
-inline int
-_bandSize(uint64_t const seqLength, TLocalHolder & lH)
-{
-    switch (lH.options.band)
-    {
-        case -3: case -2:
-        {
-            int ret = 0;
-            auto fit = lH.bandTable.find(seqLength);
-            if (fit != lH.bandTable.end())
-            {
-                ret = fit->second;
-            } else
-            {
-                if (lH.options.band == -3)
-                    ret = ceil(std::log2(seqLength));
-                else
-                    ret = floor(sqrt(seqLength));
-            }
-            lH.bandTable[seqLength] = ret;
-            return ret;
-        } break;
-        case -1:
-            return std::numeric_limits<int>::max();
-        default:
-            return lH.options.band;
-    }
-}
-
-// ----------------------------------------------------------------------------
-// truncate sequences
-// ----------------------------------------------------------------------------
-
-// template <typename TString, typename TSpec>
-// inline void
-// _debug_shorten(StringSet<TString, TSpec > & seqs, unsigned const len)
-// {
-//     StringSet<TString, TSpec > copySeqs;
-//     reserve(copySeqs.concat, length(seqs)*len, Exact());
-// 
-//     for (TString const & s : seqs)
-//         if (length(s) >= len)
-//             appendValue(copySeqs, prefix(s, len), Exact());
-// 
-//     clear(seqs);
-//     reserve(seqs.concat, length(copySeqs)*len, Exact());
-//     for (TString const & s : copySeqs)
-//         appendValue(seqs, s);
-// }
-
 
 // ----------------------------------------------------------------------------
 // print if certain verbosity is set
 // ----------------------------------------------------------------------------
-
 
 template <typename T>
 inline void
@@ -446,81 +343,12 @@ appendToStatusImpl(std::stringstream & status,
 template <typename... Args>
 inline void
 appendToStatus(std::stringstream & status,
-               LambdaOptions const & options,
+               SharedOptions const & options,
                const int verbose,
                Args const & ... args)
 {
     if (options.verbosity >= verbose)
         appendToStatusImpl(status, args...);
-}
-
-// ----------------------------------------------------------------------------
-// Function computeEValueThreadSafe
-// ----------------------------------------------------------------------------
-
-template <typename TBlastMatch,
-          typename TScore,
-          BlastProgram p,
-          BlastTabularSpec h>
-inline double
-computeEValueThreadSafe(TBlastMatch & match,
-                        uint64_t ql,
-                        BlastIOContext<TScore, p, h> & context)
-{
-#if defined(__FreeBSD__)
-    // && version < 11 && defined(STDLIB_LLVM) because of https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=192320
-    // || version >= 11 && defined(STDLIB_GNU) because of https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=215709
-    static std::vector<std::unordered_map<uint64_t, uint64_t>> _cachedLengthAdjustmentsArray(omp_get_num_threads());
-    std::unordered_map<uint64_t, uint64_t> & _cachedLengthAdjustments = _cachedLengthAdjustmentsArray[omp_get_thread_num()];
-#else
-    static thread_local std::unordered_map<uint64_t, uint64_t> _cachedLengthAdjustments;
-#endif
-
-    // convert to 64bit and divide for translated sequences
-    ql = ql / (qIsTranslated(context.blastProgram) ? 3 : 1);
-    // length adjustment not yet computed
-    if (_cachedLengthAdjustments.find(ql) == _cachedLengthAdjustments.end())
-        _cachedLengthAdjustments[ql] = _lengthAdjustment(context.dbTotalLength, ql, context.scoringScheme);
-
-    uint64_t adj = _cachedLengthAdjustments[ql];
-
-    match.eValue = _computeEValue(match.alignStats.alignmentScore,
-                                  ql - adj,
-                                  context.dbTotalLength - adj,
-                                  context.scoringScheme);
-    return match.eValue;
-}
-
-// ----------------------------------------------------------------------------
-// compute LCA
-// ----------------------------------------------------------------------------
-
-template <typename T, typename T2>
-T computeLCA(String<T> const & taxParents, String<T2> const & taxHeights, T n1, T n2)
-{
-    if (n1 == n2)
-        return n1;
-
-    // move up so that nodes are on same height
-    for (auto i = taxHeights[n1]; i > taxHeights[n2]; --i)
-        n1 = taxParents[n1];
-
-    for (auto i = taxHeights[n2]; i > taxHeights[n1]; --i)
-        n2 = taxParents[n2];
-
-    while ((n1 != 0) && ( n2 != 0))
-    {
-        // common ancestor
-        if (n1 == n2)
-            return n1;
-
-        // move up in parallel
-        n1 = taxParents[n1];
-        n2 = taxParents[n2];
-    }
-
-    SEQAN_FAIL("One of the paths didn't lead to root.");
-    return 0; // avoid warnings on clang
 }
 
 // ----------------------------------------------------------------------------
@@ -589,89 +417,5 @@ unsigned long long getTotalSystemMemory()
 #   error "no way to get phys pages"
 #endif
 }
-
-
-// ----------------------------------------------------------------------------
-// remove tag type
-// ----------------------------------------------------------------------------
-
-// template <typename T>
-// T unTag(Tag<T> const & /**/)
-// {
-//     return T();
-// }
-
-// ----------------------------------------------------------------------------
-// get plus-minus-range with bounds-checking for unsigned types
-// ----------------------------------------------------------------------------
-
-// template <typename TNum, typename TNum2>
-// inline TNum
-// _protectUnderflow(const TNum n, const TNum2 s)
-// {
-//     const TNum r = n -s;
-//     return std::min(r, n);
-// }
-// 
-// template <typename TNum, typename TNum2>
-// inline TNum
-// _protectOverflow(const TNum n, const TNum2 s)
-// {
-//     const TNum r = n + s;
-//     return std::max(r, n);
-// }
-// 
-// template <typename TGaps>
-// inline bool
-// _startsWithGap(TGaps const & gaps)
-// {
-//     SEQAN_ASSERT(length(gaps._array) > 0);
-//     return (gaps._array[0] != 0);
-// }
-// 
-// template <typename TGaps>
-// inline int
-// _endsWithGap(TGaps const & gaps)
-// {
-//     SEQAN_ASSERT(length(gaps._array) > 0);
-//     if ((length(gaps._array)-1) % 2 == 1)
-//         return -1;
-//     return ((gaps._array[length(gaps._array)-1] != 0) ? 1 : 0);
-// }
-// 
-// template <typename TGaps, typename TSeq>
-// inline void
-// _prependNonGaps(TGaps & gaps, TSeq const & seq)
-// {
-//     if (_startsWithGap(gaps))
-//     {
-//         insertValue(gaps._array, 0, length(seq)); // new non-gap column
-//         insertValue(gaps._array, 0, 0); // empty gaps column
-//     }
-//     else
-//     {
-//         gaps._array[1] += length(seq);
-//     }
-// 
-//     insert(value(gaps._source), 0, seq);
-//     setBeginPosition(gaps, 0);
-// }
-// 
-// template <typename TGaps, typename TSeq>
-// inline void
-// _appendNonGaps(TGaps & gaps, TSeq const & seq)
-// {
-//     switch (_endsWithGap(gaps))
-//     {
-//         case -1:
-//         case  1:
-//             appendValue(gaps._array, length(seq)); // new non-gap column
-//             break;
-//         case 0:
-//             gaps._array[1] += length(seq);
-//     }
-//     append(value(gaps._source), seq);
-//     setEndPosition(gaps, length(value(gaps._source)));
-// }
 
 #endif // header guard

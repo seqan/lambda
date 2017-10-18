@@ -27,7 +27,6 @@
 
 #include <seqan/seq_io.h>
 #include <seqan/index.h>
-// #include <seqan/index_extras.h>
 #include <seqan/translation.h>
 #include <seqan/reduced_aminoacid.h>
 
@@ -44,7 +43,7 @@ using namespace seqan;
 // --------------------------------------------------------------------------
 
 template <typename TOrigAlph>
-inline int
+void
 loadSubjSeqsAndIds(TCDStringSet<String<TOrigAlph>> & originalSeqs,
                    std::unordered_map<std::string, uint64_t> & accToIdRank,
                    LambdaIndexerOptions const & options)
@@ -123,30 +122,27 @@ loadSubjSeqsAndIds(TCDStringSet<String<TOrigAlph>> & originalSeqs,
     myPrint(options, 1, "Loading Subject Sequences and Ids...");
 
     SeqFileIn infile(toCString(options.dbFile));
-    int ret;
+
     if (options.truncateIDs)
     {
         if (options.hasSTaxIds)
         {
-            ret = myReadRecords(ids, originalSeqs, infile, [&] (auto && id, uint64_t const rank)
+            myReadRecords(ids, originalSeqs, infile, [&] (auto && id, uint64_t const rank)
             {
                 extractAccIds(std::forward<decltype(id)>(id), rank);
                 truncateID(std::forward<decltype(id)>(id), rank);
             });
         } else
         {
-            ret = myReadRecords(ids, originalSeqs, infile, truncateID);
+            myReadRecords(ids, originalSeqs, infile, truncateID);
         }
     } else
     {
         if (options.hasSTaxIds)
-            ret = myReadRecords(ids, originalSeqs, infile, extractAccIds);
+            myReadRecords(ids, originalSeqs, infile, extractAccIds);
         else
-            ret = myReadRecords(ids, originalSeqs, infile);
+            myReadRecords(ids, originalSeqs, infile);
     }
-
-    if (ret)
-        return ret;
 
     myPrint(options, 1,  " done.\n");
     double finish = sysTime() - start;
@@ -154,8 +150,7 @@ loadSubjSeqsAndIds(TCDStringSet<String<TOrigAlph>> & originalSeqs,
 
     if (length(originalSeqs) == 0)
     {
-        std::cerr << "ERROR: No sequences in file. Aborting.\n";
-        return -1;
+        throw std::runtime_error("ERROR: No sequences in file. Aborting.\n");
     }
     unsigned long maxLen = 0ul;
     for (auto const & s : originalSeqs)
@@ -166,9 +161,8 @@ loadSubjSeqsAndIds(TCDStringSet<String<TOrigAlph>> & originalSeqs,
         }
         else if (length(s) == 0)
         {
-            std::cerr << "ERROR: Unexpectedly encountered a sequence of length 0 in the file."
-                      << "Remove the entry and try again. Aborting.\n";
-            return -1;
+            throw std::runtime_error("ERROR: Unexpectedly encountered a sequence of length 0 in the file."
+                                     "Remove the entry and try again. Aborting.\n");
         }
     }
     myPrint(options, 2, "Number of sequences read: ", length(originalSeqs),
@@ -176,18 +170,15 @@ loadSubjSeqsAndIds(TCDStringSet<String<TOrigAlph>> & originalSeqs,
 
     if (length(originalSeqs) * 6 >= std::numeric_limits<SizeTypeNum_<TOrigAlph>>::max())
     {
-        std::cerr << "ERROR: Too many sequences submitted. The maximum (including frames) is "
-                  << std::numeric_limits<SizeTypeNum_<TOrigAlph>>::max()
-                  << ".\n";
-        return -1;
+        throw std::runtime_error(std::string("ERROR: Too many sequences submitted. The maximum (including frames) is ")
+                                 + std::to_string(std::numeric_limits<SizeTypeNum_<TOrigAlph>>::max()) + ".\n");
     }
 
     if (maxLen >= std::numeric_limits<SizeTypePos_<TOrigAlph>>::max())
     {
-        std::cerr << "ERROR: one or more of your subject sequences are too long. "
-                  << "The maximum length is " << std::numeric_limits<SizeTypePos_<TOrigAlph>>::max()
-                  << ".\n";
-        return -1;
+        throw std::runtime_error(std::string("ERROR: one or more of your subject sequences are too long. "
+                  "The maximum length is ") + std::to_string(std::numeric_limits<SizeTypePos_<TOrigAlph>>::max()) +
+                  ".\n");
     }
 
     if (options.hasSTaxIds)
@@ -209,8 +200,6 @@ loadSubjSeqsAndIds(TCDStringSet<String<TOrigAlph>> & originalSeqs,
     myPrint(options, 1, " done.\n");
     finish = sysTime() - start;
     myPrint(options, 2, "Runtime: ", finish, "s \n\n");
-
-    return 0;
 }
 
 // --------------------------------------------------------------------------
@@ -310,7 +299,7 @@ dumpTranslatedSeqs(TCDStringSet<String<TTransAlph>> const & translatedSeqs,
 // --------------------------------------------------------------------------
 
 template <typename TRedAlph, BlastProgram p>
-inline int
+void
 checkIndexSize(TCDStringSet<String<TRedAlph>> const & seqs,
                LambdaIndexerOptions const & options,
                BlastProgramSelector<p> const &)
@@ -324,10 +313,11 @@ checkIndexSize(TCDStringSet<String<TRedAlph>> const & seqs,
 
     if (curNumSeq >= maxNumSeq)
     {
-        std::cerr << "Too many sequences to be indexed:\n  "
-                  << length(seqs) << " in file, but only "
-                  << maxNumSeq << " supported by index.\n";
-        return -1;
+        throw std::invalid_argument(std::string("ERROR: Too many sequences to be indexed:\n  ") +
+                                    std::to_string(length(seqs)) +
+                                    std::string(" in file, but only ") +
+                                    std::to_string(maxNumSeq) +
+                                    std::string(" supported by index.\n"));
     }
 
     // check length of sequences
@@ -339,16 +329,20 @@ checkIndexSize(TCDStringSet<String<TRedAlph>> const & seqs,
 
     if (maxLen >= maxLenSeq)
     {
-        std::cerr << "Too long sequences to be indexed:\n  "
-                  << "length" << maxLen << " present in file, but only "
-                  << maxLenSeq << " supported by index.\n";
+        std::string err;
+        err += "Sequences too long to be indexed:\n  ";
+        err += "length";
+        err += std::to_string(maxLen);
+        err += " present in file, but only ";
+        err += std::to_string(maxLenSeq);
+        err += " supported by index.\n";
         #ifndef LAMBDA_LONG_PROTEIN_SUBJ_SEQS
         if (p != BlastProgram::BLASTN)
-            std::cout << "You can recompile Lambda and add -DLAMBDA_LONG_PROTEIN_SUBJ_SEQS=1 to activate\n"
-                         "support for longer protein sequences.\n";
+            err += "You can recompile Lambda and add -DLAMBDA_LONG_PROTEIN_SUBJ_SEQS=1 to activate\n"
+                   "support for longer protein sequences.\n";
         #endif
 
-        return -1;
+        throw std::invalid_argument(err);
     }
 
     // check available RAM
@@ -375,15 +369,13 @@ checkIndexSize(TCDStringSet<String<TRedAlph>> const & seqs,
         myPrint(options, 2, "Detected RAM: ", ram / 1024 / 1024, "MB, Estimated RAM usage: ",
                 estimatedSize / 1024 / 1024, "MB\n\n");
     }
-
-    return 0;
 }
 
 // --------------------------------------------------------------------------
 // Function mapAndDumpTaxIDs()
 // --------------------------------------------------------------------------
 
-inline int
+void
 mapAndDumpTaxIDs(std::vector<bool>                                     & taxIdIsPresent,
                  std::unordered_map<std::string, uint64_t>       const & accToIdRank,
                  uint64_t                                        const   numSubjects,
@@ -397,8 +389,8 @@ mapAndDumpTaxIDs(std::vector<bool>                                     & taxIdIs
     std::ifstream fin(toCString(options.accToTaxMapFile), std::ios_base::in | std::ios_base::binary);
     if (!fin.is_open())
     {
-        std::cerr << "ERROR: Could not open acc-to-tax-map file at " << toCString(options.accToTaxMapFile) << '\n';
-        return -1;
+        throw std::invalid_argument(std::string("ERROR: Could not open acc-to-tax-map file at ") +
+                                    options.accToTaxMapFile + "\n");
     }
 
     // transparent decompressor
@@ -410,22 +402,16 @@ mapAndDumpTaxIDs(std::vector<bool>                                     & taxIdIs
 
     double start = sysTime();
 
-    int ret = 0;
-
     if (std::regex_match(options.accToTaxMapFile, std::regex{R"raw(.*\.accession2taxid(\.(gz|bgzf|bz2))?)raw"}))
     {
-        ret = _readMappingFileNCBI(fit, sTaxIds, taxIdIsPresent, accToIdRank);
+        _readMappingFileNCBI(fit, sTaxIds, taxIdIsPresent, accToIdRank);
     } else if (std::regex_match(options.accToTaxMapFile, std::regex{R"raw(.*\.dat(\.(gz|bgzf|bz2))?)raw"}))
     {
-        ret = _readMappingFileUniProt(fit, sTaxIds, taxIdIsPresent, accToIdRank);
+        _readMappingFileUniProt(fit, sTaxIds, taxIdIsPresent, accToIdRank);
     } else
     {
-        std::cerr << "ERROR: extension of acc-to-tax-map file not handled.\n";
-        return -1;
+        throw std::invalid_argument("ERROR: extension of acc-to-tax-map file not handled.\n");
     }
-
-    if (ret)
-        return ret;
 
     // root node is always present
     if (taxIdIsPresent.size() < 2)
@@ -462,14 +448,13 @@ mapAndDumpTaxIDs(std::vector<bool>                                     & taxIdIs
     save(outSTaxIds, std::string(options.indexDir + "/staxids").c_str());
     myPrint(options, 1, "done.\n");
     myPrint(options, 2, "Runtime: ", sysTime() - start, "s\n\n");
-    return 0;
 }
 
 // --------------------------------------------------------------------------
 // Function mapAndDumpTaxIDs()
 // --------------------------------------------------------------------------
 
-inline int
+void
 parseAndDumpTaxTree(std::vector<bool>          & taxIdIsPresent,
                     LambdaIndexerOptions const & options)
 
@@ -482,8 +467,7 @@ parseAndDumpTaxTree(std::vector<bool>          & taxIdIsPresent,
     std::ifstream fin(path.c_str(), std::ios_base::in | std::ios_base::binary);
     if (!fin.is_open())
     {
-        std::cerr << "ERROR: Could not open " << path << '\n';
-        return -1;
+        throw std::runtime_error(std::string("ERROR: Could not open ") + path + "\n");
     }
 
     // transparent decompressor
@@ -520,9 +504,9 @@ parseAndDumpTaxTree(std::vector<bool>          & taxIdIsPresent,
             }
             catch (BadLexicalCast const & badCast)
             {
-                std::cerr << "Error: Expected taxonomical ID, but got something I couldn't read: "
-                          << badCast.what() << "\n";
-                return -1;
+                throw std::runtime_error(
+                    std::string("Error: Expected taxonomical ID, but got something I couldn't read: ") +
+                    std::string(badCast.what()) + "\n");
             }
         }
         if (length(taxonParentIDs) <= n)
@@ -683,10 +667,7 @@ parseAndDumpTaxTree(std::vector<bool>          & taxIdIsPresent,
 
     std::ifstream fin2(path.c_str(), std::ios_base::in | std::ios_base::binary);
     if (!fin2.is_open())
-    {
-        std::cerr << "ERROR: Could not open " << path << '\n';
-        return -1;
-    }
+        throw std::runtime_error(std::string("ERROR: Could not open ") + path + "\n");
 
     // transparent decompressor
     VirtualStream<char, Input> vfin2{fin2};
@@ -711,8 +692,7 @@ parseAndDumpTaxTree(std::vector<bool>          & taxIdIsPresent,
         auto itWord = std::sregex_iterator(buf.begin(), buf.end(), wordRegEx);
         if (itWord == std::sregex_iterator())
         {
-            std::cerr << "Error: Expected taxonomical ID in first column, but couldn't find it.\n";
-            return -1;
+            throw std::runtime_error("Error: Expected taxonomical ID in first column, but couldn't find it.\n");
         } else
         {
             try
@@ -721,15 +701,14 @@ parseAndDumpTaxTree(std::vector<bool>          & taxIdIsPresent,
             }
             catch (BadLexicalCast const & badCast)
             {
-                std::cerr << "Error: Expected taxonomical ID in first column, but got something I couldn't read: "
-                          << badCast.what() << "\n";
-                return -1;
+                throw std::runtime_error(std::string("Error: Expected taxonomical ID in first column, but got something"
+                                                     " I couldn't read: ") + std::string(badCast.what()) + "\n");
             }
 
             if (taxId >= length(taxonNames))
             {
-                std::cerr << "Error: taxonomical ID is " << taxId << ", but no such taxon in tree.\n";
-                return -1;
+                throw std::runtime_error(std::string("Error: taxonomical ID is ") + std::to_string(taxId) +
+                                         ", but no such taxon in tree.\n");
             }
         }
 
@@ -738,13 +717,9 @@ parseAndDumpTaxTree(std::vector<bool>          & taxIdIsPresent,
             continue;
 
         if (++itWord == std::sregex_iterator())
-        {
-            std::cerr << "Error: Expected name in second column, but couldn't find it.\n";
-            return -1;
-        } else
-        {
+            throw std::runtime_error("Error: Expected name in second column, but couldn't find it.\n");
+        else
             name = itWord->str();
-        }
 
         while (++itWord != std::sregex_iterator())
         {
@@ -773,8 +748,6 @@ parseAndDumpTaxTree(std::vector<bool>          & taxIdIsPresent,
     save(outTaxonNames, std::string(options.indexDir + "/tax_names").c_str());
     myPrint(options, 1, "done.\n");
     myPrint(options, 2, "Runtime: ", sysTime() - start, "s\n\n");
-
-    return 0;
 }
 
 // --------------------------------------------------------------------------
@@ -801,7 +774,7 @@ createSuffixArray(TSA & SA,
 // ----------------------------------------------------------------------------
 
 template <typename TText, typename TSpec, typename TConfig, typename TLambda>
-inline bool
+void
 indexCreateProgress(Index<TText, FMIndex<TSpec, TConfig> > & index,
                     FibreSALF const &,
                     TLambda && progressCallback)
@@ -814,7 +787,7 @@ indexCreateProgress(Index<TText, FMIndex<TSpec, TConfig> > & index,
     TText const & text = indexText(index);
 
     if (empty(text))
-        return false;
+        return;
 
     TTempSA tempSA;
 
@@ -835,11 +808,10 @@ indexCreateProgress(Index<TText, FMIndex<TSpec, TConfig> > & index,
     TSize numSentinel = countSequences(text);
     createCompressedSa(indexSA(index), tempSA, numSentinel);
     std::cout << " done.\n" << std::flush;
-    return true;
 }
 
 template <typename TText, typename TSpec, typename TConfig, typename TLambda>
-inline bool
+void
 indexCreateProgress(Index<TText, BidirectionalIndex<FMIndex<TSpec, TConfig> > > & index,
                     FibreSALF const &,
                     TLambda && progressCallback)
@@ -847,16 +819,14 @@ indexCreateProgress(Index<TText, BidirectionalIndex<FMIndex<TSpec, TConfig> > > 
     auto progressCallback2 = progressCallback; // need second lambda because counter internally increased
 
     std::cout << "Bi-Directional Index [forward]\n";
-    bool ret = indexCreateProgress(index.fwd, FibreSALF(), progressCallback);
-    if (!ret)
-        return ret;
+    indexCreateProgress(index.fwd, FibreSALF(), progressCallback);
 
     std::cout << "Bi-Directional Index [backward]\n";
-    return indexCreateProgress(index.rev, FibreSALF(), progressCallback2);
+    indexCreateProgress(index.rev, FibreSALF(), progressCallback2);
 }
 
 template <typename TText, typename TSpec, typename TLambda>
-inline bool
+void
 indexCreateProgress(Index<TText, IndexSa<TSpec> > & index,
                     FibreSA const &,
                     TLambda && progressCallback)
@@ -868,7 +838,7 @@ indexCreateProgress(Index<TText, IndexSa<TSpec> > & index,
     TText const & text = indexText(index);
 
     if (empty(text))
-        return false;
+        return;
 
     TSA & sa = getFibre(index, FibreSA());
 
@@ -877,8 +847,6 @@ indexCreateProgress(Index<TText, IndexSa<TSpec> > & index,
     // Create the full SA.
     resize(sa, lengthSum(text), Exact());
     createSuffixArray(sa, text, TAlgo(), progressCallback);
-
-    return true;
 }
 
 template <typename T>

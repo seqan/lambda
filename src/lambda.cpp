@@ -61,18 +61,18 @@ int main(int argc, char const ** argv)
 
     --until; // undo the "+ 1" above
 
-    if ((std::string(argv[until]) != "search") && (std::string(argv[until]) != "mkindex"))
-    {
-        std::cerr << "WRONG ARGUMENTS!\n";
-        return -1;
-    }
-    else if (std::string(argv[until]) == "search")
+    if ((std::string(argv[until]) == "searchp") || (std::string(argv[until]) == "searchn"))
     {
         return searchMain(argc - until, argv + until);
     }
-    else if (std::string(argv[until]) == "mkindex")
+    else if ((std::string(argv[until]) == "mkindexp") || (std::string(argv[until]) == "mkindexn"))
     {
         return mkindexMain(argc - until, argv + until);
+    } else
+    {
+        // shouldn't be reached
+        std::cerr << "WRONG ARGUMENTS!\n";
+        return -1;
     }
 }
 
@@ -87,11 +87,13 @@ ArgumentParser::ParseResult parseCommandLineMain(int argc, char const ** argv)
 
     addArgument(parser, ArgParseArgument(ArgParseArgument::STRING, "COMMAND"));
     setHelpText(parser, 0, "The sub-program to execute. See below.");
-    setValidValues(parser, 0, "search mkindex");
+    setValidValues(parser, 0, "searchp searchn mkindexp mkindexn");
 
     addTextSection(parser, "Available commands");
-    addText(parser, "\033[1msearch  \033[0m– Perform a search using lambda (the main command).");
-    addText(parser, "\033[1mmkindex \033[0m– Create an index on a database so that you can search on it.");
+    addText(parser, "\\fBsearchp  \\fP– Perform a protein search (BLASTP, BLASTX, TBLASTN, TBLASTX).");
+    addText(parser, "\\fBsearchn  \\fP– Perform a nucleotide search (BLASTN, MEGABLAST).");
+    addText(parser, "\\fBmkindexp \\fP– Create an index for protein searches.");
+    addText(parser, "\\fBmkindexn \\fP– Create an index for nucleotide searches.");
     addText(parser, "To view the help page for a specific command, simply run 'lambda command --help'.");
 
     return parse(parser, argc, argv);

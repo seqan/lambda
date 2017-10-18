@@ -198,21 +198,23 @@ set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
 
 # Update the list of file names below if you add source files to your application.
 add_executable (lambda2 lambda.cpp
+                    shared_definitions.hpp
                     shared_misc.hpp
                     shared_options.hpp
                 search.hpp
                     search_algo.hpp
                     search_datastructures.hpp
-                    search_match.hpp
+                    search_misc.hpp
                     search_output.hpp
+                    search_options.hpp
                 mkindex.hpp
                     mkindex_algo.hpp
                     mkindex_misc.hpp
+                    mkindex_options.hpp
                     mkindex_saca.hpp)
 
 # Add dependencies found by find_package (SeqAn).
 target_link_libraries (lambda2 ${SEQAN_LIBRARIES})
-# target_link_libraries (lambda_indexer ${SEQAN_LIBRARIES})
 
 # Add CXX flags found by find_package (SeqAn).
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN_CXX_FLAGS}")

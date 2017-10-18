@@ -20,8 +20,8 @@
 // ==========================================================================
 
 
-#ifndef SEQAN_LAMBDA_LAMBDA_H_
-#define SEQAN_LAMBDA_LAMBDA_H_
+#ifndef LAMBDA_SEARCH_ALGO_H_
+#define LAMBDA_SEARCH_ALGO_H_
 
 #include <type_traits>
 #include <iomanip>
@@ -37,11 +37,6 @@
 #include <seqan/reduced_aminoacid.h>
 
 #include <seqan/align_extend.h>
-
-#include "search_output.hpp"
-#include "search_match.hpp"
-#include "shared_misc.hpp"
-#include "shared_options.hpp"
 
 using namespace seqan;
 
@@ -121,22 +116,16 @@ readIndexOption(std::string            & optionString,
 }
 
 // --------------------------------------------------------------------------
-// Function validateIndexOptions()
+// Function readIndexOptions()
 // --------------------------------------------------------------------------
 
-template <typename TRedAlph,
-          BlastProgram p>
-inline int
-validateIndexOptions(LambdaOptions const & options)
+void readIndexOptions(LambdaOptions & options)
 {
     // Check that directory exists and is readable
     struct stat path_stat;
     stat(toCString(options.indexDir), &path_stat);
     if (stat(toCString(options.indexDir), &path_stat) || !S_ISDIR(path_stat.st_mode))
-    {
-        std::cerr << "ERROR: Index directory does not exist or is not readable.\n";
-        return -1;
-    }
+        throw std::runtime_error("ERROR: Index directory does not exist or is not readable.\n");
 
     std::string buffer;
     uint64_t b = 0;
@@ -145,70 +134,56 @@ validateIndexOptions(LambdaOptions const & options)
     b = 0;
     if ((!lexicalCast(b, buffer)) || (b != static_cast<uint64_t>(indexGeneration)))
     {
-        std::cerr << "ERROR: Your index was created with an incompatible version of Lambda.\n"
-                  << "       Please re-create it.\n\n";
-        return -1;
-
+        throw std::runtime_error("ERROR: Your index was created with an incompatible version of Lambda.\n"
+                                 "       Please re-create it.\n\n");
     }
+
+    buffer.clear();
+    readIndexOption(buffer, "alph_original", options);
+    options.subjOrigAlphabet = _alphabetNameToEnum(buffer);
 
     buffer.clear();
     readIndexOption(buffer, "alph_translated", options);
-    if (buffer != _alphName(TransAlph<p>()))
-    {
-        std::cerr << "ERROR: Your index is of translated alphabet type: " << buffer <<  "\n       But lambda expected: "
-                  << _alphName(TransAlph<p>()) << "\n       Did you specify the right -p parameter?\n\n";
-        return -1;
-
-    }
+    options.transAlphabet = _alphabetNameToEnum(buffer);
 
     buffer.clear();
     readIndexOption(buffer, "alph_reduced", options);
-    if (buffer != _alphName(TRedAlph()))
-    {
-        std::cerr << "ERROR: Your index is of reduced alphabet type: " << buffer << "\n       But lambda expected: "
-                  << _alphName(TRedAlph()) << "\n       Did you specify the right -ar parameter?\n\n";
-        return -1;
-    }
+    options.reducedAlphabet = _alphabetNameToEnum(buffer);
 
     buffer.clear();
     readIndexOption(buffer, "db_index_type", options);
     b = 0;
-    if ((!lexicalCast(b, buffer)) || (b != static_cast<uint64_t>(options.dbIndexType)))
-    {
-        std::cerr << "ERROR: Your index type is: " << _indexName(static_cast<DbIndexType>(std::stoul(buffer)))
-                  << "\n       But lambda expected: " << _indexName(options.dbIndexType)
-                  << "\n       Did you specify the right -di parameter?\n\n";
-        return -1;
-    }
-    if (qIsTranslated(p) && sIsTranslated(p))
+    if (!lexicalCast(b, buffer))
+        throw std::runtime_error("ERROR: Could not read the index type, please recreate your index.\n\n");
+
+    options.dbIndexType = static_cast<DbIndexType>(b);
+
+    if (options.subjOrigAlphabet != options.transAlphabet)
     {
         buffer.clear();
         readIndexOption(buffer, "genetic_code", options);
         b = 0;
-        if ((!lexicalCast(b, buffer)) || (b != static_cast<uint64_t>(options.geneticCode)))
-        {
-            std::cerr << "WARNING: The codon translation table used during indexing and during search are different. "
-                         "This is not a problem per se, but is likely not what you want.\n\n";
-        }
+        if (!lexicalCast(b, buffer))
+            throw std::runtime_error("ERROR: Could not read the index's genetic code, please recreate your index.\n\n");
+        options.geneticCode = static_cast<GeneticCodeSpec>(b);
     }
 
     buffer.clear();
     readIndexOption(buffer, "subj_seq_len_bits", options);
     b = 0;
-    if ((!lexicalCast(b, buffer)) || (b != static_cast<uint64_t>(sizeof(SizeTypePos_<TRedAlph>) * 8)))
+    if ((!lexicalCast(b, buffer)) || (b != static_cast<uint64_t>(sizeof(SizeTypePos_<AminoAcid>) * 8)))
     {
+        std::string err;
         #ifndef LAMBDA_LONG_PROTEIN_SUBJ_SEQS
-        std::cerr << "ERROR: Your lambda executable was built with LAMBDA_LONG_PROTEIN_SUBJ_SEQS,\n"
-                        "       but the index was created by an executable that was built without it.\n";
+        err += "ERROR: Your lambda executable was built with LAMBDA_LONG_PROTEIN_SUBJ_SEQS,\n"
+               "       but the index was created by an executable that was built without it.\n";
         #else
-        std::cerr << "ERROR: Your lambda executable was built without LAMBDA_LONG_PROTEIN_SUBJ_SEQS,\n"
+        err += "ERROR: Your lambda executable was built without LAMBDA_LONG_PROTEIN_SUBJ_SEQS,\n"
                         "       but the index was created by an executable that was built with it.\n";
         #endif
-        std::cerr << "       You need to recreate the index or rebuild Lambda.\n";
-        return -1;
+        err += "       You need to recreate the index or rebuild Lambda.\n";
+        throw std::runtime_error(err);
     }
-
-    return 0;
 }
 
 // --------------------------------------------------------------------------
@@ -683,9 +658,7 @@ loadQuery(GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h>      & global
     try
     {
         SeqFileIn infile(toCString(options.queryFile));
-        int ret = myReadRecords(globalHolder.qryIds, origSeqs, infile);
-        if (ret)
-            return ret;
+        myReadRecords(globalHolder.qryIds, origSeqs, infile);
     }
     catch(IOError const & e)
     {
@@ -1275,6 +1248,7 @@ _searchSingleIndex(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH)
     }
 }
 
+#ifdef LAMBDA_LEGACY_PATHS
 template <typename TLocalHolder>
 inline void
 _searchDoubleIndex(TLocalHolder & lH)
@@ -1312,14 +1286,17 @@ _searchDoubleIndex(TLocalHolder & lH)
                    length(lH.matches), " ");
     myPrint(lH.options, 1, lH.statusStr);
 }
+#endif // LAMBDA_LEGACY_PATHS
 
 template <typename TLocalHolder>
 inline void
 search(TLocalHolder & lH)
 {
+#ifdef LAMBDA_LEGACY_PATHS
     if (lH.options.doubleIndexing)
         _searchDoubleIndex(lH);
     else
+#endif
         _searchSingleIndex(lH);
 }
 
