@@ -77,6 +77,5 @@ matrix:
 script:
   - mkdir -p build && cd build
   - cmake .. -DLAMBDA_NATIVE_BUILD=0 ${CMAKE_ARGS}
-  - make lambda_indexer VERBOSE=1
-  - travis_wait make lambda VERBOSE=1 # need to prefix with travis_wait because it might take > 10min
+  - travis_wait make lambda2 VERBOSE=1 # need to prefix with travis_wait because it might take > 10min
   - ctest .
