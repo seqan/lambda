@@ -26,6 +26,24 @@
 
 using namespace seqan;
 
+// ============================================================================
+// Exceptions
+// ============================================================================
+
+struct IndexException : public std::runtime_error
+{
+    using std::runtime_error::runtime_error;
+};
+
+struct QueryException : public std::runtime_error
+{
+    using std::runtime_error::runtime_error;
+};
+
+// ============================================================================
+// Seeding related
+// ============================================================================
+
 template <typename TGH, typename TAlph>
 inline void
 myHyperSortSingleIndex(std::vector<Match<TAlph>> & matches,
@@ -100,6 +118,9 @@ myHyperSortSingleIndex(std::vector<Match<TAlph>> & matches,
 }
 
 
+// ============================================================================
+// Alignment-related
+// ============================================================================
 
 template <typename T1, typename T2>
 inline uint64_t

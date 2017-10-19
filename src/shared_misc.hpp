@@ -123,8 +123,7 @@ AlphabetEnum detectSeqFileAlphabet(std::string const & path)
         return AlphabetEnum::AMINO_ACID;
     }
 
-    throw std::runtime_error("ERROR: Your query file contains illegal characters in "
-                                 "the first sequence.\n");
+    throw std::runtime_error("Your query file contains illegal characters in the first sequence.\n");
 
     // unreachable
     return AlphabetEnum::AMINO_ACID;
@@ -359,7 +358,7 @@ auto fileSize(char const * fileName)
 {
     struct stat st;
     if (stat(fileName, &st) != 0)
-        throw std::runtime_error{"ERROR: Could not read File!"};
+        throw std::runtime_error{"Could not read File.\n"};
     return st.st_size;
 }
 
@@ -377,7 +376,7 @@ unsigned long long dirSize(char const * dirName)
 
     d = opendir(dirName);
     if (d == NULL)
-        throw std::runtime_error{"ERROR: Could not read index directory!"};
+        throw std::runtime_error{"Could not read index directory.\n"};
 
     total_size = 0;
 
@@ -388,7 +387,7 @@ unsigned long long dirSize(char const * dirName)
         if (exists < 0)
         {
             closedir(d);
-            throw std::runtime_error{"ERROR: Could not read index directory!"};
+            throw std::runtime_error{"Could not read index directory.\n"};
         } else
         {
             total_size += buf.st_size;

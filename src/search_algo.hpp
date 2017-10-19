@@ -109,9 +109,7 @@ readIndexOption(std::string            & optionString,
     }
     else
     {
-        throw std::runtime_error("ERROR: Expected option specifier:\n" + options.indexDir + "/option:" +
-                                 optionIdentifier + "\nYour index seems incompatible, try to recreate it "
-                                 "and report a bug if the issue persists.");
+        throw IndexException("Expected option specifier:\n" + options.indexDir + "/option:" + optionIdentifier);
     }
 }
 
@@ -125,7 +123,7 @@ void readIndexOptions(LambdaOptions & options)
     struct stat path_stat;
     stat(toCString(options.indexDir), &path_stat);
     if (stat(toCString(options.indexDir), &path_stat) || !S_ISDIR(path_stat.st_mode))
-        throw std::runtime_error("ERROR: Index directory does not exist or is not readable.\n");
+        throw IndexException("Index directory does not exist or is not readable.\n");
 
     std::string buffer;
     uint64_t b = 0;
@@ -133,10 +131,7 @@ void readIndexOptions(LambdaOptions & options)
     readIndexOption(buffer, "generation", options);
     b = 0;
     if ((!lexicalCast(b, buffer)) || (b != static_cast<uint64_t>(indexGeneration)))
-    {
-        throw std::runtime_error("ERROR: Your index was created with an incompatible version of Lambda.\n"
-                                 "       Please re-create it.\n\n");
-    }
+        throw IndexException("Your index was created with an incompatible version of Lambda.\n");
 
     buffer.clear();
     readIndexOption(buffer, "alph_original", options);
@@ -154,7 +149,7 @@ void readIndexOptions(LambdaOptions & options)
     readIndexOption(buffer, "db_index_type", options);
     b = 0;
     if (!lexicalCast(b, buffer))
-        throw std::runtime_error("ERROR: Could not read the index type, please recreate your index.\n\n");
+        throw IndexException("Could not read the index type.\n\n");
 
     options.dbIndexType = static_cast<DbIndexType>(b);
 
@@ -164,7 +159,7 @@ void readIndexOptions(LambdaOptions & options)
         readIndexOption(buffer, "genetic_code", options);
         b = 0;
         if (!lexicalCast(b, buffer))
-            throw std::runtime_error("ERROR: Could not read the index's genetic code, please recreate your index.\n\n");
+            throw IndexException("Could not read the index's genetic code.");
         options.geneticCode = static_cast<GeneticCodeSpec>(b);
     }
 
@@ -175,14 +170,14 @@ void readIndexOptions(LambdaOptions & options)
     {
         std::string err;
         #ifndef LAMBDA_LONG_PROTEIN_SUBJ_SEQS
-        err += "ERROR: Your lambda executable was built with LAMBDA_LONG_PROTEIN_SUBJ_SEQS,\n"
-               "       but the index was created by an executable that was built without it.\n";
+        err += "Your lambda executable was built with LAMBDA_LONG_PROTEIN_SUBJ_SEQS, "
+               "but the index was created by an executable that was built without it.";
         #else
-        err += "ERROR: Your lambda executable was built without LAMBDA_LONG_PROTEIN_SUBJ_SEQS,\n"
-                        "       but the index was created by an executable that was built with it.\n";
+        err += "Your lambda executable was built without LAMBDA_LONG_PROTEIN_SUBJ_SEQS,"
+               "but the index was created by an executable that was built with it.";
         #endif
-        err += "       You need to recreate the index or rebuild Lambda.\n";
-        throw std::runtime_error(err);
+        err += "You need to recreate the index or rebuild Lambda.";
+        throw IndexException(err);
     }
 }
 
@@ -190,32 +185,17 @@ void readIndexOptions(LambdaOptions & options)
 // Function checkRAM()
 // --------------------------------------------------------------------------
 
-inline int
+void
 checkRAM(LambdaOptions const & options)
 {
     myPrint(options, 1, "Checking memory requirements... ");
     uint64_t ram = getTotalSystemMemory();
     uint64_t sizeIndex = 0;
     uint64_t sizeQuery = 0;
-    try
-    {
-        sizeIndex = dirSize(toCString(options.indexDir));
-    } catch (std::runtime_error e)
-    {
-        std::cerr << "\nERROR: could not read index during size computation.\n"
-                  << "       Do you have the proper permissions?\n";
-        return -1;
-    }
 
-    try
-    {
-        sizeQuery = fileSize(toCString(options.queryFile));
-    } catch (std::runtime_error e)
-    {
-        std::cerr << "\nERROR: could not read query file during size computation.\n"
-                  << "       Do you have the proper permissions?\n";
-        return -1;
-    }
+    sizeIndex = dirSize(toCString(options.indexDir));
+
+    sizeQuery = fileSize(toCString(options.queryFile));
 
     uint64_t requiredRAM = ((sizeIndex + sizeQuery) * 11) / 10; // give it +10% TODO verify
 
@@ -225,12 +205,10 @@ checkRAM(LambdaOptions const & options)
         std::cerr << "WARNING: You need approximately " << requiredRAM / 1024 / 1024 << "MB of memory, "
                   << "but you have only " << ram / 1024 / 1024
                   << " :'(\nYou should abort this run and try on a machine with more memory!";
-        return -1;
     }
 
     myPrint(options, 1, "met.\n");
     myPrint(options, 2, "Detected: ", ram / 1024 / 1024, "MB, Estimated: ", requiredRAM / 1024 / 1024, "MB\n\n");
-    return 0;
 }
 
 // --------------------------------------------------------------------------
@@ -287,7 +265,7 @@ template <BlastTabularSpec h,
           typename TRedAlph,
           typename TIndexSpec,
           typename TOutFormat>
-inline int
+void
 prepareScoring(GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h> & globalHolder,
                LambdaOptions                                                    const & options)
 {
@@ -300,12 +278,7 @@ prepareScoring(GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h> & global
     setScoreGapExtend(context(globalHolder.outfile).scoringScheme, options.gapExtend);
 
     if (!isValid(context(globalHolder.outfile).scoringScheme))
-    {
-        std::cerr << "Could not computer Karlin-Altschul-Values for "
-                  << "Scoring Scheme. Exiting.\n";
-        return -1;
-    }
-    return 0;
+        throw std::runtime_error{"Could not computer Karlin-Altschul-Values for Scoring Scheme.\n"};
 }
 
 // --------------------------------------------------------------------------
@@ -317,7 +290,7 @@ template <BlastTabularSpec h,
           typename TRedAlph,
           typename TIndexSpec,
           typename TOutFormat>
-inline int
+void
 loadSubjects(GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h> & globalHolder,
              LambdaOptions                                                    const & options)
 {
@@ -339,17 +312,10 @@ loadSubjects(GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h> & globalHo
 
         ret = open(globalHolder.subjSeqs, toCString(_dbSeqs), OPEN_RDONLY);
         if (ret != true)
-        {
-            std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
-                        << " failed.\n";
-            return 1;
-        }
+            throw IndexException{"Could not open subject sequences.\n"};
 
         if (length(globalHolder.subjSeqs) == 0)
-        {
-            std::cerr << "ERROR: No sequences in database. Aborting.\n";
-            return -1;
-        }
+            throw IndexException{"No sequences in database.\n"};
 
         if (TGH::alphReduction)
             globalHolder.redSubjSeqs.limits = globalHolder.subjSeqs.limits;
@@ -368,11 +334,7 @@ loadSubjects(GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h> & globalHo
     append(_dbSeqs, "/seq_ids");
     ret = open(globalHolder.subjIds, toCString(_dbSeqs), OPEN_RDONLY);
     if (ret != true)
-    {
-        std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
-                  << " failed.\n";
-        return 1;
-    }
+        throw IndexException{"Could not open subject IDs."};
     finish = sysTime() - start;
     myPrint(options, 1, " done.\n");
     myPrint(options, 2, "Runtime: ", finish, "s \n\n");
@@ -391,18 +353,12 @@ loadSubjects(GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h> & globalHo
         append(_dbSeqs, "/untranslated_seq_lengths");
         ret = open(globalHolder.untransSubjSeqLengths, toCString(_dbSeqs), OPEN_RDONLY);
         if (ret != true)
-        {
-            std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
-                      << " failed.\n";
-            return 1;
-        }
+            throw IndexException{"Could not open unstranslated Subj sequence lengths."};
 
         finish = sysTime() - start;
         myPrint(options, 1, " done.\n");
         myPrint(options, 2, "Runtime: ", finish, "s \n\n");
     }
-
-    return 0;
 }
 
 // --------------------------------------------------------------------------
@@ -410,7 +366,7 @@ loadSubjects(GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h> & globalHo
 // --------------------------------------------------------------------------
 
 template <typename TGlobalHolder>
-inline int
+void
 loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
                     LambdaOptions const & options)
 {
@@ -422,12 +378,7 @@ loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
 
     int ret = open(globalHolder.dbIndex, path.c_str(), OPEN_RDONLY);
     if (ret != true)
-    {
-        std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
-                  << " failed. "
-                  << "Did you use the same options as with lambda_indexer?\n";
-        return 1;
-    }
+        throw IndexException{"Could not open the fm index / suffix array."};
 
     // assign previously loaded sub sequences (possibly modifier-wrapped
     // to the text-member of our new index (unless isFM, which doesnt need text)
@@ -451,8 +402,6 @@ loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
         context(globalHolder.outfile).dbTotalLength  = length(concat(globalHolder.subjSeqs));
         context(globalHolder.outfile).dbNumberOfSeqs = length(globalHolder.subjSeqs);
     }
-
-    return 0;
 }
 
 // --------------------------------------------------------------------------
@@ -460,12 +409,12 @@ loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
 // --------------------------------------------------------------------------
 
 template <typename TGlobalHolder>
-inline int
+void
 loadTaxonomy(TGlobalHolder       & globalHolder,
              LambdaOptions const & options)
 {
     if (!options.hasSTaxIds)
-        return 0;
+        return;
 
     std::string path = toCString(options.indexDir);
     path += "/staxids";
@@ -477,10 +426,8 @@ loadTaxonomy(TGlobalHolder       & globalHolder,
     int ret = open(globalHolder.sTaxIds, path.c_str(), OPEN_RDONLY);
     if (ret != true)
     {
-        std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
-                    << " failed.\n"
-                    << "Your index does not provide them. Did you forget to specify a map file while indexing?\n";
-        return 1;
+        throw IndexException{"Could not load taxonomy IDS (but they are required for the chosen output options). "
+                             "Did you forget to specify a map file while indexing?"};
     }
 
     double finish = sysTime() - start;
@@ -490,33 +437,27 @@ loadTaxonomy(TGlobalHolder       & globalHolder,
     SEQAN_ASSERT_EQ(length(globalHolder.sTaxIds), length(globalHolder.redSubjSeqs));
 
     if (!options.computeLCA)
-        return 0;
+        return;
 
     strIdent = "Loading Subject Taxonomic Tree...";
     myPrint(options, 1, strIdent);
     start = sysTime();
 
+    std::string taxTreeExceptMessage =
+        "Could not load the taxonomy tree (but it is required for the chosen output options). "
+        "Did you forget to specify a taxonomy dump dir while indexing?";
+
     path = toCString(options.indexDir);
     path += "/tax_parents";
     ret = open(globalHolder.taxParents, path.c_str(), OPEN_RDONLY);
     if (ret != true)
-    {
-        std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
-                    << " failed.\n"
-                    << "Your index does not provide it. Did you forget to include it while indexing?\n";
-        return 1;
-    }
+        throw IndexException{taxTreeExceptMessage};
 
     path = toCString(options.indexDir);
     path += "/tax_heights";
     ret = open(globalHolder.taxHeights, path.c_str(), OPEN_RDONLY);
     if (ret != true)
-    {
-        std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
-                    << " failed.\n"
-                    << "Your index does not provide it. Did you forget to include it while indexing?\n";
-        return 1;
-    }
+        throw IndexException{taxTreeExceptMessage};
 
     finish = sysTime() - start;
     myPrint(options, 1, " done.\n");
@@ -526,18 +467,11 @@ loadTaxonomy(TGlobalHolder       & globalHolder,
     path += "/tax_names";
     ret = open(globalHolder.taxNames, path.c_str(), OPEN_RDONLY);
     if (ret != true)
-    {
-        std::cerr << ((options.verbosity == 0) ? strIdent : std::string())
-                    << " failed.\n"
-                    << "Your index does not provide it. Did you forget to include it while indexing?\n";
-        return 1;
-    }
+        throw IndexException{taxTreeExceptMessage};
 
     finish = sysTime() - start;
     myPrint(options, 1, " done.\n");
     myPrint(options, 2, "Runtime: ", finish, "s \n\n");
-
-    return 0;
 }
 
 // --------------------------------------------------------------------------
@@ -642,7 +576,7 @@ template <BlastTabularSpec h,
           typename TRedAlph,
           typename TIndexSpec,
           typename TOutFormat>
-inline int
+void
 loadQuery(GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h>      & globalHolder,
           LambdaOptions                                                 & options)
 {
@@ -654,23 +588,19 @@ loadQuery(GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h>      & global
 
     TCDStringSet<String<OrigQryAlph<p>, typename TGH::TQryTag>> origSeqs;
 
-//     std::cout << "FOO " <<  toCString(options.queryFile) << " BAR" << std::endl;
     try
     {
         SeqFileIn infile(toCString(options.queryFile));
         myReadRecords(globalHolder.qryIds, origSeqs, infile);
     }
-    catch(IOError const & e)
+    catch(std::exception const & e)
     {
-        std::cerr << "\nIOError thrown: " << e.what() << '\n'
-                  << "Could not read the query file, make sure it exists and is readable.\n";
-        return -1;
+        throw QueryException{"There was an file system or format error."};
     }
 
     if (length(origSeqs) == 0)
     {
-        std::cerr << "ERROR: Zero sequences submitted. Aborting.\n";
-        return -1;
+        throw QueryException{"Zero sequences submitted."};
     }
 
     // translate
@@ -702,18 +632,16 @@ loadQuery(GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h>      & global
 
     if (length(globalHolder.qrySeqs) >= std::numeric_limits<typename TGH::TMatch::TQId>::max())
     {
-        std::cerr << "ERROR: Too many sequences submitted. The maximum (including frames) is "
-                  << std::numeric_limits<typename TGH::TMatch::TQId>::max()
-                  << ".\n";
-        return -1;
+        throw QueryException{"Too many sequences submitted. The maximum (including frames) is " +
+                             std::to_string(std::numeric_limits<typename TGH::TMatch::TQId>::max()) +
+                             "."};
     }
 
     if (maxLen >= std::numeric_limits<typename TGH::TMatch::TPos>::max())
     {
-        std::cerr << "ERROR: one or more of your query sequences are too long. "
-                  << "The maximum length is " << std::numeric_limits<typename TGH::TMatch::TPos>::max()
-                  << ".\n";
-        return -1;
+        throw QueryException{"One or more of your query sequences are too long. The maximum length is " +
+                             std::to_string(std::numeric_limits<typename TGH::TMatch::TPos>::max()) +
+                             "."};
     }
 
     // TODO: after changing this, make options const again
@@ -736,8 +664,6 @@ loadQuery(GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h>      & global
             options.extensionMode = LambdaOptions::ExtensionMode::XDROP;
         }
     }
-
-    return 0;
 }
 
 /// THREAD LOCAL STUFF
@@ -914,7 +840,7 @@ onFind(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH,
     using TMatch = typename TGlobalHolder::TMatch;
     SEQAN_ASSERT_LEQ_MSG(getSeqOffset(subjOcc) + lH.options.seedLength,
                          length(lH.gH.subjSeqs[getSeqNo(subjOcc)]),
-                         "ERROR: Seed reaches beyond end of subject sequence! Please report a bug with your files at "
+                         "Seed reaches beyond end of subject sequence! Please report a bug with your files at "
                          "http://www.seqan.de/lambda !");
 
     if (TGlobalHolder::indexIsFM) // positions are reversed

@@ -40,12 +40,12 @@
 
 // forwards
 
-inline int
+void
 argConv0(LambdaOptions & options);
 //-
 template <typename TOutFormat,
           BlastTabularSpec h>
-inline int
+void
 argConv1(LambdaOptions                       & options,
          TOutFormat                    const & /**/,
          BlastTabularSpecSelector<h>   const &);
@@ -53,7 +53,7 @@ argConv1(LambdaOptions                       & options,
 template <typename TOutFormat,
           BlastTabularSpec h,
           BlastProgram p>
-inline int
+void
 argConv2(LambdaOptions                        & options,
          TOutFormat                     const & /**/,
          BlastTabularSpecSelector<h>    const &,
@@ -63,7 +63,7 @@ template <typename TOutFormat,
           typename TRedAlph,
           BlastTabularSpec h,
           BlastProgram p>
-inline int
+void
 argConv3(LambdaOptions                        & options,
          TOutFormat                     const &,
          BlastTabularSpecSelector<h>    const &,
@@ -75,7 +75,7 @@ template <typename TOutFormat,
           typename TScoreExtension,
           BlastTabularSpec h,
           BlastProgram p>
-inline int
+void
 argConv4(LambdaOptions                        & options,
          TOutFormat                     const & /**/,
          BlastTabularSpecSelector<h>    const &,
@@ -89,7 +89,7 @@ template <typename TIndexSpec,
           typename TOutFormat,
           BlastProgram p,
           BlastTabularSpec h>
-inline int
+void
 realMain(LambdaOptions                        & options,
          TOutFormat                     const & /**/,
          BlastTabularSpecSelector<h>    const &,
@@ -113,29 +113,39 @@ int searchMain(int const argc, char const ** argv)
         std::cerr << "WARNING: This binary is not built in release mode and will be much slower than it should be!\n";
 
 #ifdef NDEBUG
-    int ret = 0;
     try
     {
-        ret = argConv0(options);
+       argConv0(options);
     } catch (std::bad_alloc const & e)
     {
-        std::cerr << "ERROR: Lambda ran out of memory :(\n"
+        std::cerr << "\n\nERROR: Lambda ran out of memory :(\n"
                      "       You need to split your file into smaller segments or search against a smaller database.\n";
+        return -1;
+    } catch (IndexException const & e)
+    {
+        std::cerr << "\n\nERROR: The following exception was thrown while reading the index:\n"
+                  <<     "       \"" << e.what() << "\"\n"
+                  <<     "       Make sure the directory exists and is readable; recreate the index and try again.\n"
+                  <<     "       If the problem persists, report an issue at https://github.com/seqan/lambda/issues "
+                  << "and include this output, as well as the output of `lambda2 --version`, thanks!\n";
         return -1;
     } catch (std::exception const & e)
     {
-        std::cerr << "\n\n**An exception was thrown**\n" << e.what() << '\n';
+        std::cerr << "\n\nERROR: The following unspecified exception was thrown:\n"
+                  <<     "       \"" << e.what() << "\"\n"
+                  <<     "       If the problem persists, report an issue at https://github.com/seqan/lambda/issues "
+                  << "and include this output, as well as the output of `lambda2 --version`, thanks!\n";
         return -1;
     }
-    return ret;
 #else
     // In debug mode we don't catch the exceptions so that we get a backtrace from SeqAn's handler
-    return argConv0(options);
+    argConv0(options);
 #endif
+    return 0;
 }
 
 // CONVERT Run-time options to compile-time Format-Type
-inline int
+void
 argConv0(LambdaOptions & options)
 {
     myPrint(options, 1, "LAMBDA - the Local Aligner for Massive Biological DatA"
@@ -149,8 +159,8 @@ argConv0(LambdaOptions & options)
 
 #ifndef LAMBDA_LEGACY_PATHS
     if (options.dbIndexType == DbIndexType::SUFFIX_ARRAY)
-        throw std::runtime_error("ERROR: The index is of type suffix array, but support was removed.\n"
-                                 "       Either rebuild lambda2 with '-DLAMBDA_LEGACY_PATHS=1' or re-create the index.\n");
+        throw IndexException("The index is of type suffix array, but support was removed."
+                             "Either rebuild lambda2 with '-DLAMBDA_LEGACY_PATHS=1' or re-create the index.\n");
 #endif // LAMBDA_LEGACY_PATHS
 
     myPrint(options, 2, "Index properties\n"
@@ -178,7 +188,8 @@ argConv0(LambdaOptions & options)
     if ((options.blastProgram == BlastProgram::BLASTN) &&
         (options.reducedAlphabet != AlphabetEnum::DNA4))
     {
-        throw std::runtime_error("ERROR: You are attempting a nucleotide search on a protein index.\n");
+        throw std::runtime_error("You are attempting a nucleotide search on a protein index."
+                                 "Did you want to use 'lambda2 searchp' instead?");
     }
 
     // query file
@@ -194,8 +205,8 @@ argConv0(LambdaOptions & options)
     {
         if ((options.transAlphabet == AlphabetEnum::DNA5) && (options.qryOrigAlphabet == AlphabetEnum::AMINO_ACID))
         {
-            throw std::runtime_error("ERROR: Query file is protein, but index is nucleotide. "
-                                    "Re-create the index with 'lambda mkindexp'.\n");
+            throw IndexException("Query file is protein, but index is nucleotide. "
+                                 "Recreate the index with 'lambda mkindexp'.");
         }
         else if ((options.transAlphabet == AlphabetEnum::DNA5) && (options.qryOrigAlphabet == AlphabetEnum::DNA5))
         {
@@ -218,9 +229,7 @@ argConv0(LambdaOptions & options)
     }
 
     // sizes
-    int ret = checkRAM(options);
-    if (ret)
-        return ret;
+    checkRAM(options);
 
     // output
     CharString output = options.output;
@@ -238,13 +247,12 @@ argConv0(LambdaOptions & options)
     else if (endsWith(output, ".sam") || endsWith(output, ".bam")) // handled elsewhere
         return argConv1(options, BlastTabular(), BlastTabularSpecSelector<BlastTabularSpec::COMMENTS>());
 
-    std::cerr << "ERROR: Cannot handle output extension.\n";
-    return -1;
+    throw std::invalid_argument("Cannot handle output extension. THIS IS A BUG, please report it!");
 }
 
 template <typename TOutFormat,
           BlastTabularSpec h>
-inline int
+void
 argConv1(LambdaOptions                       & options,
          TOutFormat                    const & /**/,
          BlastTabularSpecSelector<h>   const &)
@@ -284,8 +292,7 @@ argConv1(LambdaOptions                       & options,
         default:
             break;
     }
-    std::cerr << "ERROR: Cannot handle program mode (perhaps you are building in FASTMODE?).\n";
-    return -1;
+    throw std::invalid_argument("Could not determine blast program mode, THIS IS A BUG, please report it!");
 }
 
 
@@ -293,7 +300,7 @@ argConv1(LambdaOptions                       & options,
 template <typename TOutFormat,
           BlastTabularSpec h,
           BlastProgram p>
-inline int
+void
 argConv2(LambdaOptions                        & options,
          TOutFormat                     const & /**/,
          BlastTabularSpecSelector<h>    const &,
@@ -321,8 +328,9 @@ argConv2(LambdaOptions                        & options,
         default:
             break;
     }
-    std::cerr << "ERROR: Cannot handle the specified alphabet reduction.\n";
-    return -1;
+    throw std::invalid_argument("The alphabet reduction used by the index is not available. Possibly it was "
+                                "added in a later Lambda version. If your lambda version is up-to-date, please "
+                                "report this as a bug.");
 }
 
 // extension model
@@ -330,7 +338,7 @@ template <typename TOutFormat,
           typename TRedAlph,
           BlastTabularSpec h,
           BlastProgram p>
-inline int
+void
 argConv3(LambdaOptions                        & options,
          TOutFormat                     const &,
          BlastTabularSpecSelector<h>    const &,
@@ -365,7 +373,7 @@ template <typename TOutFormat,
           typename TScoreExtension,
           BlastTabularSpec h,
           BlastProgram p>
-inline int
+void
 argConv4(LambdaOptions                        & options,
          TOutFormat                     const & /**/,
          BlastTabularSpecSelector<h>    const &,
@@ -411,7 +419,7 @@ template <typename TIndexSpec,
           typename TOutFormat,
           BlastProgram p,
           BlastTabularSpec h>
-inline int
+void
 realMain(LambdaOptions                        & options,
          TOutFormat                     const & /**/,
          BlastTabularSpecSelector<h>    const &,
@@ -428,25 +436,16 @@ realMain(LambdaOptions                        & options,
     TGlobalHolder globalHolder;
 //     context(globalHolder.outfile).scoringScheme._internalScheme = matr;
 
-    int ret = prepareScoring(globalHolder, options);
-    if (ret)
-        return ret;
+    prepareScoring(globalHolder, options);
 
-    ret = loadSubjects(globalHolder, options);
-    if (ret)
-        return ret;
+    loadSubjects(globalHolder, options);
 
-    ret = loadDbIndexFromDisk(globalHolder, options);
-    if (ret)
-        return ret;
+    loadDbIndexFromDisk(globalHolder, options);
 
-    ret = loadTaxonomy(globalHolder, options);
-    if (ret)
-        return ret;
+    loadTaxonomy(globalHolder, options);
 
-    ret = loadQuery(globalHolder, options);
-    if (ret)
-        return ret;
+    loadQuery(globalHolder, options);
+
 
 //     std::cout << "1st Query:\n"
 //               << front(globalHolder.qrySeqs) << "\n"
@@ -568,9 +567,6 @@ realMain(LambdaOptions                        & options,
         }
     }
 
-    if (ret)
-        return ret;
-
     myWriteFooter(globalHolder, options);
 
     if (!options.doubleIndexing)
@@ -579,6 +575,4 @@ realMain(LambdaOptions                        & options,
     }
 
     printStats(globalHolder.stats, options);
-
-    return 0;
 }
