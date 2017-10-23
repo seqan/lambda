@@ -228,6 +228,12 @@ argConv0(LambdaOptions & options)
         }
     }
 
+    // some blastProgram-specific "late option modifiers"
+    if (((options.blastProgram == BlastProgram::BLASTP) ||
+         (options.blastProgram == BlastProgram::TBLASTN)) &&
+        (!options.samBamTags[SamBamExtraTags<>::Q_AA_CIGAR]))
+        options.samBamSeq = 0;
+
     // sizes
     checkRAM(options);
 

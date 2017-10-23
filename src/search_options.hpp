@@ -248,11 +248,21 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setDefaultValue(parser, "sam-with-refheader", "off");
     setAdvanced(parser, "sam-with-refheader");
 
-    addOption(parser, ArgParseOption("", "sam-bam-seq",
-        "Write matching DNA subsequence into SAM/BAM file (BLASTN). For BLASTX and TBLASTX the matching protein "
+    std::string samBamSeqDescr;
+
+    if (options.blastProgram == BlastProgram::BLASTN)
+    {
+        samBamSeqDescr = "Write matching DNA subsequence into SAM/BAM file.";
+    }
+    else
+    {
+        samBamSeqDescr = "For BLASTX and TBLASTX the matching protein "
         "sequence is \"untranslated\" and positions retransformed to the original sequence. For BLASTP and TBLASTN "
         "there is no DNA sequence so a \"*\" is written to the SEQ column. The matching protein sequence can be "
-        "written as an optional tag, see --sam-bam-tags. If set to uniq than "
+        "written as an optional tag, see --sam-bam-tags.";
+    }
+
+    addOption(parser, ArgParseOption("", "sam-bam-seq",  samBamSeqDescr + " If set to uniq than "
         "the sequence is omitted iff it is identical to the previous match's subsequence.",
         ArgParseArgument::STRING,
         "STR"));
@@ -321,83 +331,31 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     hideOption(parser, "query-partitions"); // HIDDEN
 #endif // LAMBDA_LEGACY_PATHS
 
-//     addSection(parser, "Alphabets and Translation");
-//     addOption(parser, ArgParseOption("p", "program",
-//         "Blast Operation Mode.",
-//         ArgParseArgument::STRING,
-//         "STR"));
-// #ifdef FASTBUILD
-//     setValidValues(parser, "program", "blastp blastx");
-// #else
-//     setValidValues(parser, "program", "blastn blastp blastx tblastn tblastx");
-// #endif
-//     setDefaultValue(parser, "program", "blastx");
-
-//     addOption(parser, ArgParseOption("qa", "query-alphabet",
-//         "original alphabet of the query sequences",
-//         ArgParseArgument::STRING,
-//         "STR"));
-//     setValidValues(parser, "query-alphabet", "dna5 aminoacid");
-//     setDefaultValue(parser, "query-alphabet", "dna5");
-//
-//     addOption(parser, ArgParseOption("da", "db-alphabet",
-//         "original alphabet of the subject sequences",
-//         ArgParseArgument::STRING,
-//         "STR"));
-//     setValidValues(parser, "db-alphabet", "dna5 aminoacid");
-//     setDefaultValue(parser, "db-alphabet", "aminoacid");
-//
-//     addOption(parser, ArgParseOption("sa", "seeding-alphabet",
-//         "alphabet to use during seeding (reduction possible)",
-//         ArgParseArgument::STRING,
-//         "STR"));
-//     setValidValues(parser, "seeding-alphabet", "dna5 aminoacid");
-//     setDefaultValue(parser, "seeding-alphabet", "murphy10");
-
-//     addOption(parser, ArgParseOption("g", "genetic-code",
-//         "The translation table to use for nucl -> amino acid translation"
-//         "(not for BlastN, BlastP). See "
-//         "https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi?mode=c"
-//         " for ids (default is generic). Six frames are generated.",
-//         ArgParseArgument::INTEGER));
-// //     setValidValues(parser, "alph", "0 10");
-//     setDefaultValue(parser, "genetic-code", "1");
-//     setAdvanced(parser, "genetic-code");
-//
-//     addOption(parser, ArgParseOption("ar", "alphabet-reduction",
-//         "Alphabet Reduction for seeding phase (ignored for BLASTN).",
-//         ArgParseArgument::STRING,
-//         "STR"));
-//     setValidValues(parser, "alphabet-reduction", "none murphy10");
-//     setDefaultValue(parser, "alphabet-reduction", "murphy10");
-//     setAdvanced(parser, "alphabet-reduction");
 
     addSection(parser, "Seeding / Filtration");
-//     addOption(parser, ArgParseOption("su",
-//                                             "ungapped-seeds",
-//                                             "allow only mismatches in seeds.",
-//                                             ArgParseArgument::INTEGER));
-//     setDefaultValue(parser, "ungapped-seeds", "1");
 
     addOption(parser, ArgParseOption("as", "adaptive-seeding",
         "Grow the seed if it has too many hits (low complexity filter).",
         ArgParseArgument::BOOL));
-    setDefaultValue(parser, "adaptive-seeding", "on");
+    if (options.blastProgram == BlastProgram::BLASTN)
+        setDefaultValue(parser, "adaptive-seeding", "off");
+    else
+        setDefaultValue(parser, "adaptive-seeding", "on");
     setAdvanced(parser, "adaptive-seeding");
 
+    unsigned defaultSeedLength = (options.blastProgram == BlastProgram::BLASTN) ? 14 : 10;
     addOption(parser, ArgParseOption("sl", "seed-length",
         "Length of the seeds (default = 14 for BLASTN).",
         ArgParseArgument::INTEGER));
-    setDefaultValue(parser, "seed-length", "10");
+    setDefaultValue(parser, "seed-length", std::to_string(defaultSeedLength));
     setMinValue(parser, "seed-length", "3");
     setMaxValue(parser, "seed-length", "50");
     setAdvanced(parser, "seed-length");
 
     addOption(parser, ArgParseOption("so", "seed-offset",
-        "Offset for seeding (if unset = seed-length/2; "
-        "default = 5 for BLASTN).",
+        "Offset for seeding (if unset = seed-length/2).",
         ArgParseArgument::INTEGER));
-    setDefaultValue(parser, "seed-offset", "5");
+    setDefaultValue(parser, "seed-offset", std::to_string(defaultSeedLength / 2));
     setAdvanced(parser, "seed-offset");
     setMinValue(parser, "seed-offset", "1");
     setMaxValue(parser, "seed-offset", "50");
@@ -463,7 +421,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     addOption(parser, ArgParseOption("pa", "filter-putative-abundant",
         "If the maximum number of matches per query are found already, "
-        "stop searching if the remaining realm looks unfeasable.",
+        "stop searching if the remaining realm looks unfeasible.",
         ArgParseArgument::BOOL));
     setDefaultValue(parser, "filter-putative-abundant", "on");
     setAdvanced(parser, "filter-putative-abundant");
@@ -475,62 +433,57 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setDefaultValue(parser, "merge-putative-siblings", "on");
     setAdvanced(parser, "merge-putative-siblings");
 
-//     addOption(parser, ArgParseOption("se",
-//                                             "seedminevalue",
-//                                             "after postproc worse seeds are "
-//                                             "discarded"
-//                                             "(0 -> off).",
-//                                             ArgParseArgument::INTEGER));
-//     setDefaultValue(parser, "seedminevalue", "100000");
-
-//     addOption(parser, ArgParseOption("sb",
-//                                             "seedminbits",
-//                                             "after postproc worse seeds are "
-//                                             "discarded"
-//                                             "(-1 -> off).",
-//                                             ArgParseArgument::DOUBLE));
-//     setDefaultValue(parser, "seedminbits", "-1");
-
     addSection(parser, "Scoring");
 
-    addOption(parser, ArgParseOption("sc", "scoring-scheme",
-        "use '45' for Blosum45; '62' for Blosum62 (default); '80' for Blosum80; "
-        "[ignored for BlastN]",
-        ArgParseArgument::INTEGER));
-    setDefaultValue(parser, "scoring-scheme", "62");
-    setAdvanced(parser, "scoring-scheme");
+    if (options.blastProgram != BlastProgram::BLASTN)
+    {
+        addOption(parser, ArgParseOption("sc", "scoring-scheme",
+            "use '45' for Blosum45; '62' for Blosum62 (default); '80' for Blosum80.",
+            ArgParseArgument::INTEGER));
+        setDefaultValue(parser, "scoring-scheme", "62");
+        setAdvanced(parser, "scoring-scheme");
+    }
 
     addOption(parser, ArgParseOption("ge", "score-gap",
-        "Score per gap character (default = -2 for BLASTN).",
+        "Score per gap character.",
         ArgParseArgument::INTEGER));
-    setDefaultValue(parser, "score-gap", "-1");
+    if (options.blastProgram == BlastProgram::BLASTN)
+        setDefaultValue(parser, "score-gap", "-2");
+    else
+        setDefaultValue(parser, "score-gap", "-1");
     setMinValue(parser, "score-gap", "-1000");
     setMaxValue(parser, "score-gap", "1000");
     setAdvanced(parser, "score-gap");
 
     addOption(parser, ArgParseOption("go", "score-gap-open",
-        "Additional cost for opening gap (default = -5 for BLASTN).",
+        "Additional cost for opening gap.",
         ArgParseArgument::INTEGER));
-    setDefaultValue(parser, "score-gap-open", "-11");
+    if (options.blastProgram == BlastProgram::BLASTN)
+        setDefaultValue(parser, "score-gap-open", "-5");
+    else
+        setDefaultValue(parser, "score-gap-open", "-11");
     setMinValue(parser, "score-gap-open", "-1000");
     setMaxValue(parser, "score-gap-open", "1000");
     setAdvanced(parser, "score-gap-open");
 
-    addOption(parser, ArgParseOption("ma", "score-match",
-        "Match score [only BLASTN])",
-        ArgParseArgument::INTEGER));
-    setDefaultValue(parser, "score-match", "2");
-    setMinValue(parser, "score-match", "-1000");
-    setMaxValue(parser, "score-match", "1000");
-    setAdvanced(parser, "score-match");
+    if (options.blastProgram == BlastProgram::BLASTN)
+    {
+        addOption(parser, ArgParseOption("ma", "score-match",
+            "Match score [only BLASTN])",
+            ArgParseArgument::INTEGER));
+        setDefaultValue(parser, "score-match", "2");
+        setMinValue(parser, "score-match", "-1000");
+        setMaxValue(parser, "score-match", "1000");
+        setAdvanced(parser, "score-match");
 
-    addOption(parser, ArgParseOption("mi", "score-mismatch",
-        "Mismatch score [only BLASTN]",
-        ArgParseArgument::INTEGER));
-    setDefaultValue(parser, "score-mismatch", "-3");
-    setMinValue(parser, "score-mismatch", "-1000");
-    setMaxValue(parser, "score-mismatch", "1000");
-    setAdvanced(parser, "score-mismatch");
+        addOption(parser, ArgParseOption("mi", "score-mismatch",
+            "Mismatch score [only BLASTN]",
+            ArgParseArgument::INTEGER));
+        setDefaultValue(parser, "score-mismatch", "-3");
+        setMinValue(parser, "score-mismatch", "-1000");
+        setMaxValue(parser, "score-mismatch", "1000");
+        setAdvanced(parser, "score-mismatch");
+    }
 
     addSection(parser, "Extension");
 
@@ -742,11 +695,6 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
             }
         }
     }
-    // if original is protein, than only write if explicitly asked for
-    //TODO fix this
-    if (((options.blastProgram == BlastProgram::BLASTP) || (options.blastProgram == BlastProgram::TBLASTN)) &&
-        (!options.samBamTags[SamBamExtraTags<>::Q_AA_CIGAR]))
-        options.samBamSeq = 0;
 
     if (options.samBamTags[SamBamExtraTags<>::S_TAX_IDS])
         options.hasSTaxIds = true;
@@ -760,19 +708,11 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     getOptionValue(options.versionInformationToOutputFile, parser, "version-to-outputfile");
     getOptionValue(options.adaptiveSeeding, parser, "adaptive-seeding");
-    if (options.blastProgram == BlastProgram::BLASTN)
-        options.adaptiveSeeding = false;
 
     clear(buffer);
     getOptionValue(options.seedLength, parser, "seed-length");
-    if ((!isSet(parser, "seed-length")) &&
-        (options.blastProgram == BlastProgram::BLASTN))
-        options.seedLength = 14;
 
-    if (isSet(parser, "seed-offset"))
-        getOptionValue(options.seedOffset, parser, "seed-offset");
-    else
-        options.seedOffset = options.seedLength / 2;
+    getOptionValue(options.seedOffset, parser, "seed-offset");
 
     if (isSet(parser, "seed-gravity"))
         getOptionValue(options.seedGravity, parser, "seed-gravity");
@@ -800,14 +740,10 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     getOptionValue(options.seedDeltaIncreasesLength, parser, "seed-delta-increases-length");
 
-
     getOptionValue(options.eCutOff, parser, "e-value");
     getOptionValue(options.idCutOff, parser, "percent-identity");
 
     getOptionValue(options.xDropOff, parser, "x-drop");
-//     if ((!isSet(parser, "x-drop")) &&
-//         (options.blastProgram == BlastProgram::BLASTN))
-//         options.xDropOff = 16;
 
     getOptionValue(options.band, parser, "band");
 
@@ -829,30 +765,28 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     }
 #endif
 
-    getOptionValue(options.scoringMethod, parser, "scoring-scheme");
     if (options.blastProgram == BlastProgram::BLASTN)
-        options.scoringMethod = 0;
-    switch (options.scoringMethod)
     {
-        case 0:
-            getOptionValue(options.misMatch, parser, "score-mismatch");
-            getOptionValue(options.match, parser, "score-match");
-            break;
-        case 45: case 62: case 80: break;
-        default:
-            std::cerr << "Unsupported Scoring Scheme selected.\n";
-            return ArgumentParser::PARSE_ERROR;
+        options.scoringMethod = 0;
+        getOptionValue(options.misMatch, parser, "score-mismatch");
+        getOptionValue(options.match, parser, "score-match");
+    }
+    else
+    {
+        getOptionValue(options.scoringMethod, parser, "scoring-scheme");
+
+        switch (options.scoringMethod)
+        {
+            case 45: case 62: case 80: break;
+            default:
+                std::cerr << "Unsupported Scoring Scheme selected.\n";
+                return ArgumentParser::PARSE_ERROR;
+        }
     }
 
     getOptionValue(options.gapExtend, parser, "score-gap");
-    if ((!isSet(parser, "score-gap")) &&
-        (options.blastProgram == BlastProgram::BLASTN))
-        options.gapExtend = -2;
 
     getOptionValue(options.gapOpen, parser, "score-gap-open");
-    if ((!isSet(parser, "score-gap-open")) &&
-        (options.blastProgram == BlastProgram::BLASTN))
-        options.gapOpen = -5;
 
     getOptionValue(options.filterPutativeDuplicates, parser, "filter-putative-duplicates");
     getOptionValue(options.filterPutativeAbundant, parser, "filter-putative-abundant");
@@ -873,11 +807,6 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     //TODO reactivate
 //     if ((!isSet(parser, "pre-scoring")) &&
 //         (options.alphReduction == 0))
-//         options.preScoring = 1;
-
-
-    // for adaptive seeding we take the full resized seed (and no surroundings)
-//     if (options.adaptiveSeeding)
 //         options.preScoring = 1;
 
     getOptionValue(options.preScoringThresh, parser, "pre-scoring-threshold");
@@ -1091,6 +1020,5 @@ printOptions(LambdaOptions const & options)
     #endif
               << "\n";
 }
-
 
 #endif // header guard

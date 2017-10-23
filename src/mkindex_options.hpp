@@ -326,7 +326,7 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
         }
 
     }
-//     getOptionValue(options.segFile, parser, "segfile");
+
     getOptionValue(options.algo, parser, "algorithm");
     if ((options.algo == "mergesort") || (options.algo == "quicksort") || (options.algo == "quicksortbuckets"))
     {
