@@ -222,19 +222,58 @@ set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN_CXX_FLAGS}")
 set(BUILD_SHARED_LIBS OFF)
 
 # ----------------------------------------------------------------------------
+# Man-pages
+# ----------------------------------------------------------------------------
+
+# Umbrella man-page
+add_custom_command (OUTPUT lambda2.1
+                    COMMAND lambda2 --export-help=man > lambda2.1
+                    DEPENDS lambda2)
+# searchn subcommand
+add_custom_command (OUTPUT lambda2-searchn.1
+                    COMMAND lambda2 searchn --export-help=man > lambda2-searchn.1
+                    DEPENDS lambda2)
+# searchp subcommand
+add_custom_command (OUTPUT lambda2-searchp.1
+                    COMMAND lambda2 searchp --export-help=man > lambda2-searchp.1
+                    DEPENDS lambda2)
+# mkindexn subcommand
+add_custom_command (OUTPUT lambda2-mkindexn.1
+                    COMMAND lambda2 mkindexn --export-help=man > lambda2-mkindexn.1
+                    DEPENDS lambda2)
+# mkindexp subcommand
+add_custom_command (OUTPUT lambda2-mkindexp.1
+                    COMMAND lambda2 mkindexp --export-help=man > lambda2-mkindexp.1
+                    DEPENDS lambda2)
+
+add_custom_target (manual
+                   DEPENDS lambda2.1 lambda2-searchn.1 lambda2-searchp.1 lambda2-mkindexn.1 lambda2-mkindexp.1)
+
+# ----------------------------------------------------------------------------
 # Installation
 # ----------------------------------------------------------------------------
 
-# Install lambda in ${PREFIX}/bin directory
-install (TARGETS lambda2
-         DESTINATION bin)
+# Adapt to system paths
+include (GNUInstallDirs)
 
-# Install non-binary files for the package to share/lambda
+# Install lambda into BINDIR, usually ${PREFIX}/bin
+install (TARGETS lambda2
+         DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+# Install non-binary files for the package to DOCDIR, usually ${PREFIX}/share/doc/lambda2
 install (FILES ../LICENSE.rst
                ../LICENSE-BSD.rst
                ../LICENSE-AGPL3.rst
                ../README.rst
-         DESTINATION "share/doc/lambda2")
+         DESTINATION ${CMAKE_INSTALL_DOCDIR})
+
+# Man pages into MANDIR, usually ${PREFIX}/share/man/man1 (or without share)
+install (FILES ${CMAKE_CURRENT_BINARY_DIR}/lambda2.1
+               ${CMAKE_CURRENT_BINARY_DIR}/lambda2-searchn.1
+               ${CMAKE_CURRENT_BINARY_DIR}/lambda2-searchp.1
+               ${CMAKE_CURRENT_BINARY_DIR}/lambda2-mkindexn.1
+               ${CMAKE_CURRENT_BINARY_DIR}/lambda2-mkindexp.1
+         DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
 
 # ----------------------------------------------------------------------------
 # CPack Install
