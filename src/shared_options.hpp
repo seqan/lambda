@@ -166,7 +166,7 @@ struct SharedOptions
     AlphabetEnum transAlphabet;
     AlphabetEnum reducedAlphabet;
 
-    GeneticCodeSpec geneticCode = CANONICAL;
+    GeneticCodeSpec geneticCode = static_cast<GeneticCodeSpec>(0);//CANONICAL;
 
     BlastProgram blastProgram   = BlastProgram::UNKNOWN;
 

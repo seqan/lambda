@@ -101,7 +101,7 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
     setRequired(parser, "database");
     setValidValues(parser, "database", toCString(concat(getFileExtensions(SeqFileIn()), ' ')));
 
-    addOption(parser, ArgParseOption("tx",
+    addOption(parser, ArgParseOption("m",
         "acc-tax-map",
         "An NCBI or UniProt accession-to-taxid mapping file. Download from "
         "ftp://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/ or "
@@ -121,7 +121,7 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
 #endif
     setValidValues(parser, "acc-tax-map", toCString(taxExtensions));
 
-    addOption(parser, ArgParseOption("tt",
+    addOption(parser, ArgParseOption("x",
         "tax-dump-dir",
         "A directory that contains nodes.dmp and names.dmp; unzipped from "
         "ftp://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump.tar.gz",
@@ -134,7 +134,7 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
         "OUT"));
     setValidValues(parser, "index", ".lambda");
 
-    addOption(parser, ArgParseOption("di", "db-index-type",
+    addOption(parser, ArgParseOption("", "db-index-type",
         "Suffix array or full-text minute space.",
         ArgParseArgument::STRING,
         "type"));
@@ -156,13 +156,13 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
     {
         addSection(parser, "Alphabets and Translation");
 
-        addOption(parser, ArgParseOption("", "database-alphabet",
-            "Alphabet of the database sequences (specify to override auto-detection);"
+        addOption(parser, ArgParseOption("a", "input-alphabet",
+            "Alphabet of the database sequences (specify to override auto-detection); "
             "if input is Dna, it will be translated.",
             ArgParseArgument::STRING));
-        setValidValues(parser, "database-alphabet", "auto dna5 aminoacid");
-        setDefaultValue(parser, "database-alphabet", "auto");
-        setAdvanced(parser, "database-alphabet");
+        setValidValues(parser, "input-alphabet", "auto dna5 aminoacid");
+        setDefaultValue(parser, "input-alphabet", "auto");
+        setAdvanced(parser, "input-alphabet");
 
         addOption(parser, ArgParseOption("g", "genetic-code",
             "The translation table to use if input is Dna. See "
@@ -172,7 +172,7 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
         setDefaultValue(parser, "genetic-code", "1");
         setAdvanced(parser, "genetic-code");
 
-        addOption(parser, ArgParseOption("ar", "alphabet-reduction",
+        addOption(parser, ArgParseOption("r", "alphabet-reduction",
             "Alphabet Reduction for seeding phase.",
             ArgParseArgument::STRING,
             "STR"));
@@ -182,7 +182,7 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
     }
 
     addSection(parser, "Algorithm");
-    addOption(parser, ArgParseOption("a", "algorithm",
+    addOption(parser, ArgParseOption("", "algorithm",
         "Algorithm for SA construction (also used for FM; see Memory "
         " Requirements below!).",
         ArgParseArgument::STRING,
@@ -210,7 +210,7 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
 
     std::string tmpdir;
     getCwd(tmpdir);
-    addOption(parser, ArgParseOption("td", "tmp-dir",
+    addOption(parser, ArgParseOption("", "tmp-dir",
         "temporary directory used by skew, defaults to working directory.",
         ArgParseArgument::OUTPUT_DIRECTORY,
         "STR"));
@@ -286,7 +286,7 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
     }
     else
     {
-        getOptionValue(buffer, parser, "database-alphabet");
+        getOptionValue(buffer, parser, "input-alphabet");
         if (buffer == "auto")
             options.subjOrigAlphabet = AlphabetEnum::DNA4;
         else if (buffer == "dna5")
@@ -294,7 +294,7 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
         else if (buffer == "aminoacid")
             options.subjOrigAlphabet = AlphabetEnum::AMINO_ACID;
         else
-            throw std::invalid_argument("ERROR: Invalid argument to --database-alphabet\n");
+            throw std::invalid_argument("ERROR: Invalid argument to --input-alphabet\n");
 
 
         getOptionValue(buffer, parser, "alphabet-reduction");

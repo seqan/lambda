@@ -101,6 +101,7 @@ struct LambdaOptions : public SharedOptions
     unsigned long   maxMatches  = 500;
 
     bool            computeLCA  = false;
+    GeneticCodeSpec geneticCodeIndex;
 
     enum class ExtensionMode : uint8_t
     {
@@ -172,16 +173,27 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     if (options.blastProgram != BlastProgram::BLASTN)
     {
-        addOption(parser, ArgParseOption("", "query-alphabet",
-            "Alphabet of the query sequences (specify to override auto-detection).",
+        addOption(parser, ArgParseOption("a", "input-alphabet",
+            "Alphabet of the query sequences (specify to override auto-detection). Dna sequences will be translated.",
             ArgParseArgument::STRING));
-        setValidValues(parser, "query-alphabet", "auto dna5 aminoacid");
-        setDefaultValue(parser, "query-alphabet", "auto");
-        setAdvanced(parser, "query-alphabet");
+        setValidValues(parser, "input-alphabet", "auto dna5 aminoacid");
+        setDefaultValue(parser, "input-alphabet", "auto");
+        setAdvanced(parser, "input-alphabet");
+
+        addOption(parser, ArgParseOption("g", "genetic-code",
+            "The translation table to use if input is Dna. See "
+            "https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi?mode=c"
+            " for ids. Default is to use the same table that was used for the index or 1/CANONICAL if the index "
+            "was not translated.",
+            ArgParseArgument::INTEGER));
+        setDefaultValue(parser, "genetic-code", "0");
+        setAdvanced(parser, "genetic-code");
     }
 
     addOption(parser, ArgParseOption("i", "index",
-        "The database index (created by the 'lambda mkindex' command).",
+        std::string{"The database index (created by the 'lambda "} +
+        (options.blastProgram == BlastProgram::BLASTN ? "mkindexn" : "mkindexp") +
+        "' command).",
         ArgParseArgument::INPUT_DIRECTORY,
         "IN"));
     setRequired(parser, "index");
@@ -211,14 +223,14 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setValidValues(parser, "output", toCString(extsConcat));
     setDefaultValue(parser, "output", "output.m8");
 
-    addOption(parser, ArgParseOption("oc", "output-columns",
+    addOption(parser, ArgParseOption("", "output-columns",
         "Print specified column combination and/or order (.m8 and .m9 outputs only); call -oc help for more details.",
         ArgParseArgument::STRING,
         "STR"));
     setDefaultValue(parser, "output-columns", "std");
     setAdvanced(parser, "output-columns");
 
-    addOption(parser, ArgParseOption("id", "percent-identity",
+    addOption(parser, ArgParseOption("", "percent-identity",
         "Output only matches above this threshold (checked before e-value "
         "check).",
         ArgParseArgument::INTEGER));
@@ -233,7 +245,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setMinValue(parser, "e-value", "0");
     setMaxValue(parser, "e-value", "100");
 
-    addOption(parser, ArgParseOption("nm", "num-matches",
+    addOption(parser, ArgParseOption("n", "num-matches",
         "Print at most this number of matches per query.",
         ArgParseArgument::INTEGER));
     setDefaultValue(parser, "num-matches", "256");
@@ -311,14 +323,14 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setAdvanced(parser, "threads");
 
 #ifdef LAMBDA_LEGACY_PATHS
-    addOption(parser, ArgParseOption("qi", "query-index-type",
+    addOption(parser, ArgParseOption("", "query-index-type",
         "controls double-indexing.",
         ArgParseArgument::STRING));
     setValidValues(parser, "query-index-type", "radix none");
     setDefaultValue(parser, "query-index-type", "none");
     setAdvanced(parser, "query-index-type");
 
-    addOption(parser, ArgParseOption("qp", "query-partitions",
+    addOption(parser, ArgParseOption("", "query-partitions",
         "Divide the query into qp number of blocks before processing; should be"
         " a multiple of the number of threads, defaults to one per thread. "
         "Only used with double-indexing; strong influence on memory, see below.",
@@ -334,7 +346,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     addSection(parser, "Seeding / Filtration");
 
-    addOption(parser, ArgParseOption("as", "adaptive-seeding",
+    addOption(parser, ArgParseOption("", "adaptive-seeding",
         "Grow the seed if it has too many hits (low complexity filter).",
         ArgParseArgument::BOOL));
     if (options.blastProgram == BlastProgram::BLASTN)
@@ -344,15 +356,15 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setAdvanced(parser, "adaptive-seeding");
 
     unsigned defaultSeedLength = (options.blastProgram == BlastProgram::BLASTN) ? 14 : 10;
-    addOption(parser, ArgParseOption("sl", "seed-length",
-        "Length of the seeds (default = 14 for BLASTN).",
+    addOption(parser, ArgParseOption("", "seed-length",
+        "Length of the seeds.",
         ArgParseArgument::INTEGER));
     setDefaultValue(parser, "seed-length", std::to_string(defaultSeedLength));
     setMinValue(parser, "seed-length", "3");
     setMaxValue(parser, "seed-length", "50");
     setAdvanced(parser, "seed-length");
 
-    addOption(parser, ArgParseOption("so", "seed-offset",
+    addOption(parser, ArgParseOption("", "seed-offset",
         "Offset for seeding (if unset = seed-length/2).",
         ArgParseArgument::INTEGER));
     setDefaultValue(parser, "seed-offset", std::to_string(defaultSeedLength / 2));
@@ -360,7 +372,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setMinValue(parser, "seed-offset", "1");
     setMaxValue(parser, "seed-offset", "50");
 
-    addOption(parser, ArgParseOption("sd", "seed-delta",
+    addOption(parser, ArgParseOption("", "seed-delta",
         "maximum seed distance.",
         ArgParseArgument::INTEGER));
     setDefaultValue(parser, "seed-delta", "1");
@@ -374,20 +386,20 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setDefaultValue(parser, "seed-delta-increases-length", "off");
     setAdvanced(parser, "seed-delta-increases-length");
 
-    addOption(parser, ArgParseOption("sh", "seed-half-exact",
+    addOption(parser, ArgParseOption("", "seed-half-exact",
         "Allow errors only in second half of seed.",
         ArgParseArgument::BOOL));
     setDefaultValue(parser, "seed-half-exact", "on");
     setAdvanced(parser, "seed-half-exact");
 
-    addOption(parser, ArgParseOption("sg", "seed-gravity",
+    addOption(parser, ArgParseOption("", "seed-gravity",
         "Seeds closer than this are merged into region (if unset = "
         "seed-length).",
         ArgParseArgument::INTEGER));
     setDefaultValue(parser, "seed-gravity", "10");
     hideOption(parser, "seed-gravity"); // HIDDEN
 
-    addOption(parser, ArgParseOption("sm", "seed-min-length",
+    addOption(parser, ArgParseOption("", "seed-min-length",
         "after postproc shorter seeds are discarded (if unset = seed-length).",
         ArgParseArgument::INTEGER));
     setDefaultValue(parser, "seed-min-length", "10");
@@ -395,7 +407,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     addSection(parser, "Miscellaneous Heuristics");
 
-    addOption(parser, ArgParseOption("ps", "pre-scoring",
+    addOption(parser, ArgParseOption("", "pre-scoring",
         "evaluate score of a region NUM times the size of the seed "
         "before extension (0 -> no pre-scoring, 1 -> evaluate seed, n-> area "
         "around seed, as well; default = 1 if no reduction is used).",
@@ -405,7 +417,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setDefaultValue(parser, "pre-scoring", "2");
     setAdvanced(parser, "pre-scoring");
 
-    addOption(parser, ArgParseOption("pt", "pre-scoring-threshold",
+    addOption(parser, ArgParseOption("", "pre-scoring-threshold",
         "minimum average score per position in pre-scoring region.",
         ArgParseArgument::DOUBLE));
     setDefaultValue(parser, "pre-scoring-threshold", "2");
@@ -413,20 +425,20 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setMaxValue(parser, "pre-scoring-threshold", "20");
     setAdvanced(parser, "pre-scoring-threshold");
 
-    addOption(parser, ArgParseOption("pd", "filter-putative-duplicates",
+    addOption(parser, ArgParseOption("", "filter-putative-duplicates",
         "filter hits that will likely duplicate a match already found.",
         ArgParseArgument::BOOL));
     setDefaultValue(parser, "filter-putative-duplicates", "on");
     setAdvanced(parser, "filter-putative-duplicates");
 
-    addOption(parser, ArgParseOption("pa", "filter-putative-abundant",
+    addOption(parser, ArgParseOption("", "filter-putative-abundant",
         "If the maximum number of matches per query are found already, "
         "stop searching if the remaining realm looks unfeasible.",
         ArgParseArgument::BOOL));
     setDefaultValue(parser, "filter-putative-abundant", "on");
     setAdvanced(parser, "filter-putative-abundant");
 
-    addOption(parser, ArgParseOption("pm", "merge-putative-siblings",
+    addOption(parser, ArgParseOption("", "merge-putative-siblings",
         "Merge seed from one region, "
         "stop searching if the remaining realm looks unfeasable.",
         ArgParseArgument::BOOL));
@@ -437,14 +449,14 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     if (options.blastProgram != BlastProgram::BLASTN)
     {
-        addOption(parser, ArgParseOption("sc", "scoring-scheme",
+        addOption(parser, ArgParseOption("s", "scoring-scheme",
             "use '45' for Blosum45; '62' for Blosum62 (default); '80' for Blosum80.",
             ArgParseArgument::INTEGER));
         setDefaultValue(parser, "scoring-scheme", "62");
         setAdvanced(parser, "scoring-scheme");
     }
 
-    addOption(parser, ArgParseOption("ge", "score-gap",
+    addOption(parser, ArgParseOption("", "score-gap",
         "Score per gap character.",
         ArgParseArgument::INTEGER));
     if (options.blastProgram == BlastProgram::BLASTN)
@@ -455,7 +467,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setMaxValue(parser, "score-gap", "1000");
     setAdvanced(parser, "score-gap");
 
-    addOption(parser, ArgParseOption("go", "score-gap-open",
+    addOption(parser, ArgParseOption("", "score-gap-open",
         "Additional cost for opening gap.",
         ArgParseArgument::INTEGER));
     if (options.blastProgram == BlastProgram::BLASTN)
@@ -468,7 +480,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     if (options.blastProgram == BlastProgram::BLASTN)
     {
-        addOption(parser, ArgParseOption("ma", "score-match",
+        addOption(parser, ArgParseOption("", "score-match",
             "Match score [only BLASTN])",
             ArgParseArgument::INTEGER));
         setDefaultValue(parser, "score-match", "2");
@@ -476,7 +488,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         setMaxValue(parser, "score-match", "1000");
         setAdvanced(parser, "score-match");
 
-        addOption(parser, ArgParseOption("mi", "score-mismatch",
+        addOption(parser, ArgParseOption("", "score-mismatch",
             "Mismatch score [only BLASTN]",
             ArgParseArgument::INTEGER));
         setDefaultValue(parser, "score-mismatch", "-3");
@@ -506,7 +518,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setMaxValue(parser, "band", "1000");
     setAdvanced(parser, "band");
 
-    addOption(parser, ArgParseOption("em", "extension-mode",
+    addOption(parser, ArgParseOption("m", "extension-mode",
         "Choice of extension algorithms.",
         ArgParseArgument::STRING));
 #ifdef SEQAN_SIMD_ENABLED
@@ -569,7 +581,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     }
     else
     {
-        getOptionValue(buffer, parser, "query-alphabet");
+        getOptionValue(buffer, parser, "input-alphabet");
         if (buffer == "auto")
             options.qryOrigAlphabet = AlphabetEnum::DNA4;
         else if (buffer == "dna5")
@@ -577,7 +589,24 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         else if (buffer == "aminoacid")
             options.qryOrigAlphabet = AlphabetEnum::AMINO_ACID;
         else
-            throw std::invalid_argument("ERROR: Invalid argument to --query-alphabet\n");
+            throw std::invalid_argument("ERROR: Invalid argument to --input-alphabet\n");
+
+        int buf = 0;
+        getOptionValue(buf, parser, "genetic-code");
+        switch (buf)
+        {
+            case 0: // take code from index
+            case 1: case 2: case 3: case 4: case 5: case 6:
+            case 9: case 10: case 11: case 12: case 13: case 14: case 15: case 16:
+            case 21: case 22: case 23: case 24 : case 25:
+                options.geneticCode = static_cast<GeneticCodeSpec>(buf);
+                break;
+            default:
+                std::cerr << "Invalid genetic code. See trans_table vars at "
+                          << "https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi?mode=c"
+                          << std::endl;
+                return ArgumentParser::PARSE_ERROR;
+        }
     }
 
     getOptionValue(options.indexDir, parser, "index");

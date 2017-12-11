@@ -160,7 +160,7 @@ void readIndexOptions(LambdaOptions & options)
         b = 0;
         if (!lexicalCast(b, buffer))
             throw IndexException("Could not read the index's genetic code.");
-        options.geneticCode = static_cast<GeneticCodeSpec>(b);
+        options.geneticCodeIndex = static_cast<GeneticCodeSpec>(b);
     }
 
     buffer.clear();

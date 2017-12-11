@@ -211,15 +211,19 @@ inline void
 _saveOriginalSeqLengths(TLimits limits, // we want copy!
                        LambdaIndexerOptions const & options)
 {
+    double start = sysTime();
+    myPrint(options, 1, "Dumping untranslated subject lengths...");
+
     for (uint32_t i = 0; i < (length(limits) - 1); ++i)
         limits[i] = limits[i+1] - limits[i];
     // last entry not overwritten, should be the sum of all lengths
 
-    myPrint(options, 1, " dumping untranslated subject lengths...");
-    //TODO save to TMPDIR instead
     CharString _path = options.indexDir;
     append(_path, "/untranslated_seq_lengths");
     save(limits, toCString(_path));
+    myPrint(options, 1, " done.\n");
+    double finish = sysTime() - start;
+    myPrint(options, 2, "Runtime: ", finish, "s \n\n");
 }
 
 // --------------------------------------------------------------------------
@@ -232,12 +236,17 @@ translateOrSwap(TCDStringSet<String<TTransAlph>> & out,
                 TCDStringSet<String<TOrigAlph>> & in,
                 LambdaIndexerOptions const & options)
 {
-    //TODO more output
-    myPrint(options, 1, "translating...");
+    double start = sysTime();
+    myPrint(options, 1, "Translating Subj Sequences...");
+
     translate(out,
               in,
               SIX_FRAME,
               options.geneticCode);
+
+    myPrint(options, 1, " done.\n");
+    double finish = sysTime() - start;
+    myPrint(options, 2, "Runtime: ", finish, "s \n\n");
 }
 
 template <typename TSameAlph>

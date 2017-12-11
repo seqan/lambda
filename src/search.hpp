@@ -169,11 +169,22 @@ argConv0(LambdaOptions & options)
     if (_alphabetEnumToName(options.subjOrigAlphabet) == _alphabetEnumToName(options.transAlphabet))
     {
         myPrint(options, 2, "  translated alphabet: not translated\n");
+        if (options.geneticCode == 0) // use same geneticCode as Index, but index wasn't translated
+            options.geneticCode = CANONICAL;
     }
     else
     {
         myPrint(options, 2, "  translated alphabet: ", _alphabetEnumToName(options.transAlphabet), "\n");
-        myPrint(options, 2, "    translation code:  ", options.geneticCode, "\n");
+        myPrint(options, 2, "    translation code:  ", options.geneticCodeIndex, "\n");
+        if (options.geneticCode == 0) // use same geneticCode as Index
+        {
+            options.geneticCode = options.geneticCodeIndex;
+        } else if (options.geneticCode != options.geneticCodeIndex)
+        {
+            std::cerr << "WARNING: The genetic code used when creating the index: " << options.geneticCodeIndex
+                      << "\n         is not the same as now selected for the query sequences: " << options.geneticCode
+                      << "\n         Are you sure this is what you want?\n";
+        }
     }
 
     if (_alphabetEnumToName(options.transAlphabet) == _alphabetEnumToName(options.reducedAlphabet))
