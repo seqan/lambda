@@ -91,6 +91,7 @@ option (LAMBDA_LINGAPS_OPT              "Add optimized codepaths for linear gap 
 option (LAMBDA_LONG_PROTEIN_SUBJ_SEQS   "Make max protein sequence length == 4.3billion instead of 65,535. INVALIDATES INDEXS!"     OFF)
 option (LAMBDA_MMAPPED_DB               "Use mmapped access to the database."                                                       OFF)
 option (LAMBDA_NATIVE_BUILD             "Architecture-specific optimizations, i.e. g++ -march=native."                              ON)
+option (LAMBDA_MULTIOPT_BUILD           "Build and install multiple binaries with different optimisation levels + a dispatcher."    OFF)
 option (LAMBDA_STATIC_BUILD             "Include all libraries in the binaries."                                                    OFF)
 
 if (LAMBDA_FASTBUILD)
@@ -139,6 +140,7 @@ message(   "     LAMBDA_LINGAPS_OPT              ${LAMBDA_LINGAPS_OPT}")
 message(   "     LAMBDA_LONG_PROTEIN_SUBJ_SEQS   ${LAMBDA_LONG_PROTEIN_SUBJ_SEQS}")
 message(   "     LAMBDA_MMAPPED_DB               ${LAMBDA_MMAPPED_DB}")
 message(   "     LAMBDA_NATIVE_BUILD             ${LAMBDA_NATIVE_BUILD}")
+message(   "     LAMBDA_MULTIOPT_BUILD           ${LAMBDA_MULTIOPT_BUILD}")
 message(   "     LAMBDA_STATIC_BUILD             ${LAMBDA_STATIC_BUILD}")
 message(STATUS "Run 'cmake -LH' to get a comment on each option.")
 message(STATUS "Remove CMakeCache.txt and re-run cmake with -DOPTIONNAME=ON|OFF to change an option.")
@@ -196,8 +198,12 @@ add_definitions (-DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}")
 # Set the right output directory
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
 
+# Add CXX flags found by find_package (SeqAn).
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN_CXX_FLAGS}")
+
 # Update the list of file names below if you add source files to your application.
-add_executable (lambda2 lambda.cpp
+set (LAMBDA_SOURCE_FILES
+                lambda.cpp
                     shared_definitions.hpp
                     shared_misc.hpp
                     shared_options.hpp
@@ -213,13 +219,14 @@ add_executable (lambda2 lambda.cpp
                     mkindex_options.hpp
                     mkindex_saca.hpp)
 
-# Add dependencies found by find_package (SeqAn).
+add_executable (lambda2 ${LAMBDA_SOURCE_FILES})
 target_link_libraries (lambda2 ${SEQAN_LIBRARIES})
 
-# Add CXX flags found by find_package (SeqAn).
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN_CXX_FLAGS}")
-
-set(BUILD_SHARED_LIBS OFF)
+if (LAMBDA_MULTIOPT_BUILD)
+    add_executable (lambda2-sse4 ${LAMBDA_SOURCE_FILES})
+    target_link_libraries (lambda2-sse4 ${SEQAN_LIBRARIES})
+    set_target_properties (lambda2-sse4 PROPERTIES COMPILE_FLAGS "-mmmx -msse -msse2 -msse3 -mssse3 -msse4 -mpopcnt")
+endif ()
 
 # ----------------------------------------------------------------------------
 # Man-pages
@@ -256,9 +263,24 @@ add_custom_target (manual
 # Adapt to system paths
 include (GNUInstallDirs)
 
-# Install lambda into BINDIR, usually ${PREFIX}/bin
-install (TARGETS lambda2
-         DESTINATION ${CMAKE_INSTALL_BINDIR})
+if (LAMBDA_MULTIOPT_BUILD)
+    # Install lambda binaries into LIBEXECDIR
+    install (TARGETS lambda2 lambda2-sse4
+             DESTINATION ${CMAKE_INSTALL_LIBEXECDIR})
+
+    # Install dispatcher script into BINDIR
+    configure_file(../bin/lambda2.in
+                   ${CMAKE_CURRENT_BINARY_DIR}/lambda2-dispatch
+                   @ONLY)
+    install (FILES ${CMAKE_CURRENT_BINARY_DIR}/lambda2-dispatch
+             DESTINATION ${CMAKE_INSTALL_BINDIR}
+             RENAME lambda2
+             PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+elseif ()
+    # Install lambda into BINDIR, usually ${PREFIX}/bin
+    install (TARGETS lambda2
+             DESTINATION ${CMAKE_INSTALL_BINDIR})
+endif ()
 
 # Install non-binary files for the package to DOCDIR, usually ${PREFIX}/share/doc/lambda2
 install (FILES ../LICENSE.rst

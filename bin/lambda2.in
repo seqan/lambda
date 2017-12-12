@@ -1,0 +1,46 @@
+#!/bin/sh
+
+CURDIR="$(readlink -f $(dirname "$0"))/"
+SYSTEM_BIN_DIR="@CMAKE_INSTALL_FULL_BINDIR@/"
+
+if [ "${CURDIR}" = "${SYSTEM_BIN_DIR}" ]; then          # we are installed
+    PREFIX="@CMAKE_INSTALL_FULL_LIBEXECDIR@"
+else                                                    # we are just unpacked
+    PREFIX="${CURDIR}/../@CMAKE_INSTALL_LIBEXECDIR@"
+fi
+
+BIN_FAILSAFE=${PREFIX}/lambda2
+BIN_SSE4=${PREFIX}/lambda2-sse4
+
+# failsafe is default
+BIN=${BIN_FAILSAFE}
+
+case $(uname) in
+    "Linux")
+        grep -E "flags.* popcnt "  -q /proc/cpuinfo 2>/dev/null && \
+        grep -E "flags.* sse4_1 "  -q /proc/cpuinfo 2>/dev/null && \
+        grep -E "flags.* sse4_2 "  -q /proc/cpuinfo 2>/dev/null && \
+        export BIN=${BIN_SSE4}
+        ;;
+    "FreeBSD")
+        grep -E "Feature.*POPCNT"  -q /var/run/dmesg.boot 2>/dev/null && \
+        grep -E "Feature.*SSE4\.1" -q /var/run/dmesg.boot 2>/dev/null && \
+        grep -E "Feature.*SSE4\.2" -q /var/run/dmesg.boot 2>/dev/null && \
+        export BIN=${BIN_SSE4}
+        ;;
+## OpenBSD doesn't yet support POPCNT software side (although it does detect the cpu feature)
+#     "OpenBSD")
+#         grep -E "cpu.*POPCNT"  -q /var/run/dmesg.boot 2>/dev/null && \
+#         grep -E "cpu.*SSE4\.1" -q /var/run/dmesg.boot 2>/dev/null && \
+#         grep -E "cpu.*SSE4\.2" -q /var/run/dmesg.boot 2>/dev/null && \
+#         export BIN=${BIN_SSE4}
+#         ;;
+    "Darwin")
+        sysctl machdep.cpu.features 2>&1 | grep -E "POPCNT"  -q 2>/dev/null && \
+        sysctl machdep.cpu.features 2>&1 | grep -E "SSE4\.1" -q 2>/dev/null && \
+        sysctl machdep.cpu.features 2>&1 | grep -E "SSE4\.2" -q 2>/dev/null && \
+        export BIN=${BIN_SSE4}
+        ;;
+esac
+
+exec ${BIN} $@
