@@ -254,6 +254,7 @@ add_custom_command (OUTPUT lambda2-mkindexp.1
                     DEPENDS lambda2)
 
 add_custom_target (manual
+                   ALL
                    DEPENDS lambda2.1 lambda2-searchn.1 lambda2-searchp.1 lambda2-mkindexn.1 lambda2-mkindexp.1)
 
 # ----------------------------------------------------------------------------
