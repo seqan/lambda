@@ -359,7 +359,7 @@ checkIndexSize(TCDStringSet<String<TRedAlph>> const & seqs,
     auto lS = lengthSum(seqs);
     unsigned long long factor = 0;
     if (options.algo == "radixsort")
-        factor = sizeof(SizeTypeNum_<TRedAlph>) + sizeof(SizeTypePos_<TRedAlph>) + 5; // 5 is good heuristic
+        factor = sizeof(SizeTypeNum_<TRedAlph>) + sizeof(SizeTypePos_<TRedAlph>) + 4; // 4 is good heuristic
     else if (options.algo == "skew7ext")
         factor = 6; // TODO do some tests!
     auto estimatedSize = lS * factor;
