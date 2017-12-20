@@ -151,9 +151,11 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     sharedSetup(parser);
 
+#ifndef SEQAN_DISABLE_VERSION_CHECK
     // version checker initiated by top-level arg parser
     setDefaultValue(parser, "version-check", "0");
     hideOption(parser, "version-check");
+#endif
 
     addOption(parser, ArgParseOption("v", "verbosity",
         "Display more/less diagnostic output during operation: 0 [only errors]; 1 [default]; 2 "
