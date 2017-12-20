@@ -99,7 +99,7 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
         ArgParseArgument::INPUT_FILE,
         "IN"));
     setRequired(parser, "database");
-    setValidValues(parser, "database", toCString(concat(getFileExtensions(SeqFileIn()), ' ')));
+    setValidValues(parser, "database", getFileExtensions(SeqFileIn()));
 
     addOption(parser, ArgParseOption("m",
         "acc-tax-map",

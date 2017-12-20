@@ -168,7 +168,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         "Query sequences.",
         ArgParseArgument::INPUT_FILE,
         "IN"));
-    setValidValues(parser, "query", toCString(concat(getFileExtensions(SeqFileIn()), ' ')));
+    setValidValues(parser, "query", getFileExtensions(SeqFileIn()));
     setRequired(parser, "q");
 
     if (options.blastProgram != BlastProgram::BLASTN)
