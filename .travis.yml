@@ -1,81 +1,69 @@
-sudo: required
-dist: trusty
+sudo: false
 language: cpp
-before_install:
- - test $(uname) = "Linux" && sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test || true
- - test $(uname) = "Linux" && sudo add-apt-repository -y ppa:george-edison55/cmake-3.x || true
- - test $(uname) = "Linux" && sudo add-apt-repository -y 'deb http://llvm.org/apt/trusty/ llvm-toolchain-trusty-3.8 main' || true
- - test $(uname) = "Linux" && sudo add-apt-repository -y 'deb http://llvm.org/apt/trusty/ llvm-toolchain-trusty-3.9 main' || true
- - test $(uname) = "Linux" && wget -O - http://llvm.org/apt/llvm-snapshot.gpg.key | sudo apt-key add - || true
- - test $(uname) = "Linux" && sudo apt-get update -y || true
- - test $(uname) = "Linux" && sudo apt-get install -qq -y g++-4.9 g++-5 g++-6 clang-3.8 clang-3.9 cmake cmake-data zlib1g-dev libbz2-dev || true
- - test $(uname) = "Darwin" && brew update || true
- - test $(uname) = "Darwin" && brew install gcc@4.9 || true
- #- test $(uname) = "Darwin" && brew install gcc@5 || true
- #- test $(uname) = "Darwin" && brew install gcc@6 || true
- - test $(uname) = "Darwin" && brew install gcc || true
 matrix:
   include:
     - os: linux
       compiler: gcc-4.9
+      addons:
+        apt:
+          sources: ['ubuntu-toolchain-r-test']
+          packages: ['g++-4.9', 'cmake', 'cmake-data', 'zlib1g-dev', 'libbz2-dev', 'libboost-dev', 'python', 'python-nose', 'python-jinja2', 'python-pip']
       install: export CXX="g++-4.9"
       env: CMAKE_ARGS="-DLAMBDA_STATIC_BUILD=1"
+
     - os: linux
       compiler: gcc-5
+      addons:
+        apt:
+          sources: ['ubuntu-toolchain-r-test']
+          packages: ['g++-5', 'cmake', 'cmake-data', 'zlib1g-dev', 'libbz2-dev', 'libboost-dev', 'python', 'python-nose', 'python-jinja2', 'python-pip']
       install: export CXX="g++-5"
-      env: CMAKE_ARGS="-DCMAKE_BUILD_TYPE=RelWithDebInfo"
+      env: CMAKE_ARGS="-DLAMBDA_MULTIOPT_BUILD=1"
+
     - os: linux
-      compiler: gcc-6
-      install: export CXX="g++-6"
-    - os: linux
-      compiler: clang-3.8
-      install: export CXX="clang++-3.8"
+      compiler: gcc-7
+      addons:
+        apt:
+          sources: ['ubuntu-toolchain-r-test']
+          packages: ['g++-7', 'cmake', 'cmake-data', 'zlib1g-dev', 'libbz2-dev', 'libboost-dev', 'python', 'python-nose', 'python-jinja2', 'python-pip']
+      install: export CXX="g++-7"
+      env: CMAKE_ARGS="-DCMAKE_CXX_FLAGS=-std=c++17"
+
     - os: linux
       compiler: clang-3.9
+      addons:
+        apt:
+          sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-3.9']
+          packages: ['clang-3.9', 'g++-7', 'cmake', 'cmake-data', 'zlib1g-dev', 'libbz2-dev', 'libboost-dev', 'python', 'python-nose', 'python-jinja2', 'python-pip'] # g++ required for newer libstdc++
       install: export CXX="clang++-3.9"
+
+    - os: linux
+      compiler: clang-5
+      addons:
+        apt:
+          sources: ['ubuntu-toolchain-r-test']
+          packages: ['g++-7', 'cmake', 'cmake-data', 'zlib1g-dev', 'libbz2-dev', 'libboost-dev', 'python', 'python-nose', 'python-jinja2', 'python-pip'] # g++ required for newer libstdc++
+      install: export CXX="/usr/local/clang-5.0.0/bin/clang++"
+      env: CMAKE_ARGS="-DCMAKE_BUILD_TYPE=RelWithDebInfo"
+
     - os: osx
       compiler: gcc-4.9
+      before_install:
+        - brew update
+        - brew install gcc@4.9
       install: export CXX="g++-4.9"
       env: CMAKE_ARGS="-DLAMBDA_FASTBUILD=1 -DLAMBDA_STATIC_BUILD=1"
-    #- os: osx
-      #compiler: gcc-5
-      #install: export CXX="g++-5"
-      #env: CMAKE_ARGS="-DLAMBDA_FASTBUILD=1"
-    #- os: osx
-      #compiler: gcc-6
-      #install: export CXX="g++-6"
-      #env: CMAKE_ARGS="-DLAMBDA_FASTBUILD=1"
+
     - os: osx
       compiler: gcc-7
+      before_install:
+        - brew update
+        - brew install gcc@7
       install: export CXX="g++-7"
       env: CMAKE_ARGS="-DLAMBDA_FASTBUILD=1"
-
-    #- os: osx
-      #compiler: clang-3.6
-      #before_install:
-        #- sudo brew update
-        #- sudo brew tap homebrew/versions
-        #- sudo brew install llvm36
-      #install: ['export CXX="clang++-3.6"' ]
-
-    #- os: osx
-      #compiler: clang-3.7
-      #before_install:
-        #- sudo brew update
-        #- sudo brew tap homebrew/versions
-        #- sudo brew install llvm37
-      #install: ['export CXX="clang++-3.7"' ]
-
-    #- os: osx
-      #compiler: clang-3.8
-      #before_install:
-        #- sudo brew update
-        #- sudo brew tap homebrew/versions
-        #- sudo brew install llvm38
-      #install: export CXX="clang++-3.8" CMAKE_ARGS='-DLAMBDA_NATIVE_BUILD=0 -DLAMBDA_FASTBUILD=1 -DCMAKE_CXX_FLAGS="-L/usr/local/Cellar/llvm38/3.8.0/lib/llvm-3.8/lib"'
 
 script:
   - mkdir -p build && cd build
   - cmake .. -DLAMBDA_NATIVE_BUILD=0 ${CMAKE_ARGS}
-  - travis_wait make lambda2 VERBOSE=1 # need to prefix with travis_wait because it might take > 10min
+  - travis_wait make -j 2 VERBOSE=1 # need to prefix with travis_wait because it might take > 10min
   - ctest .
