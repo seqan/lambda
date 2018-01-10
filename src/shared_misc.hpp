@@ -354,7 +354,7 @@ appendToStatus(std::stringstream & status,
 // Function fileSize()
 // ----------------------------------------------------------------------------
 
-auto fileSize(char const * fileName)
+uint64_t fileSize(char const * fileName)
 {
     struct stat st;
     if (stat(fileName, &st) != 0)
@@ -366,13 +366,13 @@ auto fileSize(char const * fileName)
 // Function dirSize()
 // ----------------------------------------------------------------------------
 
-unsigned long long dirSize(char const * dirName)
+uint64_t dirSize(char const * dirName)
 {
     DIR *d;
     struct dirent *de;
     struct stat buf;
     int exists;
-    unsigned long long total_size;
+    uint64_t total_size;
 
     d = opendir(dirName);
     if (d == NULL)
@@ -401,7 +401,7 @@ unsigned long long dirSize(char const * dirName)
 // Function fileSize()
 // ----------------------------------------------------------------------------
 
-unsigned long long getTotalSystemMemory()
+uint64_t getTotalSystemMemory()
 {
 #if defined(__APPLE__)
     uint64_t mem;

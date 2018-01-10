@@ -223,7 +223,7 @@ argConv0(LambdaOptions & options)
         {
             options.blastProgram = BlastProgram::BLASTN;
         }
-        else if ((options.qryOrigAlphabet == AlphabetEnum::DNA5)) // query will be translated
+        else if (options.qryOrigAlphabet == AlphabetEnum::DNA5) // query will be translated
         {
             if (options.subjOrigAlphabet == options.transAlphabet)
                 options.blastProgram = BlastProgram::BLASTX;

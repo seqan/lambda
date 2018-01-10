@@ -201,7 +201,6 @@ blastMatchTwoCigar(TCigar & dnaCigar,
                    TLocalHolder const & lH)
 {
     using TCElem = typename Value<TCigar>::Type;
-    using TGlobalHolder = typename TLocalHolder::TGlobalHolder;
 
     SEQAN_ASSERT_EQ(length(m.alignRow0), length(m.alignRow1));
 

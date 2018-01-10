@@ -1012,7 +1012,7 @@ _searchSingleIndex(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH)
 
         if (lH.options.adaptiveSeeding)
         {
-            continRunnable = [&lH, &desiredOccs] (auto const & prevIndexIt, auto const & indexIt, bool const hasError)
+            continRunnable = [&lH, &desiredOccs] (auto const & prevIndexIt, auto const & indexIt, bool const/*hasError*/)
             {
                 // ADAPTIVE SEEDING:
 
@@ -1035,7 +1035,7 @@ _searchSingleIndex(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH)
             };
         } else
         {
-            continRunnable = [&lH] (auto const &, auto const & indexIt, bool const hasError)
+            continRunnable = [&lH] (auto const &, auto const & indexIt, bool const /*hasError*/)
             {
                 // NON-ADAPTIVE
                 return (repLength(indexIt) <= (lH.options.seedLength +
@@ -1278,7 +1278,7 @@ template <typename TBlastMatch,
 inline void
 _setFrames(TBlastMatch                          & bm,
            typename TLocalHolder::TMatch  const & m,
-           TLocalHolder                   const & lH)
+           TLocalHolder                   const &)
 {
     if (qIsTranslated(TLocalHolder::TGlobalHolder::blastProgram))
     {
@@ -2335,8 +2335,8 @@ inline int
 iterateMatchesFullSimd(TLocalHolder & lH)
 {
     using TGlobalHolder = typename TLocalHolder::TGlobalHolder;
-    using TMatch        = typename TGlobalHolder::TMatch;
-    using TPos          = typename TMatch::TPos;
+//     using TMatch        = typename TGlobalHolder::TMatch;
+//     using TPos          = typename TMatch::TPos;
     using TBlastPos     = uint32_t; //TODO why can't this be == TPos
     using TBlastMatch   = BlastMatch<
                            typename TLocalHolder::TAlignRow0,
@@ -2373,7 +2373,6 @@ iterateMatchesFullSimd(TLocalHolder & lH)
                                     lH.gH.subjIds[it->subjId / sNumFrames(TGlobalHolder::blastProgram)]);
 
         auto & bm = back(blastMatches);
-        auto &  m = *it;
 
         bm._n_qId = it->qryId / qNumFrames(TGlobalHolder::blastProgram);
         bm._n_sId = it->subjId / sNumFrames(TGlobalHolder::blastProgram);
@@ -2536,8 +2535,8 @@ inline int
 iterateMatchesFullSerial(TLocalHolder & lH)
 {
     using TGlobalHolder = typename TLocalHolder::TGlobalHolder;
-    using TMatch        = typename TGlobalHolder::TMatch;
-    using TPos          = typename TMatch::TPos;
+//     using TMatch        = typename TGlobalHolder::TMatch;
+//     using TPos          = typename TMatch::TPos;
     using TBlastPos     = uint32_t; //TODO why can't this be == TPos
     using TBlastMatch   = BlastMatch<
                            typename TLocalHolder::TAlignRow0,
