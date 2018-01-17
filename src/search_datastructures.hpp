@@ -523,10 +523,33 @@ public:
                             ArrayGaps>;
     using TAlignRow1 = Gaps<typename Infix<typename Value<typename TGlobalHolder::TTransSubjSeqs>::Type>::Type,
                             ArrayGaps>;
-    using TDPContext = DPContext<typename Value<typename TGlobalHolder::TScoreScheme>::Type, TScoreExtension>;
-    using TAliExtContext = AliExtContext_<TAlignRow0, TAlignRow1, TDPContext>;
+
+#if (SEQAN_VERSION_MINOR < 4)
+    using TDPContextNoSIMD = DPContext<typename Value<typename TGlobalHolder::TScoreScheme>::Type, TScoreExtension>;
+#else
+//     #if defined(SEQAN_SIMD_ENABLED)
+//     using TCellValueSIMD  = typename SimdVector<int16_t>::TYPE;
+//     using TDPCellSIMD     = DPCell_<TCellValueSIMD, TScoreExtension_>;
+//     using TTraceValueSIMD = typename TraceBitMap_<TCellValueSIMD>::Type;
+//     using TScoreHostSIMD  = String<TDPCellSIMD, Alloc<OverAligned> >;
+//     using TTraceHostSIMD  = String<TTraceValueSIMD, Alloc<OverAligned> >;
+//     using TDPContextSIMD  = DPContext<TDPCellSIMD, TTraceValueSIMD, TScoreHostSIMD, TTraceHostSIMD>;
+//     #endif
+
+    using TCellValueNoSIMD  = int16_t;
+    using TDPCellNoSIMD     = DPCell_<TCellValueNoSIMD, TScoreExtension_>;
+    using TTraceValueNoSIMD = typename TraceBitMap_<TCellValueNoSIMD>::Type;
+    using TScoreHostNoSIMD  = String<TDPCellNoSIMD, Alloc<OverAligned> >;
+    using TTraceHostNoSIMD  = String<TTraceValueNoSIMD, Alloc<OverAligned> >;
+    using TDPContextNoSIMD  = DPContext<TDPCellNoSIMD, TTraceValueNoSIMD, TScoreHostNoSIMD, TTraceHostNoSIMD>;
+#endif
+
+    using TAliExtContext = AliExtContext_<TAlignRow0, TAlignRow1, TDPContextNoSIMD>;
 
     TAliExtContext      alignContext;
+// #if defined(SEQAN_SIMD_ENABLED)
+//     TDPContextSIMD      alignSIMDContext;
+// #endif
 
     // map from sequence length to band size
     std::unordered_map<uint64_t, int> bandTable;

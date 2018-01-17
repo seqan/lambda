@@ -2308,6 +2308,7 @@ _performAlignment(TDepSetH & depSetH,
         clear(trace);
         resize(trace, sizeBatch, Exact());
 
+        // TODO pass in lH.dpSIMDContext
         _prepareAndRunSimdAlignment(resultsBatch,
                                     trace,
                                     infSetH,
@@ -2390,7 +2391,7 @@ iterateMatchesFullSimd(TLocalHolder & lH)
     }
 #ifdef LAMBDA_MICRO_STATS
     lH.stats.timeExtend      += sysTime() - start;
-    lH.stats.timeExtendTrace += sysTime() - start;
+    lH.stats.timeExtendTrace += sysTime() - start; //TODO remove this line!
 
     // filter out duplicates
     start = sysTime();
