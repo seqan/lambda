@@ -204,7 +204,7 @@ add_definitions (-DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}")
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
 
 # Add CXX flags found by find_package (SeqAn).
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN_CXX_FLAGS} -Wall -Werror -pedantic")
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN_CXX_FLAGS} -Wall -pedantic")
 
 # Update the list of file names below if you add source files to your application.
 set (LAMBDA_SOURCE_FILES
