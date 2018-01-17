@@ -53,22 +53,24 @@ if (NOT BZIP2_FOUND)
   message (WARNING "WARNING: BZip2 not found. Building lambda without support for bzipped input and output.")
 endif (NOT BZIP2_FOUND)
 
-if (CMAKE_COMPILER_IS_GNUCXX)
+if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
     if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.9.1)
         message (FATAL_ERROR "Your GCC version is too old. Minimum version is GCC-4.9.1!")
         return ()
     endif ()
-elseif (COMPILER_IS_CLANG)
+elseif (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 3.6)
         message (FATAL_ERROR "Your Clang version is too old. Please upgrade to 3.8.0 or use GCC.")
         return()
     elseif (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 3.8)
         message (WARNING "Your Clang version is too old, you will not have parallelism! Upgrade to 3.8.0 or newer.")
     endif ()
-elseif (COMPILER_IS_INTEL)
+elseif (CMAKE_CXX_COMPILER_ID MATCHES "Intel")
     if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 16.0.2)
         message(WARNING "Your Intel Compiler version is too old. Please upgrade to 16.0.2 or newer!")
     endif ()
+else ()
+    message(WARNING "Unknown compiler, you are own your own!")
 endif ()
 
 if (SEQAN_VERSION_STRING VERSION_LESS "${MINIMUM_SEQAN_VERSION}")
@@ -101,9 +103,9 @@ endif (LAMBDA_FASTBUILD)
 if (LAMBDA_NATIVE_BUILD)
     add_definitions (-DLAMBDA_NATIVE_BUILD=1)
     set (SEQAN_CXX_FLAGS "${SEQAN_CXX_FLAGS} -march=native")
-    if (COMPILER_IS_INTEL)
+    if (CMAKE_CXX_COMPILER_ID MATCHES "Intel")
         set (SEQAN_CXX_FLAGS "${SEQAN_CXX_FLAGS} -xHOST -ipo -no-prec-div -fp-model fast=2")
-    endif (COMPILER_IS_INTEL)
+    endif (CMAKE_CXX_COMPILER_ID MATCHES "Intel")
 endif (LAMBDA_NATIVE_BUILD)
 
 if (LAMBDA_STATIC_BUILD)
@@ -154,14 +156,14 @@ endif ()
 # Compiler specifics
 # ----------------------------------------------------------------------------
 
-if (COMPILER_IS_CLANG)
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     set (SEQAN_CXX_FLAGS "${SEQAN_CXX_FLAGS} -ftemplate-depth-1024")
 
     # do not warn for variable length arrays
     set (SEQAN_CXX_FLAGS "${SEQAN_CXX_FLAGS} -Wno-vla-extension")
-endif (COMPILER_IS_CLANG)
+endif ()
 
-if(CMAKE_COMPILER_IS_GNUCXX)
+if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
     # do not warn for variable length arrays
     set (SEQAN_CXX_FLAGS "${SEQAN_CXX_FLAGS} -Wno-vla")
 
@@ -171,9 +173,7 @@ if(CMAKE_COMPILER_IS_GNUCXX)
     if(NCPU GREATER 1)
         set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -flto=${NCPU}")
     endif()
-endif(CMAKE_COMPILER_IS_GNUCXX)
 
-if (NOT COMPILER_IS_INTEL)
     # strip binaries to make them smaller
     set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -s")
 endif ()
@@ -199,7 +199,7 @@ add_definitions (-DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}")
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
 
 # Add CXX flags found by find_package (SeqAn).
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN_CXX_FLAGS} -Wall -Wextra")
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN_CXX_FLAGS} -Wall -Wextra -Werror -pedantic")
 
 # Update the list of file names below if you add source files to your application.
 set (LAMBDA_SOURCE_FILES
