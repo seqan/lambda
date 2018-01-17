@@ -66,8 +66,8 @@ elseif (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         message (WARNING "Your Clang version is too old, you will not have parallelism! Upgrade to 3.8.0 or newer.")
     endif ()
 elseif (CMAKE_CXX_COMPILER_ID MATCHES "Intel")
-    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 16.0.2)
-        message(WARNING "Your Intel Compiler version is too old. Please upgrade to 16.0.2 or newer!")
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 17)
+        message(WARNING "Your Intel Compiler version is too old. Please upgrade to 17.0.0 or newer!")
     endif ()
 else ()
     message(WARNING "Unknown compiler, you are own your own!")
@@ -178,6 +178,11 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
     set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -s")
 endif ()
 
+if (NOT CMAKE_CXX_COMPILER_ID MATCHES "Intel")
+    # -Wextra not met by current SeqAn on intel
+    set (SEQAN_CXX_FLAGS "${SEQAN_CXX_FLAGS} -Wextra")
+endif ()
+
 # ----------------------------------------------------------------------------
 # Build Setup
 # ----------------------------------------------------------------------------
@@ -199,7 +204,7 @@ add_definitions (-DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}")
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
 
 # Add CXX flags found by find_package (SeqAn).
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN_CXX_FLAGS} -Wall -Wextra -Werror -pedantic")
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN_CXX_FLAGS} -Wall -Werror -pedantic")
 
 # Update the list of file names below if you add source files to your application.
 set (LAMBDA_SOURCE_FILES
