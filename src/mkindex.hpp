@@ -268,6 +268,7 @@ realMain(LambdaIndexerOptions     const & options,
                                                         TRedAlph(),
                                                         Fwd());
     }
+#ifdef LAMBDA_LEGACY_PATHS
     else
     {
         using TIndexSpec = IndexSa<TIndexSpecSpec>;
@@ -277,6 +278,7 @@ realMain(LambdaIndexerOptions     const & options,
                                                         TRedAlph(),
                                                         Fwd());
     }
+#endif
 
     // dump options
     for (auto && s : std::initializer_list<std::pair<std::string, std::string>>

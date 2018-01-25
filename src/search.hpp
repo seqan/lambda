@@ -584,6 +584,8 @@ realMain(LambdaOptions                        & options,
         }
     }
 
+    myPrint(options, 1, "\n");
+
     myWriteFooter(globalHolder, options);
 
     if (!options.doubleIndexing)

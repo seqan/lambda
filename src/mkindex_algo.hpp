@@ -652,18 +652,18 @@ parseAndDumpTaxTree(std::vector<bool>          & taxIdIsPresent,
     for (uint32_t i = 0; i < length(taxonParentIDs); ++i)
     {
         if (!taxIdIsPresentOrParent[i] && (taxonParentIDs[i] != 0))
-            std::cout << "WARNING: TaxID " << i << " has parent, but shouldn't.\n";
+            std::cerr << "WARNING: TaxID " << i << " has parent, but shouldn't.\n";
 
         if (taxIdIsPresentOrParent[i] && (taxonParentIDs[i] == 0))
-            std::cout << "WARNING: TaxID " << i << " has no parent, but should.\n";
+            std::cerr << "WARNING: TaxID " << i << " has no parent, but should.\n";
         if (taxIdIsPresent[i] && (taxonParentIDs[i] == 0))
-            std::cout << "WARNING: TaxID " << i << " has no parent, but should. 2\n";
+            std::cerr << "WARNING: TaxID " << i << " has no parent, but should. 2\n";
 
         if (taxIdIsPresent[i] && !taxIdIsPresentOrParent[i])
-            std::cout << "WARNING: TaxID " << i << " disappeared, but shouldn't have.\n";
+            std::cerr << "WARNING: TaxID " << i << " disappeared, but shouldn't have.\n";
 
         if (!taxIdIsPresent[i] && taxIdIsPresentOrParent[i] && (inDegrees[i] == 1))
-            std::cout << "WARNING: TaxID " << i << " should have disappeared, but didn't.\n";
+            std::cerr << "WARNING: TaxID " << i << " should have disappeared, but didn't.\n";
     }
     #endif
 
@@ -786,7 +786,8 @@ template <typename TText, typename TSpec, typename TConfig, typename TLambda>
 void
 indexCreateProgress(Index<TText, FMIndex<TSpec, TConfig> > & index,
                     FibreSALF const &,
-                    TLambda && progressCallback)
+                    TLambda && progressCallback,
+                    LambdaIndexerOptions const & options)
 {
     typedef Index<TText, FMIndex<TSpec, TConfig> >               TIndex;
     typedef typename Fibre<TIndex, FibreTempSA>::Type            TTempSA;
@@ -799,46 +800,63 @@ indexCreateProgress(Index<TText, FMIndex<TSpec, TConfig> > & index,
         return;
 
     TTempSA tempSA;
+    auto progressCallback2 = progressCallback; // need second lambda because counter internally increased
 
-    std::cout << "Generating       0%  10%  20%  30%  40%  50%  60%  70%  80%  90%  100%\n"
-                 " (1) SuffixArray |" << std::flush;
+    double s = sysTime();
+    myPrint(options, 1, "Generating       0%  10%  20%  30%  40%  50%  60%  70%  80%  90%  100%\n"
+                        " (1) SuffixArray |");
     // Create the full SA.
     resize(tempSA, lengthSum(text), Exact());
     createSuffixArray(tempSA, text, TAlgo(), progressCallback);
+    double e = sysTime() - s;
+    myPrint(options, 2, "  Runtime: ", e, "s");
+    myPrint(options, 1, "\n");
 
-    std::cout << " (2) FM-Index..." << std::flush;
+    s = sysTime();
+    myPrint(options, 1, " (2) BWT         |");
     // Create the LF table.
-    createLF(indexLF(index), text, tempSA);
+    createLFProgress(indexLF(index), text, tempSA, progressCallback2);
+//     createLF(indexLF(index), text, tempSA);
 
     // Set the FMIndex LF as the CompressedSA LF.
     setFibre(indexSA(index), indexLF(index), FibreLF());
+    e = sysTime() - s;
+    myPrint(options, 2, "  Runtime: ", e, "s");
+    myPrint(options, 1, "\n");
+
 
     // Create the compressed SA.
+    s = sysTime();
+    myPrint(options, 1, " (3) Sampling SA...");
     TSize numSentinel = countSequences(text);
     createCompressedSa(indexSA(index), tempSA, numSentinel);
-    std::cout << " done.\n" << std::flush;
+    myPrint(options, 1, " done.\n");
+    e = sysTime() - s;
+    myPrint(options, 2, "  Runtime: ", e, "s\n");
 }
 
 template <typename TText, typename TSpec, typename TConfig, typename TLambda>
 void
 indexCreateProgress(Index<TText, BidirectionalIndex<FMIndex<TSpec, TConfig> > > & index,
                     FibreSALF const &,
-                    TLambda && progressCallback)
+                    TLambda && progressCallback,
+                    LambdaIndexerOptions const & options)
 {
     auto progressCallback2 = progressCallback; // need second lambda because counter internally increased
 
-    std::cout << "Bi-Directional Index [forward]\n";
-    indexCreateProgress(index.fwd, FibreSALF(), progressCallback);
+    myPrint(options, 1, "Bi-Directional Index [forward]\n");
+    indexCreateProgress(index.fwd, FibreSALF(), progressCallback, options);
 
-    std::cout << "Bi-Directional Index [backward]\n";
-    indexCreateProgress(index.rev, FibreSALF(), progressCallback2);
+    myPrint(options, 1, "Bi-Directional Index [backward]\n");
+    indexCreateProgress(index.rev, FibreSALF(), progressCallback2, options);
 }
 
 template <typename TText, typename TSpec, typename TLambda>
 void
 indexCreateProgress(Index<TText, IndexSa<TSpec> > & index,
                     FibreSA const &,
-                    TLambda && progressCallback)
+                    TLambda && progressCallback,
+                    LambdaIndexerOptions const & options)
 {
     typedef Index<TText, IndexSa<TSpec> >                        TIndex;
     typedef typename Fibre<TIndex, FibreSA>::Type                TSA;
@@ -851,8 +869,8 @@ indexCreateProgress(Index<TText, IndexSa<TSpec> > & index,
 
     TSA & sa = getFibre(index, FibreSA());
 
-    std::cout << "Generating       0%  10%  20%  30%  40%  50%  60%  70%  80%  90%  100%\n"
-                 "  SuffixArray    |" << std::flush;
+    myPrint(options, 1, "Generating Index 0%  10%  20%  30%  40%  50%  60%  70%  80%  90%  100%\n"
+                        "  Progress:      |");
     // Create the full SA.
     resize(sa, lengthSum(text), Exact());
     createSuffixArray(sa, text, TAlgo(), progressCallback);
@@ -932,7 +950,7 @@ generateIndexAndDump(StringSet<TString, TSpec>        & seqs,
 
     double s = sysTime();
 
-//     std::cout << "indexIsFM: " << int(indexIsFM) << std::endl;
+//     std::cerr << "indexIsFM: " << int(indexIsFM) << std::endl;
 
     // FM-Index needs reverse input
     if (indexIsFM && std::is_same<Tag<TDirection>, Fwd>::value)
@@ -952,7 +970,8 @@ generateIndexAndDump(StringSet<TString, TSpec>        & seqs,
                                 SEQAN_OMP_PRAGMA(critical(progressBar))
         //                         if (TID == 0)
                                 printProgressBar(_lastPercent, curPerc);
-                            });
+                            },
+                            options);
     }
     else
     {
@@ -979,8 +998,10 @@ generateIndexAndDump(StringSet<TString, TSpec>        & seqs,
 
     double e = sysTime() - s;
     if (!hasProgress)
+    {
         myPrint(options, 1, " done.\n");
-    myPrint(options, 2, "Runtime: ", e, "s \n\n");
+        myPrint(options, 2, "Runtime: ", e, "s \n\n");
+    }
 
     // Dump Index
     myPrint(options, 1, "Writing Index to disk...");

@@ -87,7 +87,7 @@ printProgressBar(uint64_t & lastPercent, uint64_t curPerc)
         for (uint64_t i = lastPercent + 2; i <= curPerc; i+=2)
         {
             if (i == 100)
-                std::cout << "|\n" << std::flush;
+                std::cout << "|" << std::flush;
             else if (i % 10 == 0)
                 std::cout << ":" << std::flush;
             else
