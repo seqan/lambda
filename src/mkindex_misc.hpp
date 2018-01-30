@@ -348,7 +348,7 @@ template <typename TText, typename TSSetSpec, typename TSpec, typename TConfig,
           typename TOtherText,
           typename TSA,
           typename TCallback>
-inline void
+void
 createRankDictionaryProgress(LF<StringSet<TText, TSSetSpec>, TSpec, TConfig> & lf,
                              TOtherText const & text,
                              TSA const & sa,
@@ -409,7 +409,7 @@ createRankDictionaryProgress(LF<StringSet<TText, TSSetSpec>, TSpec, TConfig> & l
 }
 
 template <typename TText, typename TSpec, typename TConfig, typename TOtherText, typename TSA, typename TCallback>
-inline void
+void
 createLFProgress(LF<TText, TSpec, TConfig> & lf, TOtherText const & text, TSA const & sa, TCallback && progress)
 {
     typedef LF<TText, TSpec, TConfig>                          TLF;

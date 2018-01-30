@@ -782,11 +782,10 @@ createSuffixArray(TSA & SA,
 // Function indexCreate
 // ----------------------------------------------------------------------------
 
-template <typename TText, typename TSpec, typename TConfig, typename TLambda>
+template <typename TText, typename TSpec, typename TConfig>
 void
 indexCreateProgress(Index<TText, FMIndex<TSpec, TConfig> > & index,
                     FibreSALF const &,
-                    TLambda && progressCallback,
                     LambdaIndexerOptions const & options)
 {
     typedef Index<TText, FMIndex<TSpec, TConfig> >               TIndex;
@@ -800,62 +799,94 @@ indexCreateProgress(Index<TText, FMIndex<TSpec, TConfig> > & index,
         return;
 
     TTempSA tempSA;
-    auto progressCallback2 = progressCallback; // need second lambda because counter internally increased
+    uint64_t lastPercent = 0;
 
     double s = sysTime();
-    myPrint(options, 1, "Generating       0%  10%  20%  30%  40%  50%  60%  70%  80%  90%  100%\n"
-                        " (1) SuffixArray |");
+    myPrint(options, 1, "Generating Index 0%  10%  20%  30%  40%  50%  60%  70%  80%  90%  100%\n"
+                        " Progress:       |");
     // Create the full SA.
     resize(tempSA, lengthSum(text), Exact());
-    createSuffixArray(tempSA, text, TAlgo(), progressCallback);
-    double e = sysTime() - s;
-    myPrint(options, 2, "  Runtime: ", e, "s");
-    myPrint(options, 1, "\n");
+    if (options.verbosity >= 1)
+    {
+        createSuffixArray(tempSA,
+                          text,
+                          TAlgo(),
+                          [&lastPercent] (uint64_t curPerc)
+                          {
+                              // needs locking, because called from multiple threads
+                              SEQAN_OMP_PRAGMA(critical(progressBar))
+                              printProgressBar(lastPercent, curPerc * 0.85); // 85% of progress
+                          });
+    } else
+    {
+        createSuffixArray(tempSA,
+                          text,
+                          TAlgo());
+    }
+    double sacaTime = sysTime() - s;
 
-    s = sysTime();
-    myPrint(options, 1, " (2) BWT         |");
+    if (options.verbosity >= 1)
+        printProgressBar(lastPercent, 85);
+
     // Create the LF table.
-    createLFProgress(indexLF(index), text, tempSA, progressCallback2);
-//     createLF(indexLF(index), text, tempSA);
-
+    s = sysTime();
+    if (options.verbosity >= 1)
+    {
+        createLFProgress(indexLF(index),
+                         text,
+                         tempSA,
+                         [&lastPercent] (uint64_t curPerc)
+                         {
+                             // doesn't need locking, only writes from one thread
+                             printProgressBar(lastPercent, curPerc * 0.1); // 10% of progress
+                         });
+    } else
+    {
+        createLFProgress(indexLF(index),
+                         text,
+                         tempSA,
+                         [] (uint64_t) {});
+    }
     // Set the FMIndex LF as the CompressedSA LF.
     setFibre(indexSA(index), indexLF(index), FibreLF());
-    e = sysTime() - s;
-    myPrint(options, 2, "  Runtime: ", e, "s");
-    myPrint(options, 1, "\n");
+    double bwtTime = sysTime() - s;
 
+    if (options.verbosity >= 1)
+        printProgressBar(lastPercent, 95);
 
-    // Create the compressed SA.
+    // Create the sampled SA.
     s = sysTime();
-    myPrint(options, 1, " (3) Sampling SA...");
     TSize numSentinel = countSequences(text);
     createCompressedSa(indexSA(index), tempSA, numSentinel);
-    myPrint(options, 1, " done.\n");
-    e = sysTime() - s;
-    myPrint(options, 2, "  Runtime: ", e, "s\n");
+    double sampleTime = sysTime() - s;
+
+    if (options.verbosity >= 1)
+        printProgressBar(lastPercent, 100);
+
+    myPrint(options, 1, "\n");
+    myPrint(options, 2, "SA  construction runtime: ", sacaTime, "s\n");
+    myPrint(options, 2, "BWT construction runtime: ", bwtTime, "s\n");
+    myPrint(options, 2, "SA  sampling runtime:     ", sampleTime, "s\n");
+    myPrint(options, 1, "\n");
 }
 
-template <typename TText, typename TSpec, typename TConfig, typename TLambda>
+template <typename TText, typename TSpec, typename TConfig>
 void
 indexCreateProgress(Index<TText, BidirectionalIndex<FMIndex<TSpec, TConfig> > > & index,
                     FibreSALF const &,
-                    TLambda && progressCallback,
                     LambdaIndexerOptions const & options)
 {
-    auto progressCallback2 = progressCallback; // need second lambda because counter internally increased
-
     myPrint(options, 1, "Bi-Directional Index [forward]\n");
-    indexCreateProgress(index.fwd, FibreSALF(), progressCallback, options);
+    indexCreateProgress(index.fwd, FibreSALF(), options);
 
     myPrint(options, 1, "Bi-Directional Index [backward]\n");
-    indexCreateProgress(index.rev, FibreSALF(), progressCallback2, options);
+    indexCreateProgress(index.rev, FibreSALF(), options);
 }
 
-template <typename TText, typename TSpec, typename TLambda>
+template <typename TText, typename TSpec>
 void
 indexCreateProgress(Index<TText, IndexSa<TSpec> > & index,
                     FibreSA const &,
-                    TLambda && progressCallback,
                     LambdaIndexerOptions const & options)
 {
     typedef Index<TText, IndexSa<TSpec> >                        TIndex;
@@ -873,7 +904,22 @@ indexCreateProgress(Index<TText, IndexSa<TSpec> > & index,
                         "  Progress:      |");
     // Create the full SA.
     resize(sa, lengthSum(text), Exact());
-    createSuffixArray(sa, text, TAlgo(), progressCallback);
+    if (options.verbosity >= 1)
+    {
+        createSuffixArray(sa,
+                          text,
+                          TAlgo(),
+                          [lastPercent = uint64_t{0ull}] (uint64_t curPerc) mutable
+                          {
+                              SEQAN_OMP_PRAGMA(critical(progressBar))
+                              printProgressBar(lastPercent, curPerc); // 100% of progress
+                          });
+    } else
+    {
+        createSuffixArray(sa,
+                          text,
+                          TAlgo());
+    }
 }
 
 template <typename T>
@@ -961,22 +1007,7 @@ generateIndexAndDump(StringSet<TString, TSpec>        & seqs,
     TDbIndex dbIndex(redSubjSeqs);
 
     // instantiate SA
-    if (hasProgress && (options.verbosity >= 1))
-    {
-        uint64_t _lastPercent = 0;
-        indexCreateProgress(dbIndex, TFullFibre(),
-                            [_lastPercent] (uint64_t curPerc) mutable
-                            {
-                                SEQAN_OMP_PRAGMA(critical(progressBar))
-        //                         if (TID == 0)
-                                printProgressBar(_lastPercent, curPerc);
-                            },
-                            options);
-    }
-    else
-    {
-        indexCreate(dbIndex, TFullFibre());
-    }
+    indexCreateProgress(dbIndex, TFullFibre(),  options);
 
     // since we dumped unreduced sequences before and reduced sequences are
     // only "virtual" we clear them before dump
