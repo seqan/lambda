@@ -90,9 +90,6 @@ int mkindexMain(int const argc, char const ** argv)
     if (res != seqan::ArgumentParser::PARSE_OK)
         return res == seqan::ArgumentParser::PARSE_ERROR;
 
-    if (std::string(CMAKE_BUILD_TYPE) != "Release")
-        std::cerr << "WARNING: This binary is not built in release mode and will be much slower than it should be!\n";
-
 #ifdef NDEBUG
     try
     {
@@ -104,7 +101,10 @@ int mkindexMain(int const argc, char const ** argv)
         return -1;
     } catch (std::exception const & e)
     {
-        std::cerr << "\n\n**An exception was thrown**\n" << e.what() << '\n';
+        std::cerr << "\n\nERROR: The following unspecified exception was thrown:\n"
+                  <<     "       \"" << e.what() << "\"\n"
+                  <<     "       If the problem persists, report an issue at https://github.com/seqan/lambda/issues "
+                  << "and include this output, as well as the output of `lambda2 --version`, thanks!\n";
         return -1;
     }
 #else
