@@ -248,7 +248,18 @@ argConv0(LambdaOptions & options)
     // sizes
     checkRAM(options);
 
-    // output
+    // make sure output is writable
+    int fd = open(toCString(options.output), O_WRONLY|O_CREAT|O_NOCTTY|O_NONBLOCK);
+    if (fd < 0)
+    {
+        throw std::invalid_argument("Output file not writable. Check if the directory exists and you have correct "
+                                    "permissions.");
+    } else
+    {
+        close(fd); // will be opened again, later
+    }
+
+    // output format conversion to constexpr
     CharString output = options.output;
     if (endsWith(output, ".gz"))
         output = prefix(output, length(output) - 3);
