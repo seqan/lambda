@@ -44,7 +44,7 @@ matrix:
           sources: ['ubuntu-toolchain-r-test']
           packages: ['g++-7', 'cmake', 'cmake-data', 'zlib1g-dev', 'libbz2-dev', 'libboost-dev', 'python', 'python-nose', 'python-jinja2', 'python-pip'] # g++ required for newer libstdc++
       install: export CXX="/usr/local/clang-5.0.0/bin/clang++"
-      env: CMAKE_ARGS="-DCMAKE_BUILD_TYPE=RelWithDebInfo"
+      env: CMAKE_ARGS="-DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_FLAGS=-L/usr/local/clang-5.0.0/lib/"
 
     - os: osx
       compiler: gcc-4.9
@@ -65,5 +65,5 @@ matrix:
 script:
   - mkdir -p build && cd build
   - cmake .. -DLAMBDA_NATIVE_BUILD=0 -DLAMBDA_COMPILE_THREADS=2 ${CMAKE_ARGS}
-  - travis_wait make -j 2 VERBOSE=1 # need to prefix with travis_wait because it might take > 10min
+  - travis_wait make VERBOSE=1 # need to prefix with travis_wait because it might take > 10min
   - ctest .
