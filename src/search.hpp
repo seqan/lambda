@@ -246,7 +246,7 @@ argConv0(LambdaOptions & options)
     checkRAM(options);
 
     // make sure output is writable
-    int fd = open(toCString(options.output), O_WRONLY|O_CREAT|O_NOCTTY|O_NONBLOCK);
+    int fd = open(toCString(options.output), O_WRONLY | O_CREAT | O_NOCTTY | O_NONBLOCK, 0600);
     if (fd < 0)
     {
         throw std::invalid_argument("Output file not writable. Check if the directory exists and you have correct "
