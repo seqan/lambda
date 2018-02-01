@@ -168,10 +168,12 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
     set (SEQAN_CXX_FLAGS "${SEQAN_CXX_FLAGS} -Wno-vla")
 
     # parallelize parts of build even for one translation unit
-    include(ProcessorCount)
-    ProcessorCount(NCPU)
-    if(NCPU GREATER 1)
-        set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -flto=${NCPU}")
+    if (NOT DEFINED LAMBDA_COMPILE_THREADS)
+        include(ProcessorCount)
+        ProcessorCount(LAMBDA_COMPILE_THREADS)
+    endif ()
+    if (LAMBDA_COMPILE_THREADS GREATER 1)
+        set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -flto=${LAMBDA_COMPILE_THREADS}")
     endif()
 
     # strip binaries to make them smaller
