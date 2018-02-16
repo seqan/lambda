@@ -420,14 +420,14 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         "Query sequences.",
         ArgParseArgument::INPUT_FILE,
         "IN"));
-    setValidValues(parser, "query", toCString(concat(getFileExtensions(SeqFileIn()), ' ')));
+    setValidValues(parser, "query", getFileExtensions(SeqFileIn()));
     setRequired(parser, "q");
 
     addOption(parser, ArgParseOption("d", "database",
         "Path to original database sequences (a precomputed index with .sa or .fm needs to exist!).",
         ArgParseArgument::INPUT_FILE,
         "IN"));
-    setValidValues(parser, "database", toCString(concat(getFileExtensions(SeqFileIn()), ' ')));
+    setValidValues(parser, "database", getFileExtensions(SeqFileIn()));
     setRequired(parser, "d");
 
     addOption(parser, ArgParseOption("di", "db-index-type",
@@ -1048,7 +1048,7 @@ parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
         ArgParseArgument::INPUT_FILE,
         "IN"));
     setRequired(parser, "database");
-    setValidValues(parser, "database", toCString(concat(getFileExtensions(SeqFileIn()), ' ')));
+    setValidValues(parser, "database", getFileExtensions(SeqFileIn()));
 
     addOption(parser, ArgParseOption("s",
         "segfile",
