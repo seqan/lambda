@@ -385,7 +385,16 @@ public:
                             ArrayGaps>;
     using TAlignRow1 = Gaps<typename Infix<typename Value<typename TGlobalHolder::TTransSubjSeqs>::Type>::Type,
                             ArrayGaps>;
-    using TDPContext = DPContext<typename Value<typename TGlobalHolder::TScoreScheme>::Type, TScoreExtension>;
+#if (SEQAN_VERSION_MINOR < 4)
+    using TDPContext =  DPContext<typename Value<typename TGlobalHolder::TScoreScheme>::Type, TScoreExtension>;
+#else
+    using TCellValue  = int16_t;
+    using TDPCell     = DPCell_<TCellValue, TScoreExtension>;
+    using TTraceValue = typename TraceBitMap_<TCellValue>::Type;
+    using TScoreHost  = String<TDPCell, Alloc<OverAligned> >;
+    using TTraceHost  = String<TTraceValue, Alloc<OverAligned> >;
+    using TDPContext  = DPContext<TDPCell, TTraceValue, TScoreHost, TTraceHost>;
+#endif
     using TAliExtContext = AliExtContext_<TAlignRow0, TAlignRow1, TDPContext>;
 
     TAliExtContext      alignContext;
