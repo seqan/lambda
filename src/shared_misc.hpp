@@ -23,6 +23,7 @@
 #define LAMBDA_SHARED_MISC_H_
 
 #include <unistd.h>
+#include <locale>
 #include <type_traits>
 #include <forward_list>
 #include <sys/sysctl.h>
@@ -107,6 +108,10 @@ AlphabetEnum detectSeqFileAlphabet(std::string const & path)
 
     readRecord(meta, seq, infile);
 
+    // for the alphabet test, ignore masks
+    for (char & c : seq)
+        c = std::toupper(c, std::locale());
+
     if ((CharString(String<Dna5>(seq)) == seq) || (CharString(String<Rna5>(seq)) == seq))
     {
         return AlphabetEnum::DNA5;
@@ -123,7 +128,7 @@ AlphabetEnum detectSeqFileAlphabet(std::string const & path)
         return AlphabetEnum::AMINO_ACID;
     }
 
-    throw std::runtime_error("Your query file contains illegal characters in the first sequence.\n");
+    throw std::runtime_error("Your query file contains illegal characters in the first sequence.");
 
     // unreachable
     return AlphabetEnum::AMINO_ACID;
