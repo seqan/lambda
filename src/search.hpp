@@ -194,7 +194,7 @@ argConv0(LambdaOptions & options)
     }
 
     if ((options.blastProgram == BlastProgram::BLASTN) &&
-        (options.reducedAlphabet != AlphabetEnum::DNA4))
+        (options.reducedAlphabet != AlphabetEnum::DNA5))
     {
         throw std::runtime_error("You are attempting a nucleotide search on a protein index."
                                  "Did you want to use 'lambda2 searchp' instead?");

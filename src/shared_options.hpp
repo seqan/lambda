@@ -145,6 +145,21 @@ _alphabetNameToEnum(std::string const t)
     return AlphabetEnum::DNA4;
 }
 
+inline uint64_t
+_alphabetEnumToSize(AlphabetEnum const t)
+{
+    switch (t)
+    {
+        case AlphabetEnum::DNA4:        return sizeof(SizeTypePos_<Dna>);
+        case AlphabetEnum::DNA5:        return sizeof(SizeTypePos_<Dna5>);
+        case AlphabetEnum::AMINO_ACID:  return sizeof(SizeTypePos_<AminoAcid>);
+        case AlphabetEnum::MURPHY10:    return sizeof(SizeTypePos_<ReducedAminoAcid<Murphy10>>);
+    }
+
+    throw std::runtime_error("Error: unknown alphabet type");
+    return 0;
+}
+
 // --------------------------------------------------------------------------
 // Class SharedOptions
 // --------------------------------------------------------------------------

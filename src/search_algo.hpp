@@ -166,7 +166,7 @@ void readIndexOptions(LambdaOptions & options)
     buffer.clear();
     readIndexOption(buffer, "subj_seq_len_bits", options);
     b = 0;
-    if ((!lexicalCast(b, buffer)) || (b != static_cast<uint64_t>(sizeof(SizeTypePos_<AminoAcid>) * 8)))
+    if ((!lexicalCast(b, buffer)) || (b != _alphabetEnumToSize(options.reducedAlphabet) * 8))
     {
         std::string err;
         #ifndef LAMBDA_LONG_PROTEIN_SUBJ_SEQS
