@@ -43,4 +43,4 @@ case $(uname) in
         ;;
 esac
 
-exec ${BIN} $@
+exec "${BIN}" "${@}"
