@@ -376,10 +376,10 @@ createRankDictionaryProgress(LF<StringSet<TText, TSSetSpec>, TSpec, TConfig> & l
     /* Compute the rest of the bwt.*/
 
     // align the chunk_size to underlying word boundaries to prevent parallel write to word spanning chunk boundary
-    uint64_t chunkSize = _max((length(sa) / omp_get_max_threads() / 64) * 64, 1ull);
-    uint64_t twoPercent = chunkSize / 50;
+    uint64_t const chunkSize = std::max(static_cast<uint64_t>((length(sa) / omp_get_max_threads() / 64ull) * 64ull), uint64_t{1});
+    uint64_t const twoPercent = std::max(chunkSize / 50, uint64_t{1});
     // the 0th thread might get an additional chunk because of the above alignment so we count from the 1st instead
-    uint32_t countThreadID = omp_get_max_threads() > 1 ? 1 : 0;
+    uint32_t const countThreadID = omp_get_max_threads() > 1 ? 1 : 0;
 
     SEQAN_OMP_PRAGMA(parallel for schedule(static, chunkSize))
     for (TSize i = 0; i < length(sa); ++i)
