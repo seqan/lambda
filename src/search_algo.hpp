@@ -459,10 +459,6 @@ loadTaxonomy(TGlobalHolder       & globalHolder,
     if (ret != true)
         throw IndexException{taxTreeExceptMessage};
 
-    finish = sysTime() - start;
-    myPrint(options, 1, " done.\n");
-    myPrint(options, 2, "Runtime: ", finish, "s \n\n");
-
     path = toCString(options.indexDir);
     path += "/tax_names";
     ret = open(globalHolder.taxNames, path.c_str(), OPEN_RDONLY);
