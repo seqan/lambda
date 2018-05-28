@@ -682,7 +682,7 @@ generateSeeds(TLocalHolder & lH)
 {
     if (lH.options.doubleIndexing)
     {
-        appendToStatus(lH.statusStr, lH.options, 1, "Block ", std::setw(4), 
+        appendToStatus(lH.statusStr, lH.options, 1, "Block ", std::setw(4),
                        lH.i, ": Generating Seeds...");
         if (lH.options.isTerm)
             myPrint(lH.options, 1, lH.statusStr);
@@ -1387,7 +1387,7 @@ _writeRecord(TBlastRecord & record,
             record.lcaTaxId = 0;
             for (auto const & bm : record.matches)
             {
-                if (length(lH.gH.sTaxIds[bm._n_sId]) > 0)
+                if ((length(lH.gH.sTaxIds[bm._n_sId]) > 0) && (lH.gH.taxParents[lH.gH.sTaxIds[bm._n_sId][0]] != 0))
                 {
                     record.lcaTaxId = lH.gH.sTaxIds[bm._n_sId][0];
                     break;
@@ -1397,7 +1397,7 @@ _writeRecord(TBlastRecord & record,
             if (record.lcaTaxId != 0)
                 for (auto const & bm : record.matches)
                     for (uint32_t const sTaxId : lH.gH.sTaxIds[bm._n_sId])
-                        if (sTaxId != 0) // TODO do we want to skip unassigned subjects
+                        if (lH.gH.taxParents[sTaxId] != 0) // TODO do we want to skip unassigned subjects
                             record.lcaTaxId = computeLCA(lH.gH.taxParents, lH.gH.taxHeights, sTaxId, record.lcaTaxId);
 
             record.lcaId = lH.gH.taxNames[record.lcaTaxId];
