@@ -1,8 +1,8 @@
 Name: lambda
 Author: Hannes Hauswedell <hannes.hauswedell@fu-berlin.de>
 Maintainer: Hannes Hauswedell <hannes.hauswedell@fu-berlin.de>
-License: GPL v3
-Copyright: 2013-2017, Hannes Hauswedell; 2016-2017 Knut Reinert, FU-Berlin
+License: AGPL v3
+Copyright: 2013-2019, Hannes Hauswedell; 2016-2019 Knut Reinert, FU-Berlin
 Status: under development
 Description: Lambda is a biological sequence aligner optimized for many
 query sequences and searches in protein space. It is highly compatible

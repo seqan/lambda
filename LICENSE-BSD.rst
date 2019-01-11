@@ -1,7 +1,7 @@
 BSD-License (3-clause)
 ======================
 
- | Copyright (c) 2016-2017, Knut Reinert, Freie Universität Berlin
+ | Copyright (c) 2016-2019, Knut Reinert, Freie Universität Berlin
  | All rights reserved.
 
 Redistribution and use in source and binary forms, with or without

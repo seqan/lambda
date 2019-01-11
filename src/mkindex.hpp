@@ -1,8 +1,8 @@
 // ==========================================================================
 //                                  lambda
 // ==========================================================================
-// Copyright (c) 2013-2017, Hannes Hauswedell <h2 @ fsfe.org>
-// Copyright (c) 2016-2017, Knut Reinert and Freie Universität Berlin
+// Copyright (c) 2013-2019, Hannes Hauswedell <h2 @ fsfe.org>
+// Copyright (c) 2016-2019, Knut Reinert and Freie Universität Berlin
 // All rights reserved.
 //
 // This file is part of Lambda.
@@ -236,7 +236,7 @@ realMain(LambdaIndexerOptions     const & options,
     if ((options.alphReduction != 0) || (options.dbIndexType != DbIndexType::SUFFIX_ARRAY))
         dumpTranslatedSeqs(translatedSeqs, options);
 
-    // see if final sequence set actually fits into index 
+    // see if final sequence set actually fits into index
     checkIndexSize(translatedSeqs, options, BlastProgramSelector<p>());
 
     if (options.dbIndexType == DbIndexType::FM_INDEX)
