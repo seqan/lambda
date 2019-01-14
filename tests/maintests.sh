@@ -23,7 +23,11 @@ which openssl gunzip mktemp diff cat zcat zgrep > /dev/null
 SALPH=prot      # actual subject alph
 QALPHIN=prot    # query input file alph
 SALPHIN=prot    # subject input file alph
+INDEXER=mkindexp
+SEARCHER=searchp
 case "$PROG" in "blastn")
+    INDEXER=mkindexn
+    SEARCHER=searchn
     QALPHIN=nucl
     SALPH=nucl
     SALPHIN=nucl
@@ -34,10 +38,12 @@ case "$PROG" in "blastn")
     QALPHIN=nucl
     ;;
 "tblastn")
+    INDEXER=mkindexn
     SALPH=trans
     SALPHIN=nucl
     ;;
 "tblastx")
+    INDEXER=mkindexn
     SALPH=trans
     QALPHIN=nucl
     SALPHIN=nucl
@@ -53,14 +59,14 @@ cd "$MYTMP"
 gunzip < "${SRCDIR}/tests/db_${SALPHIN}.fasta.gz" > db.fasta
 [ $? -eq 0 ] || errorout "Could not unzip database file"
 
-${BINDIR}/bin/lambda_indexer -d db.fasta -di ${DI} -p ${PROG}
+${BINDIR}/bin/lambda2 ${INDEXER} -d db.fasta -i ${DI}.lambda
 [ $? -eq 0 ] || errorout "Could not run the indexer"
 
-openssl md5 * > md5sums
+openssl md5 $(find * -type f) > md5sums
 [ $? -eq 0 ] || errorout "Could not run md5 or md5sums"
 
-gunzip < "${SRCDIR}/tests/db_${SALPH}_${DI}.md5sums.gz" > md5sums.orig
-[ $? -eq 0 ] || errorout "Could not unzip md5sums.orig"
+cp "${SRCDIR}/tests/db_${SALPH}_${DI}.md5sums" > md5sums.orig
+[ $? -eq 0 ] || errorout "Could not copy md5sums.orig"
 
 [ "$(cat md5sums)" = "$(cat md5sums.orig)" ] || errorout "$(diff -u md5sums md5sums.orig)"
 
@@ -73,7 +79,7 @@ fi
 gunzip < "${SRCDIR}/tests/queries_${QALPHIN}.fasta.gz" > queries.fasta
 [ $? -eq 0 ] || errorout "Could not unzip queries.fasta"
 
-${BINDIR}/bin/lambda -d db.fasta -di ${DI} -p ${PROG} -q queries.fasta -t 1 --version-to-outputfile off \
+${BINDIR}/bin/lambda2 ${SEARCHER} -i ${DI}.lambda -q queries.fasta -t 1 --version-to-outputfile off \
 -o output_${PROG}_${DI}.${EXTENSION}
 [ $? -eq 0 ] || errorout "Search failed."
 

@@ -1,0 +1,17 @@
+MD5(db.fasta)= b58f6764fcdb216bbd0ad03e1d84b19b
+MD5(fm.lambda/option:alph_translated)= 01ef0afac8c7cfc866cf812c7bb68596
+MD5(fm.lambda/index.sa.len)= 7e9ddcbeb0dbe4cb0c21e8ed0a96198d
+MD5(fm.lambda/index.sa.ind)= 4b69f40b67e86836a5d550c8235863eb
+MD5(fm.lambda/option:generation)= c4ca4238a0b923820dcc509a6f75849b
+MD5(fm.lambda/index.lf.drs)= ec7f7e7bb43742ce868145f71d37b53c
+MD5(fm.lambda/option:db_index_type)= c4ca4238a0b923820dcc509a6f75849b
+MD5(fm.lambda/option:alph_reduced)= 01ef0afac8c7cfc866cf812c7bb68596
+MD5(fm.lambda/translated_seqs.concat)= 25d9d9b6f49e2dbf4ad50f5e90034f32
+MD5(fm.lambda/index.txt.concat)= 82687a2ee200a06c72609bf095d8b15d
+MD5(fm.lambda/option:alph_original)= 01ef0afac8c7cfc866cf812c7bb68596
+MD5(fm.lambda/seq_ids.limits)= 89d74e26e6e06be6cd029d2071e5522e
+MD5(fm.lambda/option:subj_seq_len_bits)= 6364d3f0f495b6ab9dcf8d3b5c6e0b01
+MD5(fm.lambda/translated_seqs.limits)= ec3b17c879edb71de532df257e5553ea
+MD5(fm.lambda/option:genetic_code)= cfcd208495d565ef66e7dff9f98764da
+MD5(fm.lambda/seq_ids.concat)= 922f5cce30c4a5d1cfab5b1d02d39039
+MD5(fm.lambda/index.txt.limits)= ec3b17c879edb71de532df257e5553ea

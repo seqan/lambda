@@ -1,0 +1,15 @@
+MD5(db.fasta)= b01a08d07b955fcef5fa9ea94e1f25aa
+MD5(sa.lambda/option:alph_translated)= 1151d962f7df03ce40c0f2126262deeb
+MD5(sa.lambda/index.sa.len)= 8d3178082ade66084876d27bf13ee42f
+MD5(sa.lambda/index.sa.ind)= cf713e9f2a896ce8d1d6e9bdd89b4649
+MD5(sa.lambda/option:generation)= c4ca4238a0b923820dcc509a6f75849b
+MD5(sa.lambda/index.lf.drs)= 9e688c58a5487b8eaf69c9e1005ad0bf
+MD5(sa.lambda/option:db_index_type)= c4ca4238a0b923820dcc509a6f75849b
+MD5(sa.lambda/option:alph_reduced)= dd23d4ca34a76600cedbab1b29d74025
+MD5(sa.lambda/translated_seqs.concat)= 854f773792dc25c957e6355db7aa2abf
+MD5(sa.lambda/option:alph_original)= 1151d962f7df03ce40c0f2126262deeb
+MD5(sa.lambda/seq_ids.limits)= 43c3aceb573d64bb0bbacba680c320c7
+MD5(sa.lambda/option:subj_seq_len_bits)= c74d97b01eae257e44aa9d5bade97baf
+MD5(sa.lambda/translated_seqs.limits)= 5a0274cc69c7db878781a4b4adf6994d
+MD5(sa.lambda/option:genetic_code)= c4ca4238a0b923820dcc509a6f75849b
+MD5(sa.lambda/seq_ids.concat)= 1e946a893d19945bffe18747d76ee573
