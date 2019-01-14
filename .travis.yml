@@ -66,4 +66,4 @@ script:
   - mkdir -p build && cd build
   - cmake .. -DLAMBDA_NATIVE_BUILD=0 -DLAMBDA_COMPILE_THREADS=2 ${CMAKE_ARGS}
   - travis_wait make VERBOSE=1 # need to prefix with travis_wait because it might take > 10min
-  - cd tests && ctest . -I 1,10
+  - cd tests && ctest . -I 1,10 -VV

@@ -65,7 +65,7 @@ ${BINDIR}/bin/lambda2 ${INDEXER} -d db.fasta -i ${DI}.lambda
 openssl md5 $(find * -type f) > md5sums
 [ $? -eq 0 ] || errorout "Could not run md5 or md5sums"
 
-cp "${SRCDIR}/tests/db_${SALPH}_${DI}.md5sums" > md5sums.orig
+cp "${SRCDIR}/tests/db_${SALPH}_${DI}.md5sums" md5sums.orig
 [ $? -eq 0 ] || errorout "Could not copy md5sums.orig"
 
 [ "$(cat md5sums)" = "$(cat md5sums.orig)" ] || errorout "$(diff -u md5sums md5sums.orig)"
