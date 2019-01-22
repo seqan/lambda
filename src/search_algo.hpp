@@ -1058,7 +1058,7 @@ _searchSingleIndex(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH)
                 desiredOccs = (length(lH.matches) - oldTotalMatches) >= lH.options.maxMatches
                             ? minResults
                             : (lH.options.maxMatches - (length(lH.matches) - oldTotalMatches)) * seedHeurFactor /
-                                std::max((needlesSum - needlesPos - seedBegin) / lH.options.seedOffset, 1ul);
+                                std::max((needlesSum - needlesPos - seedBegin) / lH.options.seedOffset, static_cast<size_t>(1));
 
                 if (desiredOccs == 0)
                     desiredOccs = minResults;
@@ -1127,7 +1127,7 @@ _searchSingleIndex(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH)
                     desiredOccs = (length(lH.matches) - oldTotalMatches) >= lH.options.maxMatches
                                 ? minResults
                                 : (lH.options.maxMatches - (length(lH.matches) - oldTotalMatches)) * seedHeurFactor /
-                                    std::max((needlesSum - needlesPos - seedBegin) / lH.options.seedOffset, 1ul);
+                                    std::max((needlesSum - needlesPos - seedBegin) / lH.options.seedOffset, static_cast<size_t>(1));
 
                     if (desiredOccs == 0)
                         desiredOccs = minResults;
