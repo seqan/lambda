@@ -203,7 +203,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     addSection(parser, "Output Options");
     addOption(parser, ArgParseOption("o", "output",
-        "File to hold reports on hits (.m* are blastall -m* formats; .m8 is tab-seperated, .m9 is tab-seperated with "
+        "File to hold reports on hits (.m* are blastall -m* formats; .m8 is tab-separated, .m9 is tab-separated with "
         "with comments, .m0 is pairwise format).",
         ArgParseArgument::OUTPUT_FILE,
         "OUT"));
@@ -646,7 +646,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     getOptionValue(buffer, parser, "output-columns");
     if (buffer == "help")
     {
-        std::cout << "Please specify the columns in this format -oc 'column1 column2', i.e. space-seperated and "
+        std::cout << "Please specify the columns in this format -oc 'column1 column2', i.e. space-separated and "
                   << "enclosed in single quotes.\nThe specifiers are the same as in NCBI Blast, currently "
                   << "the following are supported:\n";
         for (unsigned i = 0; i < length(BlastMatchField<>::implemented); ++i)
@@ -693,7 +693,7 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     getOptionValue(buffer, parser, "sam-bam-tags");
     if (buffer == "help")
     {
-        std::cout << "Please specify the tags in this format -oc 'tag1 tag2', i.e. space-seperated and "
+        std::cout << "Please specify the tags in this format -oc 'tag1 tag2', i.e. space-separated and "
                   << "enclosed in quotes. The order of tags is not preserved.\nThe following specifiers are "
                   << "supported:\n";
 
