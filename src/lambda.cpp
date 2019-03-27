@@ -19,12 +19,14 @@
 // lambda.cpp: Main File for Lambda
 // ==========================================================================
 
+#include <seqan3/argument_parser/all.hpp>
+
 #include "search.hpp"
 #include "mkindex.hpp"
 
 using namespace seqan;
 
-ArgumentParser::ParseResult parseCommandLineMain(int argc, char const ** argv);
+void parseCommandLineMain(int argc, char const ** argv);
 
 int main(int argc, char const ** argv)
 {
@@ -52,49 +54,71 @@ int main(int argc, char const ** argv)
         }
     }
 
-    ArgumentParser::ParseResult res = parseCommandLineMain(until, argv);
-
-    if (res == ArgumentParser::PARSE_ERROR)
-        return ArgumentParser::PARSE_ERROR;
-    else if (res != ArgumentParser::PARSE_OK)
-        return 0;
+    try
+    {
+        parseCommandLineMain(until, argv);
+    }
+    catch (std::exception const & ext)
+    {
+        std::cerr << ext.what() << "\n";
+        return -1;
+    }
 
     --until; // undo the "+ 1" above
 
+    // TODO change return values
     if ((std::string(argv[until]) == "searchp") || (std::string(argv[until]) == "searchn"))
     {
-        return searchMain(argc - until, argv + until);
+        try
+        {
+            searchMain(argc - until, argv + until);
+        }
+        catch (std::exception const & ext)
+        {
+            std::cerr << ext.what() << "\n";
+            return -1;
+        }
     }
     else if ((std::string(argv[until]) == "mkindexp") || (std::string(argv[until]) == "mkindexn"))
     {
-        return mkindexMain(argc - until, argv + until);
-    } else
+        try
+        {
+            mkindexMain(argc - until, argv + until);
+        }
+        catch (std::exception const & ext)
+        {
+            std::cerr << ext.what() << "\n";
+            return -1;
+        }
+    }
+    else
     {
         // shouldn't be reached
         std::cerr << "WRONG ARGUMENTS!\n";
         return -1;
     }
+    return 0;
 }
 
-ArgumentParser::ParseResult parseCommandLineMain(int argc, char const ** argv)
+void parseCommandLineMain(int argc, char const ** argv)
 {
-    ArgumentParser parser("lambda2");
+    seqan3::argument_parser parser("lambda3", argc, argv);
 
-    setShortDescription(parser, "Lambda, the Local Aligner for Massive Biological DataA");
+    parser.info.short_description = "Lambda, the Local Aligner for Massive Biological DatA.";
+    parser.info.synopsis.push_back("[\\fIOPTIONS\\fP] COMMAND [\\fICOMMAND-OPTIONS\\fP]");
 
-    addUsageLine(parser, "[\\fIOPTIONS\\fP] COMMAND [\\fICOMMAND-OPTIONS\\fP]");
     sharedSetup(parser);
 
-    addArgument(parser, ArgParseArgument(ArgParseArgument::STRING, "COMMAND"));
-    setHelpText(parser, 0, "The sub-program to execute. See below.");
-    setValidValues(parser, 0, "searchp searchn mkindexp mkindexn");
+    std::string command{};
+    parser.add_positional_option(command, "The sub-program to execute. See below.", 
+        seqan3::value_list_validator({"searchp", "searchn", "mkindexp", "mkindexn"}));
 
-    addTextSection(parser, "Available commands");
-    addText(parser, "\\fBsearchp  \\fP– Perform a protein search (BLASTP, BLASTX, TBLASTN, TBLASTX).");
-    addText(parser, "\\fBsearchn  \\fP– Perform a nucleotide search (BLASTN, MEGABLAST).");
-    addText(parser, "\\fBmkindexp \\fP– Create an index for protein searches.");
-    addText(parser, "\\fBmkindexn \\fP– Create an index for nucleotide searches.");
-    addText(parser, "To view the help page for a specific command, simply run 'lambda command --help'.");
+    parser.info.description.push_back("Available commands");
+    parser.info.description.push_back("\\fBsearchp  \\fP– Perform a protein search (BLASTP, BLASTX, TBLASTN, TBLASTX).");
+    parser.info.description.push_back("\\fBsearchn  \\fP– Perform a nucleotide search (BLASTN, MEGABLAST).");
+    parser.info.description.push_back("\\fBmkindexp \\fP– Create an index for protein searches.");
+    parser.info.description.push_back("\\fBmkindexn \\fP– Create an index for nucleotide searches.");
+    parser.info.description.push_back("To view the help page for a specific command, simply run 'lambda command --help'.");
 
-    return parse(parser, argc, argv);
+    parser.parse();
 }

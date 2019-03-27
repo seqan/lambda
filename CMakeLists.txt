@@ -28,19 +28,26 @@ endif ()
 
 message ("\n${ColourBold}Dependency detection${ColourReset}")
 
-if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/include/seqan/include/seqan/version.h")
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/submodules/seqan/include/seqan/version.h")
     set (CMAKE_INCLUDE_PATH
-        ${CMAKE_CURRENT_SOURCE_DIR}/include/seqan/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/submodules/seqan/include
         ${CMAKE_INCLUDE_PATH})
     set (CMAKE_PREFIX_PATH
-        ${CMAKE_CURRENT_SOURCE_DIR}/include/seqan/util/cmake
+        ${CMAKE_CURRENT_SOURCE_DIR}/submodules/seqan/util/cmake
         ${CMAKE_PREFIX_PATH})
     set (CMAKE_MODULE_PATH
-        ${CMAKE_CURRENT_SOURCE_DIR}/include/seqan/util/cmake
+        ${CMAKE_CURRENT_SOURCE_DIR}/submodules/seqan/util/cmake
         ${CMAKE_MODULE_PATH})
     message (STATUS "Found a local SeqAn library provided with the Lambda source code.")
     message (    "   This will be preferred over system global headers.")
 endif ()
+
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/submodules/seqan3/include/seqan3/version.hpp")
+    set (SeqAn3_DIR ${CMAKE_CURRENT_SOURCE_DIR}/submodules/seqan3/build_system)
+    message (STATUS "Found a local SeqAn3 library provided with the Lambda source code.")
+    message (    "   This will be preferred over system global headers.")
+endif ()
+
 
 # ----------------------------------------------------------------------------
 # Add Lambda targets

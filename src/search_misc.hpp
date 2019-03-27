@@ -47,7 +47,6 @@ struct QueryException : public std::runtime_error
 template <typename TGH, typename TAlph>
 inline void
 myHyperSortSingleIndex(std::vector<Match<TAlph>> & matches,
-                       bool const doubleIndexing,
                        TGH const &)
 {
     using TId = typename Match<TAlph>::TQId;
@@ -77,29 +76,14 @@ myHyperSortSingleIndex(std::vector<Match<TAlph>> & matches,
         }
     }
 
-    if (doubleIndexing)
+    // sort by lengths of interval, since trueQryId is the same anyway
+    std::sort(intervals.begin(), intervals.end(),
+            [] (std::tuple<TId, TId, TId> const & i1,
+                std::tuple<TId, TId, TId> const & i2)
     {
-        // sort by trueQryId, then lengths of interval
-        std::sort(intervals.begin(), intervals.end(),
-                [] (std::tuple<TId, TId, TId> const & i1,
-                    std::tuple<TId, TId, TId> const & i2)
-        {
-            return (std::get<0>(i1) != std::get<0>(i2))
-                    ? (std::get<0>(i1) < std::get<0>(i2))
-                    : ((std::get<2>(i1) - std::get<1>(i1))
-                     > (std::get<2>(i2) - std::get<1>(i2)));
-        });
-    } else
-    {
-        // sort by lengths of interval, since trueQryId is the same anyway
-        std::sort(intervals.begin(), intervals.end(),
-                [] (std::tuple<TId, TId, TId> const & i1,
-                    std::tuple<TId, TId, TId> const & i2)
-        {
-            return (std::get<2>(i1) - std::get<1>(i1))
-                >  (std::get<2>(i2) - std::get<1>(i2));
-        });
-    }
+        return (std::get<2>(i1) - std::get<1>(i1))
+            >  (std::get<2>(i2) - std::get<1>(i2));
+    });
 
     std::vector<Match<TAlph>> tmpVector;
     tmpVector.resize(matches.size());

@@ -82,13 +82,7 @@ int mkindexMain(int const argc, char const ** argv)
     // Parse the command line.
     seqan::ArgumentParser parser;
     LambdaIndexerOptions options;
-    seqan::ArgumentParser::ParseResult res = parseCommandLine(options, argc, argv);
-
-    // If there was an error parsing or built-in argument parser functionality
-    // was triggered then we exit the program.  The return code is 1 if there
-    // were errors and 0 if there were none.
-    if (res != seqan::ArgumentParser::PARSE_OK)
-        return res == seqan::ArgumentParser::PARSE_ERROR;
+    parseCommandLine(options, argc, argv);
 
 #ifdef NDEBUG
     try
@@ -299,4 +293,3 @@ realMain(LambdaIndexerOptions     const & options,
 
 
 }
-

@@ -11,7 +11,7 @@
 # ----------------------------------------------------------------------------
 
 # change this after every release
-set (SEQAN_APP_VERSION_MAJOR "2")
+set (SEQAN_APP_VERSION_MAJOR "3")
 set (SEQAN_APP_VERSION_MINOR "0")
 set (SEQAN_APP_VERSION_PATCH "0")
 
@@ -30,6 +30,7 @@ find_package(OpenMP QUIET)
 find_package(ZLIB   QUIET)
 find_package(BZip2  QUIET)
 find_package(SeqAn  QUIET REQUIRED CONFIG)
+find_package(SeqAn3  QUIET REQUIRED CONFIG)
 
 message(STATUS "These dependencies where found:")
 message(   "     OPENMP     ${OPENMP_FOUND}      ${OpenMP_CXX_FLAGS}")
@@ -227,7 +228,7 @@ set (LAMBDA_SOURCE_FILES
                     mkindex_saca.hpp)
 
 add_executable (lambda2 ${LAMBDA_SOURCE_FILES})
-target_link_libraries (lambda2 ${SEQAN_LIBRARIES})
+target_link_libraries (lambda2 ${SEQAN_LIBRARIES} seqan3::seqan3)
 
 if (LAMBDA_MULTIOPT_BUILD)
     add_executable (lambda2-sse4 ${LAMBDA_SOURCE_FILES})
@@ -241,23 +242,23 @@ endif ()
 
 # Umbrella man-page
 add_custom_command (OUTPUT lambda2.1
-                    COMMAND lambda2 --export-help=man > lambda2.1
+                    COMMAND lambda2 --export-help man > lambda2.1
                     DEPENDS lambda2)
 # searchn subcommand
 add_custom_command (OUTPUT lambda2-searchn.1
-                    COMMAND lambda2 searchn --export-help=man > lambda2-searchn.1
+                    COMMAND lambda2 searchn --export-help man > lambda2-searchn.1
                     DEPENDS lambda2)
 # searchp subcommand
 add_custom_command (OUTPUT lambda2-searchp.1
-                    COMMAND lambda2 searchp --export-help=man > lambda2-searchp.1
+                    COMMAND lambda2 searchp --export-help man > lambda2-searchp.1
                     DEPENDS lambda2)
 # mkindexn subcommand
 add_custom_command (OUTPUT lambda2-mkindexn.1
-                    COMMAND lambda2 mkindexn --export-help=man > lambda2-mkindexn.1
+                    COMMAND lambda2 mkindexn --export-help man > lambda2-mkindexn.1
                     DEPENDS lambda2)
 # mkindexp subcommand
 add_custom_command (OUTPUT lambda2-mkindexp.1
-                    COMMAND lambda2 mkindexp --export-help=man > lambda2-mkindexp.1
+                    COMMAND lambda2 mkindexp --export-help man > lambda2-mkindexp.1
                     DEPENDS lambda2)
 
 add_custom_target (manual

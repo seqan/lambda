@@ -220,10 +220,6 @@ struct StatsHolder
 
 void printStats(StatsHolder const & stats, LambdaOptions const & options)
 {
-    if ((options.verbosity >= 1) && options.isTerm && options.doubleIndexing)
-        for (unsigned char i=0; i < options.threads + 3; ++i)
-            std::cout << std::endl;
-
     if (options.verbosity >= 2)
     {
         unsigned long rem = stats.hitsAfterSeeding;
@@ -565,10 +561,7 @@ public:
                     TGlobalHolder     /*const*/ & _globalHolder) :
         options(_options), gH(_globalHolder), stats()
     {
-        if (options.doubleIndexing)
-        {
-            nBlocks = options.queryPart;
-        } else if (options.extensionMode == LambdaOptions::ExtensionMode::FULL_SIMD)
+        if (options.extensionMode == LambdaOptions::ExtensionMode::FULL_SIMD)
         {
             // division with rounding up
             nBlocks = (length(gH.redQrySeqs) + qNumFrames(blastProgram) * 10 - 1) / (qNumFrames(blastProgram) * 10);
@@ -588,16 +581,7 @@ public:
     {
         i = _i;
 
-        if (options.doubleIndexing)
-        {
-            indexBeginQry = (length(gH.qrySeqs) / options.queryPart) * i;
-            indexEndQry = (i+1 == options.queryPart) // last interval
-                            ? length(gH.qrySeqs) // reach until end
-                            : (length(gH.qrySeqs) / options.queryPart) * (i+1);
-            // make sure different frames of one sequence in same interval
-            indexBeginQry -= (indexBeginQry % qNumFrames(blastProgram));
-            indexEndQry -= (indexEndQry % qNumFrames(blastProgram));
-        } else if (options.extensionMode == LambdaOptions::ExtensionMode::FULL_SIMD)
+        if (options.extensionMode == LambdaOptions::ExtensionMode::FULL_SIMD)
         {
             indexBeginQry = qNumFrames(blastProgram) * i * 10;
             indexEndQry = _min(qNumFrames(blastProgram) * (i+1) * 10, length(gH.qrySeqs));
