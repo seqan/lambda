@@ -10,7 +10,7 @@ set(ColourRed   "${Esc}[31m")
 
 message ("${ColourBold}Compiler Detection${ColourReset}")
 
-project (lambda2 CXX)
+project (lambda3 CXX)
 
 # ----------------------------------------------------------------------------
 # Make "Release" the default cmake build type

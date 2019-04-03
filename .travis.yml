@@ -3,56 +3,20 @@ language: cpp
 matrix:
   include:
     - os: linux
-      compiler: gcc-4.9
-      addons:
-        apt:
-          sources: ['ubuntu-toolchain-r-test']
-          packages: ['g++-4.9', 'cmake', 'cmake-data', 'zlib1g-dev', 'libbz2-dev', 'libboost-dev', 'python', 'python-nose', 'python-jinja2', 'python-pip']
-      install: export CXX="g++-4.9"
-      env: CMAKE_ARGS="-DLAMBDA_STATIC_BUILD=1"
-
-    - os: linux
-      compiler: gcc-5
-      addons:
-        apt:
-          sources: ['ubuntu-toolchain-r-test']
-          packages: ['g++-5', 'cmake', 'cmake-data', 'zlib1g-dev', 'libbz2-dev', 'libboost-dev', 'python', 'python-nose', 'python-jinja2', 'python-pip']
-      install: export CXX="g++-5"
-      env: CMAKE_ARGS="-DLAMBDA_MULTIOPT_BUILD=1"
-
-    - os: linux
       compiler: gcc-7
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
           packages: ['g++-7', 'cmake', 'cmake-data', 'zlib1g-dev', 'libbz2-dev', 'libboost-dev', 'python', 'python-nose', 'python-jinja2', 'python-pip']
       install: export CXX="g++-7"
-      env: CMAKE_ARGS="-DCMAKE_CXX_FLAGS=-std=c++17"
 
-    - os: linux
-      compiler: clang-3.9
-      addons:
-        apt:
-          sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-trusty-3.9']
-          packages: ['clang-3.9', 'g++-7', 'cmake', 'cmake-data', 'zlib1g-dev', 'libbz2-dev', 'libboost-dev', 'python', 'python-nose', 'python-jinja2', 'python-pip'] # g++ required for newer libstdc++
-      install: export CXX="clang++-3.9"
-
-    - os: linux
-      compiler: clang-5
+   - os: linux
+      compiler: gcc-8
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['g++-7', 'cmake', 'cmake-data', 'zlib1g-dev', 'libbz2-dev', 'libboost-dev', 'python', 'python-nose', 'python-jinja2', 'python-pip'] # g++ required for newer libstdc++
-      install: export CXX="/usr/local/clang-5.0.0/bin/clang++"
-      env: CMAKE_ARGS="-DCMAKE_BUILD_TYPE=RelWithDebInfo" LD_LIBRARY_PATH="/usr/local/clang-5.0.0/lib/:${LD_LIBRARY_PATH}"
-
-    - os: osx
-      compiler: gcc-4.9
-      before_install:
-        - brew update
-        - brew install gcc@4.9
-      install: export CXX="g++-4.9"
-      env: CMAKE_ARGS="-DLAMBDA_FASTBUILD=1 -DLAMBDA_STATIC_BUILD=1"
+          packages: ['g++-8', 'cmake', 'cmake-data', 'zlib1g-dev', 'libbz2-dev', 'libboost-dev', 'python', 'python-nose', 'python-jinja2', 'python-pip']
+      install: export CXX="g++-8"
 
     - os: osx
       compiler: gcc-7

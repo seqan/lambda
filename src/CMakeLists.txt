@@ -20,6 +20,7 @@ set (SEQAN_APP_VERSION "${SEQAN_APP_VERSION_MAJOR}.${SEQAN_APP_VERSION_MINOR}.${
 
 # adapt when necessary
 set (MINIMUM_SEQAN_VERSION "2.3.1")
+set (MINIMUM_SEQAN3_VERSION "3.0.0")
 
 # ----------------------------------------------------------------------------
 # Dependencies (continued)
@@ -37,6 +38,7 @@ message(   "     OPENMP     ${OPENMP_FOUND}      ${OpenMP_CXX_FLAGS}")
 message(   "     ZLIB       ${ZLIB_FOUND}      ${ZLIB_VERSION_STRING}")
 message(   "     BZIP2      ${BZIP2_FOUND}      ${BZIP2_VERSION_STRING}")
 message(   "     SEQAN      ${SEQAN_FOUND}      ${SEQAN_VERSION_STRING}")
+message(   "     SEQAN3     ${SEQAN3_FOUND}      ${SEQAN3_VERSION_STRING}")
 
 # Warn if OpenMP was not found.
 if (NOT OPENMP_FOUND)
@@ -54,28 +56,13 @@ if (NOT BZIP2_FOUND)
   message (WARNING "WARNING: BZip2 not found. Building lambda without support for bzipped input and output.")
 endif (NOT BZIP2_FOUND)
 
-if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.9.1)
-        message (FATAL_ERROR "Your GCC version is too old. Minimum version is GCC-4.9.1!")
-        return ()
-    endif ()
-elseif (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 3.6)
-        message (FATAL_ERROR "Your Clang version is too old. Please upgrade to 3.8.0 or use GCC.")
-        return()
-    elseif (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 3.8)
-        message (WARNING "Your Clang version is too old, you will not have parallelism! Upgrade to 3.8.0 or newer.")
-    endif ()
-elseif (CMAKE_CXX_COMPILER_ID MATCHES "Intel")
-    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 17)
-        message(WARNING "Your Intel Compiler version is too old. Please upgrade to 17.0.0 or newer!")
-    endif ()
-else ()
-    message(WARNING "Unknown compiler, you are own your own!")
+if (SEQAN_VERSION_STRING VERSION_LESS "${MINIMUM_SEQAN_VERSION}")
+    message (FATAL_ERROR "The minimum SeqAn version required is ${MINIMUM_SEQAN_VERSION}!")
+    return ()
 endif ()
 
-if (SEQAN_VERSION_STRING VERSION_LESS "${MINIMUM_SEQAN_VERSION}")
-    message (FATAL_ERROR "The minimum SeqAn verison required is ${MINIMUM_SEQAN_VERSION}!")
+if (SEQAN3_VERSION_STRING VERSION_LESS "${MINIMUM_SEQAN3_VERSION}")
+    message (FATAL_ERROR "The minimum SeqAn3 version required is ${MINIMUM_SEQAN3_VERSION}!")
     return ()
 endif ()
 
@@ -227,13 +214,13 @@ set (LAMBDA_SOURCE_FILES
                     mkindex_options.hpp
                     mkindex_saca.hpp)
 
-add_executable (lambda2 ${LAMBDA_SOURCE_FILES})
-target_link_libraries (lambda2 ${SEQAN_LIBRARIES} seqan3::seqan3)
+add_executable (lambda3 ${LAMBDA_SOURCE_FILES})
+target_link_libraries (lambda3 ${SEQAN_LIBRARIES} seqan3::seqan3)
 
 if (LAMBDA_MULTIOPT_BUILD)
-    add_executable (lambda2-sse4 ${LAMBDA_SOURCE_FILES})
-    target_link_libraries (lambda2-sse4 ${SEQAN_LIBRARIES})
-    set_target_properties (lambda2-sse4 PROPERTIES COMPILE_FLAGS "-mmmx -msse -msse2 -msse3 -mssse3 -msse4 -mpopcnt")
+    add_executable (lambda3-sse4 ${LAMBDA_SOURCE_FILES})
+    target_link_libraries (lambda3-sse4 ${SEQAN_LIBRARIES})
+    set_target_properties (lambda3-sse4 PROPERTIES COMPILE_FLAGS "-mmmx -msse -msse2 -msse3 -mssse3 -msse4 -mpopcnt")
 endif ()
 
 # ----------------------------------------------------------------------------
@@ -241,29 +228,29 @@ endif ()
 # ----------------------------------------------------------------------------
 
 # Umbrella man-page
-add_custom_command (OUTPUT lambda2.1
-                    COMMAND lambda2 --export-help man > lambda2.1
-                    DEPENDS lambda2)
+add_custom_command (OUTPUT lambda3.1
+                    COMMAND lambda3 --export-help man > lambda3.1
+                    DEPENDS lambda3)
 # searchn subcommand
-add_custom_command (OUTPUT lambda2-searchn.1
-                    COMMAND lambda2 searchn --export-help man > lambda2-searchn.1
-                    DEPENDS lambda2)
+add_custom_command (OUTPUT lambda3-searchn.1
+                    COMMAND lambda3 searchn --export-help man > lambda3-searchn.1
+                    DEPENDS lambda3)
 # searchp subcommand
-add_custom_command (OUTPUT lambda2-searchp.1
-                    COMMAND lambda2 searchp --export-help man > lambda2-searchp.1
-                    DEPENDS lambda2)
+add_custom_command (OUTPUT lambda3-searchp.1
+                    COMMAND lambda3 searchp --export-help man > lambda3-searchp.1
+                    DEPENDS lambda3)
 # mkindexn subcommand
-add_custom_command (OUTPUT lambda2-mkindexn.1
-                    COMMAND lambda2 mkindexn --export-help man > lambda2-mkindexn.1
-                    DEPENDS lambda2)
+add_custom_command (OUTPUT lambda3-mkindexn.1
+                    COMMAND lambda3 mkindexn --export-help man > lambda3-mkindexn.1
+                    DEPENDS lambda3)
 # mkindexp subcommand
-add_custom_command (OUTPUT lambda2-mkindexp.1
-                    COMMAND lambda2 mkindexp --export-help man > lambda2-mkindexp.1
-                    DEPENDS lambda2)
+add_custom_command (OUTPUT lambda3-mkindexp.1
+                    COMMAND lambda3 mkindexp --export-help man > lambda3-mkindexp.1
+                    DEPENDS lambda3)
 
 add_custom_target (manual
                    ALL
-                   DEPENDS lambda2.1 lambda2-searchn.1 lambda2-searchp.1 lambda2-mkindexn.1 lambda2-mkindexp.1)
+                   DEPENDS lambda3.1 lambda3-searchn.1 lambda3-searchp.1 lambda3-mkindexn.1 lambda3-mkindexp.1)
 
 # ----------------------------------------------------------------------------
 # Installation
@@ -274,24 +261,24 @@ include (GNUInstallDirs)
 
 if (LAMBDA_MULTIOPT_BUILD)
     # Install lambda binaries into LIBEXECDIR
-    install (TARGETS lambda2 lambda2-sse4
+    install (TARGETS lambda3 lambda3-sse4
              DESTINATION ${CMAKE_INSTALL_LIBEXECDIR})
 
     # Install dispatcher script into BINDIR
-    configure_file(../bin/lambda2.in
-                   ${CMAKE_CURRENT_BINARY_DIR}/lambda2-dispatch
+    configure_file(../bin/lambda3.in
+                   ${CMAKE_CURRENT_BINARY_DIR}/lambda3-dispatch
                    @ONLY)
-    install (FILES ${CMAKE_CURRENT_BINARY_DIR}/lambda2-dispatch
+    install (FILES ${CMAKE_CURRENT_BINARY_DIR}/lambda3-dispatch
              DESTINATION ${CMAKE_INSTALL_BINDIR}
-             RENAME lambda2
+             RENAME lambda3
              PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
 elseif ()
     # Install lambda into BINDIR, usually ${PREFIX}/bin
-    install (TARGETS lambda2
+    install (TARGETS lambda3
              DESTINATION ${CMAKE_INSTALL_BINDIR})
 endif ()
 
-# Install non-binary files for the package to DOCDIR, usually ${PREFIX}/share/doc/lambda2
+# Install non-binary files for the package to DOCDIR, usually ${PREFIX}/share/doc/lambda3
 install (FILES ../LICENSE.rst
                ../LICENSE-BSD.rst
                ../LICENSE-AGPL3.rst
@@ -299,11 +286,11 @@ install (FILES ../LICENSE.rst
          DESTINATION ${CMAKE_INSTALL_DOCDIR})
 
 # Man pages into MANDIR, usually ${PREFIX}/share/man/man1 (or without share)
-install (FILES ${CMAKE_CURRENT_BINARY_DIR}/lambda2.1
-               ${CMAKE_CURRENT_BINARY_DIR}/lambda2-searchn.1
-               ${CMAKE_CURRENT_BINARY_DIR}/lambda2-searchp.1
-               ${CMAKE_CURRENT_BINARY_DIR}/lambda2-mkindexn.1
-               ${CMAKE_CURRENT_BINARY_DIR}/lambda2-mkindexp.1
+install (FILES ${CMAKE_CURRENT_BINARY_DIR}/lambda3.1
+               ${CMAKE_CURRENT_BINARY_DIR}/lambda3-searchn.1
+               ${CMAKE_CURRENT_BINARY_DIR}/lambda3-searchp.1
+               ${CMAKE_CURRENT_BINARY_DIR}/lambda3-mkindexn.1
+               ${CMAKE_CURRENT_BINARY_DIR}/lambda3-mkindexp.1
          DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
 
 # ----------------------------------------------------------------------------
@@ -311,7 +298,7 @@ install (FILES ${CMAKE_CURRENT_BINARY_DIR}/lambda2.1
 # ----------------------------------------------------------------------------
 
 # Information
-set (CPACK_PACKAGE_NAME "lambda2")
+set (CPACK_PACKAGE_NAME "lambda3")
 set (CPACK_PACKAGE_DESCRIPTION_SUMMARY "lambda -- the local aligner for massive bioligical data")
 set (CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/../README.rst")
 set (CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/../LICENSE.rst")
