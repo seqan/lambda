@@ -30,7 +30,7 @@ void getCwd(TString & string)
 #ifdef PLATFORM_WINDOWS
     _getcwd(cwd, 1000);
 #else
-    getcwd(cwd, 1000);
+    [[maybe_unused]] auto tmp = getcwd(cwd, 1000);
 #endif
 
     assign(string, cwd);

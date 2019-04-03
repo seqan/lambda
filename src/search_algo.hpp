@@ -676,14 +676,6 @@ template <typename TLocalHolder>
 inline int
 generateSeeds(TLocalHolder & lH)
 {
-    if (lH.options.doubleIndexing)
-    {
-        appendToStatus(lH.statusStr, lH.options, 1, "Block ", std::setw(4),
-                       lH.i, ": Generating Seeds...");
-        if (lH.options.isTerm)
-            myPrint(lH.options, 1, lH.statusStr);
-    }
-
     double start = sysTime();
     for (unsigned long i = lH.indexBeginQry; i < lH.indexEndQry; ++i)
     {
@@ -704,14 +696,7 @@ generateSeeds(TLocalHolder & lH)
         }
     }
     double finish = sysTime() - start;
-    if (lH.options.doubleIndexing)
-    {
-        appendToStatus(lH.statusStr, lH.options, 1, " done. ");
-        appendToStatus(lH.statusStr, lH.options, 2, finish, "s. ",
-                       length(lH.seeds), " seeds created.");
 
-        myPrint(lH.options, 1, lH.statusStr);
-    }
     return 0;
 }
 
@@ -725,13 +710,6 @@ template <typename TLocalHolder>
 inline int
 generateTrieOverSeeds(TLocalHolder & lH)
 {
-    if (lH.options.doubleIndexing)
-    {
-        appendToStatus(lH.statusStr, lH.options, 1, "Generating Query-Index...");
-        if (lH.options.isTerm)
-            myPrint(lH.options, 1, lH.statusStr);
-    }
-
     double start = sysTime();
     // we only want full length seed sequences in index, build up manually
     typedef typename Fibre<typename TLocalHolder::TSeedIndex, EsaSA>::Type TSa;
@@ -748,14 +726,6 @@ generateTrieOverSeeds(TLocalHolder & lH)
     std::sort(begin(sa, Standard()), end(sa, Standard()), comp);
     typename Iterator<typename TLocalHolder::TSeedIndex, TopDown<> >::Type it(lH.seedIndex); // instantiate
     double finish = sysTime() - start;
-
-    if (lH.options.doubleIndexing)
-    {
-        appendToStatus(lH.statusStr, lH.options, 1, " done. ");
-        appendToStatus(lH.statusStr, lH.options, 2, finish, "s. ",
-                       length(sa), " fibres in SeedIndex. ");;
-        myPrint(lH.options, 1, lH.statusStr);
-    }
 
     return 0;
 }
@@ -1214,11 +1184,6 @@ template <typename TLocalHolder>
 inline void
 search(TLocalHolder & lH)
 {
-#ifdef LAMBDA_LEGACY_PATHS
-    if (lH.options.doubleIndexing)
-        _searchDoubleIndex(lH);
-    else
-#endif
         _searchSingleIndex(lH);
 }
 
@@ -1230,15 +1195,6 @@ template <typename TLocalHolder>
 inline void
 sortMatches(TLocalHolder & lH)
 {
-    if (lH.options.doubleIndexing)
-    {
-        appendToStatus(lH.statusStr, lH.options, 1, "Sorting hits...");
-        if (lH.options.isTerm)
-            myPrint(lH.options, 1, lH.statusStr);
-    }
-
-    double start = sysTime();
-
 //    std::sort(begin(lH.matches, Standard()), end(lH.matches, Standard()));
 //     std::sort(lH.matches.begin(), lH.matches.end());
 
@@ -1251,18 +1207,9 @@ sortMatches(TLocalHolder & lH)
     if ((lH.options.filterPutativeAbundant) &&
         (lH.matches.size() > lH.options.maxMatches))
         // more expensive sort to get likely targets to front
-        myHyperSortSingleIndex(lH.matches, lH.options.doubleIndexing, lH.gH);
+        myHyperSortSingleIndex(lH.matches, lH.gH);
     else
         std::sort(lH.matches.begin(), lH.matches.end());
-
-    double finish = sysTime() - start;
-
-    if (lH.options.doubleIndexing)
-    {
-        appendToStatus(lH.statusStr, lH.options, 1, " done. ");
-        appendToStatus(lH.statusStr, lH.options, 2, finish, "s. ");
-        myPrint(lH.options, 1, lH.statusStr);
-    }
 }
 
 // --------------------------------------------------------------------------
@@ -1770,13 +1717,7 @@ iterateMatchesExtend(TLocalHolder & lH)
 //     constexpr uint8_t qFactor = qHasRevComp(TGlobalHolder::blastProgram) ? 3 : 1;
 //     constexpr uint8_t sFactor = sHasRevComp(TGlobalHolder::blastProgram) ? 3 : 1;
 
-    double start = sysTime();
-    if (lH.options.doubleIndexing)
-    {
-        appendToStatus(lH.statusStr, lH.options, 1,
-                       "Extending and writing hits...");
-        myPrint(lH.options, 1, lH.statusStr);
-    }
+    // double start = sysTime();
 
     // comperator that sorts by bitScore but also compensates for rounding errors
     auto compe = [] (auto const & m1, auto const & m2)
@@ -2089,15 +2030,6 @@ iterateMatchesExtend(TLocalHolder & lH)
 #ifdef LAMBDA_MICRO_STATS
     lH.stats.timeExtendTrace += sysTime() - start;
 #endif
-
-    if (lH.options.doubleIndexing)
-    {
-        double finish = sysTime() - start;
-
-        appendToStatus(lH.statusStr, lH.options, 1, " done. ");
-        appendToStatus(lH.statusStr, lH.options, 2, finish, "s. ");
-        myPrint(lH.options, 1, lH.statusStr);
-    }
 
     return 0;
 }

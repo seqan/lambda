@@ -104,10 +104,7 @@ realMain(LambdaOptions                        & options,
 int searchMain(int const argc, char const ** argv)
 {
     LambdaOptions options;
-    seqan::ArgumentParser::ParseResult res = parseCommandLine(options, argc, argv);
-
-    if (res != seqan::ArgumentParser::PARSE_OK)
-        return res == seqan::ArgumentParser::PARSE_ERROR;
+    parseCommandLine(options, argc, argv);
 
 #ifdef NDEBUG
     try
@@ -154,12 +151,6 @@ argConv0(LambdaOptions & options)
     readIndexOptions(options);
     myPrint(options, 1, "done.\n");
 
-#ifndef LAMBDA_LEGACY_PATHS
-    if (options.dbIndexType == DbIndexType::SUFFIX_ARRAY)
-        throw IndexException("The index is of type suffix array, but support was removed."
-                             "Either rebuild lambda2 with '-DLAMBDA_LEGACY_PATHS=1' or re-create the index.\n");
-#endif // LAMBDA_LEGACY_PATHS
-
     myPrint(options, 2, "Index properties\n"
                         "  type:                ", _indexEnumToName(options.dbIndexType), "\n",
                         "  original   alphabet: ", _alphabetEnumToName(options.subjOrigAlphabet), "\n");
@@ -196,7 +187,7 @@ argConv0(LambdaOptions & options)
     if ((options.blastProgram == BlastProgram::BLASTN) &&
         (options.reducedAlphabet != AlphabetEnum::DNA5))
     {
-        throw std::runtime_error("You are attempting a nucleotide search on a protein index."
+        throw std::runtime_error("You are attempting a nucleotide search on a protein index. "
                                  "Did you want to use 'lambda2 searchp' instead?");
     }
 
@@ -490,25 +481,9 @@ realMain(LambdaOptions                        & options,
 
     myWriteHeader(globalHolder, options);
 
-    if (options.doubleIndexing)
-    {
-        myPrint(options, 1,
-                "Searching ",
-                options.queryPart,
-                " blocks of query with ",
-                options.threads,
-                " threads...\n");
-        if ((options.isTerm) && (options.verbosity >= 1))
-        {
-            for (unsigned char i=0; i< options.threads+3; ++i)
-                std::cout << std::endl;
-            std::cout << "\033[" << options.threads+2 << "A";
-        }
-    } else
-    {
-        myPrint(options, 1, "Searching and extending hits on-line...progress:\n"
+    myPrint(options, 1, "Searching and extending hits on-line...progress:\n"
                 "0%  10%  20%  30%  40%  50%  60%  70%  80%  90%  100%\n|");
-    }
+
     double start = sysTime();
 
     uint64_t lastPercent = 0;
@@ -527,18 +502,6 @@ realMain(LambdaOptions                        & options,
             // seed
         #ifdef LAMBDA_MICRO_STATS
             double buf = sysTime();
-        #endif
-            if (options.doubleIndexing)
-            {
-                res = generateSeeds(localHolder);
-                if (res)
-                    continue;
-
-                res = generateTrieOverSeeds(localHolder);
-                if (res)
-                    continue;
-            }
-        #ifdef LAMBDA_MICRO_STATS
             localHolder.stats.timeGenSeeds += sysTime() - buf;
 
             // search
@@ -574,8 +537,7 @@ realMain(LambdaOptions                        & options,
             if (res)
                 continue;
 
-            if ((!options.doubleIndexing) && (TID == 0) &&
-                (options.verbosity >= 1))
+            if ((TID == 0) && (options.verbosity >= 1))
             {
                 unsigned curPercent = ((t * 50) / localHolder.nBlocks) * 2; // round to even
                 printProgressBar(lastPercent, curPercent);
@@ -583,7 +545,7 @@ realMain(LambdaOptions                        & options,
 
         } // implicit thread sync here
 
-        if ((!options.doubleIndexing) && (TID == 0) && (options.verbosity >= 1))
+        if ((TID == 0) && (options.verbosity >= 1))
             printProgressBar(lastPercent, 100);
 
         SEQAN_OMP_PRAGMA(critical(statsAdd))
@@ -596,10 +558,7 @@ realMain(LambdaOptions                        & options,
 
     myWriteFooter(globalHolder, options);
 
-    if (!options.doubleIndexing)
-    {
-        myPrint(options, 2, "Runtime total: ", sysTime() - start, "s.\n\n");
-    }
+    myPrint(options, 2, "Runtime total: ", sysTime() - start, "s.\n\n");
 
     printStats(globalHolder.stats, options);
 }
