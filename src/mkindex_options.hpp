@@ -27,14 +27,6 @@
 #include <unistd.h>
 #include <bitset>
 
-#include <seqan/basic.h>
-#include <seqan/translation.h>
-#include <seqan/arg_parse.h>
-#include <seqan/index.h>
-#include <seqan/blast.h>
-
-using namespace seqan;
-
 // --------------------------------------------------------------------------
 // Class LambdaIndexerOptions
 // --------------------------------------------------------------------------
@@ -46,6 +38,8 @@ struct LambdaIndexerOptions : public SharedOptions
     std::string     algo = "radixsort";
     std::string     accToTaxMapFile;
     std::string     taxDumpDir;
+
+    std::string     tmpdir = std::filesystem::current_path();
 
     bool            truncateIDs = true;
 
@@ -63,11 +57,10 @@ struct LambdaIndexerOptions : public SharedOptions
 // INDEXER
 void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
 {
-    std::string programName = "lambda2 " + std::string(argv[0]);
+    std::string programName = "lambda3 " + std::string(argv[0]);
 
     // this is important for option handling:
-    if (std::string(argv[0]) == "mkindexn")
-        options.blastProgram = BlastProgram::BLASTN;
+    options.nucleotide_mode = (std::string(argv[0]) == "mkindexn");
 
     seqan3::argument_parser parser(programName, argc, argv);
 
@@ -120,7 +113,7 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
     // TODO Does this input directory structure work?
     parser.add_option(options.indexDir, 'i', "index",
         "The output directory for the index files (defaults to \"DATABASE.lambda\").",
-        seqan3::option_spec::DEFAULT, seqan3::path_existence_validator());
+        seqan3::option_spec::DEFAULT);
 
     std::string dbIndexTypeTmp = "fm";
     parser.add_option(dbIndexTypeTmp, '\0', "db-index-type", "Suffix array or full-text minute space.",
@@ -134,7 +127,7 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
     std::string alphabetReductionTmp = "murphy10";
     int geneticCodeTmp = 1;
 
-    if (options.blastProgram == BlastProgram::BLASTN)
+    if (options.nucleotide_mode)
     {
         options.subjOrigAlphabet = AlphabetEnum::DNA5;
         options.transAlphabet    = AlphabetEnum::DNA5;
@@ -165,20 +158,12 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
         seqan3::option_spec::ADVANCED,
         seqan3::value_list_validator({"mergesort", "quicksortbuckets", "quicksort", "radixsort", "skew7ext"}));
 
-#ifdef _OPENMP
     parser.add_option(options.threads, 't', "threads",
         "Number of threads to run concurrently (ignored if a == skew7ext).", seqan3::option_spec::ADVANCED,
-        seqan3::arithmetic_range_validator{1, (double) omp_get_max_threads() * 10});
-#else
-    parser.add_option(options.threads, 't', "threads",
-        "LAMBDA BUILT WITHOUT OPENMP; setting this option has no effect.", seqan3::option_spec::ADVANCED,
-        seqan3::arithmetic_range_validator{1, 1});
-#endif
+        seqan3::arithmetic_range_validator{1, static_cast<double>(options.threads)});
 
-    std::string tmpdir;
-    getCwd(tmpdir);
     // TODO change validator
-    parser.add_option(tmpdir,'\0', "tmp-dir", "temporary directory used by skew, defaults to working directory.",
+    parser.add_option(options.tmpdir,'\0', "tmp-dir", "temporary directory used by skew, defaults to working directory.",
         seqan3::option_spec::ADVANCED, seqan3::path_existence_validator());
 
     parser.add_section("Remarks");
@@ -199,7 +184,7 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
         options.dbIndexType = DbIndexType::FM_INDEX;
 
     // set options for protein alphabet, genetic code and alphabet reduction
-    if (options.blastProgram != BlastProgram::BLASTN)
+    if (!options.nucleotide_mode)
     {
         if (inputAlphabetTmp == "auto")
             options.subjOrigAlphabet = AlphabetEnum::DNA4;
@@ -222,7 +207,7 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
             options.alphReduction = 0;
         }
 
-        options.geneticCode = static_cast<GeneticCodeSpec>(geneticCodeTmp);
+        options.geneticCode = static_cast<seqan3::genetic_code>(geneticCodeTmp);
     }
 
     // set algorithm option
@@ -234,7 +219,7 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
     }
     options.algo = algorithmTmp;
 
-    setEnv("TMPDIR", tmpdir);
+    setEnv("TMPDIR", options.tmpdir);
 
     // set hasSTaxIds based on taxonomy file
     options.hasSTaxIds = (options.accToTaxMapFile != "");
@@ -242,7 +227,7 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
     if (options.indexDir == "")
         options.indexDir = options.dbFile + ".lambda";
 
-    if (fileExists(options.indexDir.c_str()))
+    if (std::filesystem::exists(options.indexDir))
     {
         throw seqan3::parser_invalid_argument("ERROR: An output directory already exists at " + options.indexDir +
             "Remove it, or choose a different location.\n");

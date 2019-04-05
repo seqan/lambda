@@ -22,19 +22,25 @@
 #ifndef LAMBDA_SHARED_MISC_H_
 #define LAMBDA_SHARED_MISC_H_
 
-#include <unistd.h>
-#include <locale>
-#include <type_traits>
+#include <chrono>
+#include <dirent.h>
 #include <forward_list>
+#include <locale>
 #include <sys/sysctl.h>
+#include <type_traits>
+#include <unistd.h>
 
-#include <seqan/basic.h>
-#include <seqan/sequence.h>
-#include <seqan/index.h>
-#include <seqan/align.h>
-#include <seqan/blast.h>
+#include <seqan3/io/sequence_file/input.hpp>
+#include <seqan3/range/view/to_upper.hpp>
 
-using namespace seqan;
+// #include <seqan/basic.h>
+// #include <seqan/sequence.h>
+// #include <seqan/seq_io.h>
+// #include <seqan/index.h>
+// #include <seqan/align.h>
+// #include <seqan/blast.h>
+
+// using namespace seqan;
 
 // ============================================================================
 // Forwards
@@ -52,16 +58,16 @@ using MyEnableIf = typename std::enable_if<condition, int>::type;
 // Functions for translation and retranslation
 // ============================================================================
 
-template <typename TAlph>
-inline std::basic_ostream<char> &
-operator<<(std::basic_ostream<char> & out,
-           const Iter<const String<SimpleType<unsigned char,TAlph>,
-                                    seqan::Packed<> >,
-                      seqan::Packed<> > it)
-{
-    out << *it;
-    return out;
-}
+// template <typename TAlph>
+// inline std::basic_ostream<char> &
+// operator<<(std::basic_ostream<char> & out,
+//            const seqan::Iter<const seqan::String<seqan::SimpleType<unsigned char,TAlph>,
+//                                     seqan::Packed<> >,
+//                       seqan::Packed<> > it)
+// {
+//     out << *it;
+//     return out;
+// }
 
 template <typename TPos>
 inline bool
@@ -98,32 +104,35 @@ printProgressBar(uint64_t & lastPercent, uint64_t curPerc)
     }
 }
 
+struct alphabet_detection_traits : seqan3::sequence_file_input_default_traits_dna
+{
+    using sequence_alphabet = char;
+    using sequence_legal_alphabet = char;
+    template <typename alph>
+    using sequence_container = std::basic_string<alph>;
+};
 
 AlphabetEnum detectSeqFileAlphabet(std::string const & path)
 {
-    SeqFileIn infile(path.c_str());
+    seqan3::sequence_file_input<alphabet_detection_traits, seqan3::fields<seqan3::field::SEQ>> f{path};
 
-    CharString meta;
-    CharString seq;
+    std::string & seq = std::get<0>(*f.begin());
 
-    readRecord(meta, seq, infile);
-
-    // for the alphabet test, ignore masks
-    for (char & c : seq)
-        c = std::toupper(c, std::locale());
-
-    if ((CharString(String<Dna5>(seq)) == seq) || (CharString(String<Rna5>(seq)) == seq))
+    if (std::ranges::equal(seq | seqan3::view::char_to<seqan3::dna5> | seqan3::view::to_char,
+                           seq | seqan3::view::to_upper))
     {
         return AlphabetEnum::DNA5;
     }
-    else if (CharString(String<Iupac>(seq)) == seq)
+    else if (std::ranges::equal(seq | seqan3::view::char_to<seqan3::dna15> | seqan3::view::to_char,
+                                seq | seqan3::view::to_upper))
     {
         std::cerr << "\nWARNING: You query file was detected as non-standard DNA, but it could be AminoAcid, too.\n"
                     "To explicitly read as AminoAcid, add '--query-alphabet aminoacid'.\n"
                     "To ignore and disable this warning, add '--query-alphabet dna5'.\n";
         return AlphabetEnum::DNA5;
     }
-    else if (CharString(String<AminoAcid>(seq)) == seq)
+    else if (std::ranges::equal(seq | seqan3::view::char_to<seqan3::aa27> | seqan3::view::to_char,
+                                seq | seqan3::view::to_upper))
     {
         return AlphabetEnum::AMINO_ACID;
     }
@@ -138,115 +147,115 @@ AlphabetEnum detectSeqFileAlphabet(std::string const & path)
 // Function readRecord(Fasta); an overload that truncates Ids at first Whitespace
 // ----------------------------------------------------------------------------
 
-template <typename TSeqStringSet, typename TSpec, typename TRunnable>
-inline void
-_myReadRecordsImpl(TCDStringSet<String<char>> & meta,
-                   TSeqStringSet & seq,
-                   FormattedFile<Fastq, Input, TSpec> & file,
-                   TRunnable && runnable)
-{
-    typedef typename SeqFileBuffer_<TSeqStringSet, TSpec>::Type TSeqBuffer;
-
-    TSeqBuffer seqBuffer;
-
-    // reuse the memory of context(file).buffer for seqBuffer (which has a different type but same sizeof(Alphabet))
-    swapPtr(seqBuffer.data_begin, context(file).buffer[1].data_begin);
-    swapPtr(seqBuffer.data_end, context(file).buffer[1].data_end);
-    seqBuffer.data_capacity = context(file).buffer[1].data_capacity;
-
-    for (uint64_t count = 0; !atEnd(file); ++count) // count not used for abort condition
-    {
-        readRecord(context(file).buffer[0], seqBuffer, file);
-
-        // run whatever magic we are pushing in:
-        runnable(context(file).buffer[0], count);
-
-        appendValue(meta, context(file).buffer[0]);
-        appendValue(seq, seqBuffer);
-    }
-
-    swapPtr(seqBuffer.data_begin, context(file).buffer[1].data_begin);
-    swapPtr(seqBuffer.data_end, context(file).buffer[1].data_end);
-    context(file).buffer[1].data_capacity = seqBuffer.data_capacity;
-    seqBuffer.data_capacity = 0;
-}
+// template <typename TSeqStringSet, typename TSpec, typename TRunnable>
+// inline void
+// _myReadRecordsImpl(TCDStringSet<seqan::String<char>> & meta,
+//                    TSeqStringSet & seq,
+//                    FormattedFile<Fastq, Input, TSpec> & file,
+//                    TRunnable && runnable)
+// {
+//     typedef typename SeqFileBuffer_<TSeqStringSet, TSpec>::Type TSeqBuffer;
+//
+//     TSeqBuffer seqBuffer;
+//
+//     // reuse the memory of context(file).buffer for seqBuffer (which has a different type but same sizeof(Alphabet))
+//     swapPtr(seqBuffer.data_begin, context(file).buffer[1].data_begin);
+//     swapPtr(seqBuffer.data_end, context(file).buffer[1].data_end);
+//     seqBuffer.data_capacity = context(file).buffer[1].data_capacity;
+//
+//     for (uint64_t count = 0; !atEnd(file); ++count) // count not used for abort condition
+//     {
+//         readRecord(context(file).buffer[0], seqBuffer, file);
+//
+//         // run whatever magic we are pushing in:
+//         runnable(context(file).buffer[0], count);
+//
+//         appendValue(meta, context(file).buffer[0]);
+//         appendValue(seq, seqBuffer);
+//     }
+//
+//     swapPtr(seqBuffer.data_begin, context(file).buffer[1].data_begin);
+//     swapPtr(seqBuffer.data_end, context(file).buffer[1].data_end);
+//     context(file).buffer[1].data_capacity = seqBuffer.data_capacity;
+//     seqBuffer.data_capacity = 0;
+// }
 
 // ----------------------------------------------------------------------------
 // Generic Sequence loading
 // ----------------------------------------------------------------------------
 
-template <typename TSpec1,
-          typename TSpec2,
-          typename TFile,
-          typename TRunnable>
-void
-myReadRecords(TCDStringSet<String<char, TSpec1>> & ids,
-              TCDStringSet<String<Dna5, TSpec2>> & seqs,
-              TFile                              & file,
-              TRunnable                         && runnable)
-{
-    TCDStringSet<String<Iupac>> tmpSeqs; // all IUPAC nucleic acid characters are valid input
-    try
-    {
-        _myReadRecordsImpl(ids, tmpSeqs, file, std::forward<TRunnable>(runnable));
-    }
-    catch(ParseError const & e)
-    {
-        std::string err;
-        err += "\nParseError thrown: ";
-        err += e.what();
-        err += "\nMake sure that the file is standards compliant. If you get an unexpected character warning "
-               "make sure you have set the right program parameter (-p), i.e. "
-               "Lambda expected nucleic acid alphabet, maybe the file was protein?\n";
-        throw std::runtime_error(err);
-    }
-
-    seqs = tmpSeqs; // convert IUPAC alphabet to Dna5
-}
-
-template <typename TSpec1,
-          typename TSpec2,
-          typename TFile,
-          typename TRunnable>
-void
-myReadRecords(TCDStringSet<String<char, TSpec1>>       & ids,
-              TCDStringSet<String<AminoAcid, TSpec2>>  & seqs,
-              TFile                                    & file,
-              TRunnable                               && runnable)
-{
-    try
-    {
-        _myReadRecordsImpl(ids, seqs, file, std::forward<TRunnable>(runnable));
-    }
-    catch(ParseError const & e)
-    {
-        std::string err;
-        err += "\nParseError thrown: ";
-        err += e.what();
-        err += "\nMake sure that the file is standards compliant.\n";
-        throw std::runtime_error(err);
-    }
-
-    if (length(seqs) > 0)
-    {
-        // warn if sequences look like DNA
-        if (CharString(String<Dna5>(CharString(seqs[0]))) == CharString(seqs[0]))
-            std::cout << "\nWarning: The first query sequence looks like nucleic acid, but amino acid is expected.\n"
-                         "           Make sure you have set the right program parameter (-p).\n";
-    }
-}
-
-template <typename TSpec1,
-          typename TCharSpec,
-          typename TSpec2,
-          typename TFile>
-void
-myReadRecords(TCDStringSet<String<char, TSpec1>>       & ids,
-              TCDStringSet<String<TCharSpec, TSpec2>>  & seqs,
-              TFile                                    & file)
-{
-    myReadRecords(ids, seqs, file, [] (auto const &, uint64_t const) {});
-}
+// template <typename TSpec1,
+//           typename TSpec2,
+//           typename TFile,
+//           typename TRunnable>
+// void
+// myReadRecords(TCDStringSet<seqan::String<char, TSpec1>> & ids,
+//               TCDStringSet<seqan::String<seqan::Dna5, TSpec2>> & seqs,
+//               TFile                              & file,
+//               TRunnable                         && runnable)
+// {
+//     TCDStringSet<seqan::String<seqan::Iupac>> tmpSeqs; // all IUPAC nucleic acid characters are valid input
+//     try
+//     {
+//         _myReadRecordsImpl(ids, tmpSeqs, file, std::forward<TRunnable>(runnable));
+//     }
+//     catch(ParseError const & e)
+//     {
+//         std::string err;
+//         err += "\nParseError thrown: ";
+//         err += e.what();
+//         err += "\nMake sure that the file is standards compliant. If you get an unexpected character warning "
+//                "make sure you have set the right program parameter (-p), i.e. "
+//                "Lambda expected nucleic acid alphabet, maybe the file was protein?\n";
+//         throw std::runtime_error(err);
+//     }
+//
+//     seqs = tmpSeqs; // convert IUPAC alphabet to Dna5
+// }
+//
+// template <typename TSpec1,
+//           typename TSpec2,
+//           typename TFile,
+//           typename TRunnable>
+// void
+// myReadRecords(TCDStringSet<seqan::String<char, TSpec1>>       & ids,
+//               TCDStringSet<seqan::String<seqan::AminoAcid, TSpec2>>  & seqs,
+//               TFile                                    & file,
+//               TRunnable                               && runnable)
+// {
+//     try
+//     {
+//         _myReadRecordsImpl(ids, seqs, file, std::forward<TRunnable>(runnable));
+//     }
+//     catch(seqan::ParseError const & e)
+//     {
+//         std::string err;
+//         err += "\nParseError thrown: ";
+//         err += e.what();
+//         err += "\nMake sure that the file is standards compliant.\n";
+//         throw std::runtime_error(err);
+//     }
+//
+//     if (seqan::length(seqs) > 0)
+//     {
+//         // warn if sequences look like DNA
+//         if (seqan::CharString(seqan::String<seqan::Dna5>(seqan::CharString(seqs[0]))) == seqan::CharString(seqs[0]))
+//             std::cout << "\nWarning: The first query sequence looks like nucleic acid, but amino acid is expected.\n"
+//                          "           Make sure you have set the right program parameter (-p).\n";
+//     }
+// }
+//
+// template <typename TSpec1,
+//           typename TCharSpec,
+//           typename TSpec2,
+//           typename TFile>
+// void
+// myReadRecords(TCDStringSet<seqan::String<char, TSpec1>>       & ids,
+//               TCDStringSet<seqan::String<TCharSpec, TSpec2>>  & seqs,
+//               TFile                                    & file)
+// {
+//     myReadRecords(ids, seqs, file, [] (auto const &, uint64_t const) {});
+// }
 
 // ----------------------------------------------------------------------------
 // print if certain verbosity is set
@@ -284,30 +293,30 @@ myPrintImpl(SharedOptions const & options,
     myPrintImpl(options, args...);
 }
 
-template <typename ... Args>
-inline void
-myPrintImplThread(SharedOptions const & options,
-//                   T const & first,
-                  Args const & ... args)
-{
-    SEQAN_OMP_PRAGMA(critical(stdout))
-    {
-//                 std::cout << "\033[" << omp_get_thread_num() << "B";
-//                 std::cout << "\033E";
-        if (options.isTerm)
-        {
-            for (unsigned char i=0; i< omp_get_thread_num(); ++i)
-                std::cout << std::endl;
-            std::cout << "\033[K";
-        }
-        std::cout << "Thread " << std::setw(3) << omp_get_thread_num() << "| ";
-
-        myPrintImpl(options, args...);
-        std::cout << "\n" << std::flush;
-        if (options.isTerm)
-            std::cout << "\033[" << omp_get_thread_num()+1 << "A";
-    }
-}
+// template <typename ... Args>
+// inline void
+// myPrintImplThread(SharedOptions const & options,
+// //                   T const & first,
+//                   Args const & ... args)
+// {
+//     SEQAN_OMP_PRAGMA(critical(stdout))
+//     {
+// //                 std::cout << "\033[" << omp_get_thread_num() << "B";
+// //                 std::cout << "\033E";
+//         if (options.isTerm)
+//         {
+//             for (unsigned char i=0; i< omp_get_thread_num(); ++i)
+//                 std::cout << std::endl;
+//             std::cout << "\033[K";
+//         }
+//         std::cout << "Thread " << std::setw(3) << omp_get_thread_num() << "| ";
+//
+//         myPrintImpl(options, args...);
+//         std::cout << "\n" << std::flush;
+//         if (options.isTerm)
+//             std::cout << "\033[" << omp_get_thread_num()+1 << "A";
+//     }
+// }
 
 template <typename... Args>
 inline void
@@ -315,11 +324,11 @@ myPrint(SharedOptions const & options, const int verbose, Args const &... args)
 {
     if (options.verbosity >= verbose)
     {
-        #if defined(_OPENMP)
-        if (omp_in_parallel())
-            myPrintImplThread(options, args...);
-        else
-        #endif
+//         #if defined(_OPENMP)
+//         if (omp_in_parallel())
+//             myPrintImplThread(options, args...);
+//         else
+//         #endif
             myPrintImpl(options, args...);
 
         std::cout << std::flush;
@@ -353,6 +362,17 @@ appendToStatus(std::stringstream & status,
 {
     if (options.verbosity >= verbose)
         appendToStatusImpl(status, args...);
+}
+
+// ----------------------------------------------------------------------------
+// Function sysTime()
+// ----------------------------------------------------------------------------
+
+inline double sysTime()
+{
+    //TODO
+    return 0;
+//     return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch());
 }
 
 // ----------------------------------------------------------------------------

@@ -22,17 +22,26 @@
 #ifndef LAMBDA_SHARED_OPTIONS_H_
 #define LAMBDA_SHARED_OPTIONS_H_
 
-#include <cstdio>
-#include <unistd.h>
 #include <bitset>
+#include <cstdio>
+#include <thread>
+#include <unistd.h>
 
-#include <seqan/basic.h>
-#include <seqan/translation.h>
-#include <seqan/arg_parse.h>
-#include <seqan/index.h>
-#include <seqan/blast.h>
+#include <seqan3/alphabet/nucleotide/dna4.hpp>
+#include <seqan3/alphabet/nucleotide/dna5.hpp>
+#include <seqan3/alphabet/aminoacid/aa27.hpp>
+#include <seqan3/alphabet/aminoacid/translation_genetic_code.hpp>
 
-using namespace seqan;
+// #include <seqan/basic.h>
+// #include <seqan/modifier.h>
+// #include <seqan/arg_parse.h>
+// #include <seqan/index.h>
+// #include <seqan/blast.h>
+// #include <seqan/misc/terminal.h>
+// #include <seqan/translation.h>
+// #include <seqan/reduced_aminoacid.h>
+
+// using namespace seqan;
 
 // ==========================================================================
 // Classes
@@ -83,28 +92,28 @@ _indexNameToEnum(std::string const t)
 // --------------------------------------------------------------------------
 
 constexpr const char *
-_alphTypeToName(Dna const & /**/)
+_alphTypeToName(seqan3::dna4 const & /**/)
 {
     return "dna4";
 }
 
 constexpr const char *
-_alphTypeToName(Dna5 const & /**/)
+_alphTypeToName(seqan3::dna5 const & /**/)
 {
     return "dna5";
 }
 
 constexpr const char *
-_alphTypeToName(AminoAcid const & /**/)
+_alphTypeToName(seqan3::aa27 const & /**/)
 {
     return "aminoacid";
 }
 
-constexpr const char *
-_alphTypeToName(ReducedAminoAcid<Murphy10> const & /**/)
-{
-    return "murphy10";
-}
+// constexpr const char *
+// _alphTypeToName(ReducedAminoAcid<Murphy10> const & /**/)
+// {
+//     return "murphy10";
+// }
 
 enum class AlphabetEnum : uint8_t
 {
@@ -119,10 +128,10 @@ _alphabetEnumToName(AlphabetEnum const t)
 {
     switch (t)
     {
-        case AlphabetEnum::DNA4:        return _alphTypeToName(Dna{});
-        case AlphabetEnum::DNA5:        return _alphTypeToName(Dna5{});
-        case AlphabetEnum::AMINO_ACID:  return _alphTypeToName(AminoAcid{});
-        case AlphabetEnum::MURPHY10:    return _alphTypeToName(ReducedAminoAcid<Murphy10>{});
+        case AlphabetEnum::DNA4:        return _alphTypeToName(seqan3::dna4{});
+        case AlphabetEnum::DNA5:        return _alphTypeToName(seqan3::dna5{});
+        case AlphabetEnum::AMINO_ACID:  return _alphTypeToName(seqan3::aa27{});
+        case AlphabetEnum::MURPHY10:    return _alphTypeToName(seqan3::aa27{}/*seqan3::aa10murphy*/);
     }
 
     throw std::runtime_error("Error: unknown alphabet type");
@@ -132,33 +141,33 @@ _alphabetEnumToName(AlphabetEnum const t)
 inline AlphabetEnum
 _alphabetNameToEnum(std::string const t)
 {
-    if (t == _alphTypeToName(Dna{}))
+    if (t == _alphTypeToName(seqan3::dna4{}))
         return AlphabetEnum::DNA4;
-    else if (t == _alphTypeToName(Dna5{}))
+    else if (t == _alphTypeToName(seqan3::dna5{}))
         return AlphabetEnum::DNA5;
-    else if (t == _alphTypeToName(AminoAcid{}))
+    else if (t == _alphTypeToName(seqan3::aa27{}))
         return AlphabetEnum::AMINO_ACID;
-    else if (t == _alphTypeToName(ReducedAminoAcid<Murphy10>{}))
-        return AlphabetEnum::MURPHY10;
+//     else if (t == _alphTypeToName(ReducedAminoAcid<Murphy10>{}))
+//         return AlphabetEnum::MURPHY10;
 
     throw std::runtime_error("Error: unknown alphabet type");
     return AlphabetEnum::DNA4;
 }
 
-inline uint64_t
-_alphabetEnumToSize(AlphabetEnum const t)
-{
-    switch (t)
-    {
-        case AlphabetEnum::DNA4:        return sizeof(SizeTypePos_<Dna>);
-        case AlphabetEnum::DNA5:        return sizeof(SizeTypePos_<Dna5>);
-        case AlphabetEnum::AMINO_ACID:  return sizeof(SizeTypePos_<AminoAcid>);
-        case AlphabetEnum::MURPHY10:    return sizeof(SizeTypePos_<ReducedAminoAcid<Murphy10>>);
-    }
-
-    throw std::runtime_error("Error: unknown alphabet type");
-    return 0;
-}
+// inline uint64_t
+// _alphabetEnumToSize(AlphabetEnum const t)
+// {
+//     switch (t)
+//     {
+//         case AlphabetEnum::DNA4:        return sizeof(SizeTypePos_<Dna>);
+//         case AlphabetEnum::DNA5:        return sizeof(SizeTypePos_<Dna5>);
+//         case AlphabetEnum::AMINO_ACID:  return sizeof(SizeTypePos_<AminoAcid>);
+//         case AlphabetEnum::MURPHY10:    return sizeof(SizeTypePos_<ReducedAminoAcid<Murphy10>>);
+//     }
+//
+//     throw std::runtime_error("Error: unknown alphabet type");
+//     return 0;
+// }
 
 // --------------------------------------------------------------------------
 // Class SharedOptions
@@ -181,29 +190,27 @@ struct SharedOptions
     AlphabetEnum transAlphabet;
     AlphabetEnum reducedAlphabet;
 
-    GeneticCodeSpec geneticCode = static_cast<GeneticCodeSpec>(0);//CANONICAL;
+    seqan3::genetic_code geneticCode{0};//CANONICAL;
 
-    BlastProgram blastProgram   = BlastProgram::UNKNOWN;
+//     seqan::BlastProgram blastProgram   = seqan::BlastProgram::UNKNOWN;
+    bool        nucleotide_mode = false;
+    bool        need_to_translate = false;
 
     bool        isTerm          = true;
     unsigned    terminalCols    = 80;
 
-#ifdef _OPENMP
-    uint64_t    threads         = omp_get_max_threads();
-#else
-    uint64_t    threads         = 1;
-#endif
+    uint64_t    threads         = std::thread::hardware_concurrency();
 
     bool        hasSTaxIds      = false;
 
     SharedOptions()
     {
-        isTerm = isTerminal();
-        if (isTerm)
-        {
-            unsigned _rows;
-            getTerminalSize(terminalCols, _rows);
-        }
+//         isTerm = seqan::isTerminal();
+//         if (isTerm)
+//         {
+//             unsigned _rows;
+//             seqan::getTerminalSize(terminalCols, _rows);
+//         }
     }
 };
 

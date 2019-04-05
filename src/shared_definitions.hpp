@@ -22,17 +22,20 @@
 #ifndef SEQAN_SHARED_DEFINITIONS_H_
 #define SEQAN_SHARED_DEFINITIONS_H_
 
-#include <seqan/index.h>
-#include <seqan/blast.h>
+#include <seqan3/search/fm_index/fm_index.hpp>
+#include <seqan3/search/fm_index/bi_fm_index.hpp>
 
-using namespace seqan;
+// #include <seqan/index.h>
+// #include <seqan/blast.h>
+
+// using namespace seqan;
 
 // ==========================================================================
 // Metafunctions
 // ==========================================================================
 
 // SIZE TYPES
-
+#if 0
 // Expected Number of Sequences
 template <typename TAlph>
 using SizeTypeNum_ = uint32_t;
@@ -129,43 +132,42 @@ struct LambdaFMIndexConfigInBi : LambdaFMIndexConfig
 {
     using Bwt       = Levels<void, LevelsPrefixRDConfig<LengthSum, TAlloc, 3, 3> >;
 };
+#endif
 
-template <typename TSpec = void>
-using TFMIndex = FMIndex<TSpec, LambdaFMIndexConfig>;
+template <typename TText = void>
+using TFMIndex = seqan3::fm_index<TText>;
 
-template <typename TSpec = void>
-using TFMIndexInBi = FMIndex<TSpec, LambdaFMIndexConfigInBi>;
+template <typename TText = void>
+using TFMIndexInBi = seqan3::bi_fm_index<TText>;
 
 // lazy...
 template <typename TString>
-using TCDStringSet = StringSet<TString, Owner<ConcatDirect<> > >;
+using TCDStringSet = std::vector<TString>; //TODO seqan3::concatenated_sequences
 
-template <BlastProgram p>
-using OrigQryAlph = typename std::conditional<
-                                           (p == BlastProgram::BLASTN) ||
-                                           (p == BlastProgram::BLASTX) ||
-                                           (p == BlastProgram::TBLASTX),
-                                           Dna5,
-                                           AminoAcid>::type;
-
-template <BlastProgram p>
-using OrigSubjAlph = typename std::conditional<
-                                           (p == BlastProgram::BLASTN) ||
-                                           (p == BlastProgram::TBLASTN) ||
-                                           (p == BlastProgram::TBLASTX),
-                                           Dna5,
-                                           AminoAcid>::type;
-
-template <BlastProgram p>
-using TransAlph = typename std::conditional<(p == BlastProgram::BLASTN),
-                                            Dna5,
-                                            AminoAcid>::type;
-
-
-template <BlastProgram p, typename TRedAlph_>
-using RedAlph = typename std::conditional<(p == BlastProgram::BLASTN),
-                                          Dna5,
-                                          TRedAlph_>::type;
+// template <seqan::BlastProgram p>
+// using OrigQryAlph = typename std::conditional_t<(p == seqan::BlastProgram::BLASTN) ||
+//                                                 (p == seqan::BlastProgram::BLASTX) ||
+//                                                 (p == seqan::BlastProgram::TBLASTX),
+//                                                 seqan3::dna5,
+//                                                 seqan3::aa27>;
+//
+// template <seqan::BlastProgram p>
+// using OrigSubjAlph = typename std::conditional_t<(p == seqan::BlastProgram::BLASTN) ||
+//                                                  (p == seqan::BlastProgram::TBLASTN) ||
+//                                                  (p == seqan::BlastProgram::TBLASTX),
+//                                                  seqan3::dna5,
+//                                                  seqan3::aa27>;
+//
+// template <seqan::BlastProgram p>
+// using TransAlph = typename std::conditional_t<(p == seqan::BlastProgram::BLASTN),
+//                                              seqan3::dna5,
+//                                              seqan3::aa27>;
+//
+//
+// template <seqan::BlastProgram p, typename TRedAlph_>
+// using RedAlph = typename std::conditional_t<(p == seqan::BlastProgram::BLASTN),
+//                                             seqan3::dna5,
+//                                             seqan3::aa27>;
 
 
 

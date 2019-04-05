@@ -20,57 +20,39 @@
 // ==========================================================================
 
 #include <initializer_list>
-
-#include <seqan/basic.h>
-#include <seqan/arg_parse.h>
-#include <seqan/seq_io.h>
-
 #include <iostream>
+
+#include <cereal/types/map.hpp>
+#include <cereal/types/vector.hpp>
+#include <cereal/types/string.hpp>
 
 #define LAMBDA_INDEXER 1 // some things are different for the indexer binary
 
-#include "shared_misc.hpp"
-#include "shared_definitions.hpp"
 #include "shared_options.hpp"
+#include "shared_definitions.hpp"
+#include "shared_misc.hpp"
 
 #include "mkindex_misc.hpp"
 #include "mkindex_options.hpp"
-#include "mkindex_saca.hpp"
+// #include "mkindex_saca.hpp"
 #include "mkindex_algo.hpp"
 
-using namespace seqan;
+// using namespace seqan;
 
 // ==========================================================================
 // Forwards
 // ==========================================================================
 
-void
-argConv0(LambdaIndexerOptions           & options);
+void argConv0(LambdaIndexerOptions & options);
 
-template <BlastProgram p>
-void
-argConv1(LambdaIndexerOptions     const & options,
-         BlastProgramSelector<p>  const &);
+template <bool nucleotide_mode, bool need_to_translate>
+void argConv1(LambdaIndexerOptions const & options);
 
-template <BlastProgram p,
+template <bool nucleotide_mode,
+          bool need_to_translate,
           typename TRedAlph>
-void
-argConv2(LambdaIndexerOptions     const & options,
-         BlastProgramSelector<p>  const &,
-         TRedAlph                 const &);
+void realMain(LambdaIndexerOptions const & options);
 
-template <BlastProgram p,
-          typename TRedAlph,
-          typename TIndexSpecSpec>
-void
-realMain(LambdaIndexerOptions     const & options,
-         BlastProgramSelector<p>  const &,
-         TRedAlph                 const &,
-         TIndexSpecSpec           const &);
-
-// ==========================================================================
-// Functions
-// ==========================================================================
 // --------------------------------------------------------------------------
 // Function main()
 // --------------------------------------------------------------------------
@@ -79,8 +61,6 @@ realMain(LambdaIndexerOptions     const & options,
 
 int mkindexMain(int const argc, char const ** argv)
 {
-    // Parse the command line.
-    seqan::ArgumentParser parser;
     LambdaIndexerOptions options;
     parseCommandLine(options, argc, argv);
 
@@ -108,54 +88,40 @@ int mkindexMain(int const argc, char const ** argv)
     return 0;
 }
 
-void
-argConv0(LambdaIndexerOptions & options)
+void argConv0(LambdaIndexerOptions & options)
 {
     // set blastProgram
-    if (options.blastProgram == BlastProgram::UNKNOWN) // already implies != BLASTN
+    if (!options.nucleotide_mode) // already implies != BLASTN
     {
+        //TODO apparently ignores all manually set options
         myPrint(options, 1, "Detecting database alphabet... ");
         options.subjOrigAlphabet = detectSeqFileAlphabet(options.dbFile);
         myPrint(options, 1, _alphabetEnumToName(options.subjOrigAlphabet), " detected.\n");
         if (options.subjOrigAlphabet == AlphabetEnum::DNA5) // needs to be translated
-            options.blastProgram = BlastProgram::TBLASTX;
-            // or TBLASTX, but difference is irrelevant for indexer
+            options.need_to_translate = true;
         else
-            options.blastProgram = BlastProgram::BLASTX;
-            // or BLASTP, but difference is irrelevant for indexer
+            options.need_to_translate = true;
     }
 
-    switch(options.blastProgram)
-    {
-        case BlastProgram::BLASTN:
-            return argConv2(options, BlastProgramSelector<BlastProgram::BLASTN>(), Dna5{});
-//         case BlastProgram::BLASTP:
-//             return argConv1(options, BlastProgramSelector<BlastProgram::BLASTP>());
-        case BlastProgram::BLASTX:
-            return argConv1(options, BlastProgramSelector<BlastProgram::BLASTX>());
-//         case BlastProgram::TBLASTN:
-//             return argConv1(options, BlastProgramSelector<BlastProgram::TBLASTN>());
-        case BlastProgram::TBLASTX:
-            return argConv1(options, BlastProgramSelector<BlastProgram::TBLASTX>());
-        default:
-            break;
-    }
-    throw std::invalid_argument("ERROR: Could not determine blast program mode.\n");
+    if (options.nucleotide_mode)
+        realMain<true, false, seqan3::dna5>(options);
+    else if (options.need_to_translate)
+        argConv1<false, true>(options);
+    else
+        argConv1<false, false>(options);
 }
 
 /// Alphabet reduction (skipped in case == BLASTN)
-template <BlastProgram p>
-void
-argConv1(LambdaIndexerOptions           const & options,
-         BlastProgramSelector<p>        const &)
+template <bool nucleotide_mode, bool need_to_translate>
+void argConv1(LambdaIndexerOptions           const & options)
 {
-    using Tp = BlastProgramSelector<p>;
     switch (options.reducedAlphabet)
     {
         case AlphabetEnum::AMINO_ACID:
-            return argConv2(options, Tp(), AminoAcid());
-        case AlphabetEnum::MURPHY10:
-            return argConv2(options, Tp(), ReducedAminoAcid<Murphy10>());
+            return realMain<nucleotide_mode, need_to_translate, seqan3::aa27>(options);
+//TODO reactivate when we have it in SeqAn3
+//         case AlphabetEnum::MURPHY10:
+//             return realMain<nucleotide_mode, need_to_translate, seqan3::aa10murphy>(options);
 #if 0
         case 10:
             return argConv2(options, ReducedAminoAcid<ClusterReduction<10>>());
@@ -172,30 +138,18 @@ argConv1(LambdaIndexerOptions           const & options,
     throw std::invalid_argument("ERROR: Could not determine alphabet reduction.\n");
 }
 
-template <BlastProgram p,
+template <bool nucleotide_mode,
+          bool need_to_translate,
           typename TRedAlph>
-void
-argConv2(LambdaIndexerOptions     const & options,
-         BlastProgramSelector<p>  const &,
-         TRedAlph                 const &)
+void realMain(LambdaIndexerOptions     const & options)
 {
-    if (options.algo == "radixsort")
-        return realMain(options, BlastProgramSelector<p>(), TRedAlph(), RadixSortSACreateTag());
-    else
-        return realMain(options, BlastProgramSelector<p>(), TRedAlph(), Nothing());
-}
+    using TOrigSubjAlph = std::conditional_t<nucleotide_mode,
+                                             seqan3::dna5,
+                                             std::conditional_t<need_to_translate, seqan3::dna5, seqan3::aa27>>;
+    using TTransSubjAlph = std::conditional_t<nucleotide_mode, seqan3::dna5, seqan3::aa27>;
 
-template <BlastProgram p,
-          typename TRedAlph,
-          typename TIndexSpecSpec>
-void
-realMain(LambdaIndexerOptions     const & options,
-         BlastProgramSelector<p>  const &,
-         TRedAlph                 const &,
-         TIndexSpecSpec           const &)
-{
-    using TOrigSet  = TCDStringSet<String<OrigSubjAlph<p>>>;
-    using TTransSet = TCDStringSet<String<TransAlph<p>>>;
+    using TOrigSet  = TCDStringSet<std::vector<TOrigSubjAlph>>;
+    using TTransSet = TCDStringSet<std::vector<TTransSubjAlph>>;
 
     TTransSet translatedSeqs;
 
@@ -207,8 +161,8 @@ realMain(LambdaIndexerOptions     const & options,
         loadSubjSeqsAndIds(originalSeqs, accToIdRank, options);
 
         // preserve lengths of untranslated sequences
-        if (sIsTranslated(p))
-            _saveOriginalSeqLengths(originalSeqs.limits, options);
+        if constexpr (need_to_translate)
+            _saveOriginalSeqLengths(originalSeqs, options);
 
         if (options.hasSTaxIds)
         {
@@ -216,7 +170,7 @@ realMain(LambdaIndexerOptions     const & options,
             taxIdIsPresent.reserve(2'000'000);
 
             // read the mapping file and save relevant mappings to disk
-            mapAndDumpTaxIDs(taxIdIsPresent, accToIdRank, length(originalSeqs), options);
+            mapAndDumpTaxIDs(taxIdIsPresent, accToIdRank, std::ranges::size(originalSeqs), options);
 
             // read the mapping file and save relevant mappings to disk
             parseAndDumpTaxTree(taxIdIsPresent, options);
@@ -231,58 +185,22 @@ realMain(LambdaIndexerOptions     const & options,
         dumpTranslatedSeqs(translatedSeqs, options);
 
     // see if final sequence set actually fits into index
-    checkIndexSize(translatedSeqs, options, BlastProgramSelector<p>());
+//     checkIndexSize(translatedSeqs, options, seqan::BlastProgramSelector<p>());
 
     if (options.dbIndexType == DbIndexType::FM_INDEX)
-    {
-        using TIndexSpec = TFMIndex<TIndexSpecSpec>;
-        generateIndexAndDump<TIndexSpec,TIndexSpecSpec>(translatedSeqs,
-                                                        options,
-                                                        BlastProgramSelector<p>(),
-                                                        TRedAlph(),
-                                                        Fwd());
-    }
+        generateIndexAndDump<false>(translatedSeqs, options, TRedAlph{});
     else if (options.dbIndexType == DbIndexType::BI_FM_INDEX)
-    {
-//         using TIndexSpec = BidirectionalIndex<TFMIndex<TIndexSpecSpec>>;
-        // use regular FM-index tag, because we just create two of them
-        using TIndexSpec = TFMIndexInBi<TIndexSpecSpec>;
-        // first create the reverse index (which is actually unreversed)
-        myPrint(options, 1, "Bi-Directional Index [backward]\n");
-        generateIndexAndDump<TIndexSpec,TIndexSpecSpec>(translatedSeqs,
-                                                        options,
-                                                        BlastProgramSelector<p>(),
-                                                        TRedAlph(),
-                                                        Rev());
-        // then create the regular/forward fm-index (which is actually reversed)
-        myPrint(options, 1, "Bi-Directional Index [forward]\n");
-        generateIndexAndDump<TIndexSpec,TIndexSpecSpec>(translatedSeqs,
-                                                        options,
-                                                        BlastProgramSelector<p>(),
-                                                        TRedAlph(),
-                                                        Fwd());
-    }
-#ifdef LAMBDA_LEGACY_PATHS
-    else
-    {
-        using TIndexSpec = IndexSa<TIndexSpecSpec>;
-        generateIndexAndDump<TIndexSpec,TIndexSpecSpec>(translatedSeqs,
-                                                        options,
-                                                        BlastProgramSelector<p>(),
-                                                        TRedAlph(),
-                                                        Fwd());
-    }
-#endif
+        generateIndexAndDump<true>(translatedSeqs, options, TRedAlph{});
 
     // dump options
     for (auto && s : std::initializer_list<std::pair<std::string, std::string>>
          {
              { options.indexDir + "/option:db_index_type",   std::to_string(static_cast<uint32_t>(options.dbIndexType))},
-             { options.indexDir + "/option:alph_original",   std::string(_alphTypeToName(OrigSubjAlph<p>())) },
-             { options.indexDir + "/option:alph_translated", std::string(_alphTypeToName(TransAlph<p>())) },
+             { options.indexDir + "/option:alph_original",   std::string(_alphTypeToName(TOrigSubjAlph())) },
+             { options.indexDir + "/option:alph_translated", std::string(_alphTypeToName(TTransSubjAlph())) },
              { options.indexDir + "/option:alph_reduced",    std::string(_alphTypeToName(TRedAlph())) },
-             { options.indexDir + "/option:genetic_code",    std::to_string(options.geneticCode) },
-             { options.indexDir + "/option:subj_seq_len_bits", std::to_string(sizeof(SizeTypePos_<TRedAlph>) * 8)},
+             { options.indexDir + "/option:genetic_code",    std::to_string(static_cast<uint16_t>(options.geneticCode)) },
+//              { options.indexDir + "/option:subj_seq_len_bits", std::to_string(sizeof(SizeTypePos_<TRedAlph>) * 8)},
              { options.indexDir + "/option:generation",      std::to_string(indexGeneration) },
          })
     {
@@ -290,6 +208,4 @@ realMain(LambdaIndexerOptions     const & options,
         f << std::get<1>(s);
         f.close();
     }
-
-
 }
