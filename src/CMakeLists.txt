@@ -31,7 +31,7 @@ find_package(ZLIB   QUIET)
 find_package(BZip2  QUIET)
 find_package(SeqAn  QUIET REQUIRED CONFIG)
 
-message(STATUS "These dependencies where found:")
+message(STATUS "These dependencies were found:")
 message(   "     OPENMP     ${OPENMP_FOUND}      ${OpenMP_CXX_FLAGS}")
 message(   "     ZLIB       ${ZLIB_FOUND}      ${ZLIB_VERSION_STRING}")
 message(   "     BZIP2      ${BZIP2_FOUND}      ${BZIP2_VERSION_STRING}")
@@ -78,7 +78,7 @@ if (SEQAN_VERSION_STRING VERSION_LESS "${MINIMUM_SEQAN_VERSION}")
     return ()
 endif ()
 
-message(STATUS "The requirements where met.")
+message(STATUS "The requirements were met.")
 
 # ----------------------------------------------------------------------------
 # App-Level Configuration
