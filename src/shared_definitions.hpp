@@ -25,10 +25,14 @@
 #include <seqan3/search/fm_index/fm_index.hpp>
 #include <seqan3/search/fm_index/bi_fm_index.hpp>
 
-// #include <seqan/index.h>
-// #include <seqan/blast.h>
+#include "shared_options.hpp"
 
-// using namespace seqan;
+// ==========================================================================
+// Global variables
+// ==========================================================================
+
+// this is increased after incompatible changes to on-disk format
+inline constexpr uint64_t currentIndexGeneration = 0;
 
 // ==========================================================================
 // Metafunctions
@@ -144,38 +148,31 @@ using TFMIndexInBi = seqan3::bi_fm_index<TText>;
 template <typename TString>
 using TCDStringSet = std::vector<TString>; //TODO seqan3::concatenated_sequences
 
-// template <seqan::BlastProgram p>
-// using OrigQryAlph = typename std::conditional_t<(p == seqan::BlastProgram::BLASTN) ||
-//                                                 (p == seqan::BlastProgram::BLASTX) ||
-//                                                 (p == seqan::BlastProgram::TBLASTX),
-//                                                 seqan3::dna5,
-//                                                 seqan3::aa27>;
-//
-// template <seqan::BlastProgram p>
-// using OrigSubjAlph = typename std::conditional_t<(p == seqan::BlastProgram::BLASTN) ||
-//                                                  (p == seqan::BlastProgram::TBLASTN) ||
-//                                                  (p == seqan::BlastProgram::TBLASTX),
-//                                                  seqan3::dna5,
-//                                                  seqan3::aa27>;
-//
-// template <seqan::BlastProgram p>
-// using TransAlph = typename std::conditional_t<(p == seqan::BlastProgram::BLASTN),
-//                                              seqan3::dna5,
-//                                              seqan3::aa27>;
-//
-//
-// template <seqan::BlastProgram p, typename TRedAlph_>
-// using RedAlph = typename std::conditional_t<(p == seqan::BlastProgram::BLASTN),
-//                                             seqan3::dna5,
-//                                             seqan3::aa27>;
+
+template <DbIndexType           dbIndexType,
+          AlphabetEnum          origAlph,
+          AlphabetEnum          transAlph,
+          AlphabetEnum          redAph>     // <- all members of index_file_options that influence types
+struct index_file
+{
+    index_file_options options{};
+
+    TCDStringSet<std::string>                                   ids;
+    std::vector<uint64_t>                                       origSeqLengths; // only used when origAlph != transAlph
+    TCDStringSet<std::vector<_alphabetEnumToType<transAlph>>    transSeqs;
+    std::vector<std::vector<uint32_t>>                          sTaxIds; //TODO double check int-width
+
+    std::vector<uint8_t>                                        taxonHeights;
+    std::vector<uint32_t>                                       taxonParentIDs;
+    std::vector<std::string>                                    taxonNames;
 
 
 
-// ==========================================================================
-// Global variables
-// ==========================================================================
+struct index_file_only_options
+{
+    index_file_options;
+};
 
-// this is increased after incompatible changes to on-disk format
-constexpr uint64_t indexGeneration = 1;
+
 
 #endif // header guard

@@ -239,15 +239,6 @@ translateOrSwap(TCDStringSet<std::vector<TTransAlph>> & out,
 
     out = in | seqan3::view::translate | std::view::join; //TODO geneticCode
 
-//     auto v = in | seqan3::view::translate | std::view::join;
-//     out.resize(std::ranges::size(in) * 6);
-//     auto b = std::ranges::begin(v);
-//     for (auto & elem : out)
-//     {
-//         elem = *b;
-//         ++b;
-//     }
-
     myPrint(options, 1, " done.\n");
     double finish = sysTime() - start;
     myPrint(options, 2, "Runtime: ", finish, "s \n\n");
@@ -809,15 +800,15 @@ generateIndexAndDump(TStringSet                       & seqs,
     s = sysTime();
     std::string _path = options.indexDir + "/index";
 
-    index.store(_path);
+//     index.store(_path);
 
 //TODO once sdsl-ceral-support in SeqAn3
-//     {
-//         std::ofstream os{_path.c_str()};
-//
-//         cereal::BinaryOutputArchive oarchive(os); // Create an output archive
-//         oarchive(index);
-//     }
+    {
+        std::ofstream os{_path.c_str()};
+
+        cereal::BinaryOutputArchive oarchive(os); // Create an output archive
+        oarchive(index);
+    }
 
     e = sysTime() - s;
     myPrint(options, 1, " done.\n");

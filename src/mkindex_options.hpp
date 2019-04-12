@@ -111,12 +111,12 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
     parser.add_section("Output Options");
 
     // TODO Does this input directory structure work?
-    parser.add_option(options.indexDir, 'i', "index",
-        "The output directory for the index files (defaults to \"DATABASE.lambda\").",
+    parser.add_option(options.indexFilePath, 'i', "index",
+        "The output path for the index file (defaults to \"DATABASE.lambda\").",
         seqan3::option_spec::DEFAULT);
 
     std::string dbIndexTypeTmp = "fm";
-    parser.add_option(dbIndexTypeTmp, '\0', "db-index-type", "Suffix array or full-text minute space.",
+    parser.add_option(dbIndexTypeTmp, '\0', "db-index-type", "FM-Index oder bidirectional FM-Index.",
         seqan3::option_spec::ADVANCED);
 
     parser.add_option(options.truncateIDs, '\0', "truncate-ids",
@@ -129,9 +129,9 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
 
     if (options.nucleotide_mode)
     {
-        options.subjOrigAlphabet = AlphabetEnum::DNA5;
-        options.transAlphabet    = AlphabetEnum::DNA5;
-        options.reducedAlphabet  = AlphabetEnum::DNA5;
+        options.indexFileOptions.origAlphabet     = AlphabetEnum::DNA5;
+        options.indexFileOptions.transAlphabet    = AlphabetEnum::DNA5;
+        options.indexFileOptions.reducedAlphabet  = AlphabetEnum::DNA5;
     }
     else
     {
@@ -176,35 +176,30 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
     parser.parse();
 
     // set db index type
-    if (dbIndexTypeTmp == "sa")
-        options.dbIndexType = DbIndexType::SUFFIX_ARRAY;
-    else if (dbIndexTypeTmp == "bifm")
-        options.dbIndexType = DbIndexType::BI_FM_INDEX;
+    if (dbIndexTypeTmp == "bifm")
+        options.indexFileOptions.dbIndexType = DbIndexType::BI_FM_INDEX;
     else
-        options.dbIndexType = DbIndexType::FM_INDEX;
+        options.indexFileOptions.dbIndexType = DbIndexType::FM_INDEX;
 
     // set options for protein alphabet, genetic code and alphabet reduction
     if (!options.nucleotide_mode)
     {
         if (inputAlphabetTmp == "auto")
-            options.subjOrigAlphabet = AlphabetEnum::DNA4;
+            options.indexFileOptions.origAlph    = AlphabetEnum::UNDEFINED;
         else if (inputAlphabetTmp == "dna5")
-            options.subjOrigAlphabet = AlphabetEnum::DNA5;
+            options.indexFileOptions.origAlph = AlphabetEnum::DNA5;
         else if (inputAlphabetTmp == "aminoacid")
-            options.subjOrigAlphabet = AlphabetEnum::AMINO_ACID;
+            options.indexFileOptions.origAlph = AlphabetEnum::AMINO_ACID;
         else
             throw seqan3::parser_invalid_argument("ERROR: Invalid argument to --input-alphabet\n");
 
         if (alphabetReductionTmp == "murphy10")
         {
-            options.reducedAlphabet = AlphabetEnum::MURPHY10;
-            // TODO deprecate:
-            options.alphReduction = 2;
+            options.indexFileOptions.redAlph = AlphabetEnum::MURPHY10;
         }
         else
         {
-            options.reducedAlphabet = AlphabetEnum::AMINO_ACID;
-            options.alphReduction = 0;
+            options.indexFileOptions.redAlph = AlphabetEnum::AMINO_ACID;
         }
 
         options.geneticCode = static_cast<seqan3::genetic_code>(geneticCodeTmp);
@@ -224,27 +219,27 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
     // set hasSTaxIds based on taxonomy file
     options.hasSTaxIds = (options.accToTaxMapFile != "");
 
-    if (options.indexDir == "")
-        options.indexDir = options.dbFile + ".lambda";
+    if (options.indexFilePath == "")
+        options.indexFilePath = options.dbFile + ".lambda";
 
-    if (std::filesystem::exists(options.indexDir))
+    if (std::filesystem::exists(options.indexFilePath))
     {
-        throw seqan3::parser_invalid_argument("ERROR: An output directory already exists at " + options.indexDir +
+        throw seqan3::parser_invalid_argument("ERROR: An output file already exists at " + options.indexFilePath +
             "Remove it, or choose a different location.\n");
     }
     else
     {
-        if (mkdir(options.indexDir.c_str(), S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH))
-        {
-            throw seqan3::parser_invalid_argument("ERROR: Cannot create output directory at " + options.indexDir + '\n');
-        }
+//         if (mkdir(options.indexFilePath.c_str(), S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH))
+//         {
+//             throw seqan3::parser_invalid_argument("ERROR: Cannot create output directory at " + options.indexFilePath + '\n');
+//         }
     }
 
     if (!options.taxDumpDir.empty())
     {
         if (!options.hasSTaxIds)
         {
-            throw seqan3::parser_invalid_argument("ERROR: There is no point in inclduing a taxonomic tree in the index, if\n"
+            throw seqan3::parser_invalid_argument("ERROR: There is no point in including a taxonomic tree in the index, if\n"
                                                   "       you don't also include taxonomic IDs for your sequences.\n");
         }
         //TODO check existance of directory

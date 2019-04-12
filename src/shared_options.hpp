@@ -53,7 +53,6 @@
 
 enum class DbIndexType : uint8_t
 {
-    SUFFIX_ARRAY,
     FM_INDEX,
     BI_FM_INDEX
 };
@@ -63,7 +62,6 @@ _indexEnumToName(DbIndexType const t)
 {
     switch (t)
     {
-        case DbIndexType::SUFFIX_ARRAY:  return "suffix_array";
         case DbIndexType::FM_INDEX:      return "fm_index";
         case DbIndexType::BI_FM_INDEX:   return "bi_fm_index";
     }
@@ -75,9 +73,7 @@ _indexEnumToName(DbIndexType const t)
 inline DbIndexType
 _indexNameToEnum(std::string const t)
 {
-    if (t == "suffix_array")
-        return DbIndexType::SUFFIX_ARRAY;
-    else if (t == "bi_fm_index")
+    if (t == "bi_fm_index")
         return DbIndexType::BI_FM_INDEX;
     else if (t == "fm_index")
         return DbIndexType::FM_INDEX;
@@ -117,6 +113,7 @@ _alphTypeToName(seqan3::aa27 const & /**/)
 
 enum class AlphabetEnum : uint8_t
 {
+    UNDEFINED,
     DNA4,
     DNA5,
     AMINO_ACID,
@@ -128,6 +125,7 @@ _alphabetEnumToName(AlphabetEnum const t)
 {
     switch (t)
     {
+        case AlphabetEnum::UNDEFINED:   return "UNDEFINED";
         case AlphabetEnum::DNA4:        return _alphTypeToName(seqan3::dna4{});
         case AlphabetEnum::DNA5:        return _alphTypeToName(seqan3::dna5{});
         case AlphabetEnum::AMINO_ACID:  return _alphTypeToName(seqan3::aa27{});
@@ -141,7 +139,9 @@ _alphabetEnumToName(AlphabetEnum const t)
 inline AlphabetEnum
 _alphabetNameToEnum(std::string const t)
 {
-    if (t == _alphTypeToName(seqan3::dna4{}))
+    if (t == "UNDEFINED")
+        return AlphabetEnum::UNDEFINED;
+    else if (t == _alphTypeToName(seqan3::dna4{}))
         return AlphabetEnum::DNA4;
     else if (t == _alphTypeToName(seqan3::dna5{}))
         return AlphabetEnum::DNA5;
@@ -153,6 +153,36 @@ _alphabetNameToEnum(std::string const t)
     throw std::runtime_error("Error: unknown alphabet type");
     return AlphabetEnum::DNA4;
 }
+
+template <AlphabetEnum e>
+struct _alphabetEnumToType_;
+
+template <>
+struct _alphabetEnumToType_<AlphabetEnum::DNA4>
+{
+    using type = seqan3::dna4;
+};
+
+template <>
+struct _alphabetEnumToType_<AlphabetEnum::DNA5>
+{
+    using type = seqan3::dna5;
+};
+
+template <>
+struct _alphabetEnumToType_<AlphabetEnum::AMINO_ACID>
+{
+    using type = seqan3::aa27;
+};
+
+template <>
+struct _alphabetEnumToType_<AlphabetEnum::MURPHY10>
+{
+    using type = seqan3::aa27{}/*seqan3::aa10murphy*/;
+};
+
+template <AlphabetEnum e>
+using _alphabetEnumToType = typename _alphabetEnumToType_::type;
 
 // inline uint64_t
 // _alphabetEnumToSize(AlphabetEnum const t)
@@ -169,6 +199,21 @@ _alphabetNameToEnum(std::string const t)
 //     return 0;
 // }
 
+struct index_file_options
+{
+    uint64_t indexGeneration{0}; // bump this on incompatible changes
+
+    DbIndexType indexType{};
+
+    AlphabetEnum origAlph{};
+    AlphabetEnum transAlph{};
+    AlphabetEnum redAlph{};
+
+    seqan3::genetic_code geneticCode{};
+
+    //TODO reserve space here for more vars?
+};
+
 // --------------------------------------------------------------------------
 // Class SharedOptions
 // --------------------------------------------------------------------------
@@ -182,15 +227,9 @@ struct SharedOptions
 
     std::string commandLine;
 
-    std::string indexDir;
+    std::string indexFilePath;
 
-    DbIndexType dbIndexType;
-
-    AlphabetEnum subjOrigAlphabet;
-    AlphabetEnum transAlphabet;
-    AlphabetEnum reducedAlphabet;
-
-    seqan3::genetic_code geneticCode{0};//CANONICAL;
+    index_file_options indexFileOptions{};
 
 //     seqan::BlastProgram blastProgram   = seqan::BlastProgram::UNKNOWN;
     bool        nucleotide_mode = false;
