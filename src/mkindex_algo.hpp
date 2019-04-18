@@ -192,7 +192,7 @@ loadSubjSeqsAndIds(TCDStringSet<std::vector<TOrigAlph>> & originalSeqs,
 // --------------------------------------------------------------------------
 
 template <typename TSeqSet>
-inline void
+void
 _saveOriginalSeqLengths(TSeqSet const & seqSet,
                        LambdaIndexerOptions const & options)
 {
@@ -229,7 +229,7 @@ _saveOriginalSeqLengths(TSeqSet const & seqSet,
 // --------------------------------------------------------------------------
 
 template <typename TTransAlph, typename TOrigAlph>
-inline void
+void
 translateOrSwap(TCDStringSet<std::vector<TTransAlph>> & out,
                 TCDStringSet<std::vector<TOrigAlph>> & in,
                 LambdaIndexerOptions const & options)
@@ -258,7 +258,7 @@ translateOrSwap(TCDStringSet<std::vector<TSameAlph>> & out,
 // --------------------------------------------------------------------------
 
 template <typename TTransAlph>
-inline void
+void
 dumpTranslatedSeqs(TCDStringSet<std::vector<TTransAlph>> const & translatedSeqs,
                    LambdaIndexerOptions const & options)
 {
@@ -776,7 +776,7 @@ parseAndDumpTaxTree(std::vector<bool>          & taxIdIsPresent,
 template <bool is_bi,
           typename TStringSet,
           typename TRedAlph_>
-inline void
+void
 generateIndexAndDump(TStringSet                       & seqs,
                      LambdaIndexerOptions       const & options,
                      TRedAlph_                  const &)

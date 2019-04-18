@@ -45,13 +45,23 @@
 
 void argConv0(LambdaIndexerOptions & options);
 
-template <bool nucleotide_mode, bool need_to_translate>
-void argConv1(LambdaIndexerOptions const & options);
+template <DbIndexType c_indexType>
+void argConv1(LambdaIndexerOptions & options);
 
-template <bool nucleotide_mode,
-          bool need_to_translate,
-          typename TRedAlph>
-void realMain(LambdaIndexerOptions const & options);
+template <DbIndexType   c_indexType,
+          AlphabetEnum  c_origAlph>
+void argConv2(LambdaIndexerOptions const & options);
+
+template <DbIndexType   c_indexType,
+          AlphabetEnum  c_origAlph,
+          AlphabetEnum  c_transAlph>
+void argConv3(LambdaIndexerOptions const & options);
+
+template <DbIndexType           dbIndexType,
+          AlphabetEnum          origAlph,
+          AlphabetEnum          transAlph,
+          AlphabetEnum          redAph>
+void realMain(LambdaIndexerOptions     const & options);
 
 // --------------------------------------------------------------------------
 // Function main()
@@ -90,63 +100,70 @@ int mkindexMain(int const argc, char const ** argv)
 
 void argConv0(LambdaIndexerOptions & options)
 {
-    // set blastProgram
-    if (!options.nucleotide_mode) // already implies != BLASTN
+    switch (options.indexFileOptions.dbIndexType)
     {
-        //TODO apparently ignores all manually set options
-        myPrint(options, 1, "Detecting database alphabet... ");
-        options.subjOrigAlphabet = detectSeqFileAlphabet(options.dbFile);
-        myPrint(options, 1, _alphabetEnumToName(options.subjOrigAlphabet), " detected.\n");
-        if (options.subjOrigAlphabet == AlphabetEnum::DNA5) // needs to be translated
-            options.need_to_translate = true;
-        else
-            options.need_to_translate = true;
+        case DbIndexType::FM_INDEX:         return argConv1<DbIndexType::FM_INDEX>(options);
+        case DbIndexType::BI_FM_INDEX:      return argConv1<DbIndexType::BI_FM_INDEX>(options);
+        default:                            throw 42;
     }
-
-    if (options.nucleotide_mode)
-        realMain<true, false, seqan3::dna5>(options);
-    else if (options.need_to_translate)
-        argConv1<false, true>(options);
-    else
-        argConv1<false, false>(options);
 }
 
-/// Alphabet reduction (skipped in case == BLASTN)
-template <bool nucleotide_mode, bool need_to_translate>
-void argConv1(LambdaIndexerOptions           const & options)
+template <DbIndexType c_indexType>
+void argConv1(LambdaIndexerOptions & options)
 {
-    switch (options.reducedAlphabet)
+    if (options.indexFileOptions.origAlph = AlphabetEnum::UNDEFINED)
     {
-        case AlphabetEnum::AMINO_ACID:
-            return realMain<nucleotide_mode, need_to_translate, seqan3::aa27>(options);
-//TODO reactivate when we have it in SeqAn3
-//         case AlphabetEnum::MURPHY10:
-//             return realMain<nucleotide_mode, need_to_translate, seqan3::aa10murphy>(options);
-#if 0
-        case 10:
-            return argConv2(options, ReducedAminoAcid<ClusterReduction<10>>());
-        case 1:
-            return argConv2(options, AminoAcid10());
-        case 8:
-            return argConv2(options, ReducedAminoAcid<ClusterReduction<8>>());
-        case 12:
-            return argConv2(options, ReducedAminoAcid<ClusterReduction<12>>());
-#endif
-        default:
-            break;
+        myPrint(options, 1, "Detecting database alphabet... ");
+        options.indexFileOptions.origAlph = detectSeqFileAlphabet(options.dbFile);
+        myPrint(options, 1, _alphabetEnumToName(options.subjOrigAlphabet), " detected.\n");
     }
-    throw std::invalid_argument("ERROR: Could not determine alphabet reduction.\n");
+
+    switch (options.indexFileOptions.origAlph)
+    {
+//         case AlphabetEnum::DNA4:            return argConv2<c_indexType, AlphabetEnum::DNA4>(options);
+        case AlphabetEnum::DNA5:            return argConv2<c_indexType, AlphabetEnum::DNA5>(options);
+        case AlphabetEnum::AMINO_ACID:      return argConv3<c_indexType, AlphabetEnum::AMINO_ACID, AlphabetEnum::AMINO_ACID>(options);
+        default:                            throw 43;
+    }
 }
 
-template <bool nucleotide_mode,
-          bool need_to_translate,
-          typename TRedAlph>
+template <DbIndexType   c_indexType,
+          AlphabetEnum  c_origAlph>
+void argConv2(LambdaIndexerOptions const & options)
+{
+    switch (options.indexFileOptions.transAlph)
+    {
+//         case AlphabetEnum::DNA4:            return realMain<c_indexType, c_origAlph, AlphabetEnum::DNA4, AlphabetEnum::DNA4>(options);
+        case AlphabetEnum::DNA5:            return realMain<c_indexType, c_origAlph, AlphabetEnum::DNA5, AlphabetEnum::DNA5>(options);
+        case AlphabetEnum::AMINO_ACID:      return argConv3<c_indexType, c_origAlph, AlphabetEnum::AMINO_ACID>(options);
+        default:                            throw 44;
+    }
+}
+
+template <DbIndexType   c_indexType,
+          AlphabetEnum  c_origAlph,
+          AlphabetEnum  c_transAlph>
+void argConv3(LambdaIndexerOptions const & options)
+{
+    switch (options.indexFileOptions.redAlph)
+    {
+        case AlphabetEnum::AMINO_ACID:      return realMain<c_indexType, c_origAlph, c_transAlph, AlphabetEnum::AMINO_ACID>(options);
+        case AlphabetEnum::MURPHY10:        return realMain<c_indexType, c_origAlph, c_transAlph, AlphabetEnum::MURPHY10>(options);
+        //TODO other reduced alphabets
+        default:                            throw 45;
+    }
+}
+
+template <DbIndexType   c_dbIndexType,
+          AlphabetEnum  c_origAlph,
+          AlphabetEnum  c_transAlph,
+          AlphabetEnum  c_redAph>
 void realMain(LambdaIndexerOptions     const & options)
 {
-    using TOrigSubjAlph = std::conditional_t<nucleotide_mode,
-                                             seqan3::dna5,
-                                             std::conditional_t<need_to_translate, seqan3::dna5, seqan3::aa27>>;
-    using TTransSubjAlph = std::conditional_t<nucleotide_mode, seqan3::dna5, seqan3::aa27>;
+    index_file<c_dbIndexType, c_origAlph, c_transAlph, c_redAlph> f;
+
+    using TOrigSubjAlph = _alphabetEnumToType_<origAlph>;
+    using TTransSubjAlph = _alphabetEnumToType_<transAlph>;
 
     using TOrigSet  = TCDStringSet<std::vector<TOrigSubjAlph>>;
     using TTransSet = TCDStringSet<std::vector<TTransSubjAlph>>;

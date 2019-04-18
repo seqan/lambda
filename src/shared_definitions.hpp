@@ -166,11 +166,9 @@ struct index_file
     std::vector<uint32_t>                                       taxonParentIDs;
     std::vector<std::string>                                    taxonNames;
 
-
-
-struct index_file_only_options
-{
-    index_file_options;
+    std::conditional_t<dbIndexType == DbIndexType::BI_FM_INDEX,
+                       seqan3::bi_fm_index<std::remove_reference_t<decltype(seqs)>>,
+                       seqan3::fm_index<std::remove_reference_t<decltype(seqs)>>> index;
 };
 
 
