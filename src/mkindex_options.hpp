@@ -67,7 +67,7 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
     parser.info.short_description = "the Local Aligner for Massive Biological DatA";
 
     // Define usage line and long description.
-    parser.info.synopsis.push_back("[\\fIOPTIONS\\fP] \\-d DATABASE.fasta [-i INDEX.lambda]\\fP");
+    parser.info.synopsis.push_back("[\\fIOPTIONS\\fP] \\-d DATABASE.fasta [-i INDEX.lba]\\fP");
 
     parser.info.description.push_back("This is the indexer command for creating lambda-compatible databases.");
 
@@ -110,10 +110,11 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
 
     parser.add_section("Output Options");
 
-    // TODO Does this input directory structure work?
+    options.indexFilePath = "»INPUT«.lba";
     parser.add_option(options.indexFilePath, 'i', "index",
-        "The output path for the index file (defaults to \"DATABASE.lambda\").",
-        seqan3::option_spec::DEFAULT);
+        "The output path for the index file.",
+        seqan3::option_spec::DEFAULT,
+        seqan3::file_ext_validator({"lba", "lta"}));
 
     std::string dbIndexTypeTmp = "fm";
     parser.add_option(dbIndexTypeTmp, '\0', "db-index-type", "FM-Index oder bidirectional FM-Index.",
@@ -129,12 +130,16 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
 
     if (options.nucleotide_mode)
     {
-        options.indexFileOptions.origAlphabet     = AlphabetEnum::DNA5;
-        options.indexFileOptions.transAlphabet    = AlphabetEnum::DNA5;
-        options.indexFileOptions.reducedAlphabet  = AlphabetEnum::DNA5;
+        options.indexFileOptions.origAlph     = AlphabetEnum::DNA5;
+        options.indexFileOptions.transAlph    = AlphabetEnum::DNA5;
+        options.indexFileOptions.redAlph      = AlphabetEnum::DNA5;
     }
     else
     {
+        options.indexFileOptions.origAlph   = AlphabetEnum::UNDEFINED;
+        options.indexFileOptions.transAlph  = AlphabetEnum::AMINO_ACID;
+        options.indexFileOptions.redAlph    = AlphabetEnum::MURPHY10;
+
         parser.add_section("Alphabet and Translation");
 
         parser.add_option(inputAlphabetTmp,'a', "input-alphabet",
@@ -177,32 +182,16 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
 
     // set db index type
     if (dbIndexTypeTmp == "bifm")
-        options.indexFileOptions.dbIndexType = DbIndexType::BI_FM_INDEX;
+        options.indexFileOptions.indexType = DbIndexType::BI_FM_INDEX;
     else
-        options.indexFileOptions.dbIndexType = DbIndexType::FM_INDEX;
+        options.indexFileOptions.indexType = DbIndexType::FM_INDEX;
 
     // set options for protein alphabet, genetic code and alphabet reduction
     if (!options.nucleotide_mode)
     {
-        if (inputAlphabetTmp == "auto")
-            options.indexFileOptions.origAlph    = AlphabetEnum::UNDEFINED;
-        else if (inputAlphabetTmp == "dna5")
-            options.indexFileOptions.origAlph = AlphabetEnum::DNA5;
-        else if (inputAlphabetTmp == "aminoacid")
-            options.indexFileOptions.origAlph = AlphabetEnum::AMINO_ACID;
-        else
-            throw seqan3::parser_invalid_argument("ERROR: Invalid argument to --input-alphabet\n");
-
-        if (alphabetReductionTmp == "murphy10")
-        {
-            options.indexFileOptions.redAlph = AlphabetEnum::MURPHY10;
-        }
-        else
-        {
-            options.indexFileOptions.redAlph = AlphabetEnum::AMINO_ACID;
-        }
-
-        options.geneticCode = static_cast<seqan3::genetic_code>(geneticCodeTmp);
+        options.indexFileOptions.origAlph       = _alphabetNameToEnum(inputAlphabetTmp);
+        options.indexFileOptions.redAlph        = _alphabetNameToEnum(alphabetReductionTmp);
+        options.indexFileOptions.geneticCode    = static_cast<seqan3::genetic_code>(geneticCodeTmp);
     }
 
     // set algorithm option
@@ -219,13 +208,14 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
     // set hasSTaxIds based on taxonomy file
     options.hasSTaxIds = (options.accToTaxMapFile != "");
 
-    if (options.indexFilePath == "")
-        options.indexFilePath = options.dbFile + ".lambda";
+    if (options.indexFilePath == "»INPUT«.lba")
+        options.indexFilePath = options.dbFile + ".lba";
 
     if (std::filesystem::exists(options.indexFilePath))
     {
-        throw seqan3::parser_invalid_argument("ERROR: An output file already exists at " + options.indexFilePath +
-            "Remove it, or choose a different location.\n");
+        throw seqan3::parser_invalid_argument("ERROR: An output file already exists at " +
+                                              options.indexFilePath.string() +
+                                              "\n       Remove it, or choose a different location.\n");
     }
     else
     {

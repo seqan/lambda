@@ -24,6 +24,7 @@
 
 #include <seqan3/io/sequence_file/input.hpp>
 #include <seqan3/io/detail/misc_input.hpp>
+#include <seqan3/range/view/convert.hpp>
 #include <seqan3/range/view/translation.hpp>
 #include <seqan3/std/charconv>
 #include <seqan3/std/concepts>
@@ -38,11 +39,19 @@
 // --------------------------------------------------------------------------
 
 template <typename TOrigAlph>
-void
-loadSubjSeqsAndIds(TCDStringSet<std::vector<TOrigAlph>> & originalSeqs,
-                   std::unordered_map<std::string, uint64_t> & accToIdRank,
-                   LambdaIndexerOptions const & options)
+auto
+loadSubjSeqsAndIds(LambdaIndexerOptions const & options)
 {
+    using TIDs          = TCDStringSet<std::string>;
+    using TOrigSeqs     = TCDStringSet<std::vector<TOrigAlph>>;
+    using TAccToIdRank  = std::unordered_map<std::string, uint64_t>;
+
+    std::tuple<TIDs, TOrigSeqs, TAccToIdRank> ret;
+
+    auto & ids          = std::get<0>(ret);
+    auto & originalSeqs = std::get<1>(ret);
+    auto & accToIdRank  = std::get<2>(ret);
+
     // Make sure we have enough RAM to load the file
     auto ram = getTotalSystemMemory();
     auto fS = fileSize(options.dbFile.c_str());
@@ -54,9 +63,9 @@ loadSubjSeqsAndIds(TCDStringSet<std::vector<TOrigAlph>> & originalSeqs,
                   << "         with more memory!\n";
 
 
-    using TIDs = TCDStringSet<std::string>;
 
-    TIDs ids; // the IDs
+
+
 
     // see http://www.uniprot.org/help/accession_numbers
     // https://www.ncbi.nlm.nih.gov/Sequin/acc.html
@@ -106,7 +115,8 @@ loadSubjSeqsAndIds(TCDStringSet<std::vector<TOrigAlph>> & originalSeqs,
     using seq_traits = std::conditional_t<seqan3::NucleotideAlphabet<TOrigAlph>,
                                           seqan3::sequence_file_input_default_traits_dna,
                                           seqan3::sequence_file_input_default_traits_aa>;
-    seqan3::sequence_file_input<seq_traits, seqan3::fields<seqan3::field::ID, seqan3::field::SEQ>> infile{options.dbFile};
+    seqan3::sequence_file_input<seq_traits, seqan3::fields<seqan3::field::ID, seqan3::field::SEQ>>
+        infile{options.dbFile};
 
     size_t count = 0;
     for (auto & [ id, seq ] : infile)
@@ -170,21 +180,7 @@ loadSubjSeqsAndIds(TCDStringSet<std::vector<TOrigAlph>> & originalSeqs,
 
     myPrint(options, 2, "\n");
 
-
-    myPrint(options, 1, "Dumping Subj Ids...");
-
-    std::string _path = options.indexDir + "/seq_ids";
-
-    {
-        std::ofstream os{_path.c_str()};
-
-        cereal::BinaryOutputArchive oarchive(os); // Create an output archive
-        oarchive(ids);
-    }
-
-    myPrint(options, 1, " done.\n");
-    finish = sysTime() - start;
-    myPrint(options, 2, "Runtime: ", finish, "s \n\n");
+    return ret;
 }
 
 // --------------------------------------------------------------------------
@@ -192,12 +188,12 @@ loadSubjSeqsAndIds(TCDStringSet<std::vector<TOrigAlph>> & originalSeqs,
 // --------------------------------------------------------------------------
 
 template <typename TSeqSet>
-void
-_saveOriginalSeqLengths(TSeqSet const & seqSet,
-                       LambdaIndexerOptions const & options)
+std::vector<uint64_t>
+saveOriginalSeqLengths(TSeqSet const & seqSet,
+                       LambdaIndexerOptions const & /**/)
 {
-    double start = sysTime();
-    myPrint(options, 1, "Dumping untranslated subject lengths...");
+//     double start = sysTime();
+//     myPrint(options, 1, "Dumping untranslated subject lengths...");
 
     std::vector<uint64_t> limits;
     limits.resize(std::ranges::size(seqSet) + 1); // last holds sum
@@ -210,18 +206,20 @@ _saveOriginalSeqLengths(TSeqSet const & seqSet,
     }
     limits.back() = sum;
 
-    std::string _path = options.indexDir + "/untranslated_seq_lengths";
+    return limits;
 
-    {
-        std::ofstream os{_path.c_str()};
-
-        cereal::BinaryOutputArchive oarchive(os); // Create an output archive
-        oarchive(limits);
-    }
-
-    myPrint(options, 1, " done.\n");
-    double finish = sysTime() - start;
-    myPrint(options, 2, "Runtime: ", finish, "s \n\n");
+//     std::string _path = options.indexDir + "/untranslated_seq_lengths";
+//
+//     {
+//         std::ofstream os{_path.c_str()};
+//
+//         cereal::BinaryOutputArchive oarchive(os); // Create an output archive
+//         oarchive(limits);
+//     }
+//
+//     myPrint(options, 1, " done.\n");
+//     double finish = sysTime() - start;
+//     myPrint(options, 2, "Runtime: ", finish, "s \n\n");
 }
 
 // --------------------------------------------------------------------------
@@ -229,11 +227,12 @@ _saveOriginalSeqLengths(TSeqSet const & seqSet,
 // --------------------------------------------------------------------------
 
 template <typename TTransAlph, typename TOrigAlph>
-void
-translateOrSwap(TCDStringSet<std::vector<TTransAlph>> & out,
-                TCDStringSet<std::vector<TOrigAlph>> & in,
-                LambdaIndexerOptions const & options)
+TCDStringSet<std::vector<TTransAlph>>
+translateSeqs(TCDStringSet<std::vector<TOrigAlph>> & in,
+              LambdaIndexerOptions const & options)
 {
+    TCDStringSet<std::vector<TTransAlph>> out;
+
     double start = sysTime();
     myPrint(options, 1, "Translating Subj Sequences...");
 
@@ -242,45 +241,21 @@ translateOrSwap(TCDStringSet<std::vector<TTransAlph>> & out,
     myPrint(options, 1, " done.\n");
     double finish = sysTime() - start;
     myPrint(options, 2, "Runtime: ", finish, "s \n\n");
+
+    return out;
 }
 
-template <typename TSameAlph>
-inline void
-translateOrSwap(TCDStringSet<std::vector<TSameAlph>> & out,
-                TCDStringSet<std::vector<TSameAlph>> & in,
-                LambdaIndexerOptions const & /**/)
+template <typename TTransAlph, typename TOrigAlph>
+    requires std::Same<TTransAlph, TOrigAlph>
+TCDStringSet<std::vector<TTransAlph>>
+translateSeqs(TCDStringSet<std::vector<TOrigAlph>> & in,
+              LambdaIndexerOptions const & /**/)
 {
-    std::swap(out, in);
+    return std::move(in);
 }
 
 // --------------------------------------------------------------------------
-// Function loadSubj()
-// --------------------------------------------------------------------------
-
-template <typename TTransAlph>
-void
-dumpTranslatedSeqs(TCDStringSet<std::vector<TTransAlph>> const & translatedSeqs,
-                   LambdaIndexerOptions const & options)
-{
-    double start = sysTime();
-    myPrint(options, 1, "Dumping unreduced Subj Sequences...");
-
-    std::string _path = options.indexDir + "/translated_seqs";
-
-    {
-        std::ofstream os{_path.c_str()};
-
-        cereal::BinaryOutputArchive oarchive(os); // Create an output archive
-        oarchive(translatedSeqs);
-    }
-
-    myPrint(options, 1, " done.\n");
-    double finish = sysTime() - start;
-    myPrint(options, 2, "Runtime: ", finish, "s \n\n");
-}
-
-// --------------------------------------------------------------------------
-// Function loadSubj()
+// Function checkIndexSize()
 // --------------------------------------------------------------------------
 
 template <typename TRedAlph>
@@ -364,14 +339,20 @@ checkIndexSize(TCDStringSet<std::vector<TRedAlph>> const & seqs,
 // Function mapAndDumpTaxIDs()
 // --------------------------------------------------------------------------
 
-void
-mapAndDumpTaxIDs(std::vector<bool>                                     & taxIdIsPresent,
-                 std::unordered_map<std::string, uint64_t>       const & accToIdRank,
-                 uint64_t                                        const   numSubjects,
-                 LambdaIndexerOptions                            const & options)
+auto mapTaxIDs(std::unordered_map<std::string, uint64_t>       const & accToIdRank,
+               uint64_t                                        const   numSubjects,
+               LambdaIndexerOptions                            const & options)
 
 {
-    std::vector<std::vector<uint32_t>> sTaxIds; // not concat because we resize inbetween
+    using TTaxIds        = std::vector<std::vector<uint32_t>>;// not concat because we resize inbetween
+    using TTaxIdsPresent = std::vector<bool>;
+
+    std::tuple<TTaxIds, TTaxIdsPresent> ret;
+
+    auto & sTaxIds          = std::get<0>(ret);
+    auto & taxIdIsPresent   = std::get<1>(ret);
+
+    taxIdIsPresent.reserve(2'000'000);
     sTaxIds.resize(numSubjects);
 
     // c++ stream
@@ -434,31 +415,41 @@ mapAndDumpTaxIDs(std::vector<bool>                                     & taxIdIs
         myPrint(options, 1, "WARNING: ", double(nomap) * 100 / numSubjects, "% of subjects have no taxID.\n"
                             "         Maybe you specified the wrong map file?\n\n");
 
-    myPrint(options, 1,"Dumping Subject Taxonomy IDs... ");
-    start = sysTime();
+    return ret;
 
-    std::string _path = options.indexDir + "/staxids";
-
-    {
-        std::ofstream os{_path.c_str()};
-
-        cereal::BinaryOutputArchive oarchive(os); // Create an output archive
-        oarchive(sTaxIds);
-    }
-    myPrint(options, 1, "done.\n");
-    myPrint(options, 2, "Runtime: ", sysTime() - start, "s\n\n");
+//     myPrint(options, 1,"Dumping Subject Taxonomy IDs... ");
+//     start = sysTime();
+//
+//     std::string _path = options.indexDir + "/staxids";
+//
+//     {
+//         std::ofstream os{_path.c_str()};
+//
+//         cereal::BinaryOutputArchive oarchive(os); // Create an output archive
+//         oarchive(sTaxIds);
+//     }
+//     myPrint(options, 1, "done.\n");
+//     myPrint(options, 2, "Runtime: ", sysTime() - start, "s\n\n");
 }
 
 // --------------------------------------------------------------------------
 // Function mapAndDumpTaxIDs()
 // --------------------------------------------------------------------------
 
-void
-parseAndDumpTaxTree(std::vector<bool>          & taxIdIsPresent,
-                    LambdaIndexerOptions const & options)
+auto parseAndStoreTaxTree(std::vector<bool>          & taxIdIsPresent,
+                          LambdaIndexerOptions const & options)
 
 {
-    std::vector<uint32_t> taxonParentIDs; // ever position has the index of its parent node
+    using TTaxonParentIDs   = std::vector<uint32_t>; // ever position has the index of its parent node
+    using TTaxonHeights     = std::vector<uint8_t>;
+    using TTaxonNames       = std::vector<std::string>;
+
+    std::tuple<TTaxonParentIDs, TTaxonHeights, TTaxonNames> ret;
+
+    auto & taxonParentIDs   = std::get<0>(ret);
+    auto & taxonHeights     = std::get<1>(ret);
+    auto & taxonNames       = std::get<2>(ret);
+
     taxonParentIDs.reserve(2'000'000); // reserve 2million to save reallocs
 
     std::string path = options.taxDumpDir + "/nodes.dmp";
@@ -606,7 +597,6 @@ parseAndDumpTaxTree(std::vector<bool>          & taxIdIsPresent,
         }
     }
 
-    std::vector<uint8_t> taxonHeights;
     taxonHeights.resize(std::ranges::size(taxonParentIDs), 0);
 
     {
@@ -634,20 +624,21 @@ parseAndDumpTaxTree(std::vector<bool>          & taxIdIsPresent,
         myPrint(options, 2, "Maximum Tree Height: ", heightMax, "\n\n");
     }
 
-    myPrint(options, 1,"Dumping Taxonomy Tree... ");
-    start = sysTime();
-    std::string _path = options.indexDir + "/tax";
 
-    {
-        std::ofstream os{_path.c_str()};
-
-        cereal::BinaryOutputArchive oarchive(os);
-        oarchive(taxonParentIDs);
-        oarchive(taxonHeights);
-    }
-
-    myPrint(options, 1, "done.\n");
-    myPrint(options, 2, "Runtime: ", sysTime() - start, "s\n\n");
+//     myPrint(options, 1,"Dumping Taxonomy Tree... ");
+//     start = sysTime();
+//     std::string _path = options.indexDir + "/tax";
+//
+//     {
+//         std::ofstream os{_path.c_str()};
+//
+//         cereal::BinaryOutputArchive oarchive(os);
+//         oarchive(taxonParentIDs);
+//         oarchive(taxonHeights);
+//     }
+//
+//     myPrint(options, 1, "done.\n");
+//     myPrint(options, 2, "Runtime: ", sysTime() - start, "s\n\n");
 
     // DEBUG
     #ifndef NDEBUG
@@ -670,8 +661,6 @@ parseAndDumpTaxTree(std::vector<bool>          & taxIdIsPresent,
     #endif
 
     /** read the names **/
-
-    std::vector<std::string> taxonNames; // ever position has the index of its parent node
     taxonNames.resize(std::ranges::size(taxonParentIDs));
 
     path = options.taxDumpDir + "/names.dmp";
@@ -757,62 +746,73 @@ parseAndDumpTaxTree(std::vector<bool>          & taxIdIsPresent,
         }
     }
 
-    myPrint(options, 1,"Dumping Taxon names... ");
-    start = sysTime();
-    std::string _path2 = options.indexDir + "/tax_names";
+//     myPrint(options, 1,"Dumping Taxon names... ");
+//     start = sysTime();
+//     std::string _path2 = options.indexDir + "/tax_names";
+//
+//     {
+//         std::ofstream os{_path2.c_str()};
+//
+//         cereal::BinaryOutputArchive oarchive(os); // Create an output archive
+//         oarchive(taxonNames);
+//     }
+//
+//     myPrint(options, 1, "done.\n");
+//     myPrint(options, 2, "Runtime: ", sysTime() - start, "s\n\n");
 
-    {
-        std::ofstream os{_path2.c_str()};
-
-        cereal::BinaryOutputArchive oarchive(os); // Create an output archive
-        oarchive(taxonNames);
-    }
-
-    myPrint(options, 1, "done.\n");
-    myPrint(options, 2, "Runtime: ", sysTime() - start, "s\n\n");
+    return ret;
 }
 
 
 template <bool is_bi,
-          typename TStringSet,
-          typename TRedAlph_>
-void
-generateIndexAndDump(TStringSet                       & seqs,
-                     LambdaIndexerOptions       const & options,
-                     TRedAlph_                  const &)
+          AlphabetEnum c_redAlph,
+          typename TStringSet>
+auto
+generateIndex(TStringSet                       & seqs,
+              LambdaIndexerOptions       const & options)
 {
-    //TODO reduce
+    // TODO reduced sequences should not be saved; change after index changes
+    using TRedSeqs = TCDStringSet<std::vector<_alphabetEnumToType<c_redAlph>>>;
+    using TIndex   = std::conditional_t<is_bi, seqan3::bi_fm_index<TRedSeqs>, seqan3::fm_index<TRedSeqs>>;
 
-    using index_type = std::conditional_t<is_bi, seqan3::bi_fm_index<std::remove_reference_t<decltype(seqs)>>,
-                                                 seqan3::fm_index<std::remove_reference_t<decltype(seqs)>>>;
-    // Generate Index
-    myPrint(options, 1, "Generating Index...");
+    std::tuple<TRedSeqs, TIndex> ret;
 
+    auto & redSeqs = std::get<0>(ret);
+    auto & index   = std::get<1>(ret);
+
+    myPrint(options, 1, "Reducing sequences...");
     double s = sysTime();
-    index_type index{seqs};
+    redSeqs = seqs | seqan3::view::deep{seqan3::view::convert<_alphabetEnumToType<c_redAlph>>};
     double e = sysTime() - s;
-
     myPrint(options, 1, " done.\n");
     myPrint(options, 2, "Runtime: ", e, "s \n\n");
 
-    // Dump Index
-    myPrint(options, 1, "Writing Index to disk...");
+    myPrint(options, 1, "Generating Index...");
     s = sysTime();
-    std::string _path = options.indexDir + "/index";
-
-//     index.store(_path);
-
-//TODO once sdsl-ceral-support in SeqAn3
-    {
-        std::ofstream os{_path.c_str()};
-
-        cereal::BinaryOutputArchive oarchive(os); // Create an output archive
-        oarchive(index);
-    }
-
+    index = TIndex{redSeqs};
     e = sysTime() - s;
     myPrint(options, 1, " done.\n");
-    myPrint(options, 2, "Runtime: ", e, "s \n");
+    myPrint(options, 2, "Runtime: ", e, "s \n\n");
+
+    return ret;
+    // Dump Index
+//     myPrint(options, 1, "Writing Index to disk...");
+//     s = sysTime();
+//     std::string _path = options.indexDir + "/index";
+//
+// //     index.store(_path);
+//
+// //TODO once sdsl-ceral-support in SeqAn3
+//     {
+//         std::ofstream os{_path.c_str()};
+//
+//         cereal::BinaryOutputArchive oarchive(os); // Create an output archive
+//         oarchive(index);
+//     }
+//
+//     e = sysTime() - s;
+//     myPrint(options, 1, " done.\n");
+//     myPrint(options, 2, "Runtime: ", e, "s \n");
 }
 
 #endif // header guard

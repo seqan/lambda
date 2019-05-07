@@ -30,7 +30,9 @@
 #include <seqan3/alphabet/nucleotide/dna4.hpp>
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
 #include <seqan3/alphabet/aminoacid/aa27.hpp>
+#include <seqan3/alphabet/aminoacid/aa10murphy.hpp>
 #include <seqan3/alphabet/aminoacid/translation_genetic_code.hpp>
+#include <seqan3/std/filesystem>
 
 // #include <seqan/basic.h>
 // #include <seqan/modifier.h>
@@ -105,6 +107,12 @@ _alphTypeToName(seqan3::aa27 const & /**/)
     return "aminoacid";
 }
 
+constexpr const char *
+_alphTypeToName(seqan3::aa10murphy const & /**/)
+{
+    return "murphy10";
+}
+
 // constexpr const char *
 // _alphTypeToName(ReducedAminoAcid<Murphy10> const & /**/)
 // {
@@ -129,7 +137,7 @@ _alphabetEnumToName(AlphabetEnum const t)
         case AlphabetEnum::DNA4:        return _alphTypeToName(seqan3::dna4{});
         case AlphabetEnum::DNA5:        return _alphTypeToName(seqan3::dna5{});
         case AlphabetEnum::AMINO_ACID:  return _alphTypeToName(seqan3::aa27{});
-        case AlphabetEnum::MURPHY10:    return _alphTypeToName(seqan3::aa27{}/*seqan3::aa10murphy*/);
+        case AlphabetEnum::MURPHY10:    return _alphTypeToName(seqan3::aa10murphy{});
     }
 
     throw std::runtime_error("Error: unknown alphabet type");
@@ -139,7 +147,7 @@ _alphabetEnumToName(AlphabetEnum const t)
 inline AlphabetEnum
 _alphabetNameToEnum(std::string const t)
 {
-    if (t == "UNDEFINED")
+    if ((t == "UNDEFINED") || (t == "auto"))
         return AlphabetEnum::UNDEFINED;
     else if (t == _alphTypeToName(seqan3::dna4{}))
         return AlphabetEnum::DNA4;
@@ -147,8 +155,8 @@ _alphabetNameToEnum(std::string const t)
         return AlphabetEnum::DNA5;
     else if (t == _alphTypeToName(seqan3::aa27{}))
         return AlphabetEnum::AMINO_ACID;
-//     else if (t == _alphTypeToName(ReducedAminoAcid<Murphy10>{}))
-//         return AlphabetEnum::MURPHY10;
+    else if (t == _alphTypeToName(seqan3::aa10murphy{}))
+        return AlphabetEnum::MURPHY10;
 
     throw std::runtime_error("Error: unknown alphabet type");
     return AlphabetEnum::DNA4;
@@ -178,11 +186,11 @@ struct _alphabetEnumToType_<AlphabetEnum::AMINO_ACID>
 template <>
 struct _alphabetEnumToType_<AlphabetEnum::MURPHY10>
 {
-    using type = seqan3::aa27{}/*seqan3::aa10murphy*/;
+    using type = seqan3::aa10murphy;
 };
 
 template <AlphabetEnum e>
-using _alphabetEnumToType = typename _alphabetEnumToType_::type;
+using _alphabetEnumToType = typename _alphabetEnumToType_<e>::type;
 
 // inline uint64_t
 // _alphabetEnumToSize(AlphabetEnum const t)
@@ -212,6 +220,17 @@ struct index_file_options
     seqan3::genetic_code geneticCode{};
 
     //TODO reserve space here for more vars?
+
+    template <typename TArchive>
+    void serialize(TArchive & archive)
+    {
+        archive(cereal::make_nvp("generation", indexGeneration),
+                cereal::make_nvp("index type", indexType),
+                cereal::make_nvp("orig alph", origAlph),
+                cereal::make_nvp("trans alph", transAlph),
+                cereal::make_nvp("red alph", redAlph),
+                cereal::make_nvp("genetic code", geneticCode));
+    }
 };
 
 // --------------------------------------------------------------------------
@@ -227,7 +246,7 @@ struct SharedOptions
 
     std::string commandLine;
 
-    std::string indexFilePath;
+    std::filesystem::path indexFilePath;
 
     index_file_options indexFileOptions{};
 

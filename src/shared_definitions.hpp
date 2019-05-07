@@ -152,23 +152,39 @@ using TCDStringSet = std::vector<TString>; //TODO seqan3::concatenated_sequences
 template <DbIndexType           dbIndexType,
           AlphabetEnum          origAlph,
           AlphabetEnum          transAlph,
-          AlphabetEnum          redAph>     // <- all members of index_file_options that influence types
+          AlphabetEnum          redAlph>    // <- all members of index_file_options that influence types
 struct index_file
 {
     index_file_options options{};
 
     TCDStringSet<std::string>                                   ids;
     std::vector<uint64_t>                                       origSeqLengths; // only used when origAlph != transAlph
-    TCDStringSet<std::vector<_alphabetEnumToType<transAlph>>    transSeqs;
+    TCDStringSet<std::vector<_alphabetEnumToType<transAlph>>>   transSeqs;
     std::vector<std::vector<uint32_t>>                          sTaxIds; //TODO double check int-width
 
-    std::vector<uint8_t>                                        taxonHeights;
     std::vector<uint32_t>                                       taxonParentIDs;
+    std::vector<uint8_t>                                        taxonHeights;
     std::vector<std::string>                                    taxonNames;
 
+    TCDStringSet<std::vector<_alphabetEnumToType<redAlph>>>     redSeqs; // temporary
     std::conditional_t<dbIndexType == DbIndexType::BI_FM_INDEX,
-                       seqan3::bi_fm_index<std::remove_reference_t<decltype(seqs)>>,
-                       seqan3::fm_index<std::remove_reference_t<decltype(seqs)>>> index;
+                       seqan3::bi_fm_index<decltype(redSeqs)>,
+                       seqan3::fm_index<decltype(redSeqs)>>     index;
+
+    template <typename TArchive>
+    void serialize(TArchive & archive)
+    {
+        archive(cereal::make_nvp("options",          options),
+                cereal::make_nvp("ids",              ids),
+                cereal::make_nvp("origSeqLengths",   origSeqLengths),
+                cereal::make_nvp("transSeqs",        transSeqs),
+                cereal::make_nvp("sTaxIds",          sTaxIds),
+                cereal::make_nvp("taxonParentIDs",   taxonParentIDs),
+                cereal::make_nvp("taxonHeights",     taxonHeights),
+                cereal::make_nvp("taxonNames",       taxonNames),
+                cereal::make_nvp("redSeqs",          redSeqs),
+                cereal::make_nvp("index",            index));
+    }
 };
 
 

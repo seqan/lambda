@@ -370,9 +370,11 @@ appendToStatus(std::stringstream & status,
 
 inline double sysTime()
 {
-    //TODO
-    return 0;
-//     return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch());
+//     return std::time(NULL);
+    return static_cast<double>(
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch()).count()) / 1000;
+//     return std::chrono::system_clock::now().time_since_epoch().count() / 1000;
 }
 
 // ----------------------------------------------------------------------------

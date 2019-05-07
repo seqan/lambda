@@ -100,7 +100,7 @@ int mkindexMain(int const argc, char const ** argv)
 
 void argConv0(LambdaIndexerOptions & options)
 {
-    switch (options.indexFileOptions.dbIndexType)
+    switch (options.indexFileOptions.indexType)
     {
         case DbIndexType::FM_INDEX:         return argConv1<DbIndexType::FM_INDEX>(options);
         case DbIndexType::BI_FM_INDEX:      return argConv1<DbIndexType::BI_FM_INDEX>(options);
@@ -111,11 +111,12 @@ void argConv0(LambdaIndexerOptions & options)
 template <DbIndexType c_indexType>
 void argConv1(LambdaIndexerOptions & options)
 {
-    if (options.indexFileOptions.origAlph = AlphabetEnum::UNDEFINED)
+    if (options.indexFileOptions.origAlph == AlphabetEnum::UNDEFINED)
     {
         myPrint(options, 1, "Detecting database alphabet... ");
         options.indexFileOptions.origAlph = detectSeqFileAlphabet(options.dbFile);
-        myPrint(options, 1, _alphabetEnumToName(options.subjOrigAlphabet), " detected.\n");
+        myPrint(options, 1, _alphabetEnumToName(options.indexFileOptions.origAlph), " detected.\n");
+        myPrint(options, 2, "\n");
     }
 
     switch (options.indexFileOptions.origAlph)
@@ -157,13 +158,14 @@ void argConv3(LambdaIndexerOptions const & options)
 template <DbIndexType   c_dbIndexType,
           AlphabetEnum  c_origAlph,
           AlphabetEnum  c_transAlph,
-          AlphabetEnum  c_redAph>
+          AlphabetEnum  c_redAlph>
 void realMain(LambdaIndexerOptions     const & options)
 {
     index_file<c_dbIndexType, c_origAlph, c_transAlph, c_redAlph> f;
+    f.options = options.indexFileOptions;
 
-    using TOrigSubjAlph = _alphabetEnumToType_<origAlph>;
-    using TTransSubjAlph = _alphabetEnumToType_<transAlph>;
+    using TOrigSubjAlph = _alphabetEnumToType<c_origAlph>;
+    using TTransSubjAlph = _alphabetEnumToType<c_transAlph>;
 
     using TOrigSet  = TCDStringSet<std::vector<TOrigSubjAlph>>;
     using TTransSet = TCDStringSet<std::vector<TTransSubjAlph>>;
@@ -175,54 +177,72 @@ void realMain(LambdaIndexerOptions     const & options)
         std::unordered_map<std::string, uint64_t> accToIdRank;
 
         // ids get saved to disk again immediately and are not kept in memory
-        loadSubjSeqsAndIds(originalSeqs, accToIdRank, options);
+        std::tie(f.ids, originalSeqs, accToIdRank) = loadSubjSeqsAndIds<TOrigSubjAlph>(options);
 
         // preserve lengths of untranslated sequences
-        if constexpr (need_to_translate)
-            _saveOriginalSeqLengths(originalSeqs, options);
+        if constexpr (c_origAlph != c_transAlph)
+            f.origSeqLengths = saveOriginalSeqLengths(originalSeqs, options);
 
         if (options.hasSTaxIds)
         {
             std::vector<bool> taxIdIsPresent;
-            taxIdIsPresent.reserve(2'000'000);
 
             // read the mapping file and save relevant mappings to disk
-            mapAndDumpTaxIDs(taxIdIsPresent, accToIdRank, std::ranges::size(originalSeqs), options);
+            std::tie(f.sTaxIds, taxIdIsPresent) = mapTaxIDs(accToIdRank, std::ranges::size(originalSeqs), options);
 
             // read the mapping file and save relevant mappings to disk
-            parseAndDumpTaxTree(taxIdIsPresent, options);
+            std::tie(f.taxonParentIDs, f.taxonHeights, f.taxonNames) = parseAndStoreTaxTree(taxIdIsPresent, options);
         }
 
-        // translate or swap depending on program
-        translateOrSwap(translatedSeqs, originalSeqs, options);
+        // translate or move-through depending on program
+        f.transSeqs = translateSeqs<TTransSubjAlph>(originalSeqs, options);
     }
 
-    // dump translated and unreduced sequences (except where they are included in index)
-    if ((options.alphReduction != 0) || (options.dbIndexType != DbIndexType::SUFFIX_ARRAY))
-        dumpTranslatedSeqs(translatedSeqs, options);
 
     // see if final sequence set actually fits into index
 //     checkIndexSize(translatedSeqs, options, seqan::BlastProgramSelector<p>());
 
-    if (options.dbIndexType == DbIndexType::FM_INDEX)
-        generateIndexAndDump<false>(translatedSeqs, options, TRedAlph{});
-    else if (options.dbIndexType == DbIndexType::BI_FM_INDEX)
-        generateIndexAndDump<true>(translatedSeqs, options, TRedAlph{});
+    std::tie(f.redSeqs, f.index) =
+        generateIndex<c_dbIndexType == DbIndexType::BI_FM_INDEX, c_redAlph>(f.transSeqs, options);
+
+
+
+    myPrint(options, 1, "Writing Index to disk...");
+    double s = sysTime();
+    if (options.indexFilePath.extension() == ".lba")
+    {
+        std::ofstream os{options.indexFilePath.c_str()};
+        cereal::BinaryOutputArchive oarchive(os);
+        oarchive(cereal::make_nvp("lambda index", f));
+    } else if (options.indexFilePath.extension() == ".lta")
+    {
+        std::ofstream os{options.indexFilePath.c_str()};
+        cereal::JSONOutputArchive oarchive(os);
+        oarchive(cereal::make_nvp("lambda index", f));
+    } else
+    {
+        throw 59;
+    }
+
+    double e = sysTime() - s;
+    myPrint(options, 1, " done.\n");
+    myPrint(options, 2, "Runtime: ", e, "s \n");
+
 
     // dump options
-    for (auto && s : std::initializer_list<std::pair<std::string, std::string>>
-         {
-             { options.indexDir + "/option:db_index_type",   std::to_string(static_cast<uint32_t>(options.dbIndexType))},
-             { options.indexDir + "/option:alph_original",   std::string(_alphTypeToName(TOrigSubjAlph())) },
-             { options.indexDir + "/option:alph_translated", std::string(_alphTypeToName(TTransSubjAlph())) },
-             { options.indexDir + "/option:alph_reduced",    std::string(_alphTypeToName(TRedAlph())) },
-             { options.indexDir + "/option:genetic_code",    std::to_string(static_cast<uint16_t>(options.geneticCode)) },
-//              { options.indexDir + "/option:subj_seq_len_bits", std::to_string(sizeof(SizeTypePos_<TRedAlph>) * 8)},
-             { options.indexDir + "/option:generation",      std::to_string(indexGeneration) },
-         })
-    {
-        std::ofstream f{std::get<0>(s).c_str(),  std::ios_base::out | std::ios_base::binary};
-        f << std::get<1>(s);
-        f.close();
-    }
+//     for (auto && s : std::initializer_list<std::pair<std::string, std::string>>
+//          {
+//              { options.indexDir + "/option:db_index_type",   std::to_string(static_cast<uint32_t>(options.dbIndexType))},
+//              { options.indexDir + "/option:alph_original",   std::string(_alphTypeToName(TOrigSubjAlph())) },
+//              { options.indexDir + "/option:alph_translated", std::string(_alphTypeToName(TTransSubjAlph())) },
+//              { options.indexDir + "/option:alph_reduced",    std::string(_alphTypeToName(TRedAlph())) },
+//              { options.indexDir + "/option:genetic_code",    std::to_string(static_cast<uint16_t>(options.geneticCode)) },
+// //              { options.indexDir + "/option:subj_seq_len_bits", std::to_string(sizeof(SizeTypePos_<TRedAlph>) * 8)},
+//              { options.indexDir + "/option:generation",      std::to_string(indexGeneration) },
+//          })
+//     {
+//         std::ofstream f{std::get<0>(s).c_str(),  std::ios_base::out | std::ios_base::binary};
+//         f << std::get<1>(s);
+//         f.close();
+//     }
 }
