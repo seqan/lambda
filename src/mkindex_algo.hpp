@@ -22,35 +22,39 @@
 #ifndef SEQAN_LAMBDA_LAMBDA_INDEXER_H_
 #define SEQAN_LAMBDA_LAMBDA_INDEXER_H_
 
-#include <seqan/basic.h>
-#include <seqan/sequence.h>
-
-#include <seqan/seq_io.h>
-#include <seqan/index.h>
-#include <seqan/translation.h>
-#include <seqan/reduced_aminoacid.h>
+#include <seqan3/io/sequence_file/input.hpp>
+#include <seqan3/io/detail/misc_input.hpp>
+#include <seqan3/range/view/convert.hpp>
+#include <seqan3/range/view/translation.hpp>
+#include <seqan3/std/charconv>
+#include <seqan3/std/concepts>
 
 #include "mkindex_misc.hpp"
-#include "mkindex_saca.hpp"
+// #include "mkindex_saca.hpp"
 #include "shared_misc.hpp"
 #include "shared_options.hpp"
-#include "search_output.hpp" //TODO only needed because options are in one file, remove later
-
-using namespace seqan;
 
 // --------------------------------------------------------------------------
 // Function loadSubj()
 // --------------------------------------------------------------------------
 
 template <typename TOrigAlph>
-void
-loadSubjSeqsAndIds(TCDStringSet<String<TOrigAlph>> & originalSeqs,
-                   std::unordered_map<std::string, uint64_t> & accToIdRank,
-                   LambdaIndexerOptions const & options)
+auto
+loadSubjSeqsAndIds(LambdaIndexerOptions const & options)
 {
+    using TIDs          = TCDStringSet<std::string>;
+    using TOrigSeqs     = TCDStringSet<std::vector<TOrigAlph>>;
+    using TAccToIdRank  = std::unordered_map<std::string, uint64_t>;
+
+    std::tuple<TIDs, TOrigSeqs, TAccToIdRank> ret;
+
+    auto & ids          = std::get<0>(ret);
+    auto & originalSeqs = std::get<1>(ret);
+    auto & accToIdRank  = std::get<2>(ret);
+
     // Make sure we have enough RAM to load the file
     auto ram = getTotalSystemMemory();
-    auto fS = fileSize(toCString(options.dbFile));
+    auto fS = fileSize(options.dbFile.c_str());
 
     if (fS >= ram)
         std::cerr << "WARNING: Your sequence file is already larger than your physical memory!\n"
@@ -59,9 +63,9 @@ loadSubjSeqsAndIds(TCDStringSet<String<TOrigAlph>> & originalSeqs,
                   << "         with more memory!\n";
 
 
-    typedef TCDStringSet<String<char, Alloc<>>>             TIDs;
 
-    TIDs ids; // the IDs
+
+
 
     // see http://www.uniprot.org/help/accession_numbers
     // https://www.ncbi.nlm.nih.gov/Sequin/acc.html
@@ -75,37 +79,24 @@ loadSubjSeqsAndIds(TCDStringSet<String<TOrigAlph>> & originalSeqs,
                               "(NC|AC|NG|NT|NW|NZ|NM|NR|XM|XR|NP|AP|XP|YP|ZP)_[0-9]+|"                // RefSeq
                               "UPI[A-F0-9]{10}"};                                                     // UniParc
 
-    // lambda that truncates IDs at first whitespace
-    auto truncateID = [] (auto && id, uint64_t const)
-    {
-        IsWhitespace isWhitespace;
-        for (size_t i = 0; i < length(id); ++i)
-        {
-            if (isWhitespace(id[i]))
-            {
-                resize(id, i);
-                break;
-            }
-        }
-    };
-
     uint64_t noAcc = 0;
     uint64_t multiAcc = 0;
 
     // lambda that extracts accession numbers and saves them in the map
     auto extractAccIds = [&accToIdRank, &accRegEx, &noAcc, &multiAcc] (auto && id, uint64_t const rank)
     {
-        // TODO avoid copying here by specializing regex_iterator
-        std::string buf;
-        assign(buf, id);
+
+        std::conditional_t<(bool)std::Constructible<std::string const &, decltype(id)>, std::string const &, std::string>
+        buf{id};
 
         uint64_t count = 0;
         for (auto it = std::sregex_iterator(buf.begin(), buf.end(), accRegEx), itEnd = std::sregex_iterator();
              it != itEnd;
              ++it, ++count)
         {
-            SEQAN_ASSERT_MSG(accToIdRank.count(it->str()) == 0,
-                             "An accession number appeared twice in the file, but they should be unique.");
+            assert(accToIdRank.count(it->str()) == 0);
+//                              "An accession number appeared twice in the file, but they should be unique.");
+
             // TODO store acc outside as well
             accToIdRank[it->str()] = rank;
         }
@@ -121,109 +112,114 @@ loadSubjSeqsAndIds(TCDStringSet<String<TOrigAlph>> & originalSeqs,
     double start = sysTime();
     myPrint(options, 1, "Loading Subject Sequences and Ids...");
 
-    SeqFileIn infile(toCString(options.dbFile));
+    using seq_traits = std::conditional_t<seqan3::NucleotideAlphabet<TOrigAlph>,
+                                          seqan3::sequence_file_input_default_traits_dna,
+                                          seqan3::sequence_file_input_default_traits_aa>;
+    seqan3::sequence_file_input<seq_traits, seqan3::fields<seqan3::field::ID, seqan3::field::SEQ>>
+        infile{options.dbFile};
 
-    if (options.truncateIDs)
+    size_t count = 0;
+    for (auto & [ id, seq ] : infile)
     {
         if (options.hasSTaxIds)
-        {
-            myReadRecords(ids, originalSeqs, infile, [&] (auto && id, uint64_t const rank)
-            {
-                extractAccIds(std::forward<decltype(id)>(id), rank);
-                truncateID(std::forward<decltype(id)>(id), rank);
-            });
-        } else
-        {
-            myReadRecords(ids, originalSeqs, infile, truncateID);
-        }
-    } else
-    {
-        if (options.hasSTaxIds)
-            myReadRecords(ids, originalSeqs, infile, extractAccIds);
+            extractAccIds(id, count);
+
+        if (options.truncateIDs)
+            ids.push_back(id | seqan3::view::take_until(seqan3::is_space));
         else
-            myReadRecords(ids, originalSeqs, infile);
+            ids.push_back(std::move(id));
+
+        originalSeqs.push_back(std::move(seq));
+        ++count;
     }
+
 
     myPrint(options, 1,  " done.\n");
     double finish = sysTime() - start;
     myPrint(options, 2, "Runtime: ", finish, "s \n");
 
-    if (length(originalSeqs) == 0)
+    if (std::ranges::empty(originalSeqs))
     {
         throw std::runtime_error("ERROR: No sequences in file. Aborting.\n");
     }
-    unsigned long maxLen = 0ul;
+
+    size_t maxLen = 0ul;
     for (auto const & s : originalSeqs)
     {
-        if (length(s) > maxLen)
+        if (std::ranges::size(s) > maxLen)
         {
-            maxLen = length(s);
+            maxLen = std::ranges::size(s);
         }
-        else if (length(s) == 0)
+        else if (std::ranges::size(s) == 0ul)
         {
             throw std::runtime_error("ERROR: Unexpectedly encountered a sequence of length 0 in the file."
                                      "Remove the entry and try again. Aborting.\n");
         }
     }
-    myPrint(options, 2, "Number of sequences read: ", length(originalSeqs),
+    myPrint(options, 2, "Number of sequences read: ", std::ranges::size(originalSeqs),
             "\nLongest sequence read: ", maxLen, "\n");
 
-    if (length(originalSeqs) * 6 >= std::numeric_limits<SizeTypeNum_<TOrigAlph>>::max())
-    {
-        throw std::runtime_error(std::string("ERROR: Too many sequences submitted. The maximum (including frames) is ")
-                                 + std::to_string(std::numeric_limits<SizeTypeNum_<TOrigAlph>>::max()) + ".\n");
-    }
-
-    if (maxLen >= std::numeric_limits<SizeTypePos_<TOrigAlph>>::max())
-    {
-        throw std::runtime_error(std::string("ERROR: one or more of your subject sequences are too long. "
-                  "The maximum length is ") + std::to_string(std::numeric_limits<SizeTypePos_<TOrigAlph>>::max()) +
-                  ".\n");
-    }
+//     if (std::ranges::size(originalSeqs) * 6 >= std::numeric_limits<SizeTypeNum_<TOrigAlph>>::max())
+//     {
+//         throw std::runtime_error(std::string("ERROR: Too many sequences submitted. The maximum (including frames) is ")
+//                                  + std::to_string(std::numeric_limits<SizeTypeNum_<TOrigAlph>>::max()) + ".\n");
+//     }
+//
+//     if (maxLen >= std::numeric_limits<SizeTypePos_<TOrigAlph>>::max())
+//     {
+//         throw std::runtime_error(std::string("ERROR: one or more of your subject sequences are too long. "
+//                   "The maximum length is ") + std::to_string(std::numeric_limits<SizeTypePos_<TOrigAlph>>::max()) +
+//                   ".\n");
+//     }
 
     if (options.hasSTaxIds)
     {
-        myPrint(options, 2, "Subjects without acc numbers:             ", noAcc, '/', length(ids), "\n",
-                            "Subjects with more than one acc number:   ", multiAcc, '/', length(ids), "\n");
+        myPrint(options, 2, "Subjects without acc numbers:             ", noAcc, '/', std::ranges::size(ids), "\n",
+                            "Subjects with more than one acc number:   ", multiAcc, '/', std::ranges::size(ids), "\n");
     }
 
     myPrint(options, 2, "\n");
 
-
-    myPrint(options, 1, "Dumping Subj Ids...");
-
-    //TODO save to TMPDIR instead
-    CharString _path = options.indexDir;
-    append(_path, "/seq_ids");
-    save(ids, toCString(_path));
-
-    myPrint(options, 1, " done.\n");
-    finish = sysTime() - start;
-    myPrint(options, 2, "Runtime: ", finish, "s \n\n");
+    return ret;
 }
 
 // --------------------------------------------------------------------------
 // Function loadSubj()
 // --------------------------------------------------------------------------
 
-template <typename TLimits>
-inline void
-_saveOriginalSeqLengths(TLimits limits, // we want copy!
-                       LambdaIndexerOptions const & options)
+template <typename TSeqSet>
+std::vector<uint64_t>
+saveOriginalSeqLengths(TSeqSet const & seqSet,
+                       LambdaIndexerOptions const & /**/)
 {
-    double start = sysTime();
-    myPrint(options, 1, "Dumping untranslated subject lengths...");
+//     double start = sysTime();
+//     myPrint(options, 1, "Dumping untranslated subject lengths...");
 
-    for (uint32_t i = 0; i < (length(limits) - 1); ++i)
-        limits[i] = limits[i+1] - limits[i];
-    // last entry not overwritten, should be the sum of all lengths
+    std::vector<uint64_t> limits;
+    limits.resize(std::ranges::size(seqSet) + 1); // last holds sum
 
-    CharString _path = options.indexDir;
-    append(_path, "/untranslated_seq_lengths");
-    save(limits, toCString(_path));
-    myPrint(options, 1, " done.\n");
-    double finish = sysTime() - start;
-    myPrint(options, 2, "Runtime: ", finish, "s \n\n");
+    uint64_t sum = 0;
+    for (size_t i = 0; i < limits.size() - 1; ++i)
+    {
+        limits[i] = std::ranges::size(seqSet[i]);
+        sum += std::ranges::size(seqSet[i]);
+    }
+    limits.back() = sum;
+
+    return limits;
+
+//     std::string _path = options.indexDir + "/untranslated_seq_lengths";
+//
+//     {
+//         std::ofstream os{_path.c_str()};
+//
+//         cereal::BinaryOutputArchive oarchive(os); // Create an output archive
+//         oarchive(limits);
+//     }
+//
+//     myPrint(options, 1, " done.\n");
+//     double finish = sysTime() - start;
+//     myPrint(options, 2, "Runtime: ", finish, "s \n\n");
 }
 
 // --------------------------------------------------------------------------
@@ -231,99 +227,54 @@ _saveOriginalSeqLengths(TLimits limits, // we want copy!
 // --------------------------------------------------------------------------
 
 template <typename TTransAlph, typename TOrigAlph>
-inline void
-translateOrSwap(TCDStringSet<String<TTransAlph>> & out,
-                TCDStringSet<String<TOrigAlph>> & in,
-                LambdaIndexerOptions const & options)
+TCDStringSet<std::vector<TTransAlph>>
+translateSeqs(TCDStringSet<std::vector<TOrigAlph>> & in,
+              LambdaIndexerOptions const & options)
 {
+    TCDStringSet<std::vector<TTransAlph>> out;
+
     double start = sysTime();
     myPrint(options, 1, "Translating Subj Sequences...");
 
-    translate(out,
-              in,
-              SIX_FRAME,
-              options.geneticCode);
+    out = in | seqan3::view::translate | std::view::join; //TODO geneticCode
 
     myPrint(options, 1, " done.\n");
     double finish = sysTime() - start;
     myPrint(options, 2, "Runtime: ", finish, "s \n\n");
+
+    return out;
 }
 
-template <typename TSameAlph>
-inline void
-translateOrSwap(TCDStringSet<String<TSameAlph>> & out,
-                TCDStringSet<String<TSameAlph>> & in,
-                LambdaIndexerOptions const & /**/)
+template <typename TTransAlph, typename TOrigAlph>
+    requires std::Same<TTransAlph, TOrigAlph>
+TCDStringSet<std::vector<TTransAlph>>
+translateSeqs(TCDStringSet<std::vector<TOrigAlph>> & in,
+              LambdaIndexerOptions const & /**/)
 {
-    swap(out, in);
+    return std::move(in);
 }
 
 // --------------------------------------------------------------------------
-// Function loadSubj()
+// Function checkIndexSize()
 // --------------------------------------------------------------------------
 
-template <typename TTransAlph>
-inline void
-dumpTranslatedSeqs(TCDStringSet<String<TTransAlph>> const & translatedSeqs,
-                   LambdaIndexerOptions const & options)
-{
-    double start = sysTime();
-    myPrint(options, 1, "Dumping unreduced Subj Sequences...");
-
-    //TODO save to TMPDIR instead
-    std::string _path = options.indexDir + "/translated_seqs";
-    save(translatedSeqs, _path.c_str());
-
-    myPrint(options, 1, " done.\n");
-    double finish = sysTime() - start;
-    myPrint(options, 2, "Runtime: ", finish, "s \n\n");
-}
-
-// --------------------------------------------------------------------------
-// Function loadSubj()
-// --------------------------------------------------------------------------
-
-// template <typename TTransAlph, typename TRedAlph>
-// inline void
-// reduceOrSwap(TCDStringSet<String<TRedAlph>> & out,
-//              TCDStringSet<String<TTransAlph>> & in)
-// {
-//     //TODO more output
-//     // reduce implicitly
-//     myPrint(options, 1, "Reducing...");
-//     out.concat = in.concat;
-//     out.limits = in.limits;
-// }
-//
-// template <typename TSameAlph>
-// inline void
-// reduceOrSwap(TCDStringSet<String<TSameAlph>> & out,
-//              TCDStringSet<String<TSameAlph>> & in)
-// {
-//     swap(out, in);
-// }
-
-// --------------------------------------------------------------------------
-// Function loadSubj()
-// --------------------------------------------------------------------------
-
-template <typename TRedAlph, BlastProgram p>
+template <typename TRedAlph>
 void
-checkIndexSize(TCDStringSet<String<TRedAlph>> const & seqs,
-               LambdaIndexerOptions const & options,
-               BlastProgramSelector<p> const &)
+checkIndexSize(TCDStringSet<std::vector<TRedAlph>> const & seqs,
+               LambdaIndexerOptions const & options)
 {
+#if 0 // TODO: new index should handle arbitrary sizes, but we want the RAM check again
     myPrint(options, 1, "Checking parameters of to-be-built index...");
 
     // check number of sequences
-    using SAV = typename SAValue<TCDStringSet<String<TRedAlph>>>::Type;
-    uint64_t curNumSeq = length(seqs);
+    using SAV = typename SAValue<TCDStringSet<std::vector<TRedAlph>>>::Type;
+    uint64_t curNumSeq = std::ranges::size(seqs);
     uint64_t maxNumSeq = std::numeric_limits<typename Value<SAV, 1>::Type>::max();
 
     if (curNumSeq >= maxNumSeq)
     {
         throw std::invalid_argument(std::string("ERROR: Too many sequences to be indexed:\n  ") +
-                                    std::to_string(length(seqs)) +
+                                    std::to_string(std::ranges::size(seqs)) +
                                     std::string(" in file, but only ") +
                                     std::to_string(maxNumSeq) +
                                     std::string(" supported by index.\n"));
@@ -333,8 +284,8 @@ checkIndexSize(TCDStringSet<String<TRedAlph>> const & seqs,
     uint64_t maxLenSeq = std::numeric_limits<typename Value<SAV, 2>::Type>::max();
     uint64_t maxLen = 0ul;
     for (auto const & s : seqs)
-        if (length(s) > maxLen)
-            maxLen = length(s);
+        if (std::ranges::size(s) > maxLen)
+            maxLen = std::ranges::size(s);
 
     if (maxLen >= maxLenSeq)
     {
@@ -378,24 +329,34 @@ checkIndexSize(TCDStringSet<String<TRedAlph>> const & seqs,
         myPrint(options, 2, "Detected RAM: ", ram / 1024 / 1024, "MB, Estimated RAM usage: ",
                 estimatedSize / 1024 / 1024, "MB\n\n");
     }
+#else
+    (void)seqs;
+    (void)options;
+#endif
 }
 
 // --------------------------------------------------------------------------
 // Function mapAndDumpTaxIDs()
 // --------------------------------------------------------------------------
 
-void
-mapAndDumpTaxIDs(std::vector<bool>                                     & taxIdIsPresent,
-                 std::unordered_map<std::string, uint64_t>       const & accToIdRank,
-                 uint64_t                                        const   numSubjects,
-                 LambdaIndexerOptions                            const & options)
+auto mapTaxIDs(std::unordered_map<std::string, uint64_t>       const & accToIdRank,
+               uint64_t                                        const   numSubjects,
+               LambdaIndexerOptions                            const & options)
 
 {
-    StringSet<String<uint32_t>> sTaxIds; // not concat because we resize inbetween
-    resize(sTaxIds, numSubjects);
+    using TTaxIds        = std::vector<std::vector<uint32_t>>;// not concat because we resize inbetween
+    using TTaxIdsPresent = std::vector<bool>;
+
+    std::tuple<TTaxIds, TTaxIdsPresent> ret;
+
+    auto & sTaxIds          = std::get<0>(ret);
+    auto & taxIdIsPresent   = std::get<1>(ret);
+
+    taxIdIsPresent.reserve(2'000'000);
+    sTaxIds.resize(numSubjects);
 
     // c++ stream
-    std::ifstream fin(toCString(options.accToTaxMapFile), std::ios_base::in | std::ios_base::binary);
+    std::ifstream fin(options.accToTaxMapFile.c_str(), std::ios_base::in | std::ios_base::binary);
     if (!fin.is_open())
     {
         throw std::invalid_argument(std::string("ERROR: Could not open acc-to-tax-map file at ") +
@@ -403,9 +364,13 @@ mapAndDumpTaxIDs(std::vector<bool>                                     & taxIdIs
     }
 
     // transparent decompressor
-    VirtualStream<char, Input> vfin {fin};
-    // stream iterator
-    auto fit = directionIterator(vfin, Input());
+    auto vstream = seqan3::detail::make_secondary_istream(fin);
+
+    auto file_view = std::ranges::subrange<std::istreambuf_iterator<char>, std::istreambuf_iterator<char>>
+    {
+        std::istreambuf_iterator<char>{*vstream},
+        std::istreambuf_iterator<char>{}
+    };
 
     myPrint(options, 1, "Parsing acc-to-tax-map file... ");
 
@@ -413,10 +378,10 @@ mapAndDumpTaxIDs(std::vector<bool>                                     & taxIdIs
 
     if (std::regex_match(options.accToTaxMapFile, std::regex{R"raw(.*\.accession2taxid(\.(gz|bgzf|bz2))?)raw"}))
     {
-        _readMappingFileNCBI(fit, sTaxIds, taxIdIsPresent, accToIdRank);
+        _readMappingFileNCBI(file_view, sTaxIds, taxIdIsPresent, accToIdRank);
     } else if (std::regex_match(options.accToTaxMapFile, std::regex{R"raw(.*\.dat(\.(gz|bgzf|bz2))?)raw"}))
     {
-        _readMappingFileUniProt(fit, sTaxIds, taxIdIsPresent, accToIdRank);
+        _readMappingFileUniProt(file_view, sTaxIds, taxIdIsPresent, accToIdRank);
     } else
     {
         throw std::invalid_argument("ERROR: extension of acc-to-tax-map file not handled.\n");
@@ -436,11 +401,11 @@ mapAndDumpTaxIDs(std::vector<bool>                                     & taxIdIs
     uint64_t nomap = 0;
     uint64_t multi = 0;
 
-    for (auto const & s : sTaxIds)
+    for (auto && s : sTaxIds)
     {
-        if (length(s) == 0)
+        if (std::ranges::size(s) == 0)
             ++nomap;
-        else if (length(s) > 1)
+        else if (std::ranges::size(s) > 1)
             ++multi;
     }
 
@@ -450,26 +415,42 @@ mapAndDumpTaxIDs(std::vector<bool>                                     & taxIdIs
         myPrint(options, 1, "WARNING: ", double(nomap) * 100 / numSubjects, "% of subjects have no taxID.\n"
                             "         Maybe you specified the wrong map file?\n\n");
 
-    myPrint(options, 1,"Dumping Subject Taxonomy IDs... ");
-    start = sysTime();
-    // concat direct so that it's easier to read/write
-    StringSet<String<uint32_t>, Owner<ConcatDirect<>>> outSTaxIds = sTaxIds;
-    save(outSTaxIds, std::string(options.indexDir + "/staxids").c_str());
-    myPrint(options, 1, "done.\n");
-    myPrint(options, 2, "Runtime: ", sysTime() - start, "s\n\n");
+    return ret;
+
+//     myPrint(options, 1,"Dumping Subject Taxonomy IDs... ");
+//     start = sysTime();
+//
+//     std::string _path = options.indexDir + "/staxids";
+//
+//     {
+//         std::ofstream os{_path.c_str()};
+//
+//         cereal::BinaryOutputArchive oarchive(os); // Create an output archive
+//         oarchive(sTaxIds);
+//     }
+//     myPrint(options, 1, "done.\n");
+//     myPrint(options, 2, "Runtime: ", sysTime() - start, "s\n\n");
 }
 
 // --------------------------------------------------------------------------
 // Function mapAndDumpTaxIDs()
 // --------------------------------------------------------------------------
 
-void
-parseAndDumpTaxTree(std::vector<bool>          & taxIdIsPresent,
-                    LambdaIndexerOptions const & options)
+auto parseAndStoreTaxTree(std::vector<bool>          & taxIdIsPresent,
+                          LambdaIndexerOptions const & options)
 
 {
-    String<uint32_t> taxonParentIDs; // ever position has the index of its parent node
-    reserve(taxonParentIDs, 2'000'000); // reserve 2million to save reallocs
+    using TTaxonParentIDs   = std::vector<uint32_t>; // ever position has the index of its parent node
+    using TTaxonHeights     = std::vector<uint8_t>;
+    using TTaxonNames       = std::vector<std::string>;
+
+    std::tuple<TTaxonParentIDs, TTaxonHeights, TTaxonNames> ret;
+
+    auto & taxonParentIDs   = std::get<0>(ret);
+    auto & taxonHeights     = std::get<1>(ret);
+    auto & taxonNames       = std::get<2>(ret);
+
+    taxonParentIDs.reserve(2'000'000); // reserve 2million to save reallocs
 
     std::string path = options.taxDumpDir + "/nodes.dmp";
 
@@ -480,9 +461,13 @@ parseAndDumpTaxTree(std::vector<bool>          & taxIdIsPresent,
     }
 
     // transparent decompressor
-    VirtualStream<char, Input> vfin{fin};
-    // stream iterator
-    auto fit = directionIterator(vfin, Input());
+    auto vstream = seqan3::detail::make_secondary_istream(fin);
+
+    auto file_view = std::ranges::subrange<std::istreambuf_iterator<char>, std::istreambuf_iterator<char>>
+    {
+        std::istreambuf_iterator<char>{*vstream},
+        std::istreambuf_iterator<char>{}
+    };
 
     myPrint(options, 1, "Parsing nodes.dmp... ");
 
@@ -491,11 +476,10 @@ parseAndDumpTaxTree(std::vector<bool>          & taxIdIsPresent,
     std::string buf;
     std::regex const numRegEx{"\\b\\d+\\b"};
 
-    while (!atEnd(fit))
+    while (std::ranges::begin(file_view) != std::ranges::end(file_view))
     {
-        clear(buf);
         // read line
-        readLine(buf, fit);
+        buf = file_view | seqan3::view::take_line;
 
         uint32_t n = 0;
         uint32_t parent = 0;
@@ -504,26 +488,27 @@ parseAndDumpTaxTree(std::vector<bool>          & taxIdIsPresent,
              (it != itEnd) && (i < 2);
              ++it, ++i)
         {
-            try
+            std::string strbuf = it->str();
+            std::from_chars_result res;
+
+            if (i == 0)
+                res = std::from_chars(strbuf.data(), strbuf.data() + strbuf.size(), n);
+            else
+                res = std::from_chars(strbuf.data(), strbuf.data() + strbuf.size(), parent);
+
+            if (res.ec != std::errc{})
             {
-                if (i == 0)
-                    n = lexicalCast<uint32_t>(it->str());
-                else
-                    parent = lexicalCast<uint32_t>(it->str());
-            }
-            catch (BadLexicalCast const & badCast)
-            {
-                throw std::runtime_error(
-                    std::string("Error: Expected taxonomical ID, but got something I couldn't read: ") +
-                    std::string(badCast.what()) + "\n");
+                throw std::runtime_error{
+                    std::string{"Error: Expected taxonomical ID, but got something I couldn't read: "} +
+                                strbuf + "\n"};
             }
         }
-        if (length(taxonParentIDs) <= n)
-            resize(taxonParentIDs, n +1, 0);
+        if (std::ranges::size(taxonParentIDs) <= n)
+            taxonParentIDs.resize(n +1, 0);
         taxonParentIDs[n] = parent;
     }
     // also resize these, since we get new, possibly higher cardinality nodes
-    taxIdIsPresent.resize(length(taxonParentIDs), false);
+    taxIdIsPresent.resize(std::ranges::size(taxonParentIDs), false);
 
     myPrint(options, 1, "done.\n");
     myPrint(options, 2, "Runtime: ", sysTime() - start, "s\n");
@@ -532,7 +517,7 @@ parseAndDumpTaxTree(std::vector<bool>          & taxIdIsPresent,
     {
         uint32_t heightMax = 0;
         uint32_t numNodes = 0;
-        for (uint32_t i = 0; i < length(taxonParentIDs); ++i)
+        for (uint32_t i = 0; i < std::ranges::size(taxonParentIDs); ++i)
         {
             if (taxonParentIDs[i] > 0)
                 ++numNodes;
@@ -559,7 +544,7 @@ parseAndDumpTaxTree(std::vector<bool>          & taxIdIsPresent,
     // but we may not remove any that are directly present AND parents of directly present ones
     std::vector<bool> taxIdIsPresentOrParent{taxIdIsPresent};
     // mark parents as present, too
-    for (uint32_t i = 0; i < length(taxonParentIDs); ++i)
+    for (uint32_t i = 0; i < std::ranges::size(taxonParentIDs); ++i)
     {
         if (taxIdIsPresent[i])
         {
@@ -574,15 +559,15 @@ parseAndDumpTaxTree(std::vector<bool>          & taxIdIsPresent,
     }
 
     // set unpresent nodes to 0
-    SEQAN_OMP_PRAGMA(parallel for)
-    for (uint32_t i = 0; i < length(taxonParentIDs); ++i)
+//     SEQAN_OMP_PRAGMA(parallel for)
+    for (uint32_t i = 0; i < std::ranges::size(taxonParentIDs); ++i)
         if (!taxIdIsPresentOrParent[i])
             taxonParentIDs[i] = 0;
 
     // count inDegrees
-    String<uint32_t> inDegrees;
-    resize(inDegrees, length(taxonParentIDs), 0);
-    for (uint32_t i = 0; i < length(taxonParentIDs); ++i)
+    std::vector<uint32_t> inDegrees;
+    inDegrees.resize(std::ranges::size(taxonParentIDs), 0);
+    for (uint32_t i = 0; i < std::ranges::size(taxonParentIDs); ++i)
     {
         // increase inDegree of parent
         uint32_t curPar = taxonParentIDs[i];
@@ -590,7 +575,7 @@ parseAndDumpTaxTree(std::vector<bool>          & taxIdIsPresent,
     }
 
     // skip parents with indegree 1 (flattening)
-    for (uint32_t i = 0; i < length(taxonParentIDs); ++i)
+    for (uint32_t i = 0; i < std::ranges::size(taxonParentIDs); ++i)
     {
         uint32_t curPar = taxonParentIDs[i];
         // those intermediate nodes that themselve represent sequences may not be skipped
@@ -601,8 +586,8 @@ parseAndDumpTaxTree(std::vector<bool>          & taxIdIsPresent,
     }
 
     // remove nodes that are now disconnected
-    SEQAN_OMP_PRAGMA(parallel for)
-    for (uint32_t i = 0; i < length(taxonParentIDs); ++i)
+//     SEQAN_OMP_PRAGMA(parallel for)
+    for (uint32_t i = 0; i < std::ranges::size(taxonParentIDs); ++i)
     {
         // those intermediate nodes that themselve represent sequences may not be skipped
         if ((inDegrees[i] == 1) && (!taxIdIsPresent[i]))
@@ -612,13 +597,12 @@ parseAndDumpTaxTree(std::vector<bool>          & taxIdIsPresent,
         }
     }
 
-    String<uint8_t> taxonHeights;
-    resize(taxonHeights, length(taxonParentIDs), 0);
+    taxonHeights.resize(std::ranges::size(taxonParentIDs), 0);
 
     {
         uint32_t heightMax = 0;
         uint32_t numNodes = 0;
-        for (uint32_t i = 0; i < length(taxonParentIDs); ++i)
+        for (uint32_t i = 0; i < std::ranges::size(taxonParentIDs); ++i)
         {
             if (taxonParentIDs[i] > 0)
                 ++numNodes;
@@ -640,16 +624,25 @@ parseAndDumpTaxTree(std::vector<bool>          & taxIdIsPresent,
         myPrint(options, 2, "Maximum Tree Height: ", heightMax, "\n\n");
     }
 
-    myPrint(options, 1,"Dumping Taxonomy Tree... ");
-    start = sysTime();
-    save(taxonParentIDs, std::string(options.indexDir + "/tax_parents").c_str());
-    save(taxonHeights,   std::string(options.indexDir + "/tax_heights").c_str());
-    myPrint(options, 1, "done.\n");
-    myPrint(options, 2, "Runtime: ", sysTime() - start, "s\n\n");
+
+//     myPrint(options, 1,"Dumping Taxonomy Tree... ");
+//     start = sysTime();
+//     std::string _path = options.indexDir + "/tax";
+//
+//     {
+//         std::ofstream os{_path.c_str()};
+//
+//         cereal::BinaryOutputArchive oarchive(os);
+//         oarchive(taxonParentIDs);
+//         oarchive(taxonHeights);
+//     }
+//
+//     myPrint(options, 1, "done.\n");
+//     myPrint(options, 2, "Runtime: ", sysTime() - start, "s\n\n");
 
     // DEBUG
     #ifndef NDEBUG
-    for (uint32_t i = 0; i < length(taxonParentIDs); ++i)
+    for (uint32_t i = 0; i < std::ranges::size(taxonParentIDs); ++i)
     {
         if (!taxIdIsPresentOrParent[i] && (taxonParentIDs[i] != 0))
             std::cerr << "WARNING: TaxID " << i << " has parent, but shouldn't.\n";
@@ -668,9 +661,7 @@ parseAndDumpTaxTree(std::vector<bool>          & taxIdIsPresent,
     #endif
 
     /** read the names **/
-
-    StringSet<CharString> taxonNames; // ever position has the index of its parent node
-    resize(taxonNames, length(taxonParentIDs));
+    taxonNames.resize(std::ranges::size(taxonParentIDs));
 
     path = options.taxDumpDir + "/names.dmp";
 
@@ -679,9 +670,13 @@ parseAndDumpTaxTree(std::vector<bool>          & taxIdIsPresent,
         throw std::runtime_error(std::string("ERROR: Could not open ") + path + "\n");
 
     // transparent decompressor
-    VirtualStream<char, Input> vfin2{fin2};
-    // stream iterator
-    fit = directionIterator(vfin2, Input());
+    auto vstream2 = seqan3::detail::make_secondary_istream(fin2);
+
+    auto file_view2 = std::ranges::subrange<std::istreambuf_iterator<char>, std::istreambuf_iterator<char>>
+    {
+        std::istreambuf_iterator<char>{*vstream2},
+        std::istreambuf_iterator<char>{}
+    };
 
     myPrint(options, 1, "Parsing names.dmp... ");
 
@@ -690,11 +685,10 @@ parseAndDumpTaxTree(std::vector<bool>          & taxIdIsPresent,
     std::regex const wordRegEx{R"([\w.,\"<> ]+)"};
     std::string name;
 
-    while (!atEnd(fit))
+    while (std::ranges::begin(file_view2) != std::ranges::end(file_view2))
     {
-        clear(buf);
         // read line
-        readLine(buf, fit);
+        buf = file_view | seqan3::view::take_line;
 
         uint32_t taxId = 0;
 
@@ -704,17 +698,19 @@ parseAndDumpTaxTree(std::vector<bool>          & taxIdIsPresent,
             throw std::runtime_error("Error: Expected taxonomical ID in first column, but couldn't find it.\n");
         } else
         {
-            try
+            std::string strbuf = itWord->str();
+            std::from_chars_result res;
+
+            res = std::from_chars(strbuf.data(), strbuf.data() + strbuf.size(), taxId);
+
+            if (res.ec != std::errc{})
             {
-                taxId = lexicalCast<uint64_t>(itWord->str());
-            }
-            catch (BadLexicalCast const & badCast)
-            {
-                throw std::runtime_error(std::string("Error: Expected taxonomical ID in first column, but got something"
-                                                     " I couldn't read: ") + std::string(badCast.what()) + "\n");
+                throw std::runtime_error{
+                    std::string{"Error: Expected taxonomical ID in first column, but got something I couldn't read: "} +
+                                strbuf + "\n"};
             }
 
-            if (taxId >= length(taxonNames))
+            if (taxId >= std::ranges::size(taxonNames))
             {
                 throw std::runtime_error(std::string("Error: taxonomical ID is ") + std::to_string(taxId) +
                                          ", but no such taxon in tree.\n");
@@ -741,7 +737,7 @@ parseAndDumpTaxTree(std::vector<bool>          & taxIdIsPresent,
     myPrint(options, 2, "Runtime: ", sysTime() - start, "s\n");
 
     taxonNames[0] = "invalid";
-    for (uint32_t i = 0; i < length(taxonNames); ++i)
+    for (uint32_t i = 0; i < std::ranges::size(taxonNames); ++i)
     {
         if (taxIdIsPresentOrParent[i] && empty(taxonNames[i]))
         {
@@ -750,310 +746,73 @@ parseAndDumpTaxTree(std::vector<bool>          & taxIdIsPresent,
         }
     }
 
-    myPrint(options, 1,"Dumping Taxon names... ");
-    start = sysTime();
-    // concat direct so that it's easier to read/write
-    StringSet<CharString, Owner<ConcatDirect<>>> outTaxonNames = taxonNames;
-    save(outTaxonNames, std::string(options.indexDir + "/tax_names").c_str());
-    myPrint(options, 1, "done.\n");
-    myPrint(options, 2, "Runtime: ", sysTime() - start, "s\n\n");
+//     myPrint(options, 1,"Dumping Taxon names... ");
+//     start = sysTime();
+//     std::string _path2 = options.indexDir + "/tax_names";
+//
+//     {
+//         std::ofstream os{_path2.c_str()};
+//
+//         cereal::BinaryOutputArchive oarchive(os); // Create an output archive
+//         oarchive(taxonNames);
+//     }
+//
+//     myPrint(options, 1, "done.\n");
+//     myPrint(options, 2, "Runtime: ", sysTime() - start, "s\n\n");
+
+    return ret;
 }
 
-// --------------------------------------------------------------------------
-// Function createSuffixArray()
-// --------------------------------------------------------------------------
 
-// If there is no overload with progress function, then strip it
-template <typename TSA,
-          typename TString,
-          typename TSSetSpec,
-          typename TAlgo,
-          typename TLambda>
-inline void
-createSuffixArray(TSA & SA,
-                  StringSet<TString, TSSetSpec> const & s,
-                  TAlgo const &,
-                  TLambda &&)
+template <bool is_bi,
+          AlphabetEnum c_redAlph,
+          typename TStringSet>
+auto
+generateIndex(TStringSet                       & seqs,
+              LambdaIndexerOptions       const & options)
 {
-    return createSuffixArray(SA, s, TAlgo());
-}
+    // TODO reduced sequences should not be saved; change after index changes
+    using TRedSeqs = TCDStringSet<std::vector<_alphabetEnumToType<c_redAlph>>>;
+    using TIndex   = std::conditional_t<is_bi, seqan3::bi_fm_index<TRedSeqs>, seqan3::fm_index<TRedSeqs>>;
 
-// ----------------------------------------------------------------------------
-// Function indexCreate
-// ----------------------------------------------------------------------------
+    std::tuple<TRedSeqs, TIndex> ret;
 
-template <typename TText, typename TSpec, typename TConfig>
-void
-indexCreateProgress(Index<TText, FMIndex<TSpec, TConfig> > & index,
-                    FibreSALF const &,
-                    LambdaIndexerOptions const & options)
-{
-    typedef Index<TText, FMIndex<TSpec, TConfig> >               TIndex;
-    typedef typename Fibre<TIndex, FibreTempSA>::Type            TTempSA;
-    typedef typename Size<TIndex>::Type                          TSize;
-    typedef typename DefaultIndexCreator<TIndex, FibreSA>::Type  TAlgo;
+    auto & redSeqs = std::get<0>(ret);
+    auto & index   = std::get<1>(ret);
 
-    TText const & text = indexText(index);
-
-    if (empty(text))
-        return;
-
-    TTempSA tempSA;
-    uint64_t lastPercent = 0;
-
+    myPrint(options, 1, "Reducing sequences...");
     double s = sysTime();
-    myPrint(options, 1, "Generating Index 0%  10%  20%  30%  40%  50%  60%  70%  80%  90%  100%\n"
-                        " Progress:       |");
-    // Create the full SA.
-    resize(tempSA, lengthSum(text), Exact());
-    if (options.verbosity >= 1)
-    {
-        createSuffixArray(tempSA,
-                          text,
-                          TAlgo(),
-                          [&lastPercent] (uint64_t curPerc)
-                          {
-                              // needs locking, because called from multiple threads
-                              SEQAN_OMP_PRAGMA(critical(progressBar))
-                              printProgressBar(lastPercent, curPerc * 0.85); // 85% of progress
-                          });
-    } else
-    {
-        createSuffixArray(tempSA,
-                          text,
-                          TAlgo());
-    }
-    double sacaTime = sysTime() - s;
-
-    if (options.verbosity >= 1)
-        printProgressBar(lastPercent, 85);
-
-    // Create the LF table.
-    s = sysTime();
-    if (options.verbosity >= 1)
-    {
-        createLFProgress(indexLF(index),
-                         text,
-                         tempSA,
-                         [&lastPercent] (uint64_t curPerc)
-                         {
-                             // doesn't need locking, only writes from one thread
-                             printProgressBar(lastPercent, curPerc * 0.1); // 10% of progress
-                         });
-    } else
-    {
-        createLFProgress(indexLF(index),
-                         text,
-                         tempSA,
-                         [] (uint64_t) {});
-    }
-    // Set the FMIndex LF as the CompressedSA LF.
-    setFibre(indexSA(index), indexLF(index), FibreLF());
-    double bwtTime = sysTime() - s;
-
-    if (options.verbosity >= 1)
-        printProgressBar(lastPercent, 95);
-
-    // Create the sampled SA.
-    s = sysTime();
-    TSize numSentinel = countSequences(text);
-    createCompressedSa(indexSA(index), tempSA, numSentinel);
-    double sampleTime = sysTime() - s;
-
-    if (options.verbosity >= 1)
-        printProgressBar(lastPercent, 100);
-
-    myPrint(options, 1, "\n");
-    myPrint(options, 2, "SA  construction runtime: ", sacaTime, "s\n");
-    myPrint(options, 2, "BWT construction runtime: ", bwtTime, "s\n");
-    myPrint(options, 2, "SA  sampling runtime:     ", sampleTime, "s\n");
-    myPrint(options, 1, "\n");
-}
-
-template <typename TText, typename TSpec, typename TConfig>
-void
-indexCreateProgress(Index<TText, BidirectionalIndex<FMIndex<TSpec, TConfig> > > & index,
-                    FibreSALF const &,
-                    LambdaIndexerOptions const & options)
-{
-    myPrint(options, 1, "Bi-Directional Index [forward]\n");
-    indexCreateProgress(index.fwd, FibreSALF(), options);
-
-    myPrint(options, 1, "Bi-Directional Index [backward]\n");
-    indexCreateProgress(index.rev, FibreSALF(), options);
-}
-
-template <typename TText, typename TSpec>
-void
-indexCreateProgress(Index<TText, IndexSa<TSpec> > & index,
-                    FibreSA const &,
-                    LambdaIndexerOptions const & options)
-{
-    typedef Index<TText, IndexSa<TSpec> >                        TIndex;
-    typedef typename Fibre<TIndex, FibreSA>::Type                TSA;
-    typedef typename DefaultIndexCreator<TIndex, FibreSA>::Type  TAlgo;
-
-    TText const & text = indexText(index);
-
-    if (empty(text))
-        return;
-
-    TSA & sa = getFibre(index, FibreSA());
-
-    myPrint(options, 1, "Generating Index 0%  10%  20%  30%  40%  50%  60%  70%  80%  90%  100%\n"
-                        "  Progress:      |");
-    // Create the full SA.
-    resize(sa, lengthSum(text), Exact());
-    if (options.verbosity >= 1)
-    {
-        createSuffixArray(sa,
-                          text,
-                          TAlgo(),
-                          [lastPercent = uint64_t{0ull}] (uint64_t curPerc) mutable
-                          {
-                              SEQAN_OMP_PRAGMA(critical(progressBar))
-                              printProgressBar(lastPercent, curPerc); // 100% of progress
-                          });
-    } else
-    {
-        createSuffixArray(sa,
-                          text,
-                          TAlgo());
-    }
-}
-
-template <typename T>
-inline void
-_clearSparseSuffixArray(T &, std::false_type const &)
-{}
-
-template <typename T>
-inline void
-_clearSparseSuffixArray(T & dbIndex, std::true_type const &)
-{
-    // reverse index does not require sampled suffix array, but its size :|
-    clear(getFibre(getFibre(getFibre(dbIndex, FibreSA()), FibreSparseString()), FibreValues()));
-    clear(getFibre(getFibre(getFibre(dbIndex, FibreSA()), FibreSparseString()), FibreIndicators()));
-}
-
-
-// --------------------------------------------------------------------------
-// Function generateIndexAndDump()
-// --------------------------------------------------------------------------
-
-#ifdef _OPENMP
-#define TID omp_get_thread_num()
-#else
-#define TID 0
-#endif
-
-template <typename TIndexSpec,
-          typename TIndexSpecSpec,
-          typename TString,
-          typename TSpec,
-          typename TRedAlph_,
-          typename TDirection,
-          BlastProgram p>
-inline void
-generateIndexAndDump(StringSet<TString, TSpec>        & seqs,
-                     LambdaIndexerOptions       const & options,
-                     BlastProgramSelector<p>    const &,
-                     TRedAlph_                  const &,
-                     Tag<TDirection>            const &)
-{
-    using TTransSeqs    = TCDStringSet<String<TransAlph<p>>>;
-
-    using TRedAlph      = RedAlph<p, TRedAlph_>; // ensures == Dna5 for BlastN
-    using TRedSeqVirt   = ModifiedString<String<TransAlph<p>, Alloc<>>,
-                            ModView<FunctorConvert<TransAlph<p>,TRedAlph>>>;
-    using TRedSeqsVirt  = StringSet<TRedSeqVirt, Owner<ConcatDirect<>>>;
-
-    static bool constexpr
-    indexIsFM           = std::is_same<TIndexSpec, TFMIndex<TIndexSpecSpec> >::value ||
-                          std::is_same<TIndexSpec, TFMIndexInBi<TIndexSpecSpec> >::value;
-    static bool constexpr
-    alphReduction       = !std::is_same<TransAlph<p>, TRedAlph>::value;
-
-    using TRedSeqs      = typename std::conditional<
-                            !alphReduction,
-                            TTransSeqs,             // owner
-                            TRedSeqsVirt>::type;    // modview
-    using TRedSeqsACT   = typename std::conditional<
-                            !alphReduction,
-                            TTransSeqs &,           // reference to owner
-                            TRedSeqsVirt>::type;    // modview
-
-    using TDbIndex      = Index<TRedSeqs, TIndexSpec>;
-    using TFullFibre    = typename std::conditional<indexIsFM,
-                                                    FibreSALF,
-                                                    FibreSA>::type;
-    static bool constexpr
-    hasProgress         = std::is_same<TIndexSpecSpec, RadixSortSACreateTag>::value;
-
-    // Generate Index
-    if (!hasProgress)
-        myPrint(options, 1, "Generating Index...");
-
-    double s = sysTime();
-
-//     std::cerr << "indexIsFM: " << int(indexIsFM) << std::endl;
-
-    // FM-Index needs reverse input
-    if (indexIsFM && std::is_same<Tag<TDirection>, Fwd>::value)
-        reverse(seqs);
-
-    TRedSeqsACT redSubjSeqs(seqs);
-
-    TDbIndex dbIndex(redSubjSeqs);
-
-    // instantiate SA
-    indexCreateProgress(dbIndex, TFullFibre(),  options);
-
-    // since we dumped unreduced sequences before and reduced sequences are
-    // only "virtual" we clear them before dump
-    std::decay_t<decltype(redSubjSeqs.limits)> tmpLimits;
-    if (alphReduction || !indexIsFM) // fm indexes don't dump them anyways
-    {
-        if (indexIsFM && (std::is_same<Tag<TDirection>, Rev>::value))
-        {
-            // these makes redSubjSeqs appear empty and deactivates output
-            swap(tmpLimits, redSubjSeqs.limits);
-
-            _clearSparseSuffixArray(dbIndex, std::integral_constant<bool, indexIsFM>{});
-        } else
-        {
-            clear(seqs);
-            clear(redSubjSeqs.limits); // limits part is not lightweight
-        }
-    }
-
+    redSeqs = seqs | seqan3::view::deep{seqan3::view::convert<_alphabetEnumToType<c_redAlph>>};
     double e = sysTime() - s;
-    if (!hasProgress)
-    {
-        myPrint(options, 1, " done.\n");
-        myPrint(options, 2, "Runtime: ", e, "s \n\n");
-    }
+    myPrint(options, 1, " done.\n");
+    myPrint(options, 2, "Runtime: ", e, "s \n\n");
 
-    // Dump Index
-    myPrint(options, 1, "Writing Index to disk...");
+    myPrint(options, 1, "Generating Index...");
     s = sysTime();
-    std::string path = options.indexDir + "/index";
-
-    if (std::is_same<Tag<TDirection>, Rev>::value)
-        path += ".rev";
-
-    save(dbIndex, path.c_str());
-
+    index = TIndex{redSeqs};
     e = sysTime() - s;
     myPrint(options, 1, " done.\n");
-    myPrint(options, 2, "Runtime: ", e, "s \n");
+    myPrint(options, 2, "Runtime: ", e, "s \n\n");
 
-    if (alphReduction && indexIsFM && (std::is_same<Tag<TDirection>, Rev>::value))
-    {
-        // we swap back so that the sequences can be used for building the second index
-        swap(tmpLimits, redSubjSeqs.limits);
-//         redSubjSeqs.limits = tmpLimits;
-    }
+    return ret;
+    // Dump Index
+//     myPrint(options, 1, "Writing Index to disk...");
+//     s = sysTime();
+//     std::string _path = options.indexDir + "/index";
+//
+// //     index.store(_path);
+//
+// //TODO once sdsl-ceral-support in SeqAn3
+//     {
+//         std::ofstream os{_path.c_str()};
+//
+//         cereal::BinaryOutputArchive oarchive(os); // Create an output archive
+//         oarchive(index);
+//     }
+//
+//     e = sysTime() - s;
+//     myPrint(options, 1, " done.\n");
+//     myPrint(options, 2, "Runtime: ", e, "s \n");
 }
 
 #endif // header guard

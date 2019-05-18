@@ -21,10 +21,12 @@
 
 #include <seqan3/argument_parser/all.hpp>
 
+#if 0
 #include "search.hpp"
+#endif
 #include "mkindex.hpp"
 
-using namespace seqan;
+// using namespace seqan;
 
 void parseCommandLineMain(int argc, char const ** argv);
 
@@ -69,6 +71,7 @@ int main(int argc, char const ** argv)
     // TODO change return values
     if ((std::string(argv[until]) == "searchp") || (std::string(argv[until]) == "searchn"))
     {
+#if 0
         try
         {
             searchMain(argc - until, argv + until);
@@ -78,8 +81,12 @@ int main(int argc, char const ** argv)
             std::cerr << ext.what() << "\n";
             return -1;
         }
+#endif
+
     }
-    else if ((std::string(argv[until]) == "mkindexp") || (std::string(argv[until]) == "mkindexn"))
+    else
+
+    if ((std::string(argv[until]) == "mkindexp") || (std::string(argv[until]) == "mkindexn"))
     {
         try
         {
@@ -110,7 +117,7 @@ void parseCommandLineMain(int argc, char const ** argv)
     sharedSetup(parser);
 
     std::string command{};
-    parser.add_positional_option(command, "The sub-program to execute. See below.", 
+    parser.add_positional_option(command, "The sub-program to execute. See below.",
         seqan3::value_list_validator({"searchp", "searchn", "mkindexp", "mkindexn"}));
 
     parser.info.description.push_back("Available commands");

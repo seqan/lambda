@@ -27,14 +27,6 @@
 #include <unistd.h>
 #include <bitset>
 
-#include <seqan/basic.h>
-#include <seqan/translation.h>
-#include <seqan/arg_parse.h>
-#include <seqan/index.h>
-#include <seqan/blast.h>
-
-using namespace seqan;
-
 // --------------------------------------------------------------------------
 // Class LambdaIndexerOptions
 // --------------------------------------------------------------------------
@@ -46,6 +38,8 @@ struct LambdaIndexerOptions : public SharedOptions
     std::string     algo = "radixsort";
     std::string     accToTaxMapFile;
     std::string     taxDumpDir;
+
+    std::string     tmpdir = std::filesystem::current_path();
 
     bool            truncateIDs = true;
 
@@ -63,18 +57,17 @@ struct LambdaIndexerOptions : public SharedOptions
 // INDEXER
 void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
 {
-    std::string programName = "lambda2 " + std::string(argv[0]);
+    std::string programName = "lambda3 " + std::string(argv[0]);
 
     // this is important for option handling:
-    if (std::string(argv[0]) == "mkindexn")
-        options.blastProgram = BlastProgram::BLASTN;
+    options.nucleotide_mode = (std::string(argv[0]) == "mkindexn");
 
     seqan3::argument_parser parser(programName, argc, argv);
 
     parser.info.short_description = "the Local Aligner for Massive Biological DatA";
 
     // Define usage line and long description.
-    parser.info.synopsis.push_back("[\\fIOPTIONS\\fP] \\-d DATABASE.fasta [-i INDEX.lambda]\\fP");
+    parser.info.synopsis.push_back("[\\fIOPTIONS\\fP] \\-d DATABASE.fasta [-i INDEX.lba]\\fP");
 
     parser.info.description.push_back("This is the indexer command for creating lambda-compatible databases.");
 
@@ -117,13 +110,14 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
 
     parser.add_section("Output Options");
 
-    // TODO Does this input directory structure work?
-    parser.add_option(options.indexDir, 'i', "index",
-        "The output directory for the index files (defaults to \"DATABASE.lambda\").",
-        seqan3::option_spec::DEFAULT, seqan3::path_existence_validator());
+    options.indexFilePath = "»INPUT«.lba";
+    parser.add_option(options.indexFilePath, 'i', "index",
+        "The output path for the index file.",
+        seqan3::option_spec::DEFAULT,
+        seqan3::file_ext_validator({"lba", "lta"}));
 
     std::string dbIndexTypeTmp = "fm";
-    parser.add_option(dbIndexTypeTmp, '\0', "db-index-type", "Suffix array or full-text minute space.",
+    parser.add_option(dbIndexTypeTmp, '\0', "db-index-type", "FM-Index oder bidirectional FM-Index.",
         seqan3::option_spec::ADVANCED);
 
     parser.add_option(options.truncateIDs, '\0', "truncate-ids",
@@ -134,14 +128,18 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
     std::string alphabetReductionTmp = "murphy10";
     int geneticCodeTmp = 1;
 
-    if (options.blastProgram == BlastProgram::BLASTN)
+    if (options.nucleotide_mode)
     {
-        options.subjOrigAlphabet = AlphabetEnum::DNA5;
-        options.transAlphabet    = AlphabetEnum::DNA5;
-        options.reducedAlphabet  = AlphabetEnum::DNA5;
+        options.indexFileOptions.origAlph     = AlphabetEnum::DNA5;
+        options.indexFileOptions.transAlph    = AlphabetEnum::DNA5;
+        options.indexFileOptions.redAlph      = AlphabetEnum::DNA5;
     }
     else
     {
+        options.indexFileOptions.origAlph   = AlphabetEnum::UNDEFINED;
+        options.indexFileOptions.transAlph  = AlphabetEnum::AMINO_ACID;
+        options.indexFileOptions.redAlph    = AlphabetEnum::MURPHY10;
+
         parser.add_section("Alphabet and Translation");
 
         parser.add_option(inputAlphabetTmp,'a', "input-alphabet",
@@ -165,20 +163,12 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
         seqan3::option_spec::ADVANCED,
         seqan3::value_list_validator({"mergesort", "quicksortbuckets", "quicksort", "radixsort", "skew7ext"}));
 
-#ifdef _OPENMP
     parser.add_option(options.threads, 't', "threads",
         "Number of threads to run concurrently (ignored if a == skew7ext).", seqan3::option_spec::ADVANCED,
-        seqan3::arithmetic_range_validator{1, (double) omp_get_max_threads() * 10});
-#else
-    parser.add_option(options.threads, 't', "threads",
-        "LAMBDA BUILT WITHOUT OPENMP; setting this option has no effect.", seqan3::option_spec::ADVANCED,
-        seqan3::arithmetic_range_validator{1, 1});
-#endif
+        seqan3::arithmetic_range_validator{1, static_cast<double>(options.threads)});
 
-    std::string tmpdir;
-    getCwd(tmpdir);
     // TODO change validator
-    parser.add_option(tmpdir,'\0', "tmp-dir", "temporary directory used by skew, defaults to working directory.",
+    parser.add_option(options.tmpdir,'\0', "tmp-dir", "temporary directory used by skew, defaults to working directory.",
         seqan3::option_spec::ADVANCED, seqan3::path_existence_validator());
 
     parser.add_section("Remarks");
@@ -191,38 +181,17 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
     parser.parse();
 
     // set db index type
-    if (dbIndexTypeTmp == "sa")
-        options.dbIndexType = DbIndexType::SUFFIX_ARRAY;
-    else if (dbIndexTypeTmp == "bifm")
-        options.dbIndexType = DbIndexType::BI_FM_INDEX;
+    if (dbIndexTypeTmp == "bifm")
+        options.indexFileOptions.indexType = DbIndexType::BI_FM_INDEX;
     else
-        options.dbIndexType = DbIndexType::FM_INDEX;
+        options.indexFileOptions.indexType = DbIndexType::FM_INDEX;
 
     // set options for protein alphabet, genetic code and alphabet reduction
-    if (options.blastProgram != BlastProgram::BLASTN)
+    if (!options.nucleotide_mode)
     {
-        if (inputAlphabetTmp == "auto")
-            options.subjOrigAlphabet = AlphabetEnum::DNA4;
-        else if (inputAlphabetTmp == "dna5")
-            options.subjOrigAlphabet = AlphabetEnum::DNA5;
-        else if (inputAlphabetTmp == "aminoacid")
-            options.subjOrigAlphabet = AlphabetEnum::AMINO_ACID;
-        else
-            throw seqan3::parser_invalid_argument("ERROR: Invalid argument to --input-alphabet\n");
-
-        if (alphabetReductionTmp == "murphy10")
-        {
-            options.reducedAlphabet = AlphabetEnum::MURPHY10;
-            // TODO deprecate:
-            options.alphReduction = 2;
-        }
-        else
-        {
-            options.reducedAlphabet = AlphabetEnum::AMINO_ACID;
-            options.alphReduction = 0;
-        }
-
-        options.geneticCode = static_cast<GeneticCodeSpec>(geneticCodeTmp);
+        options.indexFileOptions.origAlph       = _alphabetNameToEnum(inputAlphabetTmp);
+        options.indexFileOptions.redAlph        = _alphabetNameToEnum(alphabetReductionTmp);
+        options.indexFileOptions.geneticCode    = static_cast<seqan3::genetic_code>(geneticCodeTmp);
     }
 
     // set algorithm option
@@ -234,32 +203,33 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
     }
     options.algo = algorithmTmp;
 
-    setEnv("TMPDIR", tmpdir);
+    setEnv("TMPDIR", options.tmpdir);
 
     // set hasSTaxIds based on taxonomy file
     options.hasSTaxIds = (options.accToTaxMapFile != "");
 
-    if (options.indexDir == "")
-        options.indexDir = options.dbFile + ".lambda";
+    if (options.indexFilePath == "»INPUT«.lba")
+        options.indexFilePath = options.dbFile + ".lba";
 
-    if (fileExists(options.indexDir.c_str()))
+    if (std::filesystem::exists(options.indexFilePath))
     {
-        throw seqan3::parser_invalid_argument("ERROR: An output directory already exists at " + options.indexDir +
-            "Remove it, or choose a different location.\n");
+        throw seqan3::parser_invalid_argument("ERROR: An output file already exists at " +
+                                              options.indexFilePath.string() +
+                                              "\n       Remove it, or choose a different location.\n");
     }
     else
     {
-        if (mkdir(options.indexDir.c_str(), S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH))
-        {
-            throw seqan3::parser_invalid_argument("ERROR: Cannot create output directory at " + options.indexDir + '\n');
-        }
+//         if (mkdir(options.indexFilePath.c_str(), S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH))
+//         {
+//             throw seqan3::parser_invalid_argument("ERROR: Cannot create output directory at " + options.indexFilePath + '\n');
+//         }
     }
 
     if (!options.taxDumpDir.empty())
     {
         if (!options.hasSTaxIds)
         {
-            throw seqan3::parser_invalid_argument("ERROR: There is no point in inclduing a taxonomic tree in the index, if\n"
+            throw seqan3::parser_invalid_argument("ERROR: There is no point in including a taxonomic tree in the index, if\n"
                                                   "       you don't also include taxonomic IDs for your sequences.\n");
         }
         //TODO check existance of directory

@@ -22,17 +22,24 @@
 #ifndef SEQAN_SHARED_DEFINITIONS_H_
 #define SEQAN_SHARED_DEFINITIONS_H_
 
-#include <seqan/index.h>
-#include <seqan/blast.h>
+#include <seqan3/search/fm_index/fm_index.hpp>
+#include <seqan3/search/fm_index/bi_fm_index.hpp>
 
-using namespace seqan;
+#include "shared_options.hpp"
+
+// ==========================================================================
+// Global variables
+// ==========================================================================
+
+// this is increased after incompatible changes to on-disk format
+inline constexpr uint64_t currentIndexGeneration = 0;
 
 // ==========================================================================
 // Metafunctions
 // ==========================================================================
 
 // SIZE TYPES
-
+#if 0
 // Expected Number of Sequences
 template <typename TAlph>
 using SizeTypeNum_ = uint32_t;
@@ -129,51 +136,57 @@ struct LambdaFMIndexConfigInBi : LambdaFMIndexConfig
 {
     using Bwt       = Levels<void, LevelsPrefixRDConfig<LengthSum, TAlloc, 3, 3> >;
 };
+#endif
 
-template <typename TSpec = void>
-using TFMIndex = FMIndex<TSpec, LambdaFMIndexConfig>;
+template <typename TText = void>
+using TFMIndex = seqan3::fm_index<TText>;
 
-template <typename TSpec = void>
-using TFMIndexInBi = FMIndex<TSpec, LambdaFMIndexConfigInBi>;
+template <typename TText = void>
+using TFMIndexInBi = seqan3::bi_fm_index<TText>;
 
 // lazy...
 template <typename TString>
-using TCDStringSet = StringSet<TString, Owner<ConcatDirect<> > >;
-
-template <BlastProgram p>
-using OrigQryAlph = typename std::conditional<
-                                           (p == BlastProgram::BLASTN) ||
-                                           (p == BlastProgram::BLASTX) ||
-                                           (p == BlastProgram::TBLASTX),
-                                           Dna5,
-                                           AminoAcid>::type;
-
-template <BlastProgram p>
-using OrigSubjAlph = typename std::conditional<
-                                           (p == BlastProgram::BLASTN) ||
-                                           (p == BlastProgram::TBLASTN) ||
-                                           (p == BlastProgram::TBLASTX),
-                                           Dna5,
-                                           AminoAcid>::type;
-
-template <BlastProgram p>
-using TransAlph = typename std::conditional<(p == BlastProgram::BLASTN),
-                                            Dna5,
-                                            AminoAcid>::type;
+using TCDStringSet = std::vector<TString>; //TODO seqan3::concatenated_sequences
 
 
-template <BlastProgram p, typename TRedAlph_>
-using RedAlph = typename std::conditional<(p == BlastProgram::BLASTN),
-                                          Dna5,
-                                          TRedAlph_>::type;
+template <DbIndexType           dbIndexType,
+          AlphabetEnum          origAlph,
+          AlphabetEnum          transAlph,
+          AlphabetEnum          redAlph>    // <- all members of index_file_options that influence types
+struct index_file
+{
+    index_file_options options{};
+
+    TCDStringSet<std::string>                                   ids;
+    std::vector<uint64_t>                                       origSeqLengths; // only used when origAlph != transAlph
+    TCDStringSet<std::vector<_alphabetEnumToType<transAlph>>>   transSeqs;
+    std::vector<std::vector<uint32_t>>                          sTaxIds; //TODO double check int-width
+
+    std::vector<uint32_t>                                       taxonParentIDs;
+    std::vector<uint8_t>                                        taxonHeights;
+    std::vector<std::string>                                    taxonNames;
+
+    TCDStringSet<std::vector<_alphabetEnumToType<redAlph>>>     redSeqs; // temporary
+    std::conditional_t<dbIndexType == DbIndexType::BI_FM_INDEX,
+                       seqan3::bi_fm_index<decltype(redSeqs)>,
+                       seqan3::fm_index<decltype(redSeqs)>>     index;
+
+    template <typename TArchive>
+    void serialize(TArchive & archive)
+    {
+        archive(cereal::make_nvp("options",          options),
+                cereal::make_nvp("ids",              ids),
+                cereal::make_nvp("origSeqLengths",   origSeqLengths),
+                cereal::make_nvp("transSeqs",        transSeqs),
+                cereal::make_nvp("sTaxIds",          sTaxIds),
+                cereal::make_nvp("taxonParentIDs",   taxonParentIDs),
+                cereal::make_nvp("taxonHeights",     taxonHeights),
+                cereal::make_nvp("taxonNames",       taxonNames),
+                cereal::make_nvp("redSeqs",          redSeqs),
+                cereal::make_nvp("index",            index));
+    }
+};
 
 
-
-// ==========================================================================
-// Global variables
-// ==========================================================================
-
-// this is increased after incompatible changes to on-disk format
-constexpr uint64_t indexGeneration = 1;
 
 #endif // header guard
