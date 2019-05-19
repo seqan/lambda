@@ -40,62 +40,32 @@
 
 // forwards
 
-void
-argConv0(LambdaOptions & options);
-//-
-template <typename TOutFormat,
-          BlastTabularSpec h>
-void
-argConv1(LambdaOptions                       & options,
-         TOutFormat                    const & /**/,
-         BlastTabularSpecSelector<h>   const &);
-//-
-template <typename TOutFormat,
-          BlastTabularSpec h,
-          BlastProgram p>
-void
-argConv2(LambdaOptions                        & options,
-         TOutFormat                     const & /**/,
-         BlastTabularSpecSelector<h>    const &,
-         BlastProgramSelector<p>        const &);
-//-
-template <typename TOutFormat,
-          typename TRedAlph,
-          BlastTabularSpec h,
-          BlastProgram p>
-void
-argConv3(LambdaOptions                        & options,
-         TOutFormat                     const &,
-         BlastTabularSpecSelector<h>    const &,
-         BlastProgramSelector<p>        const &,
-         TRedAlph                       const &);
-//-
-template <typename TOutFormat,
-          typename TRedAlph,
-          typename TScoreExtension,
-          BlastTabularSpec h,
-          BlastProgram p>
-void
-argConv4(LambdaOptions                        & options,
-         TOutFormat                     const & /**/,
-         BlastTabularSpecSelector<h>    const &,
-         BlastProgramSelector<p>        const &,
-         TRedAlph                       const & /**/,
-         TScoreExtension                const & /**/);
-//-
-template <typename TIndexSpec,
-          typename TRedAlph,
-          typename TScoreExtension,
-          typename TOutFormat,
-          BlastProgram p,
-          BlastTabularSpec h>
-void
-realMain(LambdaOptions                        & options,
-         TOutFormat                     const & /**/,
-         BlastTabularSpecSelector<h>    const &,
-         BlastProgramSelector<p>        const &,
-         TRedAlph                       const & /**/,
-         TScoreExtension                const & /**/);
+void argConv0(LambdaOptions & options);
+
+template <DbIndexType c_indexType>
+void argConv1(LambdaOptions & options);
+
+template <DbIndexType   c_indexType,
+          AlphabetEnum  c_origSbjAlph>
+void argConv2(LambdaOptions const & options);
+
+template <DbIndexType   c_indexType,
+          AlphabetEnum  c_origSbjAlph,
+          AlphabetEnum  c_transAlph>
+void argConv3(LambdaOptions const & options);
+
+template <DbIndexType           dbIndexType,
+          AlphabetEnum          origSbjAlph,
+          AlphabetEnum          transAlph,
+          AlphabetEnum          redAph>
+void argConv4(LambdaOptions     const & options);
+
+template <DbIndexType           dbIndexType,
+          AlphabetEnum          origSbjAlph,
+          AlphabetEnum          transAlph,
+          AlphabetEnum          redAph,
+          AlphabetEnum          origQryAlph>
+void realMain(LambdaOptions     const & options);
 
 // --------------------------------------------------------------------------
 // Function main()
@@ -236,38 +206,36 @@ argConv0(LambdaOptions & options)
     // sizes
     checkRAM(options);
 
-    // make sure output is writable
-    int fd = open(toCString(options.output), O_WRONLY | O_CREAT | O_NOCTTY | O_NONBLOCK, 0600);
-    if (fd < 0)
-    {
-        throw std::invalid_argument("Output file not writable. Check if the directory exists and you have correct "
-                                    "permissions.");
-    } else
-    {
-        close(fd); // will be opened again, later
-    }
-
-    // output format conversion to constexpr
-    CharString output = options.output;
-    if (endsWith(output, ".gz"))
-        output = prefix(output, length(output) - 3);
-    else if (endsWith(output, ".bz2"))
-        output = prefix(output, length(output) - 4);
-
-    if (endsWith(output, ".m0"))
-        return argConv1(options, BlastReport(), BlastTabularSpecSelector<BlastTabularSpec::NO_COMMENTS>());
-    else if (endsWith(output, ".m8"))
-        return argConv1(options, BlastTabular(), BlastTabularSpecSelector<BlastTabularSpec::NO_COMMENTS>());
-    else if (endsWith(output, ".m9"))
-        return argConv1(options, BlastTabular(), BlastTabularSpecSelector<BlastTabularSpec::COMMENTS>());
-    else if (endsWith(output, ".sam") || endsWith(output, ".bam")) // handled elsewhere
-        return argConv1(options, BlastTabular(), BlastTabularSpecSelector<BlastTabularSpec::COMMENTS>());
-
-    throw std::invalid_argument("Cannot handle output extension. THIS IS A BUG, please report it!");
 }
 
-template <typename TOutFormat,
-          BlastTabularSpec h>
+template <DbIndexType c_indexType>
+void argConv1(LambdaOptions & options);
+
+template <DbIndexType   c_indexType,
+          AlphabetEnum  c_origSbjAlph>
+void argConv2(LambdaOptions const & options);
+
+template <DbIndexType   c_indexType,
+          AlphabetEnum  c_origSbjAlph,
+          AlphabetEnum  c_transAlph>
+void argConv3(LambdaOptions const & options);
+
+template <DbIndexType           dbIndexType,
+          AlphabetEnum          origSbjAlph,
+          AlphabetEnum          transAlph,
+          AlphabetEnum          redAph>
+void argConv4(LambdaOptions     const & options);
+
+template <DbIndexType           dbIndexType,
+          AlphabetEnum          origSbjAlph,
+          AlphabetEnum          transAlph,
+          AlphabetEnum          redAph,
+          AlphabetEnum          origQryAlph>
+void realMain(LambdaOptions     const & options);
+
+
+
+template <typename TOutFormat
 void
 argConv1(LambdaOptions                       & options,
          TOutFormat                    const & /**/,
@@ -279,7 +247,6 @@ argConv1(LambdaOptions                       & options,
         case BlastProgram::BLASTN:
             return argConv3(options,
                             TOutFormat(),
-                            BlastTabularSpecSelector<h>(),
                             BlastProgramSelector<BlastProgram::BLASTN>(),
                             Dna5());
 #endif
@@ -454,11 +421,9 @@ realMain(LambdaOptions                        & options,
 
     prepareScoring(globalHolder, options);
 
-    loadSubjects(globalHolder, options);
 
     loadDbIndexFromDisk(globalHolder, options);
 
-    loadTaxonomy(globalHolder, options);
 
     loadQuery(globalHolder, options);
 
@@ -502,10 +467,6 @@ realMain(LambdaOptions                        & options,
             // seed
         #ifdef LAMBDA_MICRO_STATS
             double buf = sysTime();
-            localHolder.stats.timeGenSeeds += sysTime() - buf;
-
-            // search
-            buf = sysTime();
         #endif
             search(localHolder); //TODO seed refining if iterateMatches gives 0 results
         #ifdef LAMBDA_MICRO_STATS
@@ -531,12 +492,13 @@ realMain(LambdaOptions                        & options,
             }
 
             // extend
+#if 0
             if (length(localHolder.matches) > 0)
                 res = iterateMatches(localHolder);
 
             if (res)
                 continue;
-
+#endif
             if ((TID == 0) && (options.verbosity >= 1))
             {
                 unsigned curPercent = ((t * 50) / localHolder.nBlocks) * 2; // round to even

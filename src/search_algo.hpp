@@ -38,8 +38,6 @@
 
 #include <seqan/align_extend.h>
 
-using namespace seqan;
-
 // ============================================================================
 // Forwards
 // ============================================================================
@@ -120,64 +118,26 @@ readIndexOption(std::string            & optionString,
 void readIndexOptions(LambdaOptions & options)
 {
     // Check that directory exists and is readable
-    struct stat path_stat;
-    stat(toCString(options.indexDir), &path_stat);
-    if (stat(toCString(options.indexDir), &path_stat) || !S_ISDIR(path_stat.st_mode))
-        throw IndexException("Index directory does not exist or is not readable.\n");
+//     struct stat path_stat;
+// //     stat(indexFilePath.c_str(), &path_stat);
+//     if (stat(indexFilePath.c_str(), &path_stat) || !S_ISDIR(path_stat.st_mode))
+//         throw IndexException("Index directory does not exist or is not readable.\n");
 
-    std::string buffer;
-    uint64_t b = 0;
+    fake_index_file f{options.indexFileOptions};
 
-    readIndexOption(buffer, "generation", options);
-    b = 0;
-    if ((!lexicalCast(b, buffer)) || (b != static_cast<uint64_t>(indexGeneration)))
-        throw IndexException("Your index was created with an incompatible version of Lambda.\n");
-
-    buffer.clear();
-    readIndexOption(buffer, "alph_original", options);
-    options.subjOrigAlphabet = _alphabetNameToEnum(buffer);
-
-    buffer.clear();
-    readIndexOption(buffer, "alph_translated", options);
-    options.transAlphabet = _alphabetNameToEnum(buffer);
-
-    buffer.clear();
-    readIndexOption(buffer, "alph_reduced", options);
-    options.reducedAlphabet = _alphabetNameToEnum(buffer);
-
-    buffer.clear();
-    readIndexOption(buffer, "db_index_type", options);
-    b = 0;
-    if (!lexicalCast(b, buffer))
-        throw IndexException("Could not read the index type.\n\n");
-
-    options.dbIndexType = static_cast<DbIndexType>(b);
-
-    if (options.subjOrigAlphabet != options.transAlphabet)
+    if (options.indexFilePath.extension() == ".lba")
     {
-        buffer.clear();
-        readIndexOption(buffer, "genetic_code", options);
-        b = 0;
-        if (!lexicalCast(b, buffer))
-            throw IndexException("Could not read the index's genetic code.");
-        options.geneticCodeIndex = static_cast<GeneticCodeSpec>(b);
-    }
-
-    buffer.clear();
-    readIndexOption(buffer, "subj_seq_len_bits", options);
-    b = 0;
-    if ((!lexicalCast(b, buffer)) || (b != _alphabetEnumToSize(options.reducedAlphabet) * 8))
+        std::ifstream is{options.indexFilePath.c_str(), std::ios::binary};
+        cereal::BinaryInputArchive iarchive(os);
+        iarchive(cereal::make_nvp("lambda index", f));
+    } else if (options.indexFilePath.extension() == ".lta")
     {
-        std::string err;
-        #ifndef LAMBDA_LONG_PROTEIN_SUBJ_SEQS
-        err += "Your lambda executable was built with LAMBDA_LONG_PROTEIN_SUBJ_SEQS, "
-               "but the index was created by an executable that was built without it.";
-        #else
-        err += "Your lambda executable was built without LAMBDA_LONG_PROTEIN_SUBJ_SEQS,"
-               "but the index was created by an executable that was built with it.";
-        #endif
-        err += "You need to recreate the index or rebuild Lambda.";
-        throw IndexException(err);
+        std::ifstream is{options.indexFilePath.c_str(), std::ios::binary};
+        cereal::JSONInputArchive iarchive(os);
+        iarchive(cereal::make_nvp("lambda index", f));
+    } else
+    {
+        throw 59;
     }
 }
 
@@ -193,9 +153,9 @@ checkRAM(LambdaOptions const & options)
     uint64_t sizeIndex = 0;
     uint64_t sizeQuery = 0;
 
-    sizeIndex = dirSize(toCString(options.indexDir));
+    sizeIndex = fileSize(options.indexFilePath.c_str());
 
-    sizeQuery = fileSize(toCString(options.queryFile));
+    sizeQuery = fileSize(options.queryFile.c_str());
 
     uint64_t requiredRAM = ((sizeIndex + sizeQuery) * 11) / 10; // give it +10% TODO verify
 
@@ -215,150 +175,43 @@ checkRAM(LambdaOptions const & options)
 // Function prepareScoring()
 // --------------------------------------------------------------------------
 
-template <BlastTabularSpec h,
-          BlastProgram p,
-          typename TRedAlph,
-          typename TIndexSpec,
-          typename TOutFormat>
-inline void
-prepareScoringMore(GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h>  & globalHolder,
-                   LambdaOptions                                                    const & options,
-                   std::true_type                                                   const & /**/)
-{
-    setScoreMatch(context(globalHolder.outfile).scoringScheme, options.match);
-    setScoreMismatch(context(globalHolder.outfile).scoringScheme, options.misMatch);
-}
-
-template <BlastTabularSpec h,
-          BlastProgram p,
-          typename TRedAlph,
-          typename TIndexSpec,
-          typename TOutFormat>
-inline void
-prepareScoringMore(GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h> & globalHolder,
-                   LambdaOptions                                                    const & options,
-                   std::false_type                                                  const & /**/)
-{
-    switch (options.scoringMethod)
-    {
-//         case 0:
-//             return argConv3(options, TOutFormat(), Th(), Tp(), TRedAlph(), Score<int, Simple>());
-        case 45:
-            setScoreMatrixById(context(globalHolder.outfile).scoringScheme._internalScheme,
-                               AminoAcidScoreMatrixID::BLOSUM45);
-            break;
-        case 62:
-            setScoreMatrixById(context(globalHolder.outfile).scoringScheme._internalScheme,
-                               AminoAcidScoreMatrixID::BLOSUM62);
-            break;
-        case 80:
-            setScoreMatrixById(context(globalHolder.outfile).scoringScheme._internalScheme,
-                               AminoAcidScoreMatrixID::BLOSUM80);
-            break;
-        default:
-            break;
-    }
-}
-
-template <BlastTabularSpec h,
-          BlastProgram p,
-          typename TRedAlph,
-          typename TIndexSpec,
-          typename TOutFormat>
+template <typename TGlobalHolder>
 void
-prepareScoring(GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h> & globalHolder,
-               LambdaOptions                                                    const & options)
+prepareScoring(TGlobalHolder       & globalHolder,
+               LambdaOptions const & options)
 {
+    //TODO Seqan3 scoring scheme
     using TGlobalHolder = GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h>;
-    prepareScoringMore(globalHolder,
-                       options,
-                       std::is_same<typename TGlobalHolder::TScoreScheme, Score<int, Simple>>());
+    if constexpr (std::is_same_v<typename TGlobalHolder::TScoreScheme, Score<int, Simple>>)
+    {
+        seqan::setScoreMatch(context(globalHolder.outfile).scoringScheme, options.match);
+        seqan::setScoreMismatch(context(globalHolder.outfile).scoringScheme, options.misMatch);
+    } else
+    {
+        switch (options.scoringMethod)
+        {
+            case 45:
+                seqan::setScoreMatrixById(seqan::context(globalHolder.outfile).scoringScheme._internalScheme,
+                                        seqan::AminoAcidScoreMatrixID::BLOSUM45);
+                break;
+            case 62:
+                seqan::setScoreMatrixById(seqan::context(globalHolder.outfile).scoringScheme._internalScheme,
+                                        seqan::AminoAcidScoreMatrixID::BLOSUM62);
+                break;
+            case 80:
+                seqan::setScoreMatrixById(seqan::context(globalHolder.outfile).scoringScheme._internalScheme,
+                                        seqan::AminoAcidScoreMatrixID::BLOSUM80);
+                break;
+            default:
+                break;
+        }
+    }
 
     setScoreGapOpenBlast(context(globalHolder.outfile).scoringScheme, options.gapOpen);
     setScoreGapExtend(context(globalHolder.outfile).scoringScheme, options.gapExtend);
 
     if (!isValid(context(globalHolder.outfile).scoringScheme))
         throw std::runtime_error{"Could not computer Karlin-Altschul-Values for Scoring Scheme.\n"};
-}
-
-// --------------------------------------------------------------------------
-// Function loadSubjects()
-// --------------------------------------------------------------------------
-
-template <BlastTabularSpec h,
-          BlastProgram p,
-          typename TRedAlph,
-          typename TIndexSpec,
-          typename TOutFormat>
-void
-loadSubjects(GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h> & globalHolder,
-             LambdaOptions                                                    const & options)
-{
-    using TGH = GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h>;
-
-    double start, finish;
-    std::string strIdent;
-    int ret;
-    CharString _dbSeqs;
-
-    if (TGH::indexIsFM || TGH::alphReduction) // otherwise sequences are loaded as part of index
-    {
-        start = sysTime();
-        strIdent = "Loading Subj Sequences...";
-        myPrint(options, 1, strIdent);
-
-        _dbSeqs = options.indexDir;
-        append(_dbSeqs, "/translated_seqs");
-
-        ret = open(globalHolder.subjSeqs, toCString(_dbSeqs), OPEN_RDONLY);
-        if (ret != true)
-            throw IndexException{"Could not open subject sequences.\n"};
-
-        if (length(globalHolder.subjSeqs) == 0)
-            throw IndexException{"No sequences in database.\n"};
-
-        if (TGH::alphReduction)
-            globalHolder.redSubjSeqs.limits = globalHolder.subjSeqs.limits;
-
-        finish = sysTime() - start;
-        myPrint(options, 1, " done.\n");
-        myPrint(options, 2, "Runtime: ", finish, "s \n", "Amount: ",
-                length(globalHolder.subjSeqs), "\n\n");
-    }
-
-    start = sysTime();
-    strIdent = "Loading Subj Ids...";
-    myPrint(options, 1, strIdent);
-
-    _dbSeqs = options.indexDir;
-    append(_dbSeqs, "/seq_ids");
-    ret = open(globalHolder.subjIds, toCString(_dbSeqs), OPEN_RDONLY);
-    if (ret != true)
-        throw IndexException{"Could not open subject IDs."};
-    finish = sysTime() - start;
-    myPrint(options, 1, " done.\n");
-    myPrint(options, 2, "Runtime: ", finish, "s \n\n");
-
-    context(globalHolder.outfile).dbName = options.indexDir;
-
-    // if subjects where translated, we don't have the untranslated seqs at all
-    // but we still need the data for statistics and position un-translation
-    if (sIsTranslated(p))
-    {
-        start = sysTime();
-        std::string strIdent = "Loading Lengths of untranslated Subj sequences...";
-        myPrint(options, 1, strIdent);
-
-        _dbSeqs = options.indexDir;
-        append(_dbSeqs, "/untranslated_seq_lengths");
-        ret = open(globalHolder.untransSubjSeqLengths, toCString(_dbSeqs), OPEN_RDONLY);
-        if (ret != true)
-            throw IndexException{"Could not open unstranslated Subj sequence lengths."};
-
-        finish = sysTime() - start;
-        myPrint(options, 1, " done.\n");
-        myPrint(options, 2, "Runtime: ", finish, "s \n\n");
-    }
 }
 
 // --------------------------------------------------------------------------
@@ -373,41 +226,51 @@ loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
     std::string strIdent = "Loading Database Index...";
     myPrint(options, 1, strIdent);
     double start = sysTime();
-    std::string path = toCString(options.indexDir);
-    path += "/index";
 
-    int ret = open(globalHolder.dbIndex, path.c_str(), OPEN_RDONLY);
-    if (ret != true)
-        throw IndexException{"Could not open the fm index / suffix array."};
+    if (options.indexFilePath.extension() == ".lba")
+    {
+        std::ifstream is{options.indexFilePath.c_str(), std::ios::binary};
+        cereal::BinaryInputArchive iarchive(os);
+        iarchive(cereal::make_nvp("lambda index", globalHolder.indexFile));
+    } else if (options.indexFilePath.extension() == ".lta")
+    {
+        std::ifstream is{options.indexFilePath.c_str(), std::ios::binary};
+        cereal::JSONInputArchive iarchive(os);
+        iarchive(cereal::make_nvp("lambda index", globalHolder.indexFile));
+    } else
+    {
+        throw 88;
+    }
 
-    // assign previously loaded sub sequences (possibly modifier-wrapped
-    // to the text-member of our new index (unless isFM, which doesnt need text)
-    if ((!TGlobalHolder::indexIsFM) && (TGlobalHolder::alphReduction))
-        indexText(globalHolder.dbIndex) = globalHolder.redSubjSeqs;
+    //TODO fix link of index to subject sequences
 
     double finish = sysTime() - start;
     myPrint(options, 1, " done.\n");
     myPrint(options, 2, "Runtime: ", finish, "s \n\n");
-// TODO reactivate and remove one '\n' above
-//     myPrint(options, 2, "No of Fibres: ", length(indexSA(globalHolder.dbIndex)), "\n\n");
 
     // this is actually part of prepareScoring(), but the values are just available now
-    if (sIsTranslated(TGlobalHolder::blastProgram ))
+    if constexpr (sIsTranslated(TGlobalHolder::blastProgram))
     {
         // last value has sum of lengths
-        context(globalHolder.outfile).dbTotalLength  = back(globalHolder.untransSubjSeqLengths);
-        context(globalHolder.outfile).dbNumberOfSeqs = length(globalHolder.untransSubjSeqLengths) - 1;
+        context(globalHolder.outfileBlastTab).dbTotalLength  = back(globalHolder.untransSubjSeqLengths);
+        context(globalHolder.outfileBlastTab).dbNumberOfSeqs = length(globalHolder.untransSubjSeqLengths) - 1;
+
+        context(globalHolder.outfileBlastRep).dbTotalLength  = back(globalHolder.untransSubjSeqLengths);
+        context(globalHolder.outfileBlastRep).dbNumberOfSeqs = length(globalHolder.untransSubjSeqLengths) - 1;
     } else
     {
-        context(globalHolder.outfile).dbTotalLength  = length(concat(globalHolder.subjSeqs));
-        context(globalHolder.outfile).dbNumberOfSeqs = length(globalHolder.subjSeqs);
+        context(globalHolder.outfileBlastTab).dbTotalLength  = length(concat(globalHolder.subjSeqs));
+        context(globalHolder.outfileBlastTab).dbNumberOfSeqs = length(globalHolder.subjSeqs);
+
+        context(globalHolder.outfileBlastRep).dbTotalLength  = length(concat(globalHolder.subjSeqs));
+        context(globalHolder.outfileBlastRep).dbNumberOfSeqs = length(globalHolder.subjSeqs);
     }
 }
 
 // --------------------------------------------------------------------------
 // Function loadSTaxIds()
 // --------------------------------------------------------------------------
-
+#if 0
 template <typename TGlobalHolder>
 void
 loadTaxonomy(TGlobalHolder       & globalHolder,
@@ -469,7 +332,7 @@ loadTaxonomy(TGlobalHolder       & globalHolder,
     myPrint(options, 1, " done.\n");
     myPrint(options, 2, "Runtime: ", finish, "s \n\n");
 }
-
+#endif
 // --------------------------------------------------------------------------
 // Function loadQuery()
 // --------------------------------------------------------------------------
@@ -667,68 +530,6 @@ loadQuery(GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h>      & global
 // --------------------------------------------------------------------------
 // Function generateSeeds()
 // --------------------------------------------------------------------------
-/*
-#define THREADLINE std::cout << "\0338" << std::endl << "Thread " << lH.i \
-<< std::endl; \
-for (unsigned char i=0; i< lH.i*20; ++i) std::cout << std::endl;*/
-
-template <typename TLocalHolder>
-inline int
-generateSeeds(TLocalHolder & lH)
-{
-    double start = sysTime();
-    for (unsigned long i = lH.indexBeginQry; i < lH.indexEndQry; ++i)
-    {
-        for (unsigned j = 0;
-             (j* lH.options.seedOffset + lH.options.seedLength)
-                <= length(value(lH.gH.redQrySeqs, i));
-             ++j)
-        {
-            appendValue(lH.seeds, infix(value(lH.gH.redQrySeqs, i),
-                                     j* lH.options.seedOffset,
-                                     j* lH.options.seedOffset
-                                     + lH.options.seedLength),
-                        Generous());
-            appendValue(lH.seedRefs,  i, Generous());
-            appendValue(lH.seedRanks, j, Generous());
-
-//             std::cout << "seed: " << back(lH.seeds) << "\n";
-        }
-    }
-    double finish = sysTime() - start;
-
-    return 0;
-}
-
-
-// --------------------------------------------------------------------------
-// Function generateTrieOverSeeds()
-// --------------------------------------------------------------------------
-
-
-template <typename TLocalHolder>
-inline int
-generateTrieOverSeeds(TLocalHolder & lH)
-{
-    double start = sysTime();
-    // we only want full length seed sequences in index, build up manually
-    typedef typename Fibre<typename TLocalHolder::TSeedIndex, EsaSA>::Type TSa;
-    //TODO maybe swap here instead
-    lH.seedIndex = decltype(lH.seedIndex)(lH.seeds);
-    TSa & sa = indexSA(lH.seedIndex);
-    resize(sa, length(lH.seeds));
-    for (unsigned u = 0; u < length(lH.seeds); ++u)
-    {
-        assignValueI1(value(sa,u), u);
-        assignValueI2(value(sa,u), 0);
-    }
-    Comp<typename Value<TSa>::Type, typename TLocalHolder::TSeeds const> comp(lH.seeds);
-    std::sort(begin(sa, Standard()), end(sa, Standard()), comp);
-    typename Iterator<typename TLocalHolder::TSeedIndex, TopDown<> >::Type it(lH.seedIndex); // instantiate
-    double finish = sysTime() - start;
-
-    return 0;
-}
 
 // perform a fast local alignment score calculation on the seed and see if we
 // reach above threshold
@@ -759,17 +560,16 @@ seedLooksPromising(LocalDataHolder<TGlobalHolder, TScoreExtension> const & lH,
         }
 
         effectiveLength = std::min({
-                            static_cast<uint64_t>(length(lH.gH.qrySeqs[m.qryId]) - effectiveQBegin),
-                            static_cast<uint64_t>(length(lH.gH.subjSeqs[m.subjId]) - effectiveSBegin),
+                            static_cast<uint64_t>(std::ranges::size(lH.gH.qrySeqs[m.qryId]) - effectiveQBegin),
+                            static_cast<uint64_t>(std::ranges::size(lH.gH.subjSeqs[m.subjId]) - effectiveSBegin),
                             effectiveLength});
     }
 
-    auto const & qSeq = infix(lH.gH.qrySeqs[m.qryId],
-                              effectiveQBegin,
-                              effectiveQBegin + effectiveLength);
-    auto const & sSeq = infix(lH.gH.subjSeqs[m.subjId],
-                              effectiveSBegin,
-                              effectiveSBegin + effectiveLength);
+    auto const & qSeq = lH.gH.qrySeqs[m.qryId]
+                      | seqan3::view::slice(effectiveQBegin, effectiveQBegin + effectiveLength);
+    auto const & sSeq = lH.gH.subjSeqs[m.subjId]
+                      | seqan3::view::slice(effectiveSBegin, effectiveSBegin + effectiveLength);
+
     int             s = 0;
     int      maxScore = 0;
     int const thresh  = lH.options.preScoringThresh * effectiveLength;
@@ -793,7 +593,7 @@ seedLooksPromising(LocalDataHolder<TGlobalHolder, TScoreExtension> const & lH,
 // --------------------------------------------------------------------------
 // Function onFind()
 // --------------------------------------------------------------------------
-
+#if 0
 template <typename TGlobalHolder,
           typename TScoreExtension,
           typename TSeedId,
@@ -1139,52 +939,14 @@ _searchSingleIndex(LocalDataHolder<TGlobalHolder, TScoreExtension> & lH)
         needlesPos += length(lH.gH.redQrySeqs[i]);
     }
 }
-
-#ifdef LAMBDA_LEGACY_PATHS
-template <typename TLocalHolder>
-inline void
-_searchDoubleIndex(TLocalHolder & lH)
-{
-    appendToStatus(lH.statusStr, lH.options, 1, "Seeding...");
-    if (lH.options.isTerm)
-        myPrint(lH.options, 1, lH.statusStr);
-
-    double start = sysTime();
-
-    using LambdaFinder = Finder_<decltype(lH.gH.dbIndex),
-                                 decltype(lH.seedIndex),
-                                 Backtracking<HammingDistance> >;
-
-    LambdaFinder finder;
-
-    auto delegate = [&lH] (LambdaFinder const & finder)
-    {
-        auto qryOccs = getOccurrences(back(finder.patternStack));
-        auto subjOccs = getOccurrences(back(finder.textStack));
-
-        lH.stats.hitsAfterSeeding += length(qryOccs) * length(subjOccs);
-
-        for (unsigned i = 0; i < length(qryOccs); ++i)
-            for (unsigned j = 0; j < length(subjOccs); ++j)
-                onFind(lH, getSeqNo(qryOccs[i]), subjOccs[j]);
-    };
-
-    _find(finder, lH.gH.dbIndex, lH.seedIndex, lH.options.maxSeedDist, delegate);
-
-    double finish = sysTime() - start;
-
-    appendToStatus(lH.statusStr, lH.options, 1, " done. ");
-    appendToStatus(lH.statusStr, lH.options, 2, finish, "s. #hits: ",
-                   length(lH.matches), " ");
-    myPrint(lH.options, 1, lH.statusStr);
-}
-#endif // LAMBDA_LEGACY_PATHS
-
+#endif
 template <typename TLocalHolder>
 inline void
 search(TLocalHolder & lH)
 {
-        _searchSingleIndex(lH);
+//     _searchSingleIndex(lH);
+
+    //TODO new search here
 }
 
 // --------------------------------------------------------------------------
@@ -1223,12 +985,12 @@ _setFrames(TBlastMatch                          & bm,
            typename TLocalHolder::TMatch  const & m,
            TLocalHolder                   const &)
 {
-    if (qIsTranslated(TLocalHolder::TGlobalHolder::blastProgram))
+    if constexpr (seqan::qIsTranslated(TLocalHolder::TGlobalHolder::blastProgram))
     {
         bm.qFrameShift = (m.qryId % 3) + 1;
         if (m.qryId % 6 > 2)
             bm.qFrameShift = -bm.qFrameShift;
-    } else if (qHasRevComp(TLocalHolder::TGlobalHolder::blastProgram))
+    } else if constexpr (seqan::qHasRevComp(TLocalHolder::TGlobalHolder::blastProgram))
     {
         bm.qFrameShift = 1;
         if (m.qryId % 2)
@@ -1238,12 +1000,12 @@ _setFrames(TBlastMatch                          & bm,
         bm.qFrameShift = 0;
     }
 
-    if (sIsTranslated(TLocalHolder::TGlobalHolder::blastProgram))
+    if constexpr (seqan::sIsTranslated(TLocalHolder::TGlobalHolder::blastProgram))
     {
         bm.sFrameShift = (m.subjId % 3) + 1;
         if (m.subjId % 6 > 2)
             bm.sFrameShift = -bm.sFrameShift;
-    } else if (sHasRevComp(TLocalHolder::TGlobalHolder::blastProgram))
+    } else if constexpr (seqan::sHasRevComp(TLocalHolder::TGlobalHolder::blastProgram))
     {
         bm.sFrameShift = 1;
         if (m.subjId % 2)
@@ -1264,7 +1026,7 @@ inline void
 _writeRecord(TBlastRecord & record,
              TLocalHolder & lH)
 {
-    if (length(record.matches) > 0)
+    if (seqan::length(record.matches) > 0)
     {
         ++lH.stats.qrysWithHit;
         // sort and remove duplicates -> STL, yeah!
@@ -1354,686 +1116,6 @@ _writeRecord(TBlastRecord & record,
 // Function computeBlastMatch()
 // --------------------------------------------------------------------------
 
-template <typename TBlastRecord,
-          typename TLocalHolder>
-inline int
-computeBlastMatch(typename TBlastRecord::TBlastMatch  & bm,
-                  typename TLocalHolder::TMatch const & m,
-                  TBlastRecord                  const & record,
-                  TLocalHolder                        & lH)
-{
-    using TMatch = typename TLocalHolder::TMatch;
-    using TPos   = typename TMatch::TPos;
-
-    const unsigned long qryLength = length(value(lH.gH.qrySeqs, m.qryId));
-
-    SEQAN_ASSERT_LEQ(bm.qStart, bm.qEnd);
-    SEQAN_ASSERT_LEQ(bm.sStart, bm.sEnd);
-
-//     auto qryInfix = infix(curQry,
-//                                 bm.qStart,
-//                                 bm.qEnd);
-//     auto subjInfix  = infix(curSubj,
-//                                 bm.sStart,
-//                                 bm.sEnd);
-
-//     std::cout << "Query Id: " << m.qryId
-//               << "\t TrueQryId: " << getTrueQryId(bm.m, lH.options, TGlobalHolder::blastProgram)
-//               << "\t length(qryIds): " << length(qryIds)
-//               << "Subj Id: " << m.subjId
-//               << "\t TrueSubjId: " << getTrueSubjId(bm.m, lH.options, TGlobalHolder::blastProgram)
-//               << "\t length(subjIds): " << length(subjIds) << "\n\n";
-
-    assignSource(bm.alignRow0, infix(lH.gH.qrySeqs[m.qryId], bm.qStart, bm.qEnd));
-    assignSource(bm.alignRow1, infix(lH.gH.subjSeqs[m.subjId],bm.sStart, bm.sEnd));
-
-//     std::cout << "== Positions\n";
-//     std::cout << "   " <<  bm.qStart << " - " << bm.qEnd << " [before ali]\n";
-//     std::cout << bm.align << std::endl;
-
-    int scr = 0;
-
-//     unsigned short seedLeng = 0;
-//     double         seedE = 0;
-//     double         seedB = 0;
-
-    TPos row0len = bm.qEnd - bm.qStart;
-    TPos row1len = bm.sEnd - bm.sStart;
-    TPos band = (!lH.options.hammingOnly) * (lH.options.maxSeedDist);
-
-//     // TODO FIGURE THIS OUT
-//     if ((row0len > (lH.options.seedLength + band)) ||
-//         (row1len > (lH.options.seedLength + band)))
-//     {
-//         #pragma omp atomic
-//         ++mergeCount;
-//         std::cout << "qrId " << m.qryId << "\tsId: " << m.subjId << "\trow0len: " << row0len << "\trow1len: " << row1len << "\n";
-//         std::cout << source(row0) << "\n";
-//         std::cout << source(row1) << "\n";
-//     }
-
-    auto seedsInSeed = std::max(row0len, row1len) / lH.options.seedLength;
-
-    TPos  maxDist =  0;
-    if (lH.options.maxSeedDist <= 1)
-        maxDist = std::abs(int(row1len) - int(row0len));
-    else
-        maxDist = std::abs(int(row1len) - int(row0len)) + (seedsInSeed * band);
-
-    // fast local alignment without DP-stuff
-    if (maxDist == 0)
-    {
-        int scores[row0len+1]; // C99, C++14, -Wno-vla before that
-        scores[0] = 0;
-        unsigned newEnd = 0;
-        unsigned newBeg = 0;
-        // score the diagonal
-        for (unsigned i = 0; i < row0len; ++i)
-        {
-            scores[i] += score(seqanScheme(context(lH.gH.outfile).scoringScheme),
-                               source(bm.alignRow0)[i],
-                               source(bm.alignRow1)[i]);
-            if (scores[i] < 0)
-            {
-                scores[i] = 0;
-            } else if (scores[i] >= scr)
-            {
-                scr = scores[i];
-                newEnd = i + 1;
-            }
-//             if (i <row0len -1)
-            scores[i+1] = scores[i];
-        }
-        if (newEnd == 0) // no local alignment
-        {
-            return OTHER_FAIL; // TODO change to PREEXTEND?
-        }
-        // backtrack
-        for (unsigned i = newEnd - 1; i > 0; --i)
-        {
-            if (scores[i] == 0)
-            {
-                newBeg = i + 1;
-                break;
-            }
-        }
-        setEndPosition(bm.alignRow0, newEnd);
-        setEndPosition(bm.alignRow1, newEnd);
-        setBeginPosition(bm.alignRow0, newBeg);
-        setBeginPosition(bm.alignRow1, newBeg);
-
-    } else
-    {
-        // compute with DP-code
-        scr = localAlignment(bm.alignRow0,
-                              bm.alignRow1,
-                              seqanScheme(context(lH.gH.outfile).scoringScheme),
-                              -maxDist,
-                              +maxDist);
-//         scr = localAlignment2(bm.alignRow0,
-//                               bm.alignRow1,
-//                               seqanScheme(context(lH.gH.outfile).scoringScheme),
-//                               -maxDist,
-//                               +maxDist,
-//                               lH.alignContext);
-    }
-
-    // save new bounds of alignment
-    bm.qEnd    =  bm.qStart  + endPosition(bm.alignRow0);
-    bm.qStart  += beginPosition(bm.alignRow0);
-
-    bm.sEnd   =  bm.sStart + endPosition(bm.alignRow1);
-    bm.sStart += beginPosition(bm.alignRow1);
-
-//     if (scr < lH.options.minSeedScore)
-//         return PREEXTEND;
-
-#if 0
-// OLD WAY extension with birte's code
-    {
-    //     std::cout << "   " <<  bm.qStart << " - " << bm.qEnd << " [after ali]\n";
-    //     std::cout << bm.align << std::endl;
-        decltype(seqanScheme(context(lH.gH.outfile).scoringScheme)) extScheme(seqanScheme(context(lH.gH.outfile).scoringScheme));
-        setScoreGapOpen  (extScheme, -8);
-        setScoreGapExtend(extScheme, -8);
-
-        Seed<Simple>           seed(bm.sStart, bm.qStart,
-                                    bm.sEnd, bm.qEnd);
-        extendSeed(seed,
-                curSubj,
-                curQry,
-                EXTEND_BOTH,
-                extScheme,
-//                    seqanScheme(context(lH.gH.outfile).scoringScheme),
-                int(lH.options.xDropOff),
-                GappedXDrop());
-
-        bm.sStart = beginPositionH(seed);
-        bm.qStart = beginPositionV(seed);
-        bm.sEnd   = endPositionH(seed);
-        bm.qEnd   = endPositionV(seed);
-
-        assignSource(row0, infix(curQry,
-                                bm.qStart,
-                                bm.qEnd));
-        assignSource(row1, infix(curSubj,
-                                bm.sStart,
-                                bm.sEnd));
-
-        //DEBUG
-        auto oldscr = scr;
-
-        scr = localAlignment(bm.align,
-                            seqanScheme(context(lH.gH.outfile).scoringScheme),
-//                                 alignConfig,
-                            lowerDiagonal(seed)-beginDiagonal(seed),
-                            upperDiagonal(seed)-beginDiagonal(seed));
-        // save new bounds of alignment
-        bm.qEnd    =  bm.qStart  + endPosition(row0);
-        bm.qStart  += beginPosition(row0);
-
-        bm.sEnd   =  bm.sStart + endPosition(row1);
-        bm.sStart += beginPosition(row1);
-
-        if (scr < 0) // alignment got screwed up
-        {
-            std::cout << "SCREW UP\n";
-            std::cout << "beginDiag: " << beginDiagonal(seed)
-                << "\tlowDiag: " << lowerDiagonal(seed)
-                << "\tupDiag: " << upperDiagonal(seed) << '\n';
-            std::cout << "oldscore: " << oldscr
-                    << "\tseedscore: " << score(seed)
-                    << "\tscore: " << scr << '\n';
-            std::cout << bm.align << '\n';
-        }
-    }
-#endif
-
-#if 0
-    // ungapped second prealign
-    {
-        Tuple<decltype(bm.qStart), 4> positions =
-            { { bm.qStart, bm.sStart, bm.qEnd, bm.sEnd} };
-
-        decltype(seqanScheme(context(lH.gH.outfile).scoringScheme)) extScheme(seqanScheme(context(lH.gH.outfile).scoringScheme));
-        setScoreGapOpen  (extScheme, -100);
-        setScoreGapExtend(extScheme, -100);
-        scr = extendAlignment(bm.align,
-                                lH.alignContext,
-                                scr,
-                                curQry,
-                                curSubj,
-                                positions,
-                                EXTEND_BOTH,
-                                0, // band of 0 size
-                                0, // band of 0 size
-                                1, // xdrop of 1
-                                extScheme);
-        bm.qStart  = beginPosition(row0);
-        bm.qEnd    = endPosition(row0);
-
-        bm.sStart =  beginPosition(row1);
-        bm.sEnd   =  endPosition(row1);
-    }
-#endif
-    if (((bm.qStart > 0) && (bm.sStart > 0)) ||
-        ((bm.qEnd < qryLength - 1) && (bm.sEnd < length(lH.gH.subjSeqs[m.subjId]) -1)))
-    {
-        maxDist = _bandSize(qryLength, lH);
-
-        Tuple<decltype(bm.qStart), 4> positions =
-                { { bm.qStart, bm.sStart, bm.qEnd, bm.sEnd} };
-
-        if (lH.options.band != -1)
-        {
-            if (lH.options.xDropOff != -1)
-            {
-                scr = _extendAlignmentImpl(bm.alignRow0,
-                                           bm.alignRow1,
-                                           scr,
-                                           lH.gH.qrySeqs[m.qryId],
-                                           lH.gH.subjSeqs[m.subjId],
-                                           positions,
-                                           EXTEND_BOTH,
-                                           -maxDist,
-                                           +maxDist,
-                                           lH.options.xDropOff,
-                                           seqanScheme(context(lH.gH.outfile).scoringScheme),
-                                           True(),
-                                           True(),
-                                           lH.alignContext);
-            } else
-            {
-                scr = _extendAlignmentImpl(bm.alignRow0,
-                                           bm.alignRow1,
-                                           scr,
-                                           lH.gH.qrySeqs[m.qryId],
-                                           lH.gH.subjSeqs[m.subjId],
-                                           positions,
-                                           EXTEND_BOTH,
-                                           -maxDist,
-                                           +maxDist,
-                                           lH.options.xDropOff,
-                                           seqanScheme(context(lH.gH.outfile).scoringScheme),
-                                           True(),
-                                           False(),
-                                           lH.alignContext);
-            }
-        } else
-        {
-            if (lH.options.xDropOff != -1)
-            {
-                scr = _extendAlignmentImpl(bm.alignRow0,
-                                           bm.alignRow1,
-                                           scr,
-                                           lH.gH.qrySeqs[m.qryId],
-                                           lH.gH.subjSeqs[m.subjId],
-                                           positions,
-                                           EXTEND_BOTH,
-                                           -maxDist,
-                                           +maxDist,
-                                           lH.options.xDropOff,
-                                           seqanScheme(context(lH.gH.outfile).scoringScheme),
-                                           False(),
-                                           True(),
-                                           lH.alignContext);
-            } else
-            {
-                scr = _extendAlignmentImpl(bm.alignRow0,
-                                           bm.alignRow1,
-                                           scr,
-                                           lH.gH.qrySeqs[m.qryId],
-                                           lH.gH.subjSeqs[m.subjId],
-                                           positions,
-                                           EXTEND_BOTH,
-                                           -maxDist,
-                                           +maxDist,
-                                           lH.options.xDropOff,
-                                           seqanScheme(context(lH.gH.outfile).scoringScheme),
-                                           False(),
-                                           False(),
-                                           lH.alignContext);
-            }
-        }
-        bm.sStart = beginPosition(bm.alignRow1);
-        bm.qStart = beginPosition(bm.alignRow0);
-        bm.sEnd   = endPosition(bm.alignRow1);
-        bm.qEnd   = endPosition(bm.alignRow0);
-
-//         std::cout << "AFTER:\n" << bm.align << "\n";
-    }
-
-//     std::cerr << "AFTEREXT:\n "<< bm.align << "\n";
-
-    if (scr <= 0)
-    {
-//         std::cout << "## LATE FAIL\n" << bm.align << '\n';
-
-        return OTHER_FAIL;
-    }
-//     std::cout << "##LINE: " << __LINE__ << '\n';
-
-//     std::cout << "ALIGN BEFORE STATS:\n" << bm.align << "\n";
-
-    computeAlignmentStats(bm, context(lH.gH.outfile));
-    if (bm.alignStats.alignmentIdentity < lH.options.idCutOff)
-        return PERCENTIDENT;
-
-//     const unsigned long qryLength = length(row0);
-    computeBitScore(bm, context(lH.gH.outfile));
-
-    computeEValueThreadSafe(bm, record.qLength, context(lH.gH.outfile));
-    if (bm.eValue > lH.options.eCutOff)
-        return EVALUE;
-
-    _setFrames(bm, m, lH);
-
-    return 0;
-}
-
-
-template <typename TLocalHolder>
-inline int
-iterateMatchesExtend(TLocalHolder & lH)
-{
-    using TGlobalHolder = typename TLocalHolder::TGlobalHolder;
-//     using TMatch        = typename TGlobalHolder::TMatch;
-//     using TPos          = typename TMatch::TPos;
-    using TBlastPos     = uint32_t; //TODO why can't this be == TPos
-    using TBlastMatch   = BlastMatch<
-                           typename TLocalHolder::TAlignRow0,
-                           typename TLocalHolder::TAlignRow1,
-                           TBlastPos,
-                           typename Value<typename TGlobalHolder::TQryIds>::Type,// const &,
-                           typename Value<typename TGlobalHolder::TSubjIds>::Type// const &,
-                           >;
-    using TBlastRecord  = BlastRecord<TBlastMatch,
-                                      typename Value<typename TGlobalHolder::TQryIds>::Type,
-                                      std::vector<std::string>,
-                                      typename Value<typename TGlobalHolder::TTaxNames>::Type,
-                                      uint32_t>;
-
-//     constexpr TPos TPosMax = std::numeric_limits<TPos>::max();
-//     constexpr uint8_t qFactor = qHasRevComp(TGlobalHolder::blastProgram) ? 3 : 1;
-//     constexpr uint8_t sFactor = sHasRevComp(TGlobalHolder::blastProgram) ? 3 : 1;
-
-    // double start = sysTime();
-
-    // comperator that sorts by bitScore but also compensates for rounding errors
-    auto compe = [] (auto const & m1, auto const & m2)
-    {
-        return std::tie(m2.bitScore,
-                        m1._n_sId,
-                        m1.qStart,
-                        m1.qEnd,
-                        m1.sStart,
-                        m1.sEnd,
-                        m1.qLength,
-                        m1.sLength,
-                        m1.qFrameShift,
-                        m1.sFrameShift) <
-               std::tie(m1.bitScore,
-                        m2._n_sId,
-                        m2.qStart,
-                        m2.qEnd,
-                        m2.sStart,
-                        m2.sEnd,
-                        m2.qLength,
-                        m2.sLength,
-                        m2.qFrameShift,
-                        m2.sFrameShift);
-    };
-
-    //DEBUG
-//     std::cout << "Length of matches:   " << length(lH.matches);
-//     for (auto const & m :  lH.matches)
-//     {
-//         std::cout << m.qryId << "\t" << getTrueQryId(m,lH.options, TGlobalHolder::blastProgram) << "\n";
-//     }
-
-//     double topMaxMatchesMedianBitScore = 0;
-    // outer loop over records
-    // (only one iteration if single indexing is used)
-    for (auto it = lH.matches.begin(),
-              itN = std::next(it, 1),
-              itEnd = lH.matches.end();
-         it != itEnd;
-         ++it)
-    {
-        itN = std::next(it,1);
-        auto const trueQryId = it->qryId / qNumFrames(TGlobalHolder::blastProgram);
-
-        TBlastRecord record(lH.gH.qryIds[trueQryId]);
-
-        record.qLength = (qIsTranslated(TGlobalHolder::blastProgram)
-                            ? lH.gH.untransQrySeqLengths[trueQryId]
-                            : length(lH.gH.qrySeqs[it->qryId]));
-
-//         topMaxMatchesMedianBitScore = 0;
-
-        // inner loop over matches per record
-        for (; it != itEnd; ++it)
-        {
-            auto const trueSubjId = it->subjId / sNumFrames(TGlobalHolder::blastProgram);
-            itN = std::next(it,1);
-//             std::cout << "FOO\n" << std::flush;
-//             std::cout << "QryStart: " << it->qryStart << "\n" << std::flush;
-//             std::cout << "SubjStart: " << it->subjStart << "\n" << std::flush;
-//             std::cout << "BAR\n" << std::flush;
-            if (!isSetToSkip(*it))
-            {
-                // ABUNDANCY and PUTATIVE ABUNDANCY CHECKS
-                if ((lH.options.filterPutativeAbundant) && (record.matches.size() % lH.options.maxMatches == 0))
-                {
-                    if (record.matches.size() / lH.options.maxMatches == 1)
-                    {
-                        // numMaxMatches found the first time
-                        record.matches.sort(compe);
-                    }
-                    else if (record.matches.size() / lH.options.maxMatches > 1)
-                    {
-                        double medianTopNMatchesBefore = 0.0;
-//                         if (lH.options.filterPutativeAbundant)
-                        {
-                            medianTopNMatchesBefore =
-                            (std::next(record.matches.begin(),
-                                       lH.options.maxMatches / 2))->bitScore;
-                        }
-
-                        uint64_t before = record.matches.size();
-                        record.matches.sort(compe);
-                        // if we filter putative duplicates we never need to check for real duplicates
-                        if (!lH.options.filterPutativeDuplicates)
-                        {
-                            record.matches.unique([] (auto const & m1, auto const & m2)
-                            {
-                                return std::tie(m1._n_sId,
-                                                m1.qStart,
-                                                m1.qEnd,
-                                                m1.sStart,
-                                                m1.sEnd,
-                                                m1.sLength,
-                                                m1.qFrameShift,
-                                                m1.sFrameShift) ==
-                                       std::tie(m2._n_sId,
-                                                m2.qStart,
-                                                m2.qEnd,
-                                                m2.sStart,
-                                                m2.sEnd,
-                                                m2.sLength,
-                                                m2.qFrameShift,
-                                                m2.sFrameShift);
-                            });
-                            lH.stats.hitsDuplicate += before - record.matches.size();
-                            before = record.matches.size();
-                        }
-                        if (record.matches.size() > (lH.options.maxMatches + 1))
-                            // +1 so as not to trigger % == 0 in the next run
-                            record.matches.resize(lH.options.maxMatches + 1);
-
-                        lH.stats.hitsAbundant += before - record.matches.size();
-
-//                         if (lH.options.filterPutativeAbundant)
-                        {
-                            double medianTopNMatchesAfter =
-                            (std::next(record.matches.begin(),
-                                       lH.options.maxMatches / 2))->bitScore;
-                            // no new matches in top n/2
-                            if (int(medianTopNMatchesAfter) <=
-                                int(medianTopNMatchesBefore))
-                            {
-                                // declare all the rest as putative abundant
-                                while ((it != itEnd) &&
-                                       (trueQryId == it->qryId / qNumFrames(TGlobalHolder::blastProgram)))
-                                {
-                                    // not already marked as abundant, duplicate or merged
-                                    if (!isSetToSkip(*it))
-                                        ++lH.stats.hitsPutativeAbundant;
-                                    ++it;
-                                }
-                                // move back so if-loop's increment still valid
-                                std::advance(it, -1);
-                                break;
-                            }
-                        }
-                    }
-                }
-//                 std::cout << "BAX\n" << std::flush;
-                // create blastmatch in list without copy or move
-                record.matches.emplace_back(lH.gH.subjIds[trueSubjId]);
-
-                auto & bm = back(record.matches);
-
-                bm.qStart    = it->qryStart;
-                bm.qEnd      = it->qryEnd; // it->qryStart + lH.options.seedLength;
-                bm.sStart    = it->subjStart;
-                bm.sEnd      = it->subjEnd;//it->subjStart + lH.options.seedLength;
-
-                bm.sLength = sIsTranslated(TGlobalHolder::blastProgram)
-                                ? lH.gH.untransSubjSeqLengths[trueSubjId]
-                                : length(lH.gH.subjSeqs[it->subjId]);
-
-                // MERGE PUTATIVE SIBLINGS INTO THIS MATCH
-                if (lH.options.mergePutativeSiblings)
-                {
-                    for (auto it2 = itN;
-                        (it2 != itEnd) &&
-                        (trueQryId == it2->qryId / qNumFrames(TGlobalHolder::blastProgram)) &&
-                        (trueSubjId == it2->subjId / sNumFrames(TGlobalHolder::blastProgram));
-                        ++it2)
-                    {
-                        // same frame
-                        if ((it->qryId % qNumFrames(TGlobalHolder::blastProgram) == it2->qryId % qNumFrames(TGlobalHolder::blastProgram)) &&
-                            (it->subjId % sNumFrames(TGlobalHolder::blastProgram) == it2->subjId % sNumFrames(TGlobalHolder::blastProgram)))
-                        {
-
-    //                         TPos const qDist = (it2->qryStart >= bm.qEnd)
-    //                                             ? it2->qryStart - bm.qEnd // upstream
-    //                                             : 0; // overlap
-    //
-    //                         TPos sDist = TPosMax; // subj match region downstream of *it
-    //                         if (it2->subjStart >= bm.sEnd) // upstream
-    //                             sDist = it2->subjStart - bm.sEnd;
-    //                         else if (it2->subjStart >= it->subjStart) // overlap
-    //                             sDist = 0;
-
-                            // due to sorting it2->qryStart never <= it->qStart
-                            // so subject sequences must have same order
-                            if (it2->subjStart < it->subjStart)
-                                continue;
-
-                            long const qDist = it2->qryStart - bm.qEnd;
-                            long const sDist = it2->subjStart - bm.sEnd;
-
-                            if ((qDist == sDist) &&
-                                (qDist <= (long)lH.options.seedGravity))
-                            {
-                                bm.qEnd = std::max(bm.qEnd, static_cast<TBlastPos>(it2->qryEnd));
-                                bm.sEnd = std::max(bm.sEnd, static_cast<TBlastPos>(it2->subjEnd));
-                                ++lH.stats.hitsMerged;
-
-                                setToSkip(*it2);
-                            }
-                        }
-                    }
-                }
-
-                // do the extension and statistics
-                int lret = computeBlastMatch(bm, *it, record, lH);
-
-                switch (lret)
-                {
-                    case COMPUTERESULT_::SUCCESS:
-    //                     ++lH.stats.goodMatches;
-                        bm._n_qId = it->qryId / qNumFrames(TGlobalHolder::blastProgram);
-                        bm._n_sId = it->subjId / sNumFrames(TGlobalHolder::blastProgram);
-
-                        if (lH.options.hasSTaxIds)
-                            bm.sTaxIds = lH.gH.sTaxIds[it->subjId / sNumFrames(TGlobalHolder::blastProgram)];
-
-                        break;
-                    case EVALUE:
-                        ++lH.stats.hitsFailedExtendEValueTest;
-                        break;
-                    case PERCENTIDENT:
-                        ++lH.stats.hitsFailedExtendPercentIdentTest;
-                        break;
-                    case PREEXTEND:
-                        ++lH.stats.hitsFailedPreExtendTest;
-                        break;
-                    default:
-                        std::cerr << "Unexpected Extension Failure:\n"
-                          << "qryId: " << it->qryId << "\t"
-                          << "subjId: " << it->subjId << "\t"
-                          << "seed    qry: " << infix(lH.gH.redQrySeqs,
-                                                      it->qryStart,
-                                                      it->qryEnd)
-//                                                       it->qryStart + lH.options.seedLength)
-                          << "\n       subj: " << infix(lH.gH.redSubjSeqs,
-                                                      it->subjStart,
-                                                      it->subjEnd)
-//                                                       it->subjStart + lH.options.seedLength)
-                          << "\nunred  qry: " << infix(lH.gH.qrySeqs,
-                                                      it->qryStart,
-                                                      it->qryEnd)
-//                                                       it->qryStart + lH.options.seedLength)
-                          << "\n       subj: " << infix(lH.gH.subjSeqs,
-                                                      it->subjStart,
-                                                      it->subjEnd)
-//                                                       it->subjStart + lH.options.seedLength)
-                          << "\nmatch    qry: " << infix(lH.gH.qrySeqs,
-                                                      bm.qStart,
-                                                      bm.qEnd)
-                          << "\n       subj: " << infix(lH.gH.subjSeqs,
-                                                      bm.sStart,
-                                                      bm.sEnd)
-                          << "\nalign: " << bm.alignRow0 << "\n       " << bm.alignRow1
-                          << "\n";
-                        return lret;
-                        break;
-                }
-
-                if (lret != 0)// discard match
-                {
-                    record.matches.pop_back();
-                } else if (lH.options.filterPutativeDuplicates)
-                {
-                    // PUTATIVE DUBLICATES CHECK
-                    for (auto it2 = itN;
-                         (it2 != itEnd) &&
-                         (trueQryId == it2->qryId / qNumFrames(TGlobalHolder::blastProgram)) &&
-                         (trueSubjId == it2->subjId / sNumFrames(TGlobalHolder::blastProgram));
-                         ++it2)
-                    {
-                        // same frame and same range
-                        if ((it->qryId == it2->qryId) &&
-                            (it->subjId == it2->subjId) &&
-                            (intervalOverlap(it2->qryStart,
-                                             it2->qryEnd,
-//                                              it2->qryStart + lH.options.seedLength,
-                                             bm.qStart,
-                                             bm.qEnd) > 0) &&
-                            (intervalOverlap(it2->subjStart,
-                                             it2->subjEnd,
-//                                              it2->subjStart + lH.options.seedLength,
-                                             bm.sStart,
-                                             bm.sEnd) > 0))
-                        {
-                            // deactivated alignment check to get rid of
-                            // duplicates early on
-//                             auto const & row0 = row(bm.align, 0);
-//                             auto const & row1 = row(bm.align, 1);
-//                             // part of alignment
-//                             if (toSourcePosition(row0,
-//                                                  toViewPosition(row1,
-//                                                                 it2->subjStart
-//                                                                 - bm.sStart))
-//                                 == TPos(it2->qryStart - bm.qStart))
-//                             {
-                                ++lH.stats.hitsPutativeDuplicate;
-                                setToSkip(*it2);
-//                             }
-                        }
-                    }
-                }
-            }
-
-            // last item or new TrueQryId
-            if ((itN == itEnd) ||
-                (trueQryId != itN->qryId / qNumFrames(TGlobalHolder::blastProgram)))
-                break;
-        }
-
-        _writeRecord(record, lH);
-    }
-
-#ifdef LAMBDA_MICRO_STATS
-    lH.stats.timeExtendTrace += sysTime() - start;
-#endif
-
-    return 0;
-}
-
 template <typename TBlastMatch,
           typename TLocalHolder>
 inline void
@@ -2062,8 +1144,8 @@ _setupAlignInfix(TBlastMatch & bm,
     else
         bm.sStart = 0;
 
-    assignSource(bm.alignRow0, infix(lH.gH.qrySeqs[m.qryId],   bm.qStart, bm.qEnd));
-    assignSource(bm.alignRow1, infix(lH.gH.subjSeqs[m.subjId], bm.sStart, bm.sEnd));
+    seqan::assignSource(bm.alignRow0, seqan::infix(lH.gH.qrySeqs[m.qryId],   bm.qStart, bm.qEnd));
+    seqan::assignSource(bm.alignRow1, seqan::infix(lH.gH.subjSeqs[m.subjId], bm.sStart, bm.sEnd));
 }
 
 template <typename TBlastMatch,
@@ -2072,6 +1154,8 @@ inline auto
 _untrueQryId(TBlastMatch const & bm,
              TLocalHolder const &)
 {
+    using namespace seqan;
+
     if (qIsTranslated(TLocalHolder::TGlobalHolder::blastProgram))
     {
         if (bm.qFrameShift > 0)
@@ -2096,6 +1180,8 @@ inline auto
 _untrueSubjId(TBlastMatch const & bm,
               TLocalHolder const &)
 {
+    using namespace seqan;
+
     if (sIsTranslated(TLocalHolder::TGlobalHolder::blastProgram))
     {
         if (bm.sFrameShift > 0)
@@ -2120,6 +1206,8 @@ inline void
 _expandAlign(TBlastMatch & bm,
              TLocalHolder const & lH)
 {
+    using namespace seqan;
+
     auto oldQLen = length(source(bm.alignRow0));
     auto oldSLen = length(source(bm.alignRow1));
 
@@ -2167,6 +1255,8 @@ template <typename TDepSetH,
 inline void
 _setupDepSets(TDepSetH & depSetH, TDepSetV & depSetV, TBlastMatches const & blastMatches)
 {
+    using namespace seqan;
+
     using TSimdAlign    = typename SimdVector<int16_t>::Type;
     unsigned constexpr sizeBatch = LENGTH<TSimdAlign>::VALUE;
     unsigned const      fullSize = sizeBatch * ((length(blastMatches) + sizeBatch - 1) / sizeBatch);
@@ -2202,6 +1292,8 @@ _performAlignment(TDepSetH & depSetH,
                   TLocalHolder & lH,
                   std::integral_constant<bool, withTrace> const &)
 {
+    using namespace seqan;
+
     using TGlobalHolder = typename TLocalHolder::TGlobalHolder;
     using TAlignConfig  = AlignConfig2<LocalAlignment_<>,
                                        DPBandConfig<BandOff>,
@@ -2247,8 +1339,7 @@ _performAlignment(TDepSetH & depSetH,
 
         for(auto x = pos; x < pos + sizeBatch && x < length(blastMatches); ++x)
         {
-            //TODO if constexpr
-            if (withTrace)
+            if constexpr (withTrace)
                 _adaptTraceSegmentsTo(matchIt->alignRow0, matchIt->alignRow1, trace[x - pos]);
             else
                 matchIt->alignStats.alignmentScore = resultsBatch[x - pos];
@@ -2263,21 +1354,23 @@ template <typename TLocalHolder>
 inline int
 iterateMatchesFullSimd(TLocalHolder & lH)
 {
+    using namespace seqan;
+
     using TGlobalHolder = typename TLocalHolder::TGlobalHolder;
 //     using TMatch        = typename TGlobalHolder::TMatch;
 //     using TPos          = typename TMatch::TPos;
     using TBlastPos     = uint32_t; //TODO why can't this be == TPos
     using TBlastMatch   = BlastMatch<
-                           typename TLocalHolder::TAlignRow0,
-                           typename TLocalHolder::TAlignRow1,
+                           typename TLocalHolder::TAlignRow,
+                           typename TLocalHolder::TAlignRow,
                            TBlastPos,
-                           typename Value<typename TGlobalHolder::TQryIds>::Type,// const &,
-                           typename Value<typename TGlobalHolder::TSubjIds>::Type// const &,
+                           decltype(lH.gH.qryIds[0]),
+                           decltype(lH.gH.indexFile.subjIds[0]),
                            >;
     using TBlastRecord  = BlastRecord<TBlastMatch,
-                                      typename Value<typename TGlobalHolder::TQryIds>::Type,
+                                      decltype(lH.gH.qryIds[0]),
                                       std::vector<std::string>,
-                                      typename Value<typename TGlobalHolder::TTaxNames>::Type,
+                                      decltype(lH.gH.indexFile.taxNames[0]),
                                       uint32_t>;
     // statistics
 #ifdef LAMBDA_MICRO_STATS
@@ -2463,6 +1556,8 @@ template <typename TLocalHolder>
 inline int
 iterateMatchesFullSerial(TLocalHolder & lH)
 {
+    using namespace seqan;
+
     using TGlobalHolder = typename TLocalHolder::TGlobalHolder;
 //     using TMatch        = typename TGlobalHolder::TMatch;
 //     using TPos          = typename TMatch::TPos;
@@ -2581,10 +1676,9 @@ iterateMatches(TLocalHolder & lH)
         return iterateMatchesFullSimd(lH);
     else
 #endif
-    if (lH.options.extensionMode == LambdaOptions::ExtensionMode::FULL_SERIAL)
-        return iterateMatchesFullSerial(lH);
-    else
-        return iterateMatchesExtend(lH);
+
+    return iterateMatchesFullSerial(lH);
+
 }
 
 #endif // HEADER GUARD

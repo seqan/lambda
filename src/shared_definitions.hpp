@@ -188,5 +188,15 @@ struct index_file
 };
 
 
+struct fake_index_file
+{
+    index_file_options & options;
+
+    template <typename TArchive>
+    void serialize(TArchive & archive)
+    {
+        archive(cereal::make_nvp("options",          options);
+    }
+};
 
 #endif // header guard

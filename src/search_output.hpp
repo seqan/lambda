@@ -25,8 +25,6 @@
 #include <seqan/blast.h>
 #include <seqan/bam_io.h>
 
-using namespace seqan;
-
 template <typename TVoidSpec = void>
 struct SamBamExtraTags
 {
@@ -435,11 +433,17 @@ inline void
 myWriteRecord(TLH & lH, TRecord const & record)
 {
     using TGH = typename TLH::TGlobalHolder;
-    if (lH.options.outFileFormat == 0) // BLAST
+    if (lH.options.outFileFormat == 0) // BLAST-Tab
     {
         SEQAN_OMP_PRAGMA(critical(filewrite))
         {
-            writeRecord(lH.gH.outfile, record);
+            writeRecord(lH.gH.outfileBlastTab, record);
+        }
+    } else if (lH.options.outfileBlastRep == -1) // BLAST
+    {
+        SEQAN_OMP_PRAGMA(critical(filewrite))
+        {
+            writeRecord(lH.gH.outfileBlastRep, record);
         }
     } else // SAM or BAM
     {
@@ -686,7 +690,10 @@ myWriteFooter(TGH & globalHolder, TLambdaOptions const & options)
 {
     if (options.outFileFormat == 0) // BLAST
     {
-        writeFooter(globalHolder.outfile);
+        writeFooter(globalHolder.outfileBlastTab);
+    } else if (options.outFileFormat == -1) // BLAST
+    {
+        writeFooter(globalHolder.outfileBlastRep);
     }
 }
 

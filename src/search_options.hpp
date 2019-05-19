@@ -59,9 +59,9 @@ struct LambdaOptions : public SharedOptions
     AlphabetEnum    qryOrigAlphabet;
     bool            revComp     = true;
 
-    int32_t         outFileFormat; // 0 = BLAST, 1 = SAM, 2 = BAM
+    int32_t         outFileFormat; // -1 = BLAST-Report, 0 = BLAST-Tabular, 1 = SAM, 2 = BAM
     std::string     output = "output.m8";
-    std::vector<BlastMatchField<>::Enum> columns;
+    std::vector<seqan::BlastMatchField<>::Enum> columns;
     std::string     outputBam;
     std::bitset<64> samBamTags;
     bool            samWithRefHeader = false;
@@ -116,7 +116,7 @@ struct LambdaOptions : public SharedOptions
     bool            mergePutativeSiblings = true;
     bool            seedHalfExact = true;
 
-    int32_t             preScoring = 2; // 0 = off, 1 = seed, 2 = region
+    int32_t         preScoring = 2; // 0 = off, 1 = seed, 2 = region
     double          preScoringThresh    = 2.0;
 
     LambdaOptions() :
@@ -135,8 +135,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     std::string programName = "lambda3 " + std::string(argv[0]);
 
     // this is important for option handling:
-    if (std::string(argv[0]) == "searchn")
-        options.blastProgram = BlastProgram::BLASTN;
+    options.nucleotide_mode = (std::string(argv[0]) == "searchn");
 
     seqan3::argument_parser parser(programName, argc, argv);
 
@@ -163,7 +162,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     std::string inputAlphabetTmp = "auto";
     int32_t geneticCodeTmp = 1;
 
-    if (options.blastProgram == BlastProgram::BLASTN)
+    if (options.nucleotide_mode == BlastProgram::BLASTN)
     {
         options.qryOrigAlphabet = AlphabetEnum::DNA5;
     }
@@ -182,9 +181,9 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     }
 
     // TODO Does this input directory structure work?
-    parser.add_option(options.indexDir, 'i', "index", std::string{"The database index (created by the 'lambda "} +
+    parser.add_option(options.indexFilePath, 'i', "index", std::string{"The database index (created by the 'lambda "} +
         (options.blastProgram == BlastProgram::BLASTN ? "mkindexn" : "mkindexp") + "' command).",
-        seqan3::option_spec::REQUIRED, seqan3::path_existence_validator());
+        seqan3::option_spec::REQUIRED, seqan3::path_existence_validator() | seqan3::file_ext_validator({"lba", "lta"}));
 
     parser.add_section("Output options");
 
@@ -216,7 +215,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         "them with SAM, e.g. for better BAM compatibility, use this option.", seqan3::option_spec::ADVANCED);
 
     std::string samBamSeqDescr;
-    if (options.blastProgram == BlastProgram::BLASTN)
+    if (options.nucleotide_mode)
     {
         samBamSeqDescr = "Write matching DNA subsequence into SAM/BAM file.";
     }
@@ -261,7 +260,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     parser.add_section("Seeding / Filtration");
 
-    if (options.blastProgram == BlastProgram::BLASTN)
+    if (options.nucleotide_mode)
         options.adaptiveSeeding = false;
     else
         options.adaptiveSeeding = true;
@@ -269,7 +268,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     parser.add_option(options.adaptiveSeeding, '\0', "adaptive-seeding",
         "Grow the seed if it has too many hits (low complexity filter).", seqan3::option_spec::ADVANCED);
 
-    unsigned defaultSeedLength = (options.blastProgram == BlastProgram::BLASTN) ? 14 : 10;
+    unsigned defaultSeedLength = options.nucleotide_mode ? 14 : 10;
 
     options.seedLength = defaultSeedLength;
     parser.add_option(options.seedLength, '\0', "seed-length", "Length of the seeds.", seqan3::option_spec::ADVANCED,
@@ -324,7 +323,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     parser.add_section("Scoring");
 
-    if (options.blastProgram == BlastProgram::BLASTN)
+    if (options.nucleotide_mode)
     {
         parser.add_option(options.match, '\0', "score-match",
             "Match score [only BLASTN]", seqan3::option_spec::ADVANCED, seqan3::arithmetic_range_validator{-1000, 1000});
@@ -339,7 +338,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
             seqan3::value_list_validator({45, 62, 80}));
     }
 
-    if (options.blastProgram == BlastProgram::BLASTN)
+    if (options.nucleotide_mode)
         options.gapExtend = -2;
     else
         options.gapExtend = -1;
@@ -347,7 +346,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     parser.add_option(options.gapExtend, '\0', "score-gap",
         "Score per gap character.", seqan3::option_spec::ADVANCED, seqan3::arithmetic_range_validator{-1000, 1000});
 
-    if (options.blastProgram == BlastProgram::BLASTN)
+    if (options.nucleotide_mode)
         options.gapOpen = -5;
     else
         options.gapOpen = -11;
@@ -369,11 +368,11 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 #ifdef SEQAN_SIMD_ENABLED
     parser.add_option(extensionModeTmp,'m', "extension-mode",
         "Choice of extension algorithms.", seqan3::option_spec::ADVANCED,
-        seqan3::value_list_validator({"auto", "xdrop", "fullSerial", "fullSIMD"}));
+        seqan3::value_list_validator({"auto", "fullSerial", "fullSIMD"}));
 #else
     parser.add_option(extensionModeTmp,'m', "extension-mode",
         "Choice of extension algorithms.", seqan3::option_spec::ADVANCED,
-        seqan3::value_list_validator({"auto", "xdrop", "fullSerial"}));
+        seqan3::value_list_validator({"auto", "fullSerial"}));
 #endif
 
     parser.add_section("Tuning");
@@ -389,7 +388,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     parser.parse();
 
     // set query alphabet and genetic code depending on options
-    if (options.blastProgram != BlastProgram::BLASTN)
+    if (!options.nucleotide_mode)
     {
         if (inputAlphabetTmp == "auto")
             options.qryOrigAlphabet = AlphabetEnum::DNA4;
@@ -414,6 +413,8 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         options.outFileFormat = 1;
     else if (std::filesystem::path(outputPath).extension() == ".bam")
         options.outFileFormat = 2;
+    else if (std::filesystem::path(outputPath).extension() == ".m0")
+        options.outFileFormat = -1;
     else
         options.outFileFormat = 0;
 
@@ -423,13 +424,13 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         std::cout << "Please specify the columns in this format -oc 'column1 column2', i.e. space-seperated and "
                   << "enclosed in single quotes.\nThe specifiers are the same as in NCBI Blast, currently "
                   << "the following are supported:\n";
-        for (unsigned i = 0; i < length(BlastMatchField<>::implemented); ++i)
+        for (unsigned i = 0; i < length(seqan::BlastMatchField<>::implemented); ++i)
         {
-            if (BlastMatchField<>::implemented[i])
+            if (seqan::BlastMatchField<>::implemented[i])
             {
-                std::cout << "\t" << BlastMatchField<>::optionLabels[i]
-                          << (length(BlastMatchField<>::optionLabels[i]) >= 8 ? "\t" : "\t\t")
-                          << BlastMatchField<>::descriptions[i] << "\n";
+                std::cout << "\t" << seqan::BlastMatchField<>::optionLabels[i]
+                          << (length(seqan::BlastMatchField<>::optionLabels[i]) >= 8 ? "\t" : "\t\t")
+                          << seqan::BlastMatchField<>::descriptions[i] << "\n";
             }
         }
         std::exit(0);
@@ -441,16 +442,16 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         for (auto str : fields)
         {
             bool resolved = false;
-            for (unsigned i = 0; i < length(BlastMatchField<>::optionLabels); ++i)
+            for (unsigned i = 0; i < length(seqan::BlastMatchField<>::optionLabels); ++i)
             {
-                if (BlastMatchField<>::optionLabels[i] == str)
+                if (seqan::BlastMatchField<>::optionLabels[i] == str)
                 {
-                    appendValue(options.columns, static_cast<BlastMatchField<>::Enum>(i));
+                    appendValue(options.columns, static_cast<seqan::BlastMatchField<>::Enum>(i));
                     resolved = true;
-                    if (static_cast<BlastMatchField<>::Enum>(i) == BlastMatchField<>::Enum::S_TAX_IDS)
+                    if (static_cast<seqan::BlastMatchField<>::Enum>(i) == seqan::BlastMatchField<>::Enum::S_TAX_IDS)
                         options.hasSTaxIds = true;
-                    else if ((static_cast<BlastMatchField<>::Enum>(i) == BlastMatchField<>::Enum::LCA_ID) ||
-                             (static_cast<BlastMatchField<>::Enum>(i) == BlastMatchField<>::Enum::LCA_TAX_ID))
+                    else if ((static_cast<seqan::BlastMatchField<>::Enum>(i) == seqan::BlastMatchField<>::Enum::LCA_ID) ||
+                             (static_cast<seqan::BlastMatchField<>::Enum>(i) == seqan::BlastMatchField<>::Enum::LCA_TAX_ID))
                         options.computeLCA = true;
                     break;
                 }
@@ -525,24 +526,24 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     // set samBamHardClip
     options.samBamHardClip = (samBamClip == "hard");
 
-    // set options depending on maxSeedDist
-    if (options.maxSeedDist == 0)
-    {
-        if (options.dbIndexType == DbIndexType::BI_FM_INDEX)
-        {
-            std::cerr << "WARNING: Exact seeeding doesn't benefit from bi-fm-index, so regular index is used.\n";
-            options.dbIndexType = DbIndexType::FM_INDEX;
-        }
-    }
-
-    // Set options based on dbIndexType
-    if (options.dbIndexType == DbIndexType::BI_FM_INDEX)
-    {
-        if (options.seedHalfExact)
-            std::cerr << "WARNING: seedHalfExact is already implied by bidirectional indexes.\n";
-        else
-            options.seedHalfExact = true;
-    }
+//     // set options depending on maxSeedDist
+//     if (options.maxSeedDist == 0)
+//     {
+//         if (options.dbIndexType == DbIndexType::BI_FM_INDEX)
+//         {
+//             std::cerr << "WARNING: Exact seeeding doesn't benefit from bi-fm-index, so regular index is used.\n";
+//             options.dbIndexType = DbIndexType::FM_INDEX;
+//         }
+//     }
+//
+//     // Set options based on dbIndexType
+//     if (options.dbIndexType == DbIndexType::BI_FM_INDEX)
+//     {
+//         if (options.seedHalfExact)
+//             std::cerr << "WARNING: seedHalfExact is already implied by bidirectional indexes.\n";
+//         else
+//             options.seedHalfExact = true;
+//     }
 
     // Set options depending on extension mode
     if (extensionModeTmp == "fullSIMD")
@@ -561,10 +562,10 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         options.mergePutativeSiblings = false;
         options.xDropOff = -1;
     }
-    else if (extensionModeTmp == "xdrop")
-    {
-        options.extensionMode = LambdaOptions::ExtensionMode::XDROP;
-    }
+//     else if (extensionModeTmp == "xdrop")
+//     {
+//         options.extensionMode = LambdaOptions::ExtensionMode::XDROP;
+//     }
     else
     {
         options.extensionMode = LambdaOptions::ExtensionMode::AUTO;
