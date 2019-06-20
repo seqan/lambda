@@ -19,9 +19,7 @@
 // lambda.hpp: contains the main progam pipeline
 // ==========================================================================
 
-
-#ifndef LAMBDA_SEARCH_ALGO_H_
-#define LAMBDA_SEARCH_ALGO_H_
+#pragma once
 
 #include <type_traits>
 #include <iomanip>
@@ -42,16 +40,16 @@
 // Forwards
 // ============================================================================
 
-template <typename TRedAlph_,
-          typename TIndexSpec_,
-          typename TFileFormat,
-          BlastProgram p,
-          BlastTabularSpec h>
-class GlobalDataHolder;
-
-template <typename TGlobalHolder_,
-          typename TScoreExtension>
-class LocalDataHolder;
+// template <typename TRedAlph_,
+//           typename TIndexSpec_,
+//           typename TFileFormat,
+//           seqan::BlastProgram p,
+//           BlastTabularSpec h>
+// class GlobalDataHolder;
+//
+// template <typename TGlobalHolder_,
+//           typename TScoreExtension>
+// class LocalDataHolder;
 
 // ============================================================================
 // Classes, structs, enums
@@ -92,24 +90,24 @@ struct Comp :
 // Function readIndexOption()
 // --------------------------------------------------------------------------
 
-inline void
-readIndexOption(std::string            & optionString,
-                std::string      const & optionIdentifier,
-                LambdaOptions    const & options)
-{
-    std::ifstream f{(options.indexDir + "/option:" + optionIdentifier).c_str(),
-                    std::ios_base::in | std::ios_base::binary};
-    if (f.is_open())
-    {
-        auto fit = directionIterator(f, Input());
-        readLine(optionString, fit);
-        f.close();
-    }
-    else
-    {
-        throw IndexException("Expected option specifier:\n" + options.indexDir + "/option:" + optionIdentifier);
-    }
-}
+// inline void
+// readIndexOption(std::string            & optionString,
+//                 std::string      const & optionIdentifier,
+//                 LambdaOptions    const & options)
+// {
+//     std::ifstream f{(options.indexDir + "/option:" + optionIdentifier).c_str(),
+//                     std::ios_base::in | std::ios_base::binary};
+//     if (f.is_open())
+//     {
+//         auto fit = directionIterator(f, Input());
+//         readLine(optionString, fit);
+//         f.close();
+//     }
+//     else
+//     {
+//         throw IndexException("Expected option specifier:\n" + options.indexDir + "/option:" + optionIdentifier);
+//     }
+// }
 
 // --------------------------------------------------------------------------
 // Function readIndexOptions()
@@ -128,12 +126,12 @@ void readIndexOptions(LambdaOptions & options)
     if (options.indexFilePath.extension() == ".lba")
     {
         std::ifstream is{options.indexFilePath.c_str(), std::ios::binary};
-        cereal::BinaryInputArchive iarchive(os);
+        cereal::BinaryInputArchive iarchive(is);
         iarchive(cereal::make_nvp("lambda index", f));
     } else if (options.indexFilePath.extension() == ".lta")
     {
         std::ifstream is{options.indexFilePath.c_str(), std::ios::binary};
-        cereal::JSONInputArchive iarchive(os);
+        cereal::JSONInputArchive iarchive(is);
         iarchive(cereal::make_nvp("lambda index", f));
     } else
     {
@@ -181,8 +179,9 @@ prepareScoring(TGlobalHolder       & globalHolder,
                LambdaOptions const & options)
 {
     //TODO Seqan3 scoring scheme
-    using TGlobalHolder = GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h>;
-    if constexpr (std::is_same_v<typename TGlobalHolder::TScoreScheme, Score<int, Simple>>)
+
+//     using TGlobalHolder = GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h>;
+    if constexpr (std::is_same_v<typename TGlobalHolder::TScoreScheme, seqan::Score<int, seqan::Simple>>)
     {
         seqan::setScoreMatch(context(globalHolder.outfile).scoringScheme, options.match);
         seqan::setScoreMismatch(context(globalHolder.outfile).scoringScheme, options.misMatch);
@@ -230,19 +229,23 @@ loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
     if (options.indexFilePath.extension() == ".lba")
     {
         std::ifstream is{options.indexFilePath.c_str(), std::ios::binary};
-        cereal::BinaryInputArchive iarchive(os);
+        cereal::BinaryInputArchive iarchive(is);
         iarchive(cereal::make_nvp("lambda index", globalHolder.indexFile));
     } else if (options.indexFilePath.extension() == ".lta")
     {
         std::ifstream is{options.indexFilePath.c_str(), std::ios::binary};
-        cereal::JSONInputArchive iarchive(os);
+        cereal::JSONInputArchive iarchive(is);
         iarchive(cereal::make_nvp("lambda index", globalHolder.indexFile));
     } else
     {
         throw 88;
     }
 
-    //TODO fix link of index to subject sequences
+    if constexpr (!std::is_lvalue_reference_v<typename TGlobalHolder::TRedSbjSeqs>) // is view
+    {
+        // update view, now that underlying range is available
+        globalHolder.redSubjSeqs = typename TGlobalHolder::TRedSbjSeqs{globalHolder.indexFile.transSeqs};
+    }
 
     double finish = sysTime() - start;
     myPrint(options, 1, " done.\n");
@@ -252,87 +255,21 @@ loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
     if constexpr (sIsTranslated(TGlobalHolder::blastProgram))
     {
         // last value has sum of lengths
-        context(globalHolder.outfileBlastTab).dbTotalLength  = back(globalHolder.untransSubjSeqLengths);
-        context(globalHolder.outfileBlastTab).dbNumberOfSeqs = length(globalHolder.untransSubjSeqLengths) - 1;
+        seqan::context(globalHolder.outfileBlastTab).dbTotalLength  = back(globalHolder.untransSubjSeqLengths);
+        seqan::context(globalHolder.outfileBlastTab).dbNumberOfSeqs = length(globalHolder.untransSubjSeqLengths) - 1;
 
-        context(globalHolder.outfileBlastRep).dbTotalLength  = back(globalHolder.untransSubjSeqLengths);
-        context(globalHolder.outfileBlastRep).dbNumberOfSeqs = length(globalHolder.untransSubjSeqLengths) - 1;
+        seqan::context(globalHolder.outfileBlastRep).dbTotalLength  = back(globalHolder.untransSubjSeqLengths);
+        seqan::context(globalHolder.outfileBlastRep).dbNumberOfSeqs = length(globalHolder.untransSubjSeqLengths) - 1;
     } else
     {
-        context(globalHolder.outfileBlastTab).dbTotalLength  = length(concat(globalHolder.subjSeqs));
-        context(globalHolder.outfileBlastTab).dbNumberOfSeqs = length(globalHolder.subjSeqs);
+        seqan::context(globalHolder.outfileBlastTab).dbTotalLength  = length(concat(globalHolder.subjSeqs));
+        seqan::context(globalHolder.outfileBlastTab).dbNumberOfSeqs = length(globalHolder.subjSeqs);
 
-        context(globalHolder.outfileBlastRep).dbTotalLength  = length(concat(globalHolder.subjSeqs));
-        context(globalHolder.outfileBlastRep).dbNumberOfSeqs = length(globalHolder.subjSeqs);
+        seqan::context(globalHolder.outfileBlastRep).dbTotalLength  = length(concat(globalHolder.subjSeqs));
+        seqan::context(globalHolder.outfileBlastRep).dbNumberOfSeqs = length(globalHolder.subjSeqs);
     }
 }
-
-// --------------------------------------------------------------------------
-// Function loadSTaxIds()
-// --------------------------------------------------------------------------
 #if 0
-template <typename TGlobalHolder>
-void
-loadTaxonomy(TGlobalHolder       & globalHolder,
-             LambdaOptions const & options)
-{
-    if (!options.hasSTaxIds)
-        return;
-
-    std::string path = toCString(options.indexDir);
-    path += "/staxids";
-
-    std::string strIdent = "Loading Subject Taxonomy IDs...";
-    myPrint(options, 1, strIdent);
-    double start = sysTime();
-
-    int ret = open(globalHolder.sTaxIds, path.c_str(), OPEN_RDONLY);
-    if (ret != true)
-    {
-        throw IndexException{"Could not load taxonomy IDS (but they are required for the chosen output options). "
-                             "Did you forget to specify a map file while indexing?"};
-    }
-
-    double finish = sysTime() - start;
-    myPrint(options, 1, " done.\n");
-    myPrint(options, 2, "Runtime: ", finish, "s \n\n");
-
-    SEQAN_ASSERT_EQ(length(globalHolder.sTaxIds), length(globalHolder.redSubjSeqs));
-
-    if (!options.computeLCA)
-        return;
-
-    strIdent = "Loading Subject Taxonomic Tree...";
-    myPrint(options, 1, strIdent);
-    start = sysTime();
-
-    std::string taxTreeExceptMessage =
-        "Could not load the taxonomy tree (but it is required for the chosen output options). "
-        "Did you forget to specify a taxonomy dump dir while indexing?";
-
-    path = toCString(options.indexDir);
-    path += "/tax_parents";
-    ret = open(globalHolder.taxParents, path.c_str(), OPEN_RDONLY);
-    if (ret != true)
-        throw IndexException{taxTreeExceptMessage};
-
-    path = toCString(options.indexDir);
-    path += "/tax_heights";
-    ret = open(globalHolder.taxHeights, path.c_str(), OPEN_RDONLY);
-    if (ret != true)
-        throw IndexException{taxTreeExceptMessage};
-
-    path = toCString(options.indexDir);
-    path += "/tax_names";
-    ret = open(globalHolder.taxNames, path.c_str(), OPEN_RDONLY);
-    if (ret != true)
-        throw IndexException{taxTreeExceptMessage};
-
-    finish = sysTime() - start;
-    myPrint(options, 1, " done.\n");
-    myPrint(options, 2, "Runtime: ", finish, "s \n\n");
-}
-#endif
 // --------------------------------------------------------------------------
 // Function loadQuery()
 // --------------------------------------------------------------------------
@@ -343,8 +280,8 @@ template <typename TSourceAlph, typename TSpec1,
           typename TUntransLengths,
           MyEnableIf<!std::is_same<TSourceAlph, TTargetAlph>::value> = 0>
 inline void
-loadQueryImplTrans(TCDStringSet<String<TTargetAlph, TSpec1>> & target,
-                   TCDStringSet<String<TSourceAlph, TSpec2>> & source,
+loadQueryImplTrans(TCDStringSet<seqan::String<TTargetAlph, TSpec1>> & target,
+                   TCDStringSet<seqan::String<TSourceAlph, TSpec2>> & source,
                    TUntransLengths                            & untransQrySeqLengths,
                    LambdaOptions                        const & options)
 {
@@ -431,7 +368,7 @@ loadQueryImplTrans(TCDStringSet<String<TransAlph<BlastProgram::BLASTP>, TSpec1>>
 }
 
 template <BlastTabularSpec h,
-          BlastProgram p,
+          seqan::BlastProgram p,
           typename TRedAlph,
           typename TIndexSpec,
           typename TOutFormat>
@@ -1456,7 +1393,7 @@ iterateMatchesFullSimd(TLocalHolder & lH)
                                 qIsTranslated(TGlobalHolder::blastProgram)
                                     ? lH.gH.untransQrySeqLengths[bm._n_qId]
                                     : length(lH.gH.qrySeqs[bm._n_qId]),
-                                context(lH.gH.outfile));
+                                seqan::context(lH.gH.outfile));
 
         if (bm.eValue > lH.options.eCutOff)
         {
@@ -1496,7 +1433,7 @@ iterateMatchesFullSimd(TLocalHolder & lH)
 
         _expandAlign(bm, lH);
 
-        computeAlignmentStats(bm, context(lH.gH.outfile));
+        computeAlignmentStats(bm, seqan::context(lH.gH.outfile));
 
         if (bm.alignStats.alignmentIdentity < lH.options.idCutOff)
         {
@@ -1505,7 +1442,7 @@ iterateMatchesFullSimd(TLocalHolder & lH)
             continue;
         }
 
-        computeBitScore(bm, context(lH.gH.outfile));
+        computeBitScore(bm, seqan::context(lH.gH.outfile));
 
         // evalue computed previously
 
@@ -1625,7 +1562,7 @@ iterateMatchesFullSerial(TLocalHolder & lH)
                                                              seqanScheme(context(lH.gH.outfile).scoringScheme),
                                                              TAlignConfig(-band, +band));
 
-        computeEValueThreadSafe(bm, record.qLength, context(lH.gH.outfile));
+        computeEValueThreadSafe(bm, record.qLength, seqan::context(lH.gH.outfile));
 
         if (bm.eValue > lH.options.eCutOff)
         {
@@ -1643,7 +1580,7 @@ iterateMatchesFullSerial(TLocalHolder & lH)
 
         _expandAlign(bm, lH);
 
-        computeAlignmentStats(bm, context(lH.gH.outfile));
+        computeAlignmentStats(bm, seqan::context(lH.gH.outfile));
 
         if (bm.alignStats.alignmentIdentity < lH.options.idCutOff)
         {
@@ -1652,7 +1589,7 @@ iterateMatchesFullSerial(TLocalHolder & lH)
             continue;
         }
 
-        computeBitScore(bm, context(lH.gH.outfile));
+        computeBitScore(bm, seqan::context(lH.gH.outfile));
 
         if (lH.options.hasSTaxIds)
             bm.sTaxIds = lH.gH.sTaxIds[bm._n_sId];
@@ -1680,5 +1617,4 @@ iterateMatches(TLocalHolder & lH)
     return iterateMatchesFullSerial(lH);
 
 }
-
-#endif // HEADER GUARD
+#endif

@@ -19,13 +19,12 @@
 // lambda_indexer.hpp: Main File for the indexer application
 // ==========================================================================
 
-#ifndef SEQAN_LAMBDA_LAMBDA_INDEXER_H_
-#define SEQAN_LAMBDA_LAMBDA_INDEXER_H_
+#pragma once
 
 #include <seqan3/io/sequence_file/input.hpp>
 #include <seqan3/io/detail/misc_input.hpp>
 #include <seqan3/range/view/convert.hpp>
-#include <seqan3/range/view/translation.hpp>
+#include <seqan3/range/view/translate.hpp>
 #include <seqan3/std/charconv>
 #include <seqan3/std/concepts>
 
@@ -39,8 +38,7 @@
 // --------------------------------------------------------------------------
 
 template <typename TOrigAlph>
-auto
-loadSubjSeqsAndIds(LambdaIndexerOptions const & options)
+auto loadSubjSeqsAndIds(LambdaIndexerOptions const & options)
 {
     using TIDs          = TCDStringSet<std::string>;
     using TOrigSeqs     = TCDStringSet<std::vector<TOrigAlph>>;
@@ -125,7 +123,7 @@ loadSubjSeqsAndIds(LambdaIndexerOptions const & options)
             extractAccIds(id, count);
 
         if (options.truncateIDs)
-            ids.push_back(id | seqan3::view::take_until(seqan3::is_space));
+            ids.push_back(id | seqan3::view::take_until(seqan3::is_space) | std::ranges::to<std::string>);
         else
             ids.push_back(std::move(id));
 
@@ -236,7 +234,13 @@ translateSeqs(TCDStringSet<std::vector<TOrigAlph>> & in,
     double start = sysTime();
     myPrint(options, 1, "Translating Subj Sequences...");
 
-    out = in | seqan3::view::translate | std::view::join; //TODO geneticCode
+    auto tmp  = in | seqan3::view::translate //TODO geneticCode
+                   | std::view::join
+                   | std::view::transform([] (auto && elem)
+                     {
+                         return std::forward<decltype(elem)>(elem) | std::ranges::to<std::vector>;
+                     })
+                   | std::ranges::to<decltype(out)>;
 
     myPrint(options, 1, " done.\n");
     double finish = sysTime() - start;
@@ -342,7 +346,6 @@ checkIndexSize(TCDStringSet<std::vector<TRedAlph>> const & seqs,
 auto mapTaxIDs(std::unordered_map<std::string, uint64_t>       const & accToIdRank,
                uint64_t                                        const   numSubjects,
                LambdaIndexerOptions                            const & options)
-
 {
     using TTaxIds        = std::vector<std::vector<uint32_t>>;// not concat because we resize inbetween
     using TTaxIdsPresent = std::vector<bool>;
@@ -438,7 +441,6 @@ auto mapTaxIDs(std::unordered_map<std::string, uint64_t>       const & accToIdRa
 
 auto parseAndStoreTaxTree(std::vector<bool>          & taxIdIsPresent,
                           LambdaIndexerOptions const & options)
-
 {
     using TTaxonParentIDs   = std::vector<uint32_t>; // ever position has the index of its parent node
     using TTaxonHeights     = std::vector<uint8_t>;
@@ -479,7 +481,7 @@ auto parseAndStoreTaxTree(std::vector<bool>          & taxIdIsPresent,
     while (std::ranges::begin(file_view) != std::ranges::end(file_view))
     {
         // read line
-        buf = file_view | seqan3::view::take_line;
+        buf = file_view | seqan3::view::take_line | std::ranges::to<std::string>;
 
         uint32_t n = 0;
         uint32_t parent = 0;
@@ -688,7 +690,7 @@ auto parseAndStoreTaxTree(std::vector<bool>          & taxIdIsPresent,
     while (std::ranges::begin(file_view2) != std::ranges::end(file_view2))
     {
         // read line
-        buf = file_view | seqan3::view::take_line;
+        buf = file_view | seqan3::view::take_line | std::ranges::to<std::string>;
 
         uint32_t taxId = 0;
 
@@ -765,54 +767,45 @@ auto parseAndStoreTaxTree(std::vector<bool>          & taxIdIsPresent,
 
 
 template <bool is_bi,
-          AlphabetEnum c_redAlph,
           typename TStringSet>
-auto
-generateIndex(TStringSet                       & seqs,
-              LambdaIndexerOptions       const & options)
+auto generateIndex(TStringSet                       & seqs,
+                   LambdaIndexerOptions       const & options)
 {
-    // TODO reduced sequences should not be saved; change after index changes
-    using TRedSeqs = TCDStringSet<std::vector<_alphabetEnumToType<c_redAlph>>>;
-    using TIndex   = std::conditional_t<is_bi, seqan3::bi_fm_index<TRedSeqs>, seqan3::fm_index<TRedSeqs>>;
+    using TIndex = std::conditional_t<is_bi, seqan3::bi_fm_index<true>, seqan3::fm_index<true>>;
+    TIndex index;
 
-    std::tuple<TRedSeqs, TIndex> ret;
-
-    auto & redSeqs = std::get<0>(ret);
-    auto & index   = std::get<1>(ret);
-
-    myPrint(options, 1, "Reducing sequences...");
+    myPrint(options, 1, "Generating Index...");
     double s = sysTime();
-    redSeqs = seqs | seqan3::view::deep{seqan3::view::convert<_alphabetEnumToType<c_redAlph>>};
+
+    if constexpr (std::Same<seqan3::innermost_value_type_t<TStringSet>, seqan3::aa27>)
+    {
+        switch (options.indexFileOptions.redAlph)
+        {
+            case AlphabetEnum::MURPHY10:
+            {
+                auto redSeqs = seqs | seqan3::view::deep{seqan3::view::convert<seqan3::aa10murphy>};
+                index = TIndex{redSeqs};
+            } break;
+
+            case AlphabetEnum::AMINO_ACID: // no reduction
+            {
+                index = TIndex{seqs};
+            } break;
+
+            default:
+            {
+                throw std::runtime_error{"This reduced alphabet is not handled correctly."};
+            } break;
+        }
+    }
+    else // BLASTN
+    {
+        index = TIndex{seqs};
+    }
+
     double e = sysTime() - s;
     myPrint(options, 1, " done.\n");
     myPrint(options, 2, "Runtime: ", e, "s \n\n");
 
-    myPrint(options, 1, "Generating Index...");
-    s = sysTime();
-    index = TIndex{redSeqs};
-    e = sysTime() - s;
-    myPrint(options, 1, " done.\n");
-    myPrint(options, 2, "Runtime: ", e, "s \n\n");
-
-    return ret;
-    // Dump Index
-//     myPrint(options, 1, "Writing Index to disk...");
-//     s = sysTime();
-//     std::string _path = options.indexDir + "/index";
-//
-// //     index.store(_path);
-//
-// //TODO once sdsl-ceral-support in SeqAn3
-//     {
-//         std::ofstream os{_path.c_str()};
-//
-//         cereal::BinaryOutputArchive oarchive(os); // Create an output archive
-//         oarchive(index);
-//     }
-//
-//     e = sysTime() - s;
-//     myPrint(options, 1, " done.\n");
-//     myPrint(options, 2, "Runtime: ", e, "s \n");
+    return index;
 }
-
-#endif // header guard

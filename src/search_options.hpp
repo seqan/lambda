@@ -19,8 +19,7 @@
 // options.h: contains the options and argument parser
 // ==========================================================================
 
-#ifndef LAMBDA_SEARCH_OPTIONS_H_
-#define LAMBDA_SEARCH_OPTIONS_H_
+#pragma once
 
 #include <cstdio>
 #include <unistd.h>
@@ -34,7 +33,6 @@
 
 #include <seqan3/std/filesystem>
 
-using namespace seqan;
 
 // ==========================================================================
 // Forwards
@@ -100,7 +98,7 @@ struct LambdaOptions : public SharedOptions
     uint64_t        maxMatches  = 256;
 
     bool            computeLCA  = false;
-    GeneticCodeSpec geneticCodeIndex;
+    seqan3::genetic_code geneticCodeQry;
 
     enum class ExtensionMode : uint8_t
     {
@@ -119,6 +117,8 @@ struct LambdaOptions : public SharedOptions
     int32_t         preScoring = 2; // 0 = off, 1 = seed, 2 = region
     double          preScoringThresh    = 2.0;
 
+
+    seqan::BlastProgram blastProgram;
     LambdaOptions() :
         SharedOptions()
     {
@@ -130,14 +130,14 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     // save commandLine
     for (int i = 0; i < argc; ++i)
         options.commandLine += std::string(argv[i]) + " ";
-    eraseBack(options.commandLine);
+    seqan::eraseBack(options.commandLine);
 
     std::string programName = "lambda3 " + std::string(argv[0]);
 
     // this is important for option handling:
     options.nucleotide_mode = (std::string(argv[0]) == "searchn");
 
-    seqan3::argument_parser parser(programName, argc, argv);
+    seqan3::argument_parser parser(programName, argc, argv, false);
 
     // Set short description, version, and date.
     parser.info.short_description = "the Local Aligner for Massive Biological DatA";
@@ -157,12 +157,12 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     // TODO Better solution for file extensions
     parser.add_option(options.queryFile, 'q', "query", "Query sequences.", seqan3::option_spec::REQUIRED,
-        seqan3::path_existence_validator() | seqan3::file_ext_validator({"fa", "fasta", "fq", "fastq"}));
+        seqan3::input_file_validator({"fa", "fasta", "fq", "fastq"}));
 
     std::string inputAlphabetTmp = "auto";
     int32_t geneticCodeTmp = 1;
 
-    if (options.nucleotide_mode == BlastProgram::BLASTN)
+    if (options.nucleotide_mode) // seqan::BlastProgram::BLASTN
     {
         options.qryOrigAlphabet = AlphabetEnum::DNA5;
     }
@@ -181,17 +181,25 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     }
 
     // TODO Does this input directory structure work?
-    parser.add_option(options.indexFilePath, 'i', "index", std::string{"The database index (created by the 'lambda "} +
-        (options.blastProgram == BlastProgram::BLASTN ? "mkindexn" : "mkindexp") + "' command).",
-        seqan3::option_spec::REQUIRED, seqan3::path_existence_validator() | seqan3::file_ext_validator({"lba", "lta"}));
+    parser.add_option(options.indexFilePath,
+                      'i',
+                      "index",
+                      std::string{"The database index (created by the 'lambda "} +
+                        (options.nucleotide_mode ? "mkindexn" : "mkindexp") +
+                        "' command).",
+                      seqan3::option_spec::REQUIRED,
+                      seqan3::input_file_validator({"lba", "lta"}));
 
     parser.add_section("Output options");
 
     // TODO Fix outout file requirements
-    parser.add_option(options.output, 'o', "output",
-        "File to hold reports on hits (.m* are blastall -m* formats; .m8 is tab-seperated, .m9 is tab-seperated with "
-        "with comments, .m0 is pairwise format).", seqan3::option_spec::DEFAULT, seqan3::path_existence_validator() |
-        seqan3::file_ext_validator({"m0", "m8", "m9", "bam", "sam", "gz", "bz2"}));
+    parser.add_option(options.output,
+                      'o',
+                      "output",
+                      "File to hold reports on hits (.m* are blastall -m* formats; .m8 is tab-seperated "
+                      ".m9 is tab-seperated with with comments, .m0 is pairwise format).",
+                      seqan3::option_spec::DEFAULT,
+                      seqan3::output_file_validator({"m0", "m8", "m9", "bam", "sam", "gz", "bz2"}));
 
     std::string outputColumnsTmp = "std";
     parser.add_option(outputColumnsTmp, '\0', "output-columns",
@@ -399,15 +407,15 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         else
             throw seqan3::parser_invalid_argument("ERROR: Invalid argument to --input-alphabet\n");
 
-        options.geneticCode = static_cast<GeneticCodeSpec>(geneticCodeTmp);
+        options.geneticCodeQry = static_cast<seqan3::genetic_code>(geneticCodeTmp);
     }
 
     // set output file format
     std::string outputPath;
     if (std::filesystem::path(outputPath).extension() == ".gz")
-        outputPath.resize(length(outputPath) - 3);
+        outputPath.resize(seqan::length(outputPath) - 3);
     else if (std::filesystem::path(outputPath).extension() ==  ".bz2")
-        outputPath.resize(length(outputPath) - 4);
+        outputPath.resize(seqan::length(outputPath) - 4);
 
     if (std::filesystem::path(outputPath).extension() == ".sam")
         options.outFileFormat = 1;
@@ -424,12 +432,12 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         std::cout << "Please specify the columns in this format -oc 'column1 column2', i.e. space-seperated and "
                   << "enclosed in single quotes.\nThe specifiers are the same as in NCBI Blast, currently "
                   << "the following are supported:\n";
-        for (unsigned i = 0; i < length(seqan::BlastMatchField<>::implemented); ++i)
+        for (unsigned i = 0; i < seqan::length(seqan::BlastMatchField<>::implemented); ++i)
         {
             if (seqan::BlastMatchField<>::implemented[i])
             {
                 std::cout << "\t" << seqan::BlastMatchField<>::optionLabels[i]
-                          << (length(seqan::BlastMatchField<>::optionLabels[i]) >= 8 ? "\t" : "\t\t")
+                          << (seqan::length(seqan::BlastMatchField<>::optionLabels[i]) >= 8 ? "\t" : "\t\t")
                           << seqan::BlastMatchField<>::descriptions[i] << "\n";
             }
         }
@@ -437,16 +445,16 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     }
     else
     {
-        StringSet<CharString> fields;
-        strSplit(fields, outputColumnsTmp, IsSpace(), false);
+        seqan::StringSet<seqan::CharString> fields;
+        seqan::strSplit(fields, outputColumnsTmp, seqan::IsSpace(), false);
         for (auto str : fields)
         {
             bool resolved = false;
-            for (unsigned i = 0; i < length(seqan::BlastMatchField<>::optionLabels); ++i)
+            for (unsigned i = 0; i < seqan::length(seqan::BlastMatchField<>::optionLabels); ++i)
             {
                 if (seqan::BlastMatchField<>::optionLabels[i] == str)
                 {
-                    appendValue(options.columns, static_cast<seqan::BlastMatchField<>::Enum>(i));
+                    seqan::appendValue(options.columns, static_cast<seqan::BlastMatchField<>::Enum>(i));
                     resolved = true;
                     if (static_cast<seqan::BlastMatchField<>::Enum>(i) == seqan::BlastMatchField<>::Enum::S_TAX_IDS)
                         options.hasSTaxIds = true;
@@ -489,12 +497,12 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     }
     else
     {
-        StringSet<CharString> fields;
-        strSplit(fields, samBamTagsTmp, IsSpace(), false);
+        seqan::StringSet<seqan::CharString> fields;
+        seqan::strSplit(fields, samBamTagsTmp, seqan::IsSpace(), false);
         for (auto str : fields)
         {
             bool resolved = false;
-            for (unsigned i = 0; i < length(SamBamExtraTags<>::keyDescPairs); ++i)
+            for (unsigned i = 0; i < seqan::length(SamBamExtraTags<>::keyDescPairs); ++i)
             {
                 if (std::get<0>(SamBamExtraTags<>::keyDescPairs[i]) == str)
                 {
@@ -507,7 +515,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
             {
                 std::cerr << "Unknown column specifier \"" << str
                           << "\". Please see \"--sam-bam-tags help\" for valid options.\n";
-                throw seqan3::parser_invalid_argument(std::string("Unknown column specifier \"") + toCString(str) +
+                throw seqan3::parser_invalid_argument(std::string("Unknown column specifier \"") + seqan::toCString(str) +
                     std::string("\". Please see \"--sam-bam-tags help\" for valid options.\n"));
             }
         }
@@ -581,8 +589,6 @@ template <typename TLH>
 inline void
 printOptions(LambdaOptions const & options)
 {
-    using TGH = typename TLH::TGlobalHolder;
-
     std::string bandStr;
     switch(options.band)
     {
@@ -595,8 +601,7 @@ printOptions(LambdaOptions const & options)
     std::cout << "OPTIONS\n"
               << " INPUT\n"
               << "  query file:               " << options.queryFile << "\n"
-              << "  index directory:          " << options.indexDir << "\n"
-              << "  db index type:            " << _indexEnumToName(options.dbIndexType) << "\n"
+              << "  index file:               " << options.indexFilePath << "\n"
               << " OUTPUT (file)\n"
               << "  output file:              " << options.output << "\n"
               << "  minimum % identity:       " << options.idCutOff << "\n"
@@ -613,21 +618,9 @@ printOptions(LambdaOptions const & options)
               << " GENERAL\n"
               << "  threads:                  " << uint(options.threads) << "\n"
               << " TRANSLATION AND ALPHABETS\n"
-              << "  genetic code:             "
-              << ((TGH::blastProgram != BlastProgram::BLASTN) &&
-                  (TGH::blastProgram != BlastProgram::BLASTP)
-                 ? std::to_string(options.geneticCode)
-                 : std::string("n/a")) << "\n"
-              << "  blast mode:               " << _programTagToString(TGH::blastProgram)
-              << "\n"
-              << "  original alphabet (query):" << _alphTypeToName(OrigQryAlph<TGH::blastProgram>())
-              << "\n"
-              << "  original alphabet (subj): " << _alphTypeToName(OrigSubjAlph<TGH::blastProgram>())
-              << "\n"
-              << "  translated alphabet:      " << _alphTypeToName(TransAlph<TGH::blastProgram>())
-              << "\n"
-              << "  reduced alphabet:         " << _alphTypeToName(typename TGH::TRedAlph())
-              << "\n"
+              << "  genetic code:             " << (int)options.geneticCodeQry << "\n"
+              << "  nucleotide_mode:          " << options.nucleotide_mode << "\n"
+              << "  original alphabet (query):" << _alphabetEnumToName(options.qryOrigAlphabet) << "\n"
               << " SEEDING\n"
               << "  seed length:              " << uint(options.seedLength) << "\n"
               << "  seed offset:              " << uint(options.seedOffset) << "\n"
@@ -743,4 +736,3 @@ printOptions(LambdaOptions const & options)
               << "\n";
 }
 
-#endif // header guard

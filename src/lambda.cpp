@@ -21,11 +21,11 @@
 
 #include <seqan3/argument_parser/all.hpp>
 
-#if 0
 #include "search.hpp"
-#endif
-#include "mkindex.hpp"
 
+#if 1
+#include "mkindex.hpp"
+#endif
 // using namespace seqan;
 
 void parseCommandLineMain(int argc, char const ** argv);
@@ -71,7 +71,7 @@ int main(int argc, char const ** argv)
     // TODO change return values
     if ((std::string(argv[until]) == "searchp") || (std::string(argv[until]) == "searchn"))
     {
-#if 0
+
         try
         {
             searchMain(argc - until, argv + until);
@@ -81,13 +81,14 @@ int main(int argc, char const ** argv)
             std::cerr << ext.what() << "\n";
             return -1;
         }
-#endif
+
 
     }
     else
 
     if ((std::string(argv[until]) == "mkindexp") || (std::string(argv[until]) == "mkindexn"))
     {
+    #if 0
         try
         {
             mkindexMain(argc - until, argv + until);
@@ -97,6 +98,7 @@ int main(int argc, char const ** argv)
             std::cerr << ext.what() << "\n";
             return -1;
         }
+    #endif
     }
     else
     {

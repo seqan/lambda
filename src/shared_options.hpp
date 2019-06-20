@@ -19,8 +19,7 @@
 // shared_options.h: contains the options and argument parser
 // ==========================================================================
 
-#ifndef LAMBDA_SHARED_OPTIONS_H_
-#define LAMBDA_SHARED_OPTIONS_H_
+#pragma once
 
 #include <bitset>
 #include <cstdio>
@@ -339,5 +338,3 @@ void sharedSetup(seqan3::argument_parser & parser)
     parser.info.description.push_back("Detailed information is available in the wiki: "
                                       "<https://github.com/seqan/lambda/wiki>");
 }
-
-#endif // header guard

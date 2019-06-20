@@ -19,12 +19,9 @@
 // match.h: Main File for the match class
 // ==========================================================================
 
-#ifndef LAMBDA_SEARCH_MISC_H_
-#define LAMBDA_SEARCH_MISC_H_
+#pragma once
 
 #include <vector>
-
-using namespace seqan;
 
 // ============================================================================
 // Exceptions
@@ -44,33 +41,33 @@ struct QueryException : public std::runtime_error
 // Seeding related
 // ============================================================================
 
-template <typename TGH, typename TAlph>
+template <typename TGH>
 inline void
-myHyperSortSingleIndex(std::vector<Match<TAlph>> & matches,
+myHyperSortSingleIndex(std::vector<Match> & matches,
                        TGH const &)
 {
-    using TId = typename Match<TAlph>::TQId;
+    using TId = typename Match::TQId;
 
     // regular sort
     std::sort(matches.begin(), matches.end());
 
     //                    trueQryId, begin,    end
     std::vector<std::tuple<TId, TId, TId>> intervals;
-    for (TId i = 1; i <= length(matches); ++i)
+    for (TId i = 1; i <= std::ranges::size(matches); ++i)
     {
-        if ((i == length(matches))                      ||
+        if ((i == std::ranges::size(matches))                      ||
             (matches[i-1].qryId != matches[i].qryId)    ||
-            (matches[i-1].subjId / sNumFrames(TGH::blastProgram)) !=
-             (matches[i].subjId / sNumFrames(TGH::blastProgram)))
+            (matches[i-1].subjId / seqan::sNumFrames(TGH::blastProgram)) !=
+             (matches[i].subjId / seqan::sNumFrames(TGH::blastProgram)))
         {
-            if (length(intervals) == 0) // first interval
+            if (std::ranges::size(intervals) == 0) // first interval
                 intervals.emplace_back(std::make_tuple(matches[i-1].qryId
-                                                       / qNumFrames(TGH::blastProgram),
+                                                       / seqan::qNumFrames(TGH::blastProgram),
                                                        0,
                                                        i));
             else
                 intervals.emplace_back(std::make_tuple(matches[i-1].qryId
-                                                       / qNumFrames(TGH::blastProgram),
+                                                       / seqan::qNumFrames(TGH::blastProgram),
                                                        std::get<2>(intervals.back()),
                                                        i));
         }
@@ -85,7 +82,7 @@ myHyperSortSingleIndex(std::vector<Match<TAlph>> & matches,
             >  (std::get<2>(i2) - std::get<1>(i2));
     });
 
-    std::vector<Match<TAlph>> tmpVector;
+    std::vector<Match> tmpVector;
     tmpVector.resize(matches.size());
 
     TId newIndex = 0;
@@ -127,25 +124,25 @@ template <typename TSource0, typename TGapsSpec0,
           typename TScoreValue, typename TScoreSpec,
           typename TAlignContext>
 inline TScoreValue
-localAlignment2(Gaps<TSource0, TGapsSpec0> & row0,
-                Gaps<TSource1, TGapsSpec1> & row1,
-                Score<TScoreValue, TScoreSpec> const & scoringScheme,
+localAlignment2(seqan::Gaps<TSource0, TGapsSpec0> & row0,
+                seqan::Gaps<TSource1, TGapsSpec1> & row1,
+                seqan::Score<TScoreValue, TScoreSpec> const & scoringScheme,
                 int const lowerDiag,
                 int const upperDiag,
                 TAlignContext & alignContext)
 {
-    clear(alignContext.traceSegment);
+    seqan::clear(alignContext.traceSegment);
 
-    typedef FreeEndGaps_<True, True, True, True> TFreeEndGaps;
-    typedef AlignConfig2<LocalAlignment_<>,
-                         DPBand,
+    typedef seqan::FreeEndGaps_<seqan::True, seqan::True, seqan::True, seqan::True> TFreeEndGaps;
+    typedef seqan::AlignConfig2<seqan::LocalAlignment_<>,
+                         seqan::DPBand,
                          TFreeEndGaps,
-                         TracebackOn<TracebackConfig_<CompleteTrace,
-                                                      GapsLeft> > > TAlignConfig;
+                         seqan::TracebackOn<seqan::TracebackConfig_<seqan::CompleteTrace,
+                                                                    seqan::GapsLeft> > > TAlignConfig;
 
     TScoreValue score;
-    DPScoutState_<Default> scoutState;
-    score = _setUpAndRunAlignment(alignContext.dpContext,
+    seqan::DPScoutState_<seqan::Default> scoutState;
+    score = seqan::_setUpAndRunAlignment(alignContext.dpContext,
                                   alignContext.traceSegment,
                                   scoutState,
                                   row0,
@@ -153,7 +150,7 @@ localAlignment2(Gaps<TSource0, TGapsSpec0> & row0,
                                   scoringScheme,
                                   TAlignConfig(lowerDiag, upperDiag));
 
-    _adaptTraceSegmentsTo(row0, row1, alignContext.traceSegment);
+    seqan::_adaptTraceSegmentsTo(row0, row1, alignContext.traceSegment);
     return score;
 }
 
@@ -194,12 +191,12 @@ _bandSize(uint64_t const seqLength, TLocalHolder & lH)
 
 template <typename TBlastMatch,
           typename TScore,
-          BlastProgram p,
-          BlastTabularSpec h>
+          seqan::BlastProgram p,
+          seqan::BlastTabularSpec h>
 inline double
 computeEValueThreadSafe(TBlastMatch & match,
                         uint64_t ql,
-                        BlastIOContext<TScore, p, h> & context)
+                        seqan::BlastIOContext<TScore, p, h> & context)
 {
 #if defined(__FreeBSD__)
     // && version < 11 && defined(STDLIB_LLVM) because of https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=192320
@@ -211,7 +208,7 @@ computeEValueThreadSafe(TBlastMatch & match,
 #endif
 
     // convert to 64bit and divide for translated sequences
-    ql = ql / (qIsTranslated(context.blastProgram) ? 3 : 1);
+    ql = ql / (seqan::qIsTranslated(context.blastProgram) ? 3 : 1);
     // length adjustment not yet computed
     if (_cachedLengthAdjustments.find(ql) == _cachedLengthAdjustments.end())
         _cachedLengthAdjustments[ql] = _lengthAdjustment(context.dbTotalLength, ql, context.scoringScheme);
@@ -230,7 +227,7 @@ computeEValueThreadSafe(TBlastMatch & match,
 // ----------------------------------------------------------------------------
 
 template <typename T, typename T2>
-T computeLCA(String<T> const & taxParents, String<T2> const & taxHeights, T n1, T n2)
+T computeLCA(std::vector<T> const & taxParents, std::vector<T2> const & taxHeights, T n1, T n2)
 {
     if (n1 == n2)
         return n1;
@@ -253,8 +250,6 @@ T computeLCA(String<T> const & taxParents, String<T2> const & taxHeights, T n1, 
         n2 = taxParents[n2];
     }
 
-    SEQAN_FAIL("One of the paths didn't lead to root.");
+    throw std::runtime_error{"LCA-computation error: One of the paths didn't lead to root."};
     return 0; // avoid warnings on clang
 }
-
-#endif // header guard

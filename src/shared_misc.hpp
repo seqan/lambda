@@ -19,8 +19,7 @@
 // store.h: contains types and definitions for storing sequences and indices
 // ==========================================================================
 
-#ifndef LAMBDA_SHARED_MISC_H_
-#define LAMBDA_SHARED_MISC_H_
+#pragma once
 
 #include <chrono>
 #include <dirent.h>
@@ -443,5 +442,3 @@ uint64_t getTotalSystemMemory()
 #   error "no way to get phys pages"
 #endif
 }
-
-#endif // header guard

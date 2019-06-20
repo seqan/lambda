@@ -19,8 +19,7 @@
 // output.hpp: contains routines for file-writing
 // ==========================================================================
 
-#ifndef LAMBDA_SEARCH_OUTPUT_H_
-#define LAMBDA_SEARCH_OUTPUT_H_
+#pragma once
 
 #include <seqan/blast.h>
 #include <seqan/bam_io.h>
@@ -90,15 +89,15 @@ _untranslateSequence(TSequence1                     & target,
 {
     if (qFrameShift >= 0)
     {
-        target = infix(source,
+        target = seqan::infix(source,
                        3 * qStart + std::abs(qFrameShift) - 1,
                        3 * qEnd + std::abs(qFrameShift) - 1);
     }
     else
     {
-        target = infix(source,
-                       length(source) - (3 * qEnd + std::abs(qFrameShift) - 1),
-                       length(source) - (3 * qStart + std::abs(qFrameShift) - 1));
+        target = seqan::infix(source,
+                       seqan::length(source) - (3 * qEnd + std::abs(qFrameShift) - 1),
+                       seqan::length(source) - (3 * qStart + std::abs(qFrameShift) - 1));
         reverseComplement(target);
     }
 }
@@ -114,10 +113,10 @@ blastMatchOneCigar(TCigar & cigar,
                    TBlastRecord const & r,
                    TLocalHolder const & lH)
 {
-    using TCElem = typename Value<TCigar>::Type;
+    using TCElem = typename seqan::Value<TCigar>::Type;
     using TGlobalHolder = typename TLocalHolder::TGlobalHolder;
 
-    SEQAN_ASSERT_EQ(length(m.alignRow0), length(m.alignRow1));
+    SEQAN_ASSERT_EQ(seqan::length(m.alignRow0), seqan::length(m.alignRow1));
 
     // translate positions into dna space
     unsigned const transFac       = qIsTranslated(TGlobalHolder::blastProgram) ? 3 : 1;
@@ -126,63 +125,63 @@ blastMatchOneCigar(TCigar & cigar,
     unsigned const rightFrameClip = qIsTranslated(TGlobalHolder::blastProgram) ? (r.qLength - leftFrameClip) % 3 : 0;
     // regular clipping from local alignment (regions outside match) can be hard or soft
     unsigned const leftClip       = m.qStart * transFac;
-    unsigned const rightClip      = (length(source(m.alignRow0)) - m.qEnd) * transFac;
+    unsigned const rightClip      = (seqan::length(seqan::source(m.alignRow0)) - m.qEnd) * transFac;
 
     if (lH.options.samBamHardClip)
     {
         if (leftFrameClip + leftClip > 0)
-            appendValue(cigar, TCElem('H', leftFrameClip + leftClip));
+            seqan::appendValue(cigar, TCElem('H', leftFrameClip + leftClip));
     } else
     {
         if (leftFrameClip > 0)
-            appendValue(cigar, TCElem('H', leftFrameClip));
+            seqan::appendValue(cigar, TCElem('H', leftFrameClip));
         if (leftClip > 0)
-            appendValue(cigar, TCElem('S', leftClip));
+            seqan::appendValue(cigar, TCElem('S', leftClip));
     }
 
-    for (unsigned i = 0, count = 0; i < length(m.alignRow0); /* incremented below */)
+    for (unsigned i = 0, count = 0; i < seqan::length(m.alignRow0); /* incremented below */)
     {
         // deletion in query
         count = 0;
-        while (isGap(m.alignRow0, i) && (i < length(m.alignRow0)))
+        while (seqan::isGap(m.alignRow0, i) && (i < seqan::length(m.alignRow0)))
         {
             ++count;
             ++i;
         }
         if (count > 0)
-            appendValue(cigar, TCElem('D', count * transFac));
+            seqan::appendValue(cigar, TCElem('D', count * transFac));
 
         // insertion in query
         count = 0;
-        while (isGap(m.alignRow1, i) && (i < length(m.alignRow0)))
+        while (seqan::isGap(m.alignRow1, i) && (i < seqan::length(m.alignRow0)))
         {
             ++count;
             ++i;
         }
         if (count > 0)
-            appendValue(cigar, TCElem('I', count * transFac));
+            seqan::appendValue(cigar, TCElem('I', count * transFac));
 
         // match or mismatch
         count = 0;
-        while ((!isGap(m.alignRow0, i)) && (!isGap(m.alignRow1, i)) && (i < length(m.alignRow0)))
+        while ((!seqan::isGap(m.alignRow0, i)) && (!seqan::isGap(m.alignRow1, i)) && (i < seqan::length(m.alignRow0)))
         {
             ++count;
             ++i;
         }
         if (count > 0)
-            appendValue(cigar, TCElem('M', count * transFac));
+            seqan::appendValue(cigar, TCElem('M', count * transFac));
     }
 
     if (lH.options.samBamHardClip)
     {
         if (rightFrameClip + rightClip > 0)
-            appendValue(cigar, TCElem('H', rightFrameClip + rightClip));
+            seqan::appendValue(cigar, TCElem('H', rightFrameClip + rightClip));
     } else
     {
         if (rightClip > 0)
-            appendValue(cigar, TCElem('S', rightClip));
+            seqan::appendValue(cigar, TCElem('S', rightClip));
         if (rightFrameClip > 0)
-            appendValue(cigar, TCElem('H', rightFrameClip));
+            seqan::appendValue(cigar, TCElem('H', rightFrameClip));
     }
 
     if (m.qFrameShift < 0)
@@ -198,99 +197,99 @@ blastMatchTwoCigar(TCigar & dnaCigar,
                    TBlastRecord const & r,
                    TLocalHolder const & lH)
 {
-    using TCElem = typename Value<TCigar>::Type;
+    using TCElem = typename seqan::Value<TCigar>::Type;
 
-    SEQAN_ASSERT_EQ(length(m.alignRow0), length(m.alignRow1));
+    SEQAN_ASSERT_EQ(seqan::length(m.alignRow0), seqan::length(m.alignRow1));
 
     // clips resulting from translation / frameshift are always hard clips
     unsigned const leftFrameClip  = std::abs(m.qFrameShift) - 1;            // in dna space
     unsigned const rightFrameClip = (r.qLength - leftFrameClip) % 3;          // in dna space
     // regular clipping from local alignment (regions outside match) can be hard or soft
     unsigned const leftClip       = m.qStart;                               // in protein space
-    unsigned const rightClip      = length(source(m.alignRow0)) - m.qEnd;   // in protein space
+    unsigned const rightClip      = seqan::length(seqan::source(m.alignRow0)) - m.qEnd;   // in protein space
 
     if (lH.options.samBamHardClip)
     {
         if (leftFrameClip + leftClip > 0)
-            appendValue(dnaCigar, TCElem('H', leftFrameClip + 3 * leftClip));
+            seqan::appendValue(dnaCigar, TCElem('H', leftFrameClip + 3 * leftClip));
         if (leftClip > 0)
-            appendValue(protCigar, TCElem('H', leftClip));
+            seqan::appendValue(protCigar, TCElem('H', leftClip));
 
     } else
     {
         if (leftFrameClip > 0)
-            appendValue(dnaCigar, TCElem('H', leftFrameClip));
+            seqan::appendValue(dnaCigar, TCElem('H', leftFrameClip));
 
         if (leftClip > 0)
         {
-            appendValue(dnaCigar, TCElem('S', 3 * leftClip));
-            appendValue(protCigar, TCElem('S', leftClip));
+            seqan::appendValue(dnaCigar, TCElem('S', 3 * leftClip));
+            seqan::appendValue(protCigar, TCElem('S', leftClip));
         }
     }
 
-    for (unsigned i = 0, count = 0; i < length(m.alignRow0); /* incremented below */)
+    for (unsigned i = 0, count = 0; i < seqan::length(m.alignRow0); /* incremented below */)
     {
         // deletion in query
         count = 0;
-        while (isGap(m.alignRow0, i) && (i < length(m.alignRow0)))
+        while (seqan::isGap(m.alignRow0, i) && (i < seqan::length(m.alignRow0)))
         {
             ++count;
             ++i;
         }
         if (count > 0)
         {
-            appendValue(dnaCigar, TCElem('D', count * 3));
-            appendValue(protCigar, TCElem('D', count));
+            seqan::appendValue(dnaCigar, TCElem('D', count * 3));
+            seqan::appendValue(protCigar, TCElem('D', count));
         }
 
         // insertion in query
         count = 0;
-        while (isGap(m.alignRow1, i) && (i < length(m.alignRow0)))
+        while (seqan::isGap(m.alignRow1, i) && (i < seqan::length(m.alignRow0)))
         {
             ++count;
             ++i;
         }
         if (count > 0)
         {
-            appendValue(dnaCigar, TCElem('I', count * 3));
-            appendValue(protCigar, TCElem('I', count));
+            seqan::appendValue(dnaCigar, TCElem('I', count * 3));
+            seqan::appendValue(protCigar, TCElem('I', count));
         }
 
         // match or mismatch
         count = 0;
-        while ((!isGap(m.alignRow0, i)) && (!isGap(m.alignRow1, i)) && (i < length(m.alignRow0)))
+        while ((!seqan::isGap(m.alignRow0, i)) && (!seqan::isGap(m.alignRow1, i)) && (i < seqan::length(m.alignRow0)))
         {
             ++count;
             ++i;
         }
         if (count > 0)
         {
-            appendValue(dnaCigar, TCElem('M', count * 3));
-            appendValue(protCigar, TCElem('M', count));
+            seqan::appendValue(dnaCigar, TCElem('M', count * 3));
+            seqan::appendValue(protCigar, TCElem('M', count));
         }
     }
 
     if (lH.options.samBamHardClip)
     {
         if (rightFrameClip + rightClip > 0)
-            appendValue(dnaCigar, TCElem('H', rightFrameClip + 3 * rightClip));
+            seqan::appendValue(dnaCigar, TCElem('H', rightFrameClip + 3 * rightClip));
         if (rightClip > 0)
-            appendValue(protCigar, TCElem('H', rightClip));
+            seqan::appendValue(protCigar, TCElem('H', rightClip));
 
     } else
     {
         if (rightClip > 0)
         {
-            appendValue(dnaCigar, TCElem('S', 3 * rightClip));
-            appendValue(protCigar, TCElem('S', rightClip));
+            seqan::appendValue(dnaCigar, TCElem('S', 3 * rightClip));
+            seqan::appendValue(protCigar, TCElem('S', rightClip));
         }
 
         if (rightFrameClip > 0)
-            appendValue(dnaCigar, TCElem('H', rightFrameClip));
+            seqan::appendValue(dnaCigar, TCElem('H', rightFrameClip));
     }
 
     if (m.qFrameShift < 0)
-        reverse(dnaCigar);
+        seqan::reverse(dnaCigar);
     // protCigar never reversed
 }
 
@@ -304,99 +303,99 @@ myWriteHeader(TGH & globalHolder, TLambdaOptions const & options)
 {
     if (options.outFileFormat == 0) // BLAST
     {
-        open(globalHolder.outfile, toCString(options.output));
-        context(globalHolder.outfile).fields = options.columns;
+        seqan::open(globalHolder.outfile, toCString(options.output));
+        seqan::context(globalHolder.outfile).fields = options.columns;
         auto & versionString = context(globalHolder.outfile).versionString;
-        clear(versionString);
-        append(versionString, _programTagToString(TGH::blastProgram));
-        append(versionString, " 2.2.26+ [created by LAMBDA");
+        seqan::clear(versionString);
+        seqan::append(versionString, _programTagToString(TGH::blastProgram));
+        seqan::append(versionString, " 2.2.26+ [created by LAMBDA");
         if (options.versionInformationToOutputFile)
         {
-            append(versionString, "-");
-            append(versionString, SEQAN_APP_VERSION);
+            seqan::append(versionString, "-");
+            seqan::append(versionString, SEQAN_APP_VERSION);
         }
-        append(versionString, ", see http://seqan.de/lambda and please cite correctly in your academic work]");
-        writeHeader(globalHolder.outfile);
+        seqan::append(versionString, ", see http://seqan.de/lambda and please cite correctly in your academic work]");
+        seqan::writeHeader(globalHolder.outfile);
     } else // SAM or BAM
     {
-        open(globalHolder.outfileBam, toCString(options.output));
+        seqan::open(globalHolder.outfileBam, toCString(options.output));
         auto & context          = seqan::context(globalHolder.outfileBam);
-        auto & subjSeqLengths   = contigLengths(context);
-        auto & subjIds          = contigNames(context);
+        auto & subjSeqLengths   = seqan::contigLengths(context);
+        auto & subjIds          = seqan::contigNames(context);
 
-        // set sequence lengths
-        if (sIsTranslated(TGH::blastProgram))
+        // set sequence seqan::lengths
+        if (seqan::sIsTranslated(TGH::blastProgram))
         {
             //TODO can we get around a copy?
             subjSeqLengths = globalHolder.untransSubjSeqLengths;
         } else
         {
-            // compute lengths ultra-fast
-            resize(subjSeqLengths, length(globalHolder.subjSeqs));
+            // compute seqan::lengths ultra-fast
+            seqan::resize(subjSeqLengths, seqan::length(globalHolder.subjSeqs));
 #ifdef __clang__
             SEQAN_OMP_PRAGMA(parallel for)
 #else
             SEQAN_OMP_PRAGMA(parallel for simd)
 #endif
-            for (unsigned i = 0; i < length(subjSeqLengths); ++i)
+            for (unsigned i = 0; i < seqan::length(subjSeqLengths); ++i)
                 subjSeqLengths[i] = globalHolder.subjSeqs.limits[i+1] - globalHolder.subjSeqs.limits[i];
         }
         // set namestore
-        resize(subjIds, length(globalHolder.subjIds));
+        resize(subjIds, seqan::length(globalHolder.subjIds));
         SEQAN_OMP_PRAGMA(parallel for)
-        for (unsigned i = 0; i < length(globalHolder.subjIds); ++i)
+        for (unsigned i = 0; i < seqan::length(globalHolder.subjIds); ++i)
             subjIds[i] = prefix(globalHolder.subjIds[i],
-                                std::find(begin(globalHolder.subjIds[i], Standard()),
-                                          end(globalHolder.subjIds[i], Standard()),
+                                std::find(begin(globalHolder.subjIds[i],  seqan::Standard()),
+                                          end(globalHolder.subjIds[i],  seqan::Standard()),
                                           ' ')
-                                - begin(globalHolder.subjIds[i], Standard()));
+                                - begin(globalHolder.subjIds[i],  seqan::Standard()));
 
-        typedef BamHeaderRecord::TTag   TTag;
+        typedef seqan::BamHeaderRecord::TTag   TTag;
 
         // CREATE HEADER
-        BamHeader header;
+        seqan::BamHeader header;
         // Fill first header line.
-        BamHeaderRecord firstRecord;
-        firstRecord.type = BAM_HEADER_FIRST;
-        appendValue(firstRecord.tags, TTag("VN", "1.4"));
-//         appendValue(firstRecord.tags, TTag("SO", "unsorted"));
-        appendValue(firstRecord.tags, TTag("GO", "query"));
-        appendValue(header, firstRecord);
+        seqan::BamHeaderRecord firstRecord;
+        firstRecord.type = seqan::BAM_HEADER_FIRST;
+        seqan::appendValue(firstRecord.tags, TTag("VN", "1.4"));
+//         seqan::appendValue(firstRecord.tags, TTag("SO", "unsorted"));
+        seqan::appendValue(firstRecord.tags, TTag("GO", "query"));
+        seqan::appendValue(header, firstRecord);
 
         // Fill program header line.
         if (options.versionInformationToOutputFile)
         {
-            BamHeaderRecord pgRecord;
-            pgRecord.type = BAM_HEADER_PROGRAM;
-            appendValue(pgRecord.tags, TTag("ID", "lambda"));
-            appendValue(pgRecord.tags, TTag("PN", "lambda"));
-            appendValue(pgRecord.tags, TTag("VN", SEQAN_APP_VERSION));
-            appendValue(pgRecord.tags, TTag("CL", options.commandLine));
-            appendValue(header, pgRecord);
+            seqan::BamHeaderRecord pgRecord;
+            pgRecord.type = seqan::BAM_HEADER_PROGRAM;
+            seqan::appendValue(pgRecord.tags, TTag("ID", "lambda"));
+            seqan::appendValue(pgRecord.tags, TTag("PN", "lambda"));
+            seqan::appendValue(pgRecord.tags, TTag("VN", SEQAN_APP_VERSION));
+            seqan::appendValue(pgRecord.tags, TTag("CL", options.commandLine));
+            seqan::appendValue(header, pgRecord);
         }
 
         // Fill homepage header line.
-        BamHeaderRecord hpRecord0;
-        hpRecord0.type = BAM_HEADER_COMMENT;
-        appendValue(hpRecord0.tags, TTag("CO", "Lambda is a high performance BLAST compatible local aligner, "
+        seqan::BamHeaderRecord hpRecord0;
+        hpRecord0.type = seqan::BAM_HEADER_COMMENT;
+        seqan::appendValue(hpRecord0.tags, TTag("CO", "Lambda is a high performance BLAST compatible local aligner, "
                                          "please see http://seqan.de/lambda for more information."));
-        appendValue(header, hpRecord0);
-        BamHeaderRecord hpRecord1;
-        hpRecord1.type = BAM_HEADER_COMMENT;
-        appendValue(hpRecord1.tags, TTag("CO", "SAM/BAM dialect documentation is available here: "
+        seqan::appendValue(header, hpRecord0);
+        seqan::BamHeaderRecord hpRecord1;
+        hpRecord1.type = seqan::BAM_HEADER_COMMENT;
+        seqan::appendValue(hpRecord1.tags, TTag("CO", "SAM/BAM dialect documentation is available here: "
                                          "https://github.com/seqan/lambda/wiki/Output-Formats"));
-        appendValue(header, hpRecord1);
-        BamHeaderRecord hpRecord2;
-        hpRecord2.type = BAM_HEADER_COMMENT;
-        appendValue(hpRecord2.tags, TTag("CO", "If you use any results found by Lambda, please cite "
+        seqan::appendValue(header, hpRecord1);
+        seqan::BamHeaderRecord hpRecord2;
+        hpRecord2.type = seqan::BAM_HEADER_COMMENT;
+        seqan::appendValue(hpRecord2.tags, TTag("CO", "If you use any results found by Lambda, please cite "
                                          "Hauswedell et al. (2014) doi: 10.1093/bioinformatics/btu439"));
-        appendValue(header, hpRecord2);
+        seqan::appendValue(header, hpRecord2);
 
         // Fill extra tags header line.
-        BamHeaderRecord tagRecord;
-        tagRecord.type = BAM_HEADER_COMMENT;
+        seqan::BamHeaderRecord tagRecord;
+        tagRecord.type = seqan::BAM_HEADER_COMMENT;
         std::string columnHeaders = "Optional tags as follow";
-        for (unsigned i = 0; i < length(SamBamExtraTags<>::keyDescPairs); ++i)
+        for (unsigned i = 0; i < seqan::length(SamBamExtraTags<>::keyDescPairs); ++i)
         {
             if (options.samBamTags[i])
             {
@@ -406,20 +405,20 @@ myWriteHeader(TGH & globalHolder, TLambdaOptions const & options)
                 columnHeaders += std::get<1>(SamBamExtraTags<>::keyDescPairs[i]);
             }
         }
-        appendValue(tagRecord.tags, TTag("CO", columnHeaders));
-        appendValue(header, tagRecord);
+        seqan::appendValue(tagRecord.tags, TTag("CO", columnHeaders));
+        seqan::appendValue(header, tagRecord);
 
         // sam and we don't want the headers
         if (!options.samWithRefHeader && (options.outFileFormat == 1))
         {
             // we only write the header records that we actually created ourselves
-            for (unsigned i = 0; i < length(header); ++i)
-                write(globalHolder.outfileBam.iter, header[i], seqan::context(globalHolder.outfileBam), Sam());
+            for (unsigned i = 0; i < seqan::length(header); ++i)
+                seqan::write(globalHolder.outfileBam.iter, header[i], seqan::context(globalHolder.outfileBam), seqan::Sam());
         }
         else
         {
             // ref header records are automatically added with default writeHeader()
-            writeHeader(globalHolder.outfileBam, header);
+            seqan::writeHeader(globalHolder.outfileBam, header);
         }
     }
 }
@@ -437,29 +436,29 @@ myWriteRecord(TLH & lH, TRecord const & record)
     {
         SEQAN_OMP_PRAGMA(critical(filewrite))
         {
-            writeRecord(lH.gH.outfileBlastTab, record);
+            seqan::writeRecord(lH.gH.outfileBlastTab, record);
         }
     } else if (lH.options.outfileBlastRep == -1) // BLAST
     {
         SEQAN_OMP_PRAGMA(critical(filewrite))
         {
-            writeRecord(lH.gH.outfileBlastRep, record);
+            seqan::writeRecord(lH.gH.outfileBlastRep, record);
         }
     } else // SAM or BAM
     {
         // convert multi-match blast-record to multiple SAM/BAM-Records
 
-        std::vector<BamAlignmentRecord> bamRecords;
+        std::vector<seqan::BamAlignmentRecord> bamRecords;
         bamRecords.resize(record.matches.size());
 
-        String<CigarElement<>> protCigar;
+        seqan::String<seqan::CigarElement<>> protCigar;
         std::string protCigarString = "*";
 
-        auto mIt = begin(record.matches, Standard());
+        auto mIt = seqan::begin(record.matches,  seqan::Standard());
         for (auto & bamR : bamRecords)
         {
             // untranslate for sIsTranslated
-            if (sIsTranslated(TGH::blastProgram))
+            if (seqan::sIsTranslated(TGH::blastProgram))
             {
                 bamR.beginPos = mIt->sStart * 3 + std::abs(mIt->sFrameShift) - 1;
                 if (mIt->sFrameShift < 0)
@@ -469,24 +468,24 @@ myWriteRecord(TLH & lH, TRecord const & record)
                 bamR.beginPos   = mIt->sStart;
             }
 
-            bamR.flag       = BAM_FLAG_SECONDARY; // all are secondary for now
+            bamR.flag       = seqan::BAM_FLAG_SECONDARY; // all are secondary for now
             if (mIt->qFrameShift < 0)
-                bamR.flag   |= BAM_FLAG_RC;
+                bamR.flag   |= seqan::BAM_FLAG_RC;
             // truncated query name
             bamR.qName      = prefix(record.qId,
-                                     std::find(begin(record.qId, Standard()),
-                                               end(record.qId, Standard()),
+                                     std::find(begin(record.qId,  seqan::Standard()),
+                                               end(record.qId,  seqan::Standard()),
                                                ' ')
-                                     - begin(record.qId, Standard()));
+                                     - begin(record.qId,  seqan::Standard()));
             // reference ID
             bamR.rID        = mIt->_n_sId;
 
             // compute cigar
             if (lH.options.samBamTags[SamBamExtraTags<>::Q_AA_CIGAR]) // amino acid cigar, too?
             {
-                clear(protCigar);
+                seqan::clear(protCigar);
                 // native protein
-                if ((TGH::blastProgram == BlastProgram::BLASTP) || (TGH::blastProgram == BlastProgram::TBLASTN))
+                if ((TGH::blastProgram == seqan::BlastProgram::BLASTP) || (TGH::blastProgram == seqan::BlastProgram::TBLASTN))
                     blastMatchOneCigar(protCigar, *mIt, record, lH);
                 else if (qIsTranslated(TGH::blastProgram)) // translated
                     blastMatchTwoCigar(bamR.cigar, protCigar, *mIt, record, lH);
@@ -495,7 +494,7 @@ myWriteRecord(TLH & lH, TRecord const & record)
             }
             else
             {
-                if ((TGH::blastProgram != BlastProgram::BLASTP) && (TGH::blastProgram != BlastProgram::TBLASTN))
+                if ((TGH::blastProgram != seqan::BlastProgram::BLASTP) && (TGH::blastProgram != seqan::BlastProgram::TBLASTN))
                     blastMatchOneCigar(bamR.cigar, *mIt, record, lH);
             }
             // we want to include the seq
@@ -506,30 +505,30 @@ myWriteRecord(TLH & lH, TRecord const & record)
             }
             else if (lH.options.samBamSeq == 1) // only uniq sequences
             {
-                if (mIt == begin(record.matches, Standard()))
+                if (mIt == begin(record.matches,  seqan::Standard()))
                 {
                     writeSeq = true;
                 } else
                 {
                     decltype(mIt) mPrevIt = mIt - 1;
                     writeSeq = ((mIt->qFrameShift              != mPrevIt->qFrameShift) ||
-                                (beginPosition(mIt->alignRow0) != beginPosition(mPrevIt->alignRow0)) ||
-                                (endPosition(mIt->alignRow0)   != endPosition(mPrevIt->alignRow0)));
+                                (seqan::beginPosition(mIt->alignRow0) != seqan::beginPosition(mPrevIt->alignRow0)) ||
+                                (seqan::endPosition(mIt->alignRow0)   != seqan::endPosition(mPrevIt->alignRow0)));
                 }
             }
 
-            if (TGH::blastProgram == BlastProgram::BLASTN)
+            if (TGH::blastProgram == seqan::BlastProgram::BLASTN)
             {
                 if (lH.options.samBamHardClip)
                 {
                     if (writeSeq)
-                        bamR.seq = infix(source(mIt->alignRow0),
-                                         beginPosition(mIt->alignRow0),
-                                         endPosition(mIt->alignRow0));
+                        bamR.seq = seqan::infix(seqan::source(mIt->alignRow0),
+                                         seqan::beginPosition(mIt->alignRow0),
+                                         seqan::endPosition(mIt->alignRow0));
                 } else
                 {
                     if (writeSeq)
-                        bamR.seq = source(mIt->alignRow0);
+                        bamR.seq = seqan::source(mIt->alignRow0);
                 }
             }
             else if (qIsTranslated(TGH::blastProgram))
@@ -547,8 +546,8 @@ myWriteRecord(TLH & lH, TRecord const & record)
                     if (writeSeq)
                         _untranslateSequence(bamR.seq,
                                              lH.gH.untranslatedQrySeqs[mIt->_n_qId],
-                                             decltype(length(source(mIt->alignRow0)))(0u),
-                                             length(source(mIt->alignRow0)),
+                                             decltype(seqan::length(seqan::source(mIt->alignRow0)))(0u),
+                                             seqan::length(seqan::source(mIt->alignRow0)),
                                              mIt->qFrameShift);
                 }
             } // else original query is protein and cannot be printed
@@ -557,125 +556,125 @@ myWriteRecord(TLH & lH, TRecord const & record)
             // custom tags
             //TODO untranslate?
 //             if (lH.options.samBamTags[SamBamExtraTags<>::Q_START])
-//                 appendTagValue(bamR.tags,
+//                 seqan::appendTagValue(bamR.tags,
 //                                std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::Q_START]),
 //                                uint32_t(mIt->qStart), 'I');
             //      case    S_START:
             if (lH.options.samBamTags[SamBamExtraTags<>::E_VALUE])
-                appendTagValue(bamR.tags,
+                seqan::appendTagValue(bamR.tags,
                                std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::E_VALUE]),
                                float(mIt->eValue), 'f');
             if (lH.options.samBamTags[SamBamExtraTags<>::BIT_SCORE])
-                appendTagValue(bamR.tags,
+                seqan::appendTagValue(bamR.tags,
                                std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::BIT_SCORE]),
                                uint16_t(mIt->bitScore), 'S');
             if (lH.options.samBamTags[SamBamExtraTags<>::SCORE])
-                appendTagValue(bamR.tags,
+                seqan::appendTagValue(bamR.tags,
                                std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::SCORE]),
                                uint8_t(mIt->alignStats.alignmentScore), 'C');
             if (lH.options.samBamTags[SamBamExtraTags<>::P_IDENT])
-                appendTagValue(bamR.tags,
+                seqan::appendTagValue(bamR.tags,
                                std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::P_IDENT]),
                                uint8_t(mIt->alignStats.alignmentIdentity), 'C');
             if (lH.options.samBamTags[SamBamExtraTags<>::P_POS])
-                appendTagValue(bamR.tags,
+                seqan::appendTagValue(bamR.tags,
                                std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::P_POS]),
                                uint16_t(mIt->alignStats.alignmentSimilarity), 'S');
             if (lH.options.samBamTags[SamBamExtraTags<>::Q_FRAME])
-                appendTagValue(bamR.tags,
+                seqan::appendTagValue(bamR.tags,
                                std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::Q_FRAME]),
                                int8_t(mIt->qFrameShift), 'c');
             if (lH.options.samBamTags[SamBamExtraTags<>::S_FRAME])
-                appendTagValue(bamR.tags,
+                seqan::appendTagValue(bamR.tags,
                                std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::S_FRAME]),
                                int8_t(mIt->sFrameShift), 'c');
             if (lH.options.samBamTags[SamBamExtraTags<>::S_TAX_IDS])
             {
                 //TODO append integer array, instead of transforming to string
-                CharString buf;
+                seqan::CharString buf;
                 auto it = begin(buf);
-                if (length(mIt->sTaxIds) == 0)
+                if (seqan::length(mIt->sTaxIds) == 0)
                 {
                     buf = "*";
                 } else
                 {
-                    appendNumber(it, mIt->sTaxIds[0]);
-                    for (unsigned i = 1; i < length(mIt->sTaxIds); ++i)
+                    seqan::appendNumber(it, mIt->sTaxIds[0]);
+                    for (unsigned i = 1; i < seqan::length(mIt->sTaxIds); ++i)
                     {
                         write(it, ";");
-                        appendNumber(it, mIt->sTaxIds[i]);
+                        seqan::appendNumber(it, mIt->sTaxIds[i]);
                     }
                 }
-                appendTagValue(bamR.tags,
+                seqan::appendTagValue(bamR.tags,
                                std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::S_TAX_IDS]),
                                buf, 'Z');
             }
             if (lH.options.samBamTags[SamBamExtraTags<>::LCA_ID])
-                appendTagValue(bamR.tags,
+                seqan::appendTagValue(bamR.tags,
                                std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::LCA_ID]),
                                record.lcaId, 'Z');
             if (lH.options.samBamTags[SamBamExtraTags<>::LCA_TAX_ID])
-                appendTagValue(bamR.tags,
+                seqan::appendTagValue(bamR.tags,
                                std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::LCA_TAX_ID]),
                                uint32_t(record.lcaTaxId), 'I');
             if (lH.options.samBamTags[SamBamExtraTags<>::Q_AA_SEQ])
             {
-                if ((TGH::blastProgram == BlastProgram::BLASTN) || (!writeSeq))
-                    appendTagValue(bamR.tags,
+                if ((TGH::blastProgram == seqan::BlastProgram::BLASTN) || (!writeSeq))
+                    seqan::appendTagValue(bamR.tags,
                                    std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::Q_AA_SEQ]),
                                    "*", 'Z');
                 else if (lH.options.samBamHardClip)
-                    appendTagValue(bamR.tags,
+                    seqan::appendTagValue(bamR.tags,
                                    std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::Q_AA_SEQ]),
-                                   infix(source(mIt->alignRow0),
-                                         beginPosition(mIt->alignRow0),
-                                         endPosition(mIt->alignRow0)),
+                                   seqan::infix(seqan::source(mIt->alignRow0),
+                                         seqan::beginPosition(mIt->alignRow0),
+                                         seqan::endPosition(mIt->alignRow0)),
                                    'Z');
                 else // full prot sequence
-                    appendTagValue(bamR.tags,
+                    seqan::appendTagValue(bamR.tags,
                                    std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::Q_AA_SEQ]),
-                                   source(mIt->alignRow0),
+                                   seqan::source(mIt->alignRow0),
                                    'Z');
             }
             if (lH.options.samBamTags[SamBamExtraTags<>::Q_AA_CIGAR])
             {
-                if (empty(protCigar))
+                if (seqan::empty(protCigar))
                 {
                     protCigarString = "*";
                 }
                 else
                 {
-                    clear(protCigarString);
-                    for (unsigned i = 0; i < length(protCigar); ++i)
+                    seqan::clear(protCigarString);
+                    for (unsigned i = 0; i < seqan::length(protCigar); ++i)
                     {
-                        appendNumber(protCigarString, protCigar[i].count);
-                        appendValue(protCigarString, protCigar[i].operation);
+                        seqan::appendNumber(protCigarString, protCigar[i].count);
+                        seqan::appendValue(protCigarString, protCigar[i].operation);
                     }
 
                 }
-                appendTagValue(bamR.tags,
+                seqan::appendTagValue(bamR.tags,
                                std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::Q_AA_CIGAR]),
                                protCigarString, 'Z');
             }
             if (lH.options.samBamTags[SamBamExtraTags<>::EDIT_DISTANCE])
-                appendTagValue(bamR.tags,
+                seqan::appendTagValue(bamR.tags,
                                 std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::EDIT_DISTANCE]),
                                 uint32_t(mIt->alignStats.alignmentLength - mIt->alignStats.numMatches), 'I');
             if (lH.options.samBamTags[SamBamExtraTags<>::MATCH_COUNT])
-                appendTagValue(bamR.tags,
+                seqan::appendTagValue(bamR.tags,
                                std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::MATCH_COUNT]),
-                               uint32_t(length(record.matches)), 'I');
+                               uint32_t(seqan::length(record.matches)), 'I');
 
             // goto next match
             ++mIt;
         }
 
-        bamRecords.front().flag -= BAM_FLAG_SECONDARY; // remove BAM_FLAG_SECONDARY for first
+        bamRecords.front().flag -= seqan::BAM_FLAG_SECONDARY; // remove BAM_FLAG_SECONDARY for first
 
         SEQAN_OMP_PRAGMA(critical(filewrite))
         {
             for (auto & r : bamRecords)
-                writeRecord(lH.gH.outfileBam, r);
+                seqan::writeRecord(lH.gH.outfileBam, r);
         }
     }
 }
@@ -690,11 +689,9 @@ myWriteFooter(TGH & globalHolder, TLambdaOptions const & options)
 {
     if (options.outFileFormat == 0) // BLAST
     {
-        writeFooter(globalHolder.outfileBlastTab);
+        seqan::writeFooter(globalHolder.outfileBlastTab);
     } else if (options.outFileFormat == -1) // BLAST
     {
-        writeFooter(globalHolder.outfileBlastRep);
+        seqan::writeFooter(globalHolder.outfileBlastRep);
     }
 }
-
-#endif // LAMBDA_SEARCH_OUTPUT_H_
