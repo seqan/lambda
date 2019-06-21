@@ -162,7 +162,7 @@ struct index_file
 
     std::vector<uint32_t>                                       taxonParentIDs;
     std::vector<uint8_t>                                        taxonHeights;
-    std::vector<std::string>                                    taxonNames;
+    std::vector<std::string>                                    taxonNames; //TODO TCDStringSet?
 
     std::conditional_t<dbIndexType == DbIndexType::BI_FM_INDEX,
                        seqan3::bi_fm_index<true>,

@@ -19,6 +19,9 @@
 // lambda.cpp: Main File for Lambda
 // ==========================================================================
 
+#include <seqan/seqan3_compat.h>
+#include <seqan/seqan3_compat_post.h>
+
 #include <seqan3/argument_parser/all.hpp>
 
 #include "search.hpp"
@@ -88,7 +91,7 @@ int main(int argc, char const ** argv)
 
     if ((std::string(argv[until]) == "mkindexp") || (std::string(argv[until]) == "mkindexn"))
     {
-    #if 0
+    #if 1
         try
         {
             mkindexMain(argc - until, argv + until);

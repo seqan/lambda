@@ -118,7 +118,7 @@ struct LambdaOptions : public SharedOptions
     double          preScoringThresh    = 2.0;
 
 
-    seqan::BlastProgram blastProgram;
+//     seqan::BlastProgram blastProgram;
     LambdaOptions() :
         SharedOptions()
     {
@@ -318,16 +318,16 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         "Minimum average score per position in pre-scoring region.", seqan3::option_spec::ADVANCED,
         seqan3::arithmetic_range_validator{0, 20});
 
-    parser.add_option(options.filterPutativeDuplicates, '\0', "filter-putative-duplicates",
-        "Filter hits that will likely duplicate a match already found.", seqan3::option_spec::ADVANCED);
-
-    parser.add_option(options.filterPutativeAbundant, '\0', "filter-putative-abundant",
-        "If the maximum number of matches per query are found already, "
-        "stop searching if the remaining realm looks unfeasible.", seqan3::option_spec::ADVANCED);
-
-    parser.add_option(options.mergePutativeSiblings, '\0', "merge-putative-siblings",
-        "Merge seed from one region, "
-        "stop searching if the remaining realm looks unfeasable.", seqan3::option_spec::ADVANCED);
+//     parser.add_option(options.filterPutativeDuplicates, '\0', "filter-putative-duplicates",
+//         "Filter hits that will likely duplicate a match already found.", seqan3::option_spec::ADVANCED);
+//
+//     parser.add_option(options.filterPutativeAbundant, '\0', "filter-putative-abundant",
+//         "If the maximum number of matches per query are found already, "
+//         "stop searching if the remaining realm looks unfeasible.", seqan3::option_spec::ADVANCED);
+//
+//     parser.add_option(options.mergePutativeSiblings, '\0', "merge-putative-siblings",
+//         "Merge seed from one region, "
+//         "stop searching if the remaining realm looks unfeasable.", seqan3::option_spec::ADVANCED);
 
     parser.add_section("Scoring");
 
@@ -376,11 +376,11 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 #ifdef SEQAN_SIMD_ENABLED
     parser.add_option(extensionModeTmp,'m', "extension-mode",
         "Choice of extension algorithms.", seqan3::option_spec::ADVANCED,
-        seqan3::value_list_validator({"auto", "fullSerial", "fullSIMD"}));
+        seqan3::value_list_validator({"fullSerial", "fullSIMD"}));
 #else
     parser.add_option(extensionModeTmp,'m', "extension-mode",
         "Choice of extension algorithms.", seqan3::option_spec::ADVANCED,
-        seqan3::value_list_validator({"auto", "fullSerial"}));
+        seqan3::value_list_validator({"fullSerial"}));
 #endif
 
     parser.add_section("Tuning");
@@ -411,7 +411,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     }
 
     // set output file format
-    std::string outputPath;
+    std::string outputPath = options.output;
     if (std::filesystem::path(outputPath).extension() == ".gz")
         outputPath.resize(seqan::length(outputPath) - 3);
     else if (std::filesystem::path(outputPath).extension() ==  ".bz2")
@@ -557,18 +557,18 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     if (extensionModeTmp == "fullSIMD")
     {
         options.extensionMode = LambdaOptions::ExtensionMode::FULL_SIMD;
-        options.filterPutativeAbundant = false;
-        options.filterPutativeDuplicates = false;
-        options.mergePutativeSiblings = false;
-        options.xDropOff = -1;
+//         options.filterPutativeAbundant = false;
+//         options.filterPutativeDuplicates = false;
+//         options.mergePutativeSiblings = false;
+//         options.xDropOff = -1;
     }
     else if (extensionModeTmp == "fullSerial")
     {
         options.extensionMode = LambdaOptions::ExtensionMode::FULL_SERIAL;
-        options.filterPutativeAbundant = false;
-        options.filterPutativeDuplicates = false;
-        options.mergePutativeSiblings = false;
-        options.xDropOff = -1;
+//         options.filterPutativeAbundant = false;
+//         options.filterPutativeDuplicates = false;
+//         options.mergePutativeSiblings = false;
+//         options.xDropOff = -1;
     }
 //     else if (extensionModeTmp == "xdrop")
 //     {
@@ -576,7 +576,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 //     }
     else
     {
-        options.extensionMode = LambdaOptions::ExtensionMode::AUTO;
+//         options.extensionMode = LambdaOptions::ExtensionMode::AUTO;
     }
 }
 
