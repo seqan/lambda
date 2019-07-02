@@ -352,8 +352,8 @@ void realMain(LambdaOptions     const & options)
         #endif
 
             // TODO DEBUG
-            for (auto const & m : localHolder.matches)
-                _printMatch(m);
+//             for (auto const & m : localHolder.matches)
+//                 _printMatch(m);
 #if 0
             // sort
             if (options.filterPutativeAbundant || options.filterPutativeDuplicates || options.mergePutativeSiblings)

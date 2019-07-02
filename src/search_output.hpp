@@ -25,6 +25,7 @@
 
 #include <seqan/blast.h>
 #include <seqan/bam_io.h>
+#include <seqan/modifier.h>
 
 template <typename TVoidSpec = void>
 struct SamBamExtraTags
@@ -91,15 +92,19 @@ _untranslateSequence(TSequence1                     & target,
 {
     if (qFrameShift >= 0)
     {
-        target = seqan::infix(source,
-                       3 * qStart + std::abs(qFrameShift) - 1,
-                       3 * qEnd + std::abs(qFrameShift) - 1);
+        seqan::copy_range(source | seqan3::view::slice(3 * qStart + std::abs(qFrameShift) - 1,
+                                                       3 * qEnd + std::abs(qFrameShift) - 1)
+                                 | seqan3::view::to_char,
+                          target);
+
     }
     else
     {
-        target = seqan::infix(source,
-                       seqan::length(source) - (3 * qEnd + std::abs(qFrameShift) - 1),
-                       seqan::length(source) - (3 * qStart + std::abs(qFrameShift) - 1));
+         seqan::copy_range(source | seqan3::view::slice(seqan::length(source) - (3 * qEnd + std::abs(qFrameShift) - 1),
+                                                        seqan::length(source) - (3 * qStart + std::abs(qFrameShift) - 1))
+                                  | seqan3::view::to_char,
+                           target);
+
         reverseComplement(target);
     }
 }
@@ -346,7 +351,7 @@ myWriteHeader(TGH & globalHolder, TLambdaOptions const & options)
         // set sequence seqan::lengths
         if constexpr (seqan::sIsTranslated(TGH::blastProgram))
         {
-            subjSeqLengths = globalHolder.indexFile.origSeqLengths;
+            seqan::copy_range(globalHolder.indexFile.origSeqLengths, subjSeqLengths);
             seqan::resize(subjSeqLengths, seqan::length(subjSeqLengths) - 1);
         } else
         {
@@ -657,16 +662,18 @@ myWriteRecord(TLH & lH, TRecord const & record)
                                    "*", 'Z');
                 else if (lH.options.samBamHardClip)
                     seqan::appendTagValue(bamR.tags,
-                                   std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::Q_AA_SEQ]),
-                                   seqan::infix(seqan::source(mIt->alignRow0),
-                                         seqan::beginPosition(mIt->alignRow0),
-                                         seqan::endPosition(mIt->alignRow0)),
-                                   'Z');
+                                          std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::Q_AA_SEQ]),
+                                          seqan::source(mIt->alignRow0)
+                                           | seqan3::view::slice(seqan::beginPosition(mIt->alignRow0),
+                                                                 seqan::endPosition(mIt->alignRow0))
+                                           | seqan3::view::to_char,
+                                          'Z');
                 else // full prot sequence
                     seqan::appendTagValue(bamR.tags,
-                                   std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::Q_AA_SEQ]),
-                                   seqan::source(mIt->alignRow0),
-                                   'Z');
+                                          std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::Q_AA_SEQ]),
+                                          seqan::source(mIt->alignRow0)
+                                           | seqan3::view::to_char,
+                                          'Z');
             }
             if (lH.options.samBamTags[SamBamExtraTags<>::Q_AA_CIGAR])
             {

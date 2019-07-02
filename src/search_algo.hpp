@@ -1125,7 +1125,7 @@ iterateMatchesFullSerial(TLocalHolder & lH)
 
     TBlastRecord record(lH.gH.qryIds[trueQryId]);
     record.qLength = lH.gH.untranslatedQrySeqs[trueQryId].size();
-#if 0
+
     unsigned band = _bandSize(record.qLength, lH);
 
 #ifdef LAMBDA_MICRO_STATS
@@ -1165,8 +1165,8 @@ iterateMatchesFullSerial(TLocalHolder & lH)
         _setUpAndRunAlignment(lH.alignContext.dpContext,
                               lH.alignContext.traceSegment,
                               scoutState,
-                              seqan::source(bm.alignRow0),
-                              seqan::source(bm.alignRow1),
+                              seqan::source(bm.alignRow0) | std::ranges::to<std::vector>, //TODO Copy no
+                              seqan::source(bm.alignRow1) | std::ranges::to<std::vector>,
                               seqan::seqanScheme(seqan::context(lH.gH.outfileBlastTab).scoringScheme),
                               TAlignConfig(-band, +band));
 
@@ -1201,9 +1201,10 @@ iterateMatchesFullSerial(TLocalHolder & lH)
 
         if (lH.options.hasSTaxIds)
             bm.sTaxIds = lH.gH.indexFile.sTaxIds[bm._n_sId];
+
     }
 
-#endif
+
 
 #ifdef LAMBDA_MICRO_STATS
     lH.stats.timeExtendTrace += sysTime() - start;
