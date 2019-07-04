@@ -294,6 +294,8 @@ loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
             std::ranges::distance(globalHolder.redSubjSeqs | std::view::join);
         seqan::context(globalHolder.outfileBlastTab).dbNumberOfSeqs = std::ranges::size(globalHolder.redSubjSeqs);
     }
+
+    seqan::context(globalHolder.outfileBlastTab).dbName = options.indexFilePath;
 }
 
 // --------------------------------------------------------------------------
@@ -501,6 +503,7 @@ search(LocalDataHolder<TGlobalHolder> & lH)
 
                 bool discarded = false;
 
+                ++lH.stats.hitsAfterSeeding;
                 if (!seedLooksPromising(lH, m))
                 {
                     discarded = true;
@@ -1111,8 +1114,8 @@ iterateMatchesFullSerial(TLocalHolder & lH)
                            typename TLocalHolder::TAlignRow,
                            typename TLocalHolder::TAlignRow,
                            TBlastPos,
-                           seqan3::value_type_t<typename TGlobalHolder::TQryIds>,// reference_t?
-                           seqan3::value_type_t<typename TGlobalHolder::TSubjIds>// reference_t?
+                           seqan3::value_type_t<typename TGlobalHolder::TQryIds>,// TODO: reference_t?
+                           seqan3::value_type_t<typename TGlobalHolder::TSubjIds>// TODO: reference_t?
                            >;
 
     using TBlastRecord  = seqan::BlastRecord<TBlastMatch,
@@ -1165,8 +1168,8 @@ iterateMatchesFullSerial(TLocalHolder & lH)
         _setUpAndRunAlignment(lH.alignContext.dpContext,
                               lH.alignContext.traceSegment,
                               scoutState,
-                              seqan::source(bm.alignRow0) | std::ranges::to<std::vector>, //TODO Copy no
-                              seqan::source(bm.alignRow1) | std::ranges::to<std::vector>,
+                              seqan::source(bm.alignRow0),
+                              seqan::source(bm.alignRow1),
                               seqan::seqanScheme(seqan::context(lH.gH.outfileBlastTab).scoringScheme),
                               TAlignConfig(-band, +band));
 
@@ -1203,8 +1206,6 @@ iterateMatchesFullSerial(TLocalHolder & lH)
             bm.sTaxIds = lH.gH.indexFile.sTaxIds[bm._n_sId];
 
     }
-
-
 
 #ifdef LAMBDA_MICRO_STATS
     lH.stats.timeExtendTrace += sysTime() - start;

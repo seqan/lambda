@@ -109,10 +109,10 @@ struct LambdaOptions : public SharedOptions
     };
     ExtensionMode   extensionMode = ExtensionMode::AUTO;
 
-    bool            filterPutativeDuplicates = true;
-    bool            filterPutativeAbundant = true;
-    bool            mergePutativeSiblings = true;
-    bool            seedHalfExact = true;
+    bool            filterPutativeDuplicates = false;
+    bool            filterPutativeAbundant = false;
+    bool            mergePutativeSiblings = false;
+    bool            seedHalfExact = false;
 
     int32_t         preScoring = 2; // 0 = off, 1 = seed, 2 = region
     double          preScoringThresh    = 2.0;
