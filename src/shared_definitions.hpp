@@ -165,8 +165,8 @@ struct index_file
     std::vector<std::string>                                    taxonNames; //TODO TCDStringSet?
 
     std::conditional_t<dbIndexType == DbIndexType::BI_FM_INDEX,
-                       seqan3::bi_fm_index<true>,
-                       seqan3::fm_index<true>>     index;
+                       seqan3::bi_fm_index<seqan3::text_layout::collection>,
+                       seqan3::fm_index<seqan3::text_layout::collection>>     index;
 
     template <typename TArchive>
     void serialize(TArchive & archive)

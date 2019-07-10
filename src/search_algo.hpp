@@ -24,8 +24,6 @@
 #include <type_traits>
 #include <iomanip>
 
-#include <seqan/seqan3_compat.h>
-
 #include <seqan/basic.h>
 #include <seqan/sequence.h>
 #include <seqan/seq_io.h>

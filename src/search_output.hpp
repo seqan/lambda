@@ -21,8 +21,6 @@
 
 #pragma once
 
-#include <seqan/seqan3_compat.h>
-
 #include <seqan/blast.h>
 #include <seqan/bam_io.h>
 #include <seqan/modifier.h>

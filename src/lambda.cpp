@@ -19,8 +19,7 @@
 // lambda.cpp: Main File for Lambda
 // ==========================================================================
 
-#include <seqan/seqan3_compat.h>
-#include <seqan/seqan3_compat_post.h>
+#include "seqan2seqan3.hpp"
 
 #include <seqan3/argument_parser/all.hpp>
 

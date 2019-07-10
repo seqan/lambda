@@ -771,7 +771,9 @@ template <bool is_bi,
 auto generateIndex(TStringSet                       & seqs,
                    LambdaIndexerOptions       const & options)
 {
-    using TIndex = std::conditional_t<is_bi, seqan3::bi_fm_index<true>, seqan3::fm_index<true>>;
+    using TIndex = std::conditional_t<is_bi,
+                                      seqan3::bi_fm_index<seqan3::text_layout::collection>,
+                                      seqan3::fm_index<seqan3::text_layout::collection>>;
     TIndex index;
 
     myPrint(options, 1, "Generating Index...");
