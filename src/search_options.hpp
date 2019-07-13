@@ -132,7 +132,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         options.commandLine += std::string(argv[i]) + " ";
     seqan::eraseBack(options.commandLine);
 
-    std::string programName = "lambda3 " + std::string(argv[0]);
+    std::string programName = "lambda3-" + std::string(argv[0]);
 
     // this is important for option handling:
     options.nucleotide_mode = (std::string(argv[0]) == "searchn");
@@ -157,7 +157,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     // TODO Better solution for file extensions
     parser.add_option(options.queryFile, 'q', "query", "Query sequences.", seqan3::option_spec::REQUIRED,
-        seqan3::input_file_validator({"fa", "fasta", "fq", "fastq"}));
+        seqan3::input_file_validator({"fa", "fasta", "fq", "fastq", "gz"}));
 
     std::string inputAlphabetTmp = "auto";
     int32_t geneticCodeTmp = 1;

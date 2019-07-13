@@ -23,7 +23,6 @@ inline void const * getObjectId(T const & me)
 }
 
 #include <seqan/basic/metaprogramming_logic.h>
-// #include <seqan/seqan3_compat.h>
 #include <seqan/sequence.h>
 #include <seqan/score.h>
 
@@ -232,6 +231,13 @@ inline auto score(Score<TValue, TSpec> const & scheme, alph_t const a1, alph_t c
 {
     return score(scheme, Iupac{seqan3::to_char(a1)}, Iupac{seqan3::to_char(a2)});
 }
+
+
+// –---------------------------------------------------------------------------
+// random fixes
+// –---------------------------------------------------------------------------
+
+
 
 
 } // namespace seqan

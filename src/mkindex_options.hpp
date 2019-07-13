@@ -55,7 +55,7 @@ struct LambdaIndexerOptions : public SharedOptions
 // INDEXER
 void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
 {
-    std::string programName = "lambda3 " + std::string(argv[0]);
+    std::string programName = "lambda3-" + std::string(argv[0]);
 
     // this is important for option handling:
     options.nucleotide_mode = (std::string(argv[0]) == "mkindexn");
@@ -79,7 +79,7 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
 
     // TODO Change file extensions, make more generic
     parser.add_option(options.dbFile, 'd', "database", "Database sequences.", seqan3::option_spec::REQUIRED,
-        seqan3::input_file_validator({"fa", "fq", "fasta", "fastq"}));
+        seqan3::input_file_validator({"fa", "fq", "fasta", "fastq", "gz"}));
 
     std::vector<std::string> taxExtensions{"accession2taxid", "dat"};
 #ifdef SEQAN_HAS_ZLIB

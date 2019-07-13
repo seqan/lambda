@@ -201,8 +201,8 @@ prepareScoring(GlobalDataHolder<c_dbIndexType, c_origSbjAlph, c_transAlph, c_red
     }
     else
     {
-        seqan::AminoAcidScoreMatrixID       seqan2_matrix_id;
-        seqan3::aminoacid_similarity_matrix seqan3_matrix_id;
+        seqan::AminoAcidScoreMatrixID       seqan2_matrix_id{};
+        seqan3::aminoacid_similarity_matrix seqan3_matrix_id{};
 
         switch (options.scoringMethod)
         {

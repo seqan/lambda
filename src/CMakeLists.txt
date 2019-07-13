@@ -196,12 +196,12 @@ set (LAMBDA_SOURCE_FILES
                     shared_definitions.hpp
                     shared_misc.hpp
                     shared_options.hpp
-#                 search.hpp
-#                     search_algo.hpp
-#                     search_datastructures.hpp
-#                     search_misc.hpp
-#                     search_output.hpp
-#                     search_options.hpp
+                search.hpp
+                    search_algo.hpp
+                    search_datastructures.hpp
+                    search_misc.hpp
+                    search_output.hpp
+                    search_options.hpp
                 mkindex.hpp
                     mkindex_algo.hpp
                     mkindex_misc.hpp
