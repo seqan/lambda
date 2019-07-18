@@ -1,4 +1,5 @@
-sudo: false
+sudo: required
+dist: xenial
 language: cpp
 
 git:
@@ -24,11 +25,11 @@ matrix:
     env:
 
   - os: osx
-    compiler: gcc-7
+    compiler: gcc-9
     before_install:
       - brew update
-      - brew install gcc@7
-    install: export CXX="g++-7"
+      - brew install gcc@9
+    install: export CXX="g++-9"
     env: CMAKE_ARGS="-DLAMBDA_FASTBUILD=1"
 
 script:

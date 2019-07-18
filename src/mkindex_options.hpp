@@ -19,9 +19,7 @@
 // options.h: contains the options and argument parser
 // ==========================================================================
 
-
-#ifndef SEQAN_LAMBDA_OPTIONS_H_
-#define SEQAN_LAMBDA_OPTIONS_H_
+#pragma once
 
 #include <cstdio>
 #include <unistd.h>
@@ -57,12 +55,12 @@ struct LambdaIndexerOptions : public SharedOptions
 // INDEXER
 void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
 {
-    std::string programName = "lambda3 " + std::string(argv[0]);
+    std::string programName = "lambda3-" + std::string(argv[0]);
 
     // this is important for option handling:
     options.nucleotide_mode = (std::string(argv[0]) == "mkindexn");
 
-    seqan3::argument_parser parser(programName, argc, argv);
+    seqan3::argument_parser parser(programName, argc, argv, false);
 
     parser.info.short_description = "the Local Aligner for Massive Biological DatA";
 
@@ -71,10 +69,7 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
 
     parser.info.description.push_back("This is the indexer command for creating lambda-compatible databases.");
 
-
     sharedSetup(parser);
-
-    // TODO add version check
 
     parser.add_option(options.verbosity, 'v', "verbosity", "Display more/less diagnostic output during operation: "
         "0 [only errors]; 1 [default]; 2 [+run-time, options and statistics].", seqan3::option_spec::DEFAULT,
@@ -84,7 +79,7 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
 
     // TODO Change file extensions, make more generic
     parser.add_option(options.dbFile, 'd', "database", "Database sequences.", seqan3::option_spec::REQUIRED,
-        seqan3::path_existence_validator() | seqan3::file_ext_validator({"fa", "fq", "fasta", "fastq"}));
+        seqan3::input_file_validator({"fa", "fq", "fasta", "fastq", "gz"}));
 
     std::vector<std::string> taxExtensions{"accession2taxid", "dat"};
 #ifdef SEQAN_HAS_ZLIB
@@ -102,7 +97,7 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
         "An NCBI or UniProt accession-to-taxid mapping file. Download from "
         "ftp://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/ or "
         "ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/idmapping/ .",
-        seqan3::option_spec::DEFAULT, seqan3::file_ext_validator(taxExtensions));
+        seqan3::option_spec::DEFAULT, seqan3::input_file_validator(taxExtensions));
 
     parser.add_option(options.taxDumpDir,'x', "tax-dump-dir",
         "A directory that contains nodes.dmp and names.dmp; unzipped from "
@@ -114,7 +109,7 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
     parser.add_option(options.indexFilePath, 'i', "index",
         "The output path for the index file.",
         seqan3::option_spec::DEFAULT,
-        seqan3::file_ext_validator({"lba", "lta"}));
+        seqan3::output_file_validator({"lba", "lta"}));
 
     std::string dbIndexTypeTmp = "fm";
     parser.add_option(dbIndexTypeTmp, '\0', "db-index-type", "FM-Index oder bidirectional FM-Index.",
@@ -167,9 +162,8 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
         "Number of threads to run concurrently (ignored if a == skew7ext).", seqan3::option_spec::ADVANCED,
         seqan3::arithmetic_range_validator{1, static_cast<double>(options.threads)});
 
-    // TODO change validator
     parser.add_option(options.tmpdir,'\0', "tmp-dir", "temporary directory used by skew, defaults to working directory.",
-        seqan3::option_spec::ADVANCED, seqan3::path_existence_validator());
+        seqan3::option_spec::ADVANCED, seqan3::output_directory_validator());
 
     parser.add_section("Remarks");
     parser.add_line("Please see the wiki (<https://github.com/seqan/lambda/wiki>) for more information on which indexes"
@@ -190,7 +184,10 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
     if (!options.nucleotide_mode)
     {
         options.indexFileOptions.origAlph       = _alphabetNameToEnum(inputAlphabetTmp);
-        options.indexFileOptions.redAlph        = _alphabetNameToEnum(alphabetReductionTmp);
+        if (alphabetReductionTmp == "none")
+            options.indexFileOptions.redAlph    = AlphabetEnum::AMINO_ACID;
+        else
+            options.indexFileOptions.redAlph    = _alphabetNameToEnum(alphabetReductionTmp);
         options.indexFileOptions.geneticCode    = static_cast<seqan3::genetic_code>(geneticCodeTmp);
     }
 
@@ -235,5 +232,3 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
         //TODO check existance of directory
     }
 }
-
-#endif // header guard

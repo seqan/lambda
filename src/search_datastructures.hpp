@@ -19,8 +19,13 @@
 // holders.hpp: Data container structs
 // ==========================================================================
 
-#ifndef LAMBDA_SEARCH_DATASTRUCTURES_H_
-#define LAMBDA_SEARCH_DATASTRUCTURES_H_
+#pragma once
+
+#include <seqan3/alignment/scoring/aminoacid_scoring_scheme.hpp>
+#include <seqan3/alignment/scoring/nucleotide_scoring_scheme.hpp>
+#include <seqan3/alignment/scoring/gap_scheme.hpp>
+#include <seqan3/range/view/convert.hpp>
+#include <seqan3/range/view/deep.hpp>
 
 #include <seqan/align_extend.h>
 
@@ -32,12 +37,15 @@
 // struct Match
 // ----------------------------------------------------------------------------
 
-template<typename TAlph>
+// template<typename TAlph>
 struct Match
 {
-    typedef SizeTypeNum_<TAlph>    TQId;
-    typedef SizeTypeNum_<TAlph>    TSId;
-    typedef SizeTypePos_<TAlph>    TPos;
+//     typedef SizeTypeNum_<TAlph>    TQId;
+//     typedef SizeTypeNum_<TAlph>    TSId;
+//     typedef SizeTypePos_<TAlph>    TPos;
+    using TQId = uint64_t;
+    using TSId = uint64_t;
+    using TPos = uint64_t;
 
     TQId qryId;
     TSId subjId;
@@ -59,28 +67,28 @@ struct Match
     }
 };
 
-template <typename TAlph>
+// template <typename TAlph>
 inline void
-setToSkip(Match<TAlph> & m)
+setToSkip(Match & m)
 {
-    using TPos          = typename Match<TAlph>::TPos;
+    using TPos          = typename Match::TPos;
     constexpr TPos posMax = std::numeric_limits<TPos>::max();
     m.qryStart = posMax;
     m.subjStart = posMax;
 }
 
-template <typename TAlph>
+// template <typename TAlph>
 inline bool
-isSetToSkip(Match<TAlph> const & m)
+isSetToSkip(Match const & m)
 {
-    using TPos          = typename Match<TAlph>::TPos;
+    using TPos          = typename Match::TPos;
     constexpr TPos posMax = std::numeric_limits<TPos>::max();
     return (m.qryStart == posMax) && (m.subjStart == posMax);
 }
 
-template <typename TAlph>
+
 inline void
-_printMatch(Match<TAlph> const & m)
+_printMatch(Match const & m)
 {
     std::cout << "MATCH  Query " << m.qryId
               << "(" << m.qryStart << ", " << m.qryEnd
@@ -191,7 +199,7 @@ struct StatsHolder
         qrysWithHit += rhs.qrysWithHit;
 
     #ifdef LAMBDA_MICRO_STATS
-        append(seedLengths, rhs.seedLengths);
+        seqan::append(seedLengths, rhs.seedLengths);
         timeGenSeeds += rhs.timeGenSeeds;
         timeSearch   += rhs.timeSearch;
         timeSort     += rhs.timeSort;
@@ -223,7 +231,7 @@ void printStats(StatsHolder const & stats, LambdaOptions const & options)
     if (options.verbosity >= 2)
     {
         unsigned long rem = stats.hitsAfterSeeding;
-        auto const w = _numberOfDigits(rem); // number of digits
+        auto const w = seqan::_numberOfDigits(rem); // number of digits
         #define R  " " << std::setw(w)
         #define RR " = " << std::setw(w)
         #define BLANKS for (unsigned i = 0; i< w; ++i) std::cout << " ";
@@ -274,7 +282,7 @@ void printStats(StatsHolder const & stats, LambdaOptions const & options)
                   << " extend:      " << stats.timeExtend << "\n"
                   << " extendTrace: " << stats.timeExtendTrace << "\n\n";
 
-        if (length(stats.seedLengths))
+        if (seqan::length(stats.seedLengths))
         {
             double _seedLengthSum       = std::accumulate(stats.seedLengths.begin(), stats.seedLengths.end(), 0.0);
             double seedLengthMean       = _seedLengthSum / stats.seedLengths.size();
@@ -304,7 +312,7 @@ void printStats(StatsHolder const & stats, LambdaOptions const & options)
 
     if (options.verbosity >= 1)
     {
-        auto const w = _numberOfDigits(stats.hitsFinal);
+        auto const w = seqan::_numberOfDigits(stats.hitsFinal);
         std::cout << "Number of valid hits:                           "
                   << std::setw(w) << stats.hitsFinal
                   << "\nNumber of Queries with at least one valid hit:  "
@@ -318,134 +326,133 @@ void printStats(StatsHolder const & stats, LambdaOptions const & options)
 // struct GlobalDataHolder  -- one object per program
 // ----------------------------------------------------------------------------
 
-template <typename T>
-inline T &
-_initHelper(T & t1, T &&)
+template <typename TTargetAlph, typename TRange, typename TAdapt>
+    requires std::Same<seqan3::innermost_value_type_t<TRange>, TTargetAlph>
+TRange & initHelper(TRange & input, TAdapt &&)
 {
-//     std::cout << "FOO\n";
-    return t1;
+    return input;
 }
 
-template <typename T, typename T2>
-inline T2 &&
-_initHelper(T &, T2 && t2)
+template <typename TTargetAlph, typename TRange, typename TAdapt>
+auto initHelper(TRange & input, TAdapt && adapt)
 {
-//     std::cout << "BAR\n";
-    return std::move(t2);
+    return input | std::forward<TAdapt>(adapt);
 }
 
-template <typename TRedAlph_,
-          typename TIndexSpec_,
-          typename TFileFormat,
-          BlastProgram p,
-          BlastTabularSpec h>
+template <DbIndexType   c_dbIndexType,
+          AlphabetEnum  c_origSbjAlph,
+          AlphabetEnum  c_transAlph,
+          AlphabetEnum  c_redAlph,
+          AlphabetEnum  c_origQryAlph>
 class GlobalDataHolder
 {
 public:
-    using TRedAlph       = RedAlph<p, TRedAlph_>; // ensures == Dna5 for BlastN
-    using TMatch         = Match<TRedAlph>;
+    using TOrigQryAlph   = _alphabetEnumToType<c_origQryAlph>;
+    using TOrigSbjAlph   = _alphabetEnumToType<c_origSbjAlph>;
+    using TTransAlph     = _alphabetEnumToType<c_transAlph>;
+    using TRedAlph       = _alphabetEnumToType<c_redAlph>;
+    using TMatch         = Match;
 
-    static constexpr BlastProgram blastProgram  = p;
-    static constexpr bool indexIsBiFM           = std::is_same<TIndexSpec_, BidirectionalIndex<TFMIndexInBi<>>>::value;
-    static constexpr bool indexIsFM             = std::is_same<TIndexSpec_, TFMIndex<>>::value || indexIsBiFM;
-    static constexpr bool alphReduction         = !std::is_same<TransAlph<p>, TRedAlph>::value;
+    static constexpr seqan::BlastProgram blastProgram =
+        (c_transAlph != AlphabetEnum::AMINO_ACID)                                       ? seqan::BlastProgram::BLASTN  :
+        (c_origQryAlph == AlphabetEnum::AMINO_ACID && c_origSbjAlph == c_origQryAlph)   ? seqan::BlastProgram::BLASTP  :
+        (c_origQryAlph == AlphabetEnum::AMINO_ACID && c_origSbjAlph != c_origQryAlph)   ? seqan::BlastProgram::TBLASTN :
+        (c_origQryAlph != AlphabetEnum::AMINO_ACID && c_origSbjAlph == c_origQryAlph)   ? seqan::BlastProgram::TBLASTX :
+      /*(c_origQryAlph != AlphabetEnum::AMINO_ACID && c_origSbjAlph != c_origQryAlph) ?*/ seqan::BlastProgram::BLASTX;
+
+
+
+//     static constexpr bool indexIsBiFM           = std::is_same<TIndexSpec_, BidirectionalIndex<TFMIndexInBi<>>>::value;
+//     static constexpr bool indexIsFM             = std::is_same<TIndexSpec_, TFMIndex<>>::value || indexIsBiFM;
+//     static constexpr bool alphReduction         = !std::is_same<TransAlph<p>, TRedAlph>::value;
 
     /* Sequence storage types */
-    using TStringTag    = Alloc<>;
-#if defined(LAMBDA_MMAPPED_DB)
-    using TDirectStringTag = MMap<>;
-#else
-    using TDirectStringTag = TStringTag;
-#endif
-    using TQryTag  = TStringTag;
-    using TSubjTag = TDirectStringTag; // even if subjects were translated they are now loaded from disk
+//     using TStringTag    = Alloc<>;
+// #if defined(LAMBDA_MMAPPED_DB)
+//     using TDirectStringTag = MMap<>;
+// #else
+//     using TDirectStringTag = TStringTag;
+// #endif
+//     using TQryTag  = TStringTag;
+//     using TSubjTag = TDirectStringTag; // even if subjects were translated they are now loaded from disk
 
     /* untranslated query sequences (ONLY USED FOR SAM/BAM OUTPUT) */
-    using TUntransQrySeqs = StringSet<String<OrigQryAlph<p>, TQryTag>, Owner<ConcatDirect<>>>;
+    using TUntransQrySeqs = TCDStringSet<std::vector<TOrigQryAlph>>;
 
     /* Possibly translated but yet unreduced sequences */
-    template <typename TSpec>
-    using TTransSeqs     = StringSet<String<TransAlph<p>, TSpec>, Owner<ConcatDirect<>>>;
-    using TTransQrySeqs  = TTransSeqs<TQryTag>;
-    using TTransSubjSeqs = TTransSeqs<TSubjTag>;
-    using TTransSubjReal = typename std::conditional<
-                            alphReduction || indexIsFM,
-                            TTransSubjSeqs,                     // real type
-                            TTransSubjSeqs &>::type;            // will be initialized in constructor
+    using TTransQrySeqs  = TCDStringSet<std::vector<TTransAlph>>;
+    using TTransSubjSeqs = TCDStringSet<std::vector<TTransAlph>>;
+
+    using TSeqAn2TransSeq = seqan::String<std::conditional_t<c_transAlph == AlphabetEnum::AMINO_ACID,
+                                                      seqan::AminoAcid,
+                                                      seqan::Dna5>>;
 
     /* Reduced sequence objects, either as modstrings or as references to trans-strings */
     template <typename TSpec>
-    using TRedAlphModString = ModifiedString<String<TransAlph<p>, TSpec>,
-                                ModView<FunctorConvert<TransAlph<p>, TRedAlph>>>;
+    using TRedAlphModString =
+        decltype(std::declval<TSpec &>() | seqan3::view::deep{seqan3::view::convert<TRedAlph>});
 
-    using TRedQrySeqs   = typename std::conditional<
-                            alphReduction,
-                            StringSet<TRedAlphModString<TQryTag>, Owner<ConcatDirect<>>>, // modview
-                            TTransQrySeqs &>::type;                                       // reference to owner
-    using TRedSubjSeqs  = typename std::conditional<
-                            alphReduction,
-                            StringSet<TRedAlphModString<TSubjTag>, Owner<ConcatDirect<>>>, // modview
-                            TTransSubjSeqs &>::type;                                       // reference to owner
+
+    using TRedQrySeqs   =
+        std::conditional_t<c_transAlph == c_redAlph,
+                           TTransQrySeqs &,                                                        // reference to owner
+                           seqan3::detail::valid_template_spec_or_t<void, TRedAlphModString, TTransQrySeqs>>; // modview
+
+    using TRedSbjSeqs   =
+        std::conditional_t<c_transAlph == c_redAlph,
+                           TTransSubjSeqs &,                                                       // reference to owner
+                           seqan3::detail::valid_template_spec_or_t<void, TRedAlphModString, TTransSubjSeqs>>;// modview
 
     /* sequence ID strings */
-    template <typename TSpec>
-    using TIds          = StringSet<String<char, TSpec>, Owner<ConcatDirect<>>>;
-    using TQryIds       = TIds<TQryTag>;
-    using TSubjIds      = TIds<TSubjTag>;
+    using TIds          = TCDStringSet<std::string>;
+    using TQryIds       = TIds;
+    using TSubjIds      = TIds;
 
     /* indeces and their type */
-    using TIndexSpec    = TIndexSpec_;
-    using TDbIndex      = Index<typename std::remove_reference<TRedSubjSeqs>::type, TIndexSpec>;
+    using TDbIndex      = std::conditional_t<c_dbIndexType == DbIndexType::BI_FM_INDEX,
+                                             seqan3::bi_fm_index<true>,
+                                             seqan3::fm_index<true>>;
 
     /* output file */
-    using TScoreScheme  = std::conditional_t<std::is_same<TRedAlph, Dna5>::value,
-                                             Score<int, Simple>,
-                                             Score<int, ScoreMatrix<AminoAcid, ScoreSpecSelectable>>>;
-//     using TScoreScheme  = TScoreScheme_;
-    using TIOContext    = BlastIOContext<TScoreScheme, p, h>;
-    using TFile         = FormattedFile<TFileFormat, Output, TIOContext>;
-    using TBamFile      = FormattedFile<Bam, Output, BlastTabular>;
+    using TScoreScheme3  = std::conditional_t<seqan3::NucleotideAlphabet<TRedAlph>,
+                                              seqan3::nucleotide_scoring_scheme<>,
+                                              seqan3::aminoacid_scoring_scheme<>>;
+
+    using TScoreScheme  =
+        std::conditional_t<seqan3::NucleotideAlphabet<TRedAlph>,
+                           seqan::Score<int, seqan::Simple>,
+                           seqan::Score<int, seqan::ScoreMatrix<seqan::AminoAcid, seqan::ScoreSpecSelectable>>>;
+    using TIOContext    = seqan::BlastIOContext<TScoreScheme, blastProgram>;
+    using TBlastTabFile = seqan::FormattedFile<seqan::BlastTabular, seqan::Output, TIOContext>;
+    using TBlastRepFile = seqan::FormattedFile<seqan::BlastReport, seqan::Output, TIOContext>;
+    using TBamFile      = seqan::FormattedFile<seqan::Bam, seqan::Output, seqan::BlastTabular>;
 
     /* misc types */
-    using TPositions    = typename StringSetLimits<TTransQrySeqs>::Type;
-    using TMasking      = StringSet<String<unsigned>, Owner<ConcatDirect<>>>;
-    using TTaxIDs       = StringSet<String<uint32_t>, Owner<ConcatDirect<>>>;
-    using TTaxParents   = String<uint32_t>;
-    using TTaxHeights   = String<uint8_t>;
-    using TTaxNames     = StringSet<CharString, Owner<ConcatDirect<>>>;
+    using TPositions    = std::vector<size_t>;
 
     /* the actual members */
-    TDbIndex            dbIndex;
+    index_file<c_dbIndexType, c_origSbjAlph, c_transAlph> indexFile;
+
+    TRedSbjSeqs         redSubjSeqs =
+        initHelper<TRedAlph>(indexFile.transSeqs, seqan3::view::deep{seqan3::view::convert<TRedAlph>});
 
     TUntransQrySeqs     untranslatedQrySeqs;    // used iff outformat is sam or bam
-
-    TTransQrySeqs       qrySeqs;
-    TTransSubjReal      subjSeqs;
-
-    TRedQrySeqs         redQrySeqs;
-    TRedSubjSeqs        redSubjSeqs;
-
+    TTransQrySeqs       qrySeqs;                // TODO: make these be a view::translate_join when available
+    TRedQrySeqs         redQrySeqs =
+        initHelper<TRedAlph>(qrySeqs, seqan3::view::deep{seqan3::view::convert<TRedAlph>});
     TQryIds             qryIds;
-    TSubjIds            subjIds;
 
-    TFile               outfile;
+    TBlastTabFile       outfileBlastTab;
+    TBlastRepFile       outfileBlastRep;
     TBamFile            outfileBam;
 
-    TPositions          untransQrySeqLengths;   // used iff qIsTranslated(p)
-    TPositions          untransSubjSeqLengths;  // used iff sIsTranslated(p)
-
-    TTaxIDs             sTaxIds;
-    TTaxParents         taxParents;
-    TTaxHeights         taxHeights;
-    TTaxNames           taxNames;
+    TScoreScheme3       scoringScheme;
+    seqan3::gap_scheme<int8_t> gapScheme;
 
     StatsHolder         stats;
 
     GlobalDataHolder() :
-        subjSeqs(_initHelper(indexText(dbIndex), TTransSubjSeqs())),//std::integral_constant<bool, alphReduction || indexIsFM>())),// : TTransSubjSeqs()),
-        redQrySeqs(qrySeqs),
-        redSubjSeqs(subjSeqs),
-        stats()
+        stats{}
     {}
 };
 
@@ -480,23 +487,21 @@ public:
 // struct LocalDataHolder  -- one object per thread
 // ----------------------------------------------------------------------------
 
-template <typename TGlobalHolder_,
-          typename TScoreExtension_>
+template <typename TGlobalHolder_>
 class LocalDataHolder
 {
 public:
     using TGlobalHolder = TGlobalHolder_;
-    using TRedQrySeq    = typename Value<typename std::remove_reference<typename TGlobalHolder::TRedQrySeqs>::type>::Type;
-    using TSeeds        = StringSet<typename Infix<TRedQrySeq const>::Type>;
-    using TSeedIndex    = Index<TSeeds, IndexSa<>>;
     using TMatch        = typename TGlobalHolder::TMatch;
-    using TScoreExtension = TScoreExtension_;
+    using TScoreExtension = seqan::AffineGaps;
+    using TSeqInfix     = decltype(std::declval<seqan3::reference_t<typename TGlobalHolder::TTransQrySeqs>>()
+                                   | seqan3::view::slice(0, 1));
 
 
     // references to global stuff
     LambdaOptions     const & options;
     TGlobalHolder /*const*/ & gH;
-    static constexpr BlastProgram blastProgram = TGlobalHolder::blastProgram;
+    static constexpr seqan::BlastProgram blastProgram = TGlobalHolder::blastProgram;
 
     // this is the localHolder for the i-th part of the queries
     uint64_t            i;
@@ -507,21 +512,16 @@ public:
     uint64_t            indexEndQry;
 
     // regarding seedingp
-    TSeeds              seeds;
-    TSeedIndex          seedIndex;
-//     std::forward_list<TMatch>   matches;
     std::vector<TMatch>   matches;
     std::vector<typename TMatch::TQId> seedRefs;  // mapping seed -> query
     std::vector<typename TMatch::TPos> seedRanks; // mapping seed -> relative rank
 
     // regarding extension
-    using TAlignRow0 = Gaps<typename Infix<typename Value<typename TGlobalHolder::TTransQrySeqs>::Type>::Type,
-                            ArrayGaps>;
-    using TAlignRow1 = Gaps<typename Infix<typename Value<typename TGlobalHolder::TTransSubjSeqs>::Type>::Type,
-                            ArrayGaps>;
+//     using TAlignRow = seqan::Gaps<seqan::Infix<typename TGlobalHolder::TSeqAn2TransSeq>,
+    using TAlignRow = seqan::Gaps<TSeqInfix, seqan::ArrayGaps>;
 
 #if (SEQAN_VERSION_MINOR < 4)
-    using TDPContextNoSIMD = DPContext<typename Value<typename TGlobalHolder::TScoreScheme>::Type, TScoreExtension>;
+    using TDPContextNoSIMD = seqan::DPContext<typename seqan::Value<typename TGlobalHolder::TScoreScheme>::Type, TScoreExtension>;
 #else
 //     #if defined(SEQAN_SIMD_ENABLED)
 //     using TCellValueSIMD  = typename SimdVector<int16_t>::TYPE;
@@ -533,14 +533,14 @@ public:
 //     #endif
 
     using TCellValueNoSIMD  = int16_t;
-    using TDPCellNoSIMD     = DPCell_<TCellValueNoSIMD, TScoreExtension_>;
-    using TTraceValueNoSIMD = typename TraceBitMap_<TCellValueNoSIMD>::Type;
-    using TScoreHostNoSIMD  = String<TDPCellNoSIMD, Alloc<OverAligned> >;
-    using TTraceHostNoSIMD  = String<TTraceValueNoSIMD, Alloc<OverAligned> >;
-    using TDPContextNoSIMD  = DPContext<TDPCellNoSIMD, TTraceValueNoSIMD, TScoreHostNoSIMD, TTraceHostNoSIMD>;
+    using TDPCellNoSIMD     = seqan::DPCell_<TCellValueNoSIMD, TScoreExtension>;
+    using TTraceValueNoSIMD = typename seqan::TraceBitMap_<TCellValueNoSIMD>::Type;
+    using TScoreHostNoSIMD  = seqan::String<TDPCellNoSIMD, seqan::Alloc<seqan::OverAligned> >;
+    using TTraceHostNoSIMD  = seqan::String<TTraceValueNoSIMD, seqan::Alloc<seqan::OverAligned> >;
+    using TDPContextNoSIMD  = seqan::DPContext<TDPCellNoSIMD, TTraceValueNoSIMD, TScoreHostNoSIMD, TTraceHostNoSIMD>;
 #endif
 
-    using TAliExtContext = AliExtContext_<TAlignRow0, TAlignRow1, TDPContextNoSIMD>;
+    using TAliExtContext = seqan::AliExtContext_<TAlignRow, TAlignRow, TDPContextNoSIMD>;
 
     TAliExtContext      alignContext;
 // #if defined(SEQAN_SIMD_ENABLED)
@@ -564,10 +564,10 @@ public:
         if (options.extensionMode == LambdaOptions::ExtensionMode::FULL_SIMD)
         {
             // division with rounding up
-            nBlocks = (length(gH.redQrySeqs) + qNumFrames(blastProgram) * 10 - 1) / (qNumFrames(blastProgram) * 10);
+            nBlocks = (gH.redQrySeqs.size() + seqan::qNumFrames(blastProgram) * 10 - 1) / (seqan::qNumFrames(blastProgram) * 10);
         } else
         {
-            nBlocks = length(gH.redQrySeqs) / qNumFrames(blastProgram);
+            nBlocks = gH.redQrySeqs.size() / seqan::qNumFrames(blastProgram);
         }
     }
 
@@ -584,15 +584,13 @@ public:
         if (options.extensionMode == LambdaOptions::ExtensionMode::FULL_SIMD)
         {
             indexBeginQry = qNumFrames(blastProgram) * i * 10;
-            indexEndQry = _min(qNumFrames(blastProgram) * (i+1) * 10, length(gH.qrySeqs));
+            indexEndQry = std::min<size_t>(qNumFrames(blastProgram) * (i+1) * 10, gH.qrySeqs.size());
         } else
         {
             indexBeginQry = qNumFrames(blastProgram) * i;
             indexEndQry = qNumFrames(blastProgram) * (i+1);
         }
 
-        clear(seeds);
-        clear(seedIndex);
         matches.clear();
         seedRefs.clear();
         seedRanks.clear();
@@ -602,4 +600,3 @@ public:
     }
 };
 
-#endif // LAMBDA_SEARCH_DATASTRUCTURES_H_

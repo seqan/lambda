@@ -52,15 +52,9 @@ template <DbIndexType   c_indexType,
           AlphabetEnum  c_origAlph>
 void argConv2(LambdaIndexerOptions const & options);
 
-template <DbIndexType   c_indexType,
-          AlphabetEnum  c_origAlph,
-          AlphabetEnum  c_transAlph>
-void argConv3(LambdaIndexerOptions const & options);
-
-template <DbIndexType           dbIndexType,
-          AlphabetEnum          origAlph,
-          AlphabetEnum          transAlph,
-          AlphabetEnum          redAph>
+template <DbIndexType           c_indexType,
+          AlphabetEnum          c_origAlph,
+          AlphabetEnum          c_transAlph>
 void realMain(LambdaIndexerOptions     const & options);
 
 // --------------------------------------------------------------------------
@@ -123,7 +117,7 @@ void argConv1(LambdaIndexerOptions & options)
     {
 //         case AlphabetEnum::DNA4:            return argConv2<c_indexType, AlphabetEnum::DNA4>(options);
         case AlphabetEnum::DNA5:            return argConv2<c_indexType, AlphabetEnum::DNA5>(options);
-        case AlphabetEnum::AMINO_ACID:      return argConv3<c_indexType, AlphabetEnum::AMINO_ACID, AlphabetEnum::AMINO_ACID>(options);
+        case AlphabetEnum::AMINO_ACID:      return realMain<c_indexType, AlphabetEnum::AMINO_ACID, AlphabetEnum::AMINO_ACID>(options);
         default:                            throw 43;
     }
 }
@@ -134,43 +128,39 @@ void argConv2(LambdaIndexerOptions const & options)
 {
     switch (options.indexFileOptions.transAlph)
     {
-//         case AlphabetEnum::DNA4:            return realMain<c_indexType, c_origAlph, AlphabetEnum::DNA4, AlphabetEnum::DNA4>(options);
-        case AlphabetEnum::DNA5:            return realMain<c_indexType, c_origAlph, AlphabetEnum::DNA5, AlphabetEnum::DNA5>(options);
-        case AlphabetEnum::AMINO_ACID:      return argConv3<c_indexType, c_origAlph, AlphabetEnum::AMINO_ACID>(options);
+//         case AlphabetEnum::DNA4:            return realMain<c_indexType, c_origAlph, AlphabetEnum::DNA4>(options);
+        case AlphabetEnum::DNA5:            return realMain<c_indexType, c_origAlph, AlphabetEnum::DNA5>(options);
+        case AlphabetEnum::AMINO_ACID:      return realMain<c_indexType, c_origAlph, AlphabetEnum::AMINO_ACID>(options);
         default:                            throw 44;
     }
 }
 
-template <DbIndexType   c_indexType,
-          AlphabetEnum  c_origAlph,
-          AlphabetEnum  c_transAlph>
-void argConv3(LambdaIndexerOptions const & options)
-{
-    switch (options.indexFileOptions.redAlph)
-    {
-        case AlphabetEnum::AMINO_ACID:      return realMain<c_indexType, c_origAlph, c_transAlph, AlphabetEnum::AMINO_ACID>(options);
-        case AlphabetEnum::MURPHY10:        return realMain<c_indexType, c_origAlph, c_transAlph, AlphabetEnum::MURPHY10>(options);
-        //TODO other reduced alphabets
-        default:                            throw 45;
-    }
-}
+// template <DbIndexType   c_indexType,
+//           AlphabetEnum  c_origAlph,
+//           AlphabetEnum  c_transAlph>
+// void argConv3(LambdaIndexerOptions const & options)
+// {
+//     switch (options.indexFileOptions.redAlph)
+//     {
+//         case AlphabetEnum::AMINO_ACID:      return realMain<c_indexType, c_origAlph, c_transAlph, AlphabetEnum::AMINO_ACID>(options);
+//         case AlphabetEnum::MURPHY10:        return realMain<c_indexType, c_origAlph, c_transAlph, AlphabetEnum::MURPHY10>(options);
+//         //TODO other reduced alphabets
+//         default:                            throw 45;
+//     }
+// }
 
 template <DbIndexType   c_dbIndexType,
           AlphabetEnum  c_origAlph,
-          AlphabetEnum  c_transAlph,
-          AlphabetEnum  c_redAlph>
+          AlphabetEnum  c_transAlph>
 void realMain(LambdaIndexerOptions     const & options)
 {
-    index_file<c_dbIndexType, c_origAlph, c_transAlph, c_redAlph> f;
+    index_file<c_dbIndexType, c_origAlph, c_transAlph> f;
     f.options = options.indexFileOptions;
 
     using TOrigSubjAlph = _alphabetEnumToType<c_origAlph>;
     using TTransSubjAlph = _alphabetEnumToType<c_transAlph>;
 
     using TOrigSet  = TCDStringSet<std::vector<TOrigSubjAlph>>;
-    using TTransSet = TCDStringSet<std::vector<TTransSubjAlph>>;
-
-    TTransSet translatedSeqs;
 
     {
         TOrigSet originalSeqs;
@@ -202,10 +192,7 @@ void realMain(LambdaIndexerOptions     const & options)
     // see if final sequence set actually fits into index
 //     checkIndexSize(translatedSeqs, options, seqan::BlastProgramSelector<p>());
 
-    std::tie(f.redSeqs, f.index) =
-        generateIndex<c_dbIndexType == DbIndexType::BI_FM_INDEX, c_redAlph>(f.transSeqs, options);
-
-
+    f.index = generateIndex<c_dbIndexType == DbIndexType::BI_FM_INDEX>(f.transSeqs, options);
 
     myPrint(options, 1, "Writing Index to disk...");
     double s = sysTime();
@@ -227,22 +214,4 @@ void realMain(LambdaIndexerOptions     const & options)
     double e = sysTime() - s;
     myPrint(options, 1, " done.\n");
     myPrint(options, 2, "Runtime: ", e, "s \n");
-
-
-    // dump options
-//     for (auto && s : std::initializer_list<std::pair<std::string, std::string>>
-//          {
-//              { options.indexDir + "/option:db_index_type",   std::to_string(static_cast<uint32_t>(options.dbIndexType))},
-//              { options.indexDir + "/option:alph_original",   std::string(_alphTypeToName(TOrigSubjAlph())) },
-//              { options.indexDir + "/option:alph_translated", std::string(_alphTypeToName(TTransSubjAlph())) },
-//              { options.indexDir + "/option:alph_reduced",    std::string(_alphTypeToName(TRedAlph())) },
-//              { options.indexDir + "/option:genetic_code",    std::to_string(static_cast<uint16_t>(options.geneticCode)) },
-// //              { options.indexDir + "/option:subj_seq_len_bits", std::to_string(sizeof(SizeTypePos_<TRedAlph>) * 8)},
-//              { options.indexDir + "/option:generation",      std::to_string(indexGeneration) },
-//          })
-//     {
-//         std::ofstream f{std::get<0>(s).c_str(),  std::ios_base::out | std::ios_base::binary};
-//         f << std::get<1>(s);
-//         f.close();
-//     }
 }

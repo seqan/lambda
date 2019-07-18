@@ -19,8 +19,7 @@
 // store.h: contains types and definitions for storing sequences and indices
 // ==========================================================================
 
-#ifndef LAMBDA_SHARED_MISC_H_
-#define LAMBDA_SHARED_MISC_H_
+#pragma once
 
 #include <chrono>
 #include <dirent.h>
@@ -108,15 +107,16 @@ struct alphabet_detection_traits : seqan3::sequence_file_input_default_traits_dn
 {
     using sequence_alphabet = char;
     using sequence_legal_alphabet = char;
+
     template <typename alph>
-    using sequence_container = std::basic_string<alph>;
+    using sequence_container = std::vector<alph>;
 };
 
 AlphabetEnum detectSeqFileAlphabet(std::string const & path)
 {
     seqan3::sequence_file_input<alphabet_detection_traits, seqan3::fields<seqan3::field::SEQ>> f{path};
 
-    std::string & seq = std::get<0>(*f.begin());
+    auto & seq = std::get<0>(*f.begin());
 
     if (std::ranges::equal(seq | seqan3::view::char_to<seqan3::dna5> | seqan3::view::to_char,
                            seq | seqan3::view::to_upper))
@@ -443,5 +443,3 @@ uint64_t getTotalSystemMemory()
 #   error "no way to get phys pages"
 #endif
 }
-
-#endif // header guard

@@ -27,12 +27,14 @@ set (MINIMUM_SEQAN3_VERSION "3.0.0")
 # ----------------------------------------------------------------------------
 
 # Search SeqAn and select dependencies.
+find_package(OpenMP QUIET)
 find_package(ZLIB   QUIET)
 find_package(BZip2  QUIET)
 find_package(SeqAn  QUIET REQUIRED CONFIG)
 find_package(SeqAn3  QUIET REQUIRED CONFIG)
 
 message(STATUS "These dependencies where found:")
+message(   "     OPENMP     ${OPENMP_FOUND}      ${OpenMP_CXX_FLAGS}")
 message(   "     ZLIB       ${ZLIB_FOUND}      ${ZLIB_VERSION_STRING}")
 message(   "     BZIP2      ${BZIP2_FOUND}      ${BZIP2_VERSION_STRING}")
 message(   "     SEQAN      ${SEQAN_FOUND}      ${SEQAN_VERSION_STRING}")
@@ -194,12 +196,12 @@ set (LAMBDA_SOURCE_FILES
                     shared_definitions.hpp
                     shared_misc.hpp
                     shared_options.hpp
-#                 search.hpp
-#                     search_algo.hpp
-#                     search_datastructures.hpp
-#                     search_misc.hpp
-#                     search_output.hpp
-#                     search_options.hpp
+                search.hpp
+                    search_algo.hpp
+                    search_datastructures.hpp
+                    search_misc.hpp
+                    search_output.hpp
+                    search_options.hpp
                 mkindex.hpp
                     mkindex_algo.hpp
                     mkindex_misc.hpp

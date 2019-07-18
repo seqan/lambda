@@ -19,6 +19,8 @@
 // lambda.cpp: Main File for Lambda
 // ==========================================================================
 
+#pragma once
+
 #include <iostream>
 
 #include <seqan/basic.h>
@@ -40,62 +42,27 @@
 
 // forwards
 
-void
-argConv0(LambdaOptions & options);
-//-
-template <typename TOutFormat,
-          BlastTabularSpec h>
-void
-argConv1(LambdaOptions                       & options,
-         TOutFormat                    const & /**/,
-         BlastTabularSpecSelector<h>   const &);
-//-
-template <typename TOutFormat,
-          BlastTabularSpec h,
-          BlastProgram p>
-void
-argConv2(LambdaOptions                        & options,
-         TOutFormat                     const & /**/,
-         BlastTabularSpecSelector<h>    const &,
-         BlastProgramSelector<p>        const &);
-//-
-template <typename TOutFormat,
-          typename TRedAlph,
-          BlastTabularSpec h,
-          BlastProgram p>
-void
-argConv3(LambdaOptions                        & options,
-         TOutFormat                     const &,
-         BlastTabularSpecSelector<h>    const &,
-         BlastProgramSelector<p>        const &,
-         TRedAlph                       const &);
-//-
-template <typename TOutFormat,
-          typename TRedAlph,
-          typename TScoreExtension,
-          BlastTabularSpec h,
-          BlastProgram p>
-void
-argConv4(LambdaOptions                        & options,
-         TOutFormat                     const & /**/,
-         BlastTabularSpecSelector<h>    const &,
-         BlastProgramSelector<p>        const &,
-         TRedAlph                       const & /**/,
-         TScoreExtension                const & /**/);
-//-
-template <typename TIndexSpec,
-          typename TRedAlph,
-          typename TScoreExtension,
-          typename TOutFormat,
-          BlastProgram p,
-          BlastTabularSpec h>
-void
-realMain(LambdaOptions                        & options,
-         TOutFormat                     const & /**/,
-         BlastTabularSpecSelector<h>    const &,
-         BlastProgramSelector<p>        const &,
-         TRedAlph                       const & /**/,
-         TScoreExtension                const & /**/);
+void argConv0(LambdaOptions & options);
+
+template <DbIndexType c_indexType>
+void argConv1(LambdaOptions const & options);
+
+template <DbIndexType   c_indexType,
+          AlphabetEnum  c_origSbjAlph>
+void argConv2(LambdaOptions const & options);
+
+template <DbIndexType   c_indexType,
+          AlphabetEnum  c_origSbjAlph,
+          AlphabetEnum  c_transAlph,
+          AlphabetEnum  c_redAlph>
+void argConv3(LambdaOptions     const & options);
+
+template <DbIndexType   c_indexType,
+          AlphabetEnum  c_origSbjAlph,
+          AlphabetEnum  c_transAlph,
+          AlphabetEnum  c_redAlph,
+          AlphabetEnum  c_origQryAlph>
+void realMain(LambdaOptions     const & options);
 
 // --------------------------------------------------------------------------
 // Function main()
@@ -151,44 +118,42 @@ argConv0(LambdaOptions & options)
     readIndexOptions(options);
     myPrint(options, 1, "done.\n");
 
-    myPrint(options, 2, "Index properties\n"
-                        "  type:                ", _indexEnumToName(options.dbIndexType), "\n",
-                        "  original   alphabet: ", _alphabetEnumToName(options.subjOrigAlphabet), "\n");
-    if (_alphabetEnumToName(options.subjOrigAlphabet) == _alphabetEnumToName(options.transAlphabet))
+    myPrint(options, 2, "  type:                ", _indexEnumToName(options.indexFileOptions.indexType), "\n",
+                        "  original alphabet:   ", _alphabetEnumToName(options.indexFileOptions.origAlph), "\n");
+    if (options.indexFileOptions.origAlph == options.indexFileOptions.transAlph)
     {
         myPrint(options, 2, "  translated alphabet: not translated\n");
-        if (options.geneticCode == 0) // use same geneticCode as Index, but index wasn't translated
-            options.geneticCode = CANONICAL;
+        if ((int)options.geneticCodeQry == 0) // use same geneticCode as Index, but index wasn't translated
+            options.geneticCodeQry = seqan3::genetic_code::CANONICAL;
     }
     else
     {
-        myPrint(options, 2, "  translated alphabet: ", _alphabetEnumToName(options.transAlphabet), "\n");
-        myPrint(options, 2, "    translation code:  ", options.geneticCodeIndex, "\n");
-        if (options.geneticCode == 0) // use same geneticCode as Index
+        myPrint(options, 2, "  translated alphabet: ", _alphabetEnumToName(options.indexFileOptions.transAlph), "\n");
+        myPrint(options, 2, "  ^- genetic code:     ", (int)options.indexFileOptions.geneticCode, "\n");
+        if ((int)options.geneticCodeQry == 0) // use same geneticCode as Index
         {
-            options.geneticCode = options.geneticCodeIndex;
-        } else if (options.geneticCode != options.geneticCodeIndex)
+            options.geneticCodeQry = options.indexFileOptions.geneticCode;
+        } else if (options.geneticCodeQry != options.indexFileOptions.geneticCode)
         {
-            std::cerr << "WARNING: The genetic code used when creating the index: " << options.geneticCodeIndex
-                      << "\n         is not the same as now selected for the query sequences: " << options.geneticCode
+            std::cerr << "WARNING: The genetic code used when creating the index: " << (int) options.indexFileOptions.geneticCode
+                      << "\n         is not the same as now selected for the query sequences: " << (int)options.geneticCodeQry
                       << "\n         Are you sure this is what you want?\n";
         }
     }
 
-    if (_alphabetEnumToName(options.transAlphabet) == _alphabetEnumToName(options.reducedAlphabet))
+    if (options.indexFileOptions.transAlph == options.indexFileOptions.redAlph)
     {
-        myPrint(options, 2, "  reduced    alphabet:  not reduced\n");
+        myPrint(options, 2, "  reduced alphabet:    not reduced\n");
     }
     else
     {
-        myPrint(options, 2, "  reduced    alphabet: ", _alphabetEnumToName(options.reducedAlphabet), "\n\n");
+        myPrint(options, 2, "  reduced alphabet:    ", _alphabetEnumToName(options.indexFileOptions.redAlph), "\n\n");
     }
 
-    if ((options.blastProgram == BlastProgram::BLASTN) &&
-        (options.reducedAlphabet != AlphabetEnum::DNA5))
+    if ((options.nucleotide_mode) && (options.indexFileOptions.redAlph != AlphabetEnum::DNA5))
     {
         throw std::runtime_error("You are attempting a nucleotide search on a protein index. "
-                                 "Did you want to use 'lambda2 searchp' instead?");
+                                 "Did you want to use 'lambda3 searchp' instead?");
     }
 
     // query file
@@ -197,254 +162,134 @@ argConv0(LambdaOptions & options)
         myPrint(options, 1, "Detecting query alphabet... ");
         options.qryOrigAlphabet = detectSeqFileAlphabet(options.queryFile);
         myPrint(options, 1, _alphabetEnumToName(options.qryOrigAlphabet), " detected.\n");
+        myPrint(options, 2, "\n");
     }
 
+#if 0 // blastProgram set in GlobalDataHolder later
     // set blastProgram
-    if (options.blastProgram == BlastProgram::UNKNOWN)
+    if (options.blastProgram == seqan::BlastProgram::UNKNOWN)
     {
-        if ((options.transAlphabet == AlphabetEnum::DNA5) && (options.qryOrigAlphabet == AlphabetEnum::AMINO_ACID))
+        if ((options.indexFileOptions.transAlph == AlphabetEnum::DNA5) && (options.qryOrigAlphabet == AlphabetEnum::AMINO_ACID))
         {
             throw IndexException("Query file is protein, but index is nucleotide. "
                                  "Recreate the index with 'lambda mkindexp'.");
         }
-        else if ((options.transAlphabet == AlphabetEnum::DNA5) && (options.qryOrigAlphabet == AlphabetEnum::DNA5))
+        else if ((options.indexFileOptions.transAlph == AlphabetEnum::DNA5) && (options.qryOrigAlphabet == AlphabetEnum::DNA5))
         {
-            options.blastProgram = BlastProgram::BLASTN;
+            options.blastProgram = seqan::BlastProgram::BLASTN;
         }
         else if (options.qryOrigAlphabet == AlphabetEnum::DNA5) // query will be translated
         {
-            if (options.subjOrigAlphabet == options.transAlphabet)
-                options.blastProgram = BlastProgram::BLASTX;
+            if (options.indexFileOptions.origAlph == options.indexFileOptions.transAlph)
+                options.blastProgram = seqan::BlastProgram::BLASTX;
             else
-                options.blastProgram = BlastProgram::TBLASTX;
+                options.blastProgram = seqan::BlastProgram::TBLASTX;
         }
         else // query is aminoacid already
         {
-            if (options.subjOrigAlphabet == options.transAlphabet)
-                options.blastProgram = BlastProgram::BLASTP;
+            if (options.indexFileOptions.origAlph == options.indexFileOptions.transAlph)
+                options.blastProgram = seqan::BlastProgram::BLASTP;
             else
-                options.blastProgram = BlastProgram::TBLASTN;
+                options.blastProgram = seqan::BlastProgram::TBLASTN;
         }
     }
 
+#endif
+
+#if 0 // this needs to be moved
     // some blastProgram-specific "late option modifiers"
-    if (((options.blastProgram == BlastProgram::BLASTP) ||
-         (options.blastProgram == BlastProgram::TBLASTN)) &&
+    if (((options.blastProgram == seqan::BlastProgram::BLASTP) ||
+         (options.blastProgram == seqan::BlastProgram::TBLASTN)) &&
         (!options.samBamTags[SamBamExtraTags<>::Q_AA_CIGAR]))
         options.samBamSeq = 0;
-
+#endif
     // sizes
     checkRAM(options);
 
-    // make sure output is writable
-    int fd = open(toCString(options.output), O_WRONLY | O_CREAT | O_NOCTTY | O_NONBLOCK, 0600);
-    if (fd < 0)
+    switch (options.indexFileOptions.indexType)
     {
-        throw std::invalid_argument("Output file not writable. Check if the directory exists and you have correct "
-                                    "permissions.");
-    } else
-    {
-        close(fd); // will be opened again, later
+        case DbIndexType::FM_INDEX:     return argConv1<DbIndexType::FM_INDEX>(options);
+        case DbIndexType::BI_FM_INDEX:  return argConv1<DbIndexType::BI_FM_INDEX>(options);
+        default: throw 52;
     }
-
-    // output format conversion to constexpr
-    CharString output = options.output;
-    if (endsWith(output, ".gz"))
-        output = prefix(output, length(output) - 3);
-    else if (endsWith(output, ".bz2"))
-        output = prefix(output, length(output) - 4);
-
-    if (endsWith(output, ".m0"))
-        return argConv1(options, BlastReport(), BlastTabularSpecSelector<BlastTabularSpec::NO_COMMENTS>());
-    else if (endsWith(output, ".m8"))
-        return argConv1(options, BlastTabular(), BlastTabularSpecSelector<BlastTabularSpec::NO_COMMENTS>());
-    else if (endsWith(output, ".m9"))
-        return argConv1(options, BlastTabular(), BlastTabularSpecSelector<BlastTabularSpec::COMMENTS>());
-    else if (endsWith(output, ".sam") || endsWith(output, ".bam")) // handled elsewhere
-        return argConv1(options, BlastTabular(), BlastTabularSpecSelector<BlastTabularSpec::COMMENTS>());
-
-    throw std::invalid_argument("Cannot handle output extension. THIS IS A BUG, please report it!");
 }
 
-template <typename TOutFormat,
-          BlastTabularSpec h>
-void
-argConv1(LambdaOptions                       & options,
-         TOutFormat                    const & /**/,
-         BlastTabularSpecSelector<h>   const &)
+template <DbIndexType c_indexType>
+void argConv1(LambdaOptions const & options)
 {
-    switch(options.blastProgram)
+    if (options.nucleotide_mode)
     {
-#ifndef FASTBUILD
-        case BlastProgram::BLASTN:
-            return argConv3(options,
-                            TOutFormat(),
-                            BlastTabularSpecSelector<h>(),
-                            BlastProgramSelector<BlastProgram::BLASTN>(),
-                            Dna5());
-#endif
-        case BlastProgram::BLASTP:
-            return argConv2(options,
-                            TOutFormat(),
-                            BlastTabularSpecSelector<h>(),
-                            BlastProgramSelector<BlastProgram::BLASTP>());
-        case BlastProgram::BLASTX:
-            return argConv2(options,
-                            TOutFormat(),
-                            BlastTabularSpecSelector<h>(),
-                            BlastProgramSelector<BlastProgram::BLASTX>());
-#ifndef FASTBUILD
-        case BlastProgram::TBLASTN:
-            return argConv2(options,
-                            TOutFormat(),
-                            BlastTabularSpecSelector<h>(),
-                            BlastProgramSelector<BlastProgram::TBLASTN>());
-        case BlastProgram::TBLASTX:
-            return argConv2(options,
-                            TOutFormat(),
-                            BlastTabularSpecSelector<h>(),
-                            BlastProgramSelector<BlastProgram::TBLASTX>());
-#endif
-        default:
-            break;
+        return realMain<c_indexType,
+                        AlphabetEnum::DNA5, AlphabetEnum::DNA5, AlphabetEnum::DNA5, AlphabetEnum::DNA5>(options);
     }
-    throw std::invalid_argument("Could not determine blast program mode, THIS IS A BUG, please report it!");
-}
-
-
-/// Alphabet reduction
-template <typename TOutFormat,
-          BlastTabularSpec h,
-          BlastProgram p>
-void
-argConv2(LambdaOptions                        & options,
-         TOutFormat                     const & /**/,
-         BlastTabularSpecSelector<h>    const &,
-         BlastProgramSelector<p>        const &)
-{
-    using Th = BlastTabularSpecSelector<h>;
-    using Tp = BlastProgramSelector<p>;
-
-    switch (options.reducedAlphabet)
+    else
     {
-        case AlphabetEnum::AMINO_ACID:
-            return argConv3(options, TOutFormat(), Th(), Tp(), AminoAcid());
-        case AlphabetEnum::MURPHY10:
-            return argConv3(options, TOutFormat(), Th(), Tp(), ReducedAminoAcid<Murphy10>());
-#if 0
-        case 10:
-            return argConv2(options, TOutFormat(), ReducedAminoAcid<ClusterReduction<10>>());
-        case 1:
-            return argConv2(options, TOutFormat(), AminoAcid10());
-        case 8:
-            return argConv2(options, TOutFormat(), ReducedAminoAcid<ClusterReduction<8>>());
-        case 12:
-            return argConv2(options, TOutFormat(), ReducedAminoAcid<ClusterReduction<12>>());
-#endif
-        default:
-            break;
+        switch (options.indexFileOptions.origAlph)
+        {
+            case AlphabetEnum::DNA5:        return argConv2<c_indexType,
+                                                            AlphabetEnum::DNA5>(options);
+            case AlphabetEnum::AMINO_ACID:  return argConv2<c_indexType,
+                                                            AlphabetEnum::AMINO_ACID>(options);
+            default: throw 53;
+        }
     }
-    throw std::invalid_argument("The alphabet reduction used by the index is not available. Possibly it was "
-                                "added in a later Lambda version. If your lambda version is up-to-date, please "
-                                "report this as a bug.");
 }
 
-// extension model
-template <typename TOutFormat,
-          typename TRedAlph,
-          BlastTabularSpec h,
-          BlastProgram p>
-void
-argConv3(LambdaOptions                        & options,
-         TOutFormat                     const &,
-         BlastTabularSpecSelector<h>    const &,
-         BlastProgramSelector<p>        const &,
-         TRedAlph                       const &)
+template <DbIndexType   c_indexType,
+          AlphabetEnum  c_origSbjAlph>
+void argConv2(LambdaOptions const & options)
 {
-
-    if (options.gapOpen == 0)
-#ifndef LAMBDA_LINGAPS_OPT
-        std::cerr << "ATTENTION: You have set the additional gap open cost to 0. If you run LAMBDA "
-                     "in this configuration regularly, you might want to rebuild it with "
-                     "LAMBDA_LINGAPS_OPT=1 to profit from additional optimizations.\n";
-#else
-        return argConv4(options,
-                        TOutFormat(),
-                        BlastTabularSpecSelector<h>(),
-                        BlastProgramSelector<p>(),
-                        TRedAlph(),
-                        LinearGaps());
-    else
-#endif
-        return argConv4(options,
-                        TOutFormat(),
-                        BlastTabularSpecSelector<h>(),
-                        BlastProgramSelector<p>(),
-                        TRedAlph(),
-                        AffineGaps());
+    // transalph is always amino acid, unless in nucleotide_mode
+    switch (options.indexFileOptions.redAlph)
+    {
+        case AlphabetEnum::AMINO_ACID:      return argConv3<c_indexType,
+                                                            c_origSbjAlph,
+                                                            AlphabetEnum::AMINO_ACID,
+                                                            AlphabetEnum::AMINO_ACID>(options);
+        case AlphabetEnum::MURPHY10:        return argConv3<c_indexType,
+                                                            c_origSbjAlph,
+                                                            AlphabetEnum::AMINO_ACID,
+                                                            AlphabetEnum::MURPHY10>(options);
+        default: throw 54;
+    }
 }
 
-template <typename TOutFormat,
-          typename TRedAlph,
-          typename TScoreExtension,
-          BlastTabularSpec h,
-          BlastProgram p>
-void
-argConv4(LambdaOptions                        & options,
-         TOutFormat                     const & /**/,
-         BlastTabularSpecSelector<h>    const &,
-         BlastProgramSelector<p>        const &,
-         TRedAlph                       const & /**/,
-         TScoreExtension                const & /**/)
+template <DbIndexType   c_indexType,
+          AlphabetEnum  c_origSbjAlph,
+          AlphabetEnum  c_transAlph,
+          AlphabetEnum  c_redAlph>
+void argConv3(LambdaOptions     const & options)
 {
-#ifdef LAMBDA_LEGACY_PATHS
-    if (options.dbIndexType == DbIndexType::SUFFIX_ARRAY)
-        return realMain<IndexSa<>>(options,
-                                   TOutFormat(),
-                                   BlastTabularSpecSelector<h>(),
-                                   BlastProgramSelector<p>(),
-                                   TRedAlph(),
-                                   TScoreExtension());
-    else
-#endif // LAMBDA_LEGACY_PATHS
-    if (options.dbIndexType == DbIndexType::BI_FM_INDEX)
-        return realMain<BidirectionalIndex<TFMIndexInBi<>>>(options,
-                                                            TOutFormat(),
-                                                            BlastTabularSpecSelector<h>(),
-                                                            BlastProgramSelector<p>(),
-                                                            TRedAlph(),
-                                                            TScoreExtension());
-    else
-        return realMain<TFMIndex<>>(options,
-                                   TOutFormat(),
-                                   BlastTabularSpecSelector<h>(),
-                                   BlastProgramSelector<p>(),
-                                   TRedAlph(),
-                                   TScoreExtension());
+    // transalph is always amino acid, unless in nucleotide_mode
+    switch (options.qryOrigAlphabet)
+    {
+        case AlphabetEnum::DNA5:            return realMain<c_indexType,
+                                                            c_origSbjAlph,
+                                                            c_transAlph,
+                                                            c_redAlph,
+                                                            AlphabetEnum::DNA5>(options);
+        case AlphabetEnum::AMINO_ACID:      return realMain<c_indexType,
+                                                            c_origSbjAlph,
+                                                            c_transAlph,
+                                                            c_redAlph,
+                                                            AlphabetEnum::AMINO_ACID>(options);
+        default: throw 55;
+    }
 }
 
-/// REAL MAIN
-#ifdef _OPENMP
-#define TID omp_get_thread_num()
-#else
-#define TID 0
-#endif
-template <typename TIndexSpec,
-          typename TRedAlph,
-          typename TScoreExtension,
-          typename TOutFormat,
-          BlastProgram p,
-          BlastTabularSpec h>
-void
-realMain(LambdaOptions                        & options,
-         TOutFormat                     const & /**/,
-         BlastTabularSpecSelector<h>    const &,
-         BlastProgramSelector<p>        const &,
-         TRedAlph                       const & /**/,
-         TScoreExtension                const & /**/)
+template <DbIndexType   c_indexType,
+          AlphabetEnum  c_origSbjAlph,
+          AlphabetEnum  c_transAlph,
+          AlphabetEnum  c_redAlph,
+          AlphabetEnum  c_origQryAlph>
+void realMain(LambdaOptions     const & options)
 {
-    using TGlobalHolder = GlobalDataHolder<TRedAlph, TIndexSpec, TOutFormat, p, h>;
-    using TLocalHolder = LocalDataHolder<TGlobalHolder, TScoreExtension>;
+    using TGlobalHolder = GlobalDataHolder<c_indexType,
+                                           c_origSbjAlph,
+                                           c_transAlph,
+                                           c_redAlph,
+                                           c_origQryAlph>;
+    using TLocalHolder = LocalDataHolder<TGlobalHolder>;
 
     if (options.verbosity >= 2)
         printOptions<TLocalHolder>(options);
@@ -454,30 +299,27 @@ realMain(LambdaOptions                        & options,
 
     prepareScoring(globalHolder, options);
 
-    loadSubjects(globalHolder, options);
-
     loadDbIndexFromDisk(globalHolder, options);
 
-    loadTaxonomy(globalHolder, options);
 
     loadQuery(globalHolder, options);
 
 
-//     std::cout << "1st Query:\n"
-//               << front(globalHolder.qrySeqs) << "\n"
-//               << front(globalHolder.redQrySeqs) << "\n";
-//
-//     std::cout << "last Query:\n"
-//               << back(globalHolder.qrySeqs) << "\n"
-//               << back(globalHolder.redQrySeqs) << "\n";
-//
-//     std::cout << "1st Subject:\n"
-//               << front(globalHolder.subjSeqs) << "\n"
-//               << front(globalHolder.redSubjSeqs) << "\n";
-//
-//     std::cout << "last Subject:\n"
-//               << back(globalHolder.subjSeqs) << "\n"
-//               << back(globalHolder.redSubjSeqs) << "\n";
+    seqan3::debug_stream << "1st Query:\n"
+                         << globalHolder.qrySeqs.front() << "\n"
+                         << globalHolder.redQrySeqs.front() << "\n";
+
+    seqan3::debug_stream << "last Query:\n"
+                         << globalHolder.qrySeqs.back() << "\n"
+                         << globalHolder.redQrySeqs.back() << "\n";
+
+    seqan3::debug_stream << "1st Subject:\n"
+                         << globalHolder.redSubjSeqs.front() << "\n"
+                         << globalHolder.redSubjSeqs.front() << "\n";
+
+    seqan3::debug_stream << "last Subject:\n"
+                         << globalHolder.redSubjSeqs.back() << "\n"
+                         << globalHolder.redSubjSeqs.back() << "\n";
 
     myWriteHeader(globalHolder, options);
 
@@ -487,6 +329,7 @@ realMain(LambdaOptions                        & options,
     double start = sysTime();
 
     uint64_t lastPercent = 0;
+
 
     SEQAN_OMP_PRAGMA(parallel)
     {
@@ -502,20 +345,16 @@ realMain(LambdaOptions                        & options,
             // seed
         #ifdef LAMBDA_MICRO_STATS
             double buf = sysTime();
-            localHolder.stats.timeGenSeeds += sysTime() - buf;
-
-            // search
-            buf = sysTime();
         #endif
             search(localHolder); //TODO seed refining if iterateMatches gives 0 results
         #ifdef LAMBDA_MICRO_STATS
             localHolder.stats.timeSearch += sysTime() - buf;
         #endif
 
-//             // TODO DEBUG
+            // TODO DEBUG
 //             for (auto const & m : localHolder.matches)
 //                 _printMatch(m);
-
+#if 0
             // sort
             if (options.filterPutativeAbundant || options.filterPutativeDuplicates || options.mergePutativeSiblings)
             {
@@ -529,15 +368,16 @@ realMain(LambdaOptions                        & options,
                 localHolder.stats.timeSort += sysTime() - buf;
             #endif
             }
-
+#endif
             // extend
-            if (length(localHolder.matches) > 0)
+
+            if (localHolder.matches.size() > 0)
                 res = iterateMatches(localHolder);
 
             if (res)
                 continue;
 
-            if ((TID == 0) && (options.verbosity >= 1))
+            if ((omp_get_thread_num() == 0) && (options.verbosity >= 1))
             {
                 unsigned curPercent = ((t * 50) / localHolder.nBlocks) * 2; // round to even
                 printProgressBar(lastPercent, curPercent);
@@ -545,7 +385,7 @@ realMain(LambdaOptions                        & options,
 
         } // implicit thread sync here
 
-        if ((TID == 0) && (options.verbosity >= 1))
+        if ((omp_get_thread_num() == 0) && (options.verbosity >= 1))
             printProgressBar(lastPercent, 100);
 
         SEQAN_OMP_PRAGMA(critical(statsAdd))
@@ -561,4 +401,6 @@ realMain(LambdaOptions                        & options,
     myPrint(options, 2, "Runtime total: ", sysTime() - start, "s.\n\n");
 
     printStats(globalHolder.stats, options);
+
 }
+

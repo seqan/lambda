@@ -19,8 +19,7 @@
 // options.h: contains the options and argument parser
 // ==========================================================================
 
-#ifndef SEQAN_SHARED_DEFINITIONS_H_
-#define SEQAN_SHARED_DEFINITIONS_H_
+#pragma once
 
 #include <seqan3/search/fm_index/fm_index.hpp>
 #include <seqan3/search/fm_index/bi_fm_index.hpp>
@@ -138,11 +137,11 @@ struct LambdaFMIndexConfigInBi : LambdaFMIndexConfig
 };
 #endif
 
-template <typename TText = void>
-using TFMIndex = seqan3::fm_index<TText>;
-
-template <typename TText = void>
-using TFMIndexInBi = seqan3::bi_fm_index<TText>;
+// template <typename TText = void>
+// using TFMIndex = seqan3::fm_index<TText>;
+//
+// template <typename TText = void>
+// using TFMIndexInBi = seqan3::bi_fm_index<TText>;
 
 // lazy...
 template <typename TString>
@@ -151,8 +150,7 @@ using TCDStringSet = std::vector<TString>; //TODO seqan3::concatenated_sequences
 
 template <DbIndexType           dbIndexType,
           AlphabetEnum          origAlph,
-          AlphabetEnum          transAlph,
-          AlphabetEnum          redAlph>    // <- all members of index_file_options that influence types
+          AlphabetEnum          transAlph>    // <- all members of index_file_options that influence types
 struct index_file
 {
     index_file_options options{};
@@ -164,12 +162,11 @@ struct index_file
 
     std::vector<uint32_t>                                       taxonParentIDs;
     std::vector<uint8_t>                                        taxonHeights;
-    std::vector<std::string>                                    taxonNames;
+    std::vector<std::string>                                    taxonNames; //TODO TCDStringSet?
 
-    TCDStringSet<std::vector<_alphabetEnumToType<redAlph>>>     redSeqs; // temporary
     std::conditional_t<dbIndexType == DbIndexType::BI_FM_INDEX,
-                       seqan3::bi_fm_index<decltype(redSeqs)>,
-                       seqan3::fm_index<decltype(redSeqs)>>     index;
+                       seqan3::bi_fm_index<seqan3::text_layout::collection>,
+                       seqan3::fm_index<seqan3::text_layout::collection>>     index;
 
     template <typename TArchive>
     void serialize(TArchive & archive)
@@ -182,11 +179,18 @@ struct index_file
                 cereal::make_nvp("taxonParentIDs",   taxonParentIDs),
                 cereal::make_nvp("taxonHeights",     taxonHeights),
                 cereal::make_nvp("taxonNames",       taxonNames),
-                cereal::make_nvp("redSeqs",          redSeqs),
                 cereal::make_nvp("index",            index));
     }
 };
 
 
+struct fake_index_file
+{
+    index_file_options & options;
 
-#endif // header guard
+    template <typename TArchive>
+    void serialize(TArchive & archive)
+    {
+        archive(cereal::make_nvp("options",          options));
+    }
+};
