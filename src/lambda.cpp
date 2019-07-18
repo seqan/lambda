@@ -24,10 +24,7 @@
 #include <seqan3/argument_parser/all.hpp>
 
 #include "search.hpp"
-
-#if 1
 #include "mkindex.hpp"
-#endif
 // using namespace seqan;
 
 void parseCommandLineMain(int argc, char const ** argv);
