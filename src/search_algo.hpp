@@ -465,10 +465,10 @@ search(LocalDataHolder<TGlobalHolder> & lH)
     using TTransAlph = typename TGlobalHolder::TTransAlph;
     using TMatch = typename TGlobalHolder::TMatch;
 
-    seqan3::configuration const cfg = seqan3::search_cfg::max_error{/*search_cfg::total{1},*/
-                                                                    seqan3::search_cfg::substitution{1}/*,
+    seqan3::configuration const cfg = seqan3::search_cfg::max_error{seqan3::search_cfg::total{1},
+                                                                    seqan3::search_cfg::substitution{1},
                                                                     seqan3::search_cfg::insertion{0},
-                                                                    seqan3::search_cfg::deletion{0}*/};
+                                                                    seqan3::search_cfg::deletion{0}};
 
     for (size_t i = lH.indexBeginQry; i < lH.indexEndQry; ++i)
     {
@@ -1125,7 +1125,10 @@ iterateMatchesFullSerial(TLocalHolder & lH)
     auto const trueQryId = lH.matches[0].qryId / qNumFrames(TGlobalHolder::blastProgram);
 
     TBlastRecord record(lH.gH.qryIds[trueQryId]);
-    record.qLength = lH.gH.untranslatedQrySeqs[trueQryId].size();
+    record.qLength = qIsTranslated(TGlobalHolder::blastProgram) ?
+                     lH.gH.untranslatedQrySeqs[trueQryId].size() :
+                     lH.gH.qrySeqs[trueQryId].size();
+
 
     unsigned band = _bandSize(record.qLength, lH);
 

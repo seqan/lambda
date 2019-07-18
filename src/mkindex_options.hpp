@@ -184,7 +184,10 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
     if (!options.nucleotide_mode)
     {
         options.indexFileOptions.origAlph       = _alphabetNameToEnum(inputAlphabetTmp);
-        options.indexFileOptions.redAlph        = _alphabetNameToEnum(alphabetReductionTmp);
+        if (alphabetReductionTmp == "none")
+            options.indexFileOptions.redAlph    = AlphabetEnum::AMINO_ACID;
+        else
+            options.indexFileOptions.redAlph    = _alphabetNameToEnum(alphabetReductionTmp);
         options.indexFileOptions.geneticCode    = static_cast<seqan3::genetic_code>(geneticCodeTmp);
     }
 
