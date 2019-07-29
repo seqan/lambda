@@ -24,7 +24,7 @@
 #include <seqan3/io/sequence_file/input.hpp>
 #include <seqan3/io/detail/misc_input.hpp>
 #include <seqan3/range/view/convert.hpp>
-#include <seqan3/range/view/translate.hpp>
+#include <seqan3/range/view/translate_join.hpp>
 #include <seqan3/std/charconv>
 #include <seqan3/std/concepts>
 
@@ -234,18 +234,17 @@ translateSeqs(TCDStringSet<std::vector<TOrigAlph>> & in,
     double start = sysTime();
     myPrint(options, 1, "Translating Subj Sequences...");
 
-    auto tmp  = in | seqan3::view::translate //TODO geneticCode
-                   | std::view::join
-                   | std::view::transform([] (auto && elem)
-                     {
-                         return std::forward<decltype(elem)>(elem) | std::ranges::to<std::vector>;
-                     })
-                   | std::ranges::to<decltype(out)>;
+   auto tmp  = in | seqan3::view::translate_join //TODO geneticCode
+                  | std::view::transform([] (auto && elem)
+                    {
+                        return std::forward<decltype(elem)>(elem) | std::ranges::to<std::vector>;
+                    })
+                  | std::ranges::to<decltype(out)>;
 
+    out = tmp;
     myPrint(options, 1, " done.\n");
     double finish = sysTime() - start;
     myPrint(options, 2, "Runtime: ", finish, "s \n\n");
-
     return out;
 }
 

@@ -188,7 +188,6 @@ void realMain(LambdaIndexerOptions     const & options)
         f.transSeqs = translateSeqs<TTransSubjAlph>(originalSeqs, options);
     }
 
-
     // see if final sequence set actually fits into index
 //     checkIndexSize(translatedSeqs, options, seqan::BlastProgramSelector<p>());
 

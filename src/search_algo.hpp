@@ -37,7 +37,7 @@
 #include <seqan/align_extend.h>
 
 
-#include <seqan3/range/view/translate.hpp>
+#include <seqan3/range/view/translate_join.hpp>
 #include <seqan3/io/sequence_file/input.hpp>
 #include <seqan3/search/algorithm/search.hpp>
 
@@ -357,10 +357,8 @@ loadQuery(GlobalDataHolder<c_indexType, c_origSbjAlph, c_transAlph, c_redAlph, c
     // translate
     if constexpr (c_origQryAlph != c_transAlph) // needs translation
     {
-
         globalHolder.qrySeqs = globalHolder.untranslatedQrySeqs
-                             | seqan3::view::translate //TODO geneticCode
-                             | std::view::join
+                             | seqan3::view::translate_join //TODO geneticCode
                              | std::view::transform([] (auto && elem)
                                {
                                    return std::forward<decltype(elem)>(elem) | std::ranges::to<std::vector>;
