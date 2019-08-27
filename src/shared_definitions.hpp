@@ -23,6 +23,9 @@
 
 #include <seqan3/search/fm_index/fm_index.hpp>
 #include <seqan3/search/fm_index/bi_fm_index.hpp>
+#include <seqan3/range/view/convert.hpp>
+#include <seqan3/range/view/deep.hpp>
+
 
 #include "shared_options.hpp"
 
@@ -148,16 +151,18 @@ template <typename TString>
 using TCDStringSet = std::vector<TString>; //TODO seqan3::concatenated_sequences
 
 
+// template <DbIndexType           dbIndexType,
+//           AlphabetEnum          origAlph,
+//           AlphabetEnum          transAlph>    // <- all members of index_file_options that influence types
+
 template <DbIndexType           dbIndexType,
-          AlphabetEnum          origAlph,
-          AlphabetEnum          transAlph>    // <- all members of index_file_options that influence types
+          AlphabetEnum          origAlph>    // <- all members of index_file_options that influence types
 struct index_file
 {
     index_file_options options{};
 
     TCDStringSet<std::string>                                   ids;
-    std::vector<uint64_t>                                       origSeqLengths; // only used when origAlph != transAlph
-    TCDStringSet<std::vector<_alphabetEnumToType<transAlph>>>   transSeqs;
+    TCDStringSet<std::vector<_alphabetEnumToType<origAlph>>>    seqs;
     std::vector<std::vector<uint32_t>>                          sTaxIds; //TODO double check int-width
 
     std::vector<uint32_t>                                       taxonParentIDs;
@@ -173,8 +178,7 @@ struct index_file
     {
         archive(cereal::make_nvp("options",          options),
                 cereal::make_nvp("ids",              ids),
-                cereal::make_nvp("origSeqLengths",   origSeqLengths),
-                cereal::make_nvp("transSeqs",        transSeqs),
+                cereal::make_nvp("seqs",             seqs),
                 cereal::make_nvp("sTaxIds",          sTaxIds),
                 cereal::make_nvp("taxonParentIDs",   taxonParentIDs),
                 cereal::make_nvp("taxonHeights",     taxonHeights),
@@ -194,3 +198,59 @@ struct fake_index_file
         archive(cereal::make_nvp("options",          options));
     }
 };
+
+template <typename TTargetAlph, typename TRange, typename TAdapt>
+    requires std::Same<seqan3::innermost_value_type_t<TRange>, TTargetAlph>
+TRange & initHelper(TRange & input, TAdapt &&)
+{
+    return input;
+}
+
+template <typename TTargetAlph, typename TRange, typename TAdapt>
+auto initHelper(TRange & input, TAdapt && adapt)
+{
+    return input | std::forward<TAdapt>(adapt);
+}
+
+template <template <typename ...> typename template_t, typename ...spec_t>
+struct lazy
+{};
+
+template <typename t>
+struct instantiate
+{
+    using type = t;
+};
+
+template <template <typename ...> typename template_t, typename ...spec_t>
+struct instantiate<lazy<template_t, spec_t...>>
+{
+    using type = template_t<spec_t...>;
+};
+
+template <typename t>
+using instantiate_t = typename instantiate<t>::type;
+
+template <bool decision, typename on_true_t, typename on_false_t>
+struct lazy_conditional;
+
+
+template <typename on_true_t, typename on_false_t>
+struct lazy_conditional<true, on_true_t, on_false_t>
+{
+    using type = instantiate_t<on_true_t>;
+};
+
+template <typename on_true_t, typename on_false_t>
+struct lazy_conditional<false, on_true_t, on_false_t>
+{
+    using type = instantiate_t<on_false_t>;
+};
+
+template <typename TSpec>
+using TTransAlphModString =
+  decltype(std::declval<TSpec &>() | seqan3::view::translate_join);
+
+template <typename TSpec, typename TAlph>
+using TRedAlphModString =
+  decltype(std::declval<TSpec &>() | seqan3::view::deep{seqan3::view::convert<TAlph>});

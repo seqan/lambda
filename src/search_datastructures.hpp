@@ -26,6 +26,7 @@
 #include <seqan3/alignment/scoring/gap_scheme.hpp>
 #include <seqan3/range/view/convert.hpp>
 #include <seqan3/range/view/deep.hpp>
+#include <seqan3/range/view/translate_join.hpp>
 
 #include <seqan/align_extend.h>
 
@@ -326,18 +327,8 @@ void printStats(StatsHolder const & stats, LambdaOptions const & options)
 // struct GlobalDataHolder  -- one object per program
 // ----------------------------------------------------------------------------
 
-template <typename TTargetAlph, typename TRange, typename TAdapt>
-    requires std::Same<seqan3::innermost_value_type_t<TRange>, TTargetAlph>
-TRange & initHelper(TRange & input, TAdapt &&)
-{
-    return input;
-}
-
-template <typename TTargetAlph, typename TRange, typename TAdapt>
-auto initHelper(TRange & input, TAdapt && adapt)
-{
-    return input | std::forward<TAdapt>(adapt);
-}
+template <bool decision, typename on_true_t, typename on_false_t>
+using lazy_conditional_t = typename lazy_conditional<decision, on_true_t, on_false_t>::type;
 
 template <DbIndexType   c_dbIndexType,
           AlphabetEnum  c_origSbjAlph,
@@ -377,31 +368,53 @@ public:
 //     using TSubjTag = TDirectStringTag; // even if subjects were translated they are now loaded from disk
 
     /* untranslated query sequences (ONLY USED FOR SAM/BAM OUTPUT) */
-    using TUntransQrySeqs = TCDStringSet<std::vector<TOrigQryAlph>>;
+    using TQrySeqs = TCDStringSet<std::vector<TOrigQryAlph>>;
+    using TSubjSeqs = TCDStringSet<std::vector<TOrigSbjAlph>>;
 
     /* Possibly translated but yet unreduced sequences */
-    using TTransQrySeqs  = TCDStringSet<std::vector<TTransAlph>>;
-    using TTransSubjSeqs = TCDStringSet<std::vector<TTransAlph>>;
+    // using TTransQrySeqs  = TCDStringSet<std::vector<TTransAlph>>;
+    // using TTransSubjSeqs = TCDStringSet<std::vector<TTransAlph>>;
 
-    using TSeqAn2TransSeq = seqan::String<std::conditional_t<c_transAlph == AlphabetEnum::AMINO_ACID,
-                                                      seqan::AminoAcid,
-                                                      seqan::Dna5>>;
+    // using TSeqAn2TransSeq = seqan::String<std::conditional_t<c_transAlph == AlphabetEnum::AMINO_ACID,
+                                                      // seqan::AminoAcid,
+                                                      // seqan::Dna5>>;
+
+    /* Translated sequence objects, either as modstrings or as references to original strings */
+
+    using TTransQrySeqs   =
+      lazy_conditional_t<c_origQryAlph == c_transAlph,
+                         TQrySeqs &,                                                                  // reference to owner
+                         lazy<TTransAlphModString, TQrySeqs> >;                                                        // modview
+
+    using TTransSbjSeqs   =
+      lazy_conditional_t<c_origSbjAlph == c_transAlph,
+                         TSubjSeqs &,                                                                 // reference to owner
+                         lazy<TTransAlphModString,  TSubjSeqs> >;                                                       // modview
+    // using TTransQrySeqs   =
+    //   std::conditional_t<c_origQryAlph == c_transAlph,
+    //                      TQrySeqs &,                                                               // reference to owner
+    //                      seqan3::detail::valid_template_spec_or_t<void, TTransAlphModString, TQrySeqs>>;      // modview
+
+    // using TTransSbjSeqs   =
+    //   std::conditional_t<c_origSbjAlph == c_transAlph,
+    //                      TSubjSeqs &,                                                              // reference to owner
+    //                      seqan3::detail::valid_template_spec_or_t<void, TTransAlphModString, TSubjSeqs>>;     // modview
 
     /* Reduced sequence objects, either as modstrings or as references to trans-strings */
-    template <typename TSpec>
-    using TRedAlphModString =
-        decltype(std::declval<TSpec &>() | seqan3::view::deep{seqan3::view::convert<TRedAlph>});
+    // template <typename TSpec>
+    // using TRedAlphModString =
+    //     decltype(std::declval<TSpec &>() | seqan3::view::deep{seqan3::view::convert<TRedAlph>});
 
 
     using TRedQrySeqs   =
-        std::conditional_t<c_transAlph == c_redAlph,
-                           TTransQrySeqs &,                                                        // reference to owner
-                           seqan3::detail::valid_template_spec_or_t<void, TRedAlphModString, TTransQrySeqs>>; // modview
+        lazy_conditional_t<c_transAlph == c_redAlph,
+                           TTransQrySeqs &,                                                                  // reference to owner
+                           lazy<TRedAlphModString, TTransQrySeqs, TRedAlph> >;
 
     using TRedSbjSeqs   =
-        std::conditional_t<c_transAlph == c_redAlph,
-                           TTransSubjSeqs &,                                                       // reference to owner
-                           seqan3::detail::valid_template_spec_or_t<void, TRedAlphModString, TTransSubjSeqs>>;// modview
+        lazy_conditional_t<c_transAlph == c_redAlph,
+                           TTransSbjSeqs &,                                                                 // reference to owner
+                           lazy<TRedAlphModString, TTransSbjSeqs, TRedAlph> >;
 
     /* sequence ID strings */
     using TIds          = TCDStringSet<std::string>;
@@ -431,15 +444,18 @@ public:
     using TPositions    = std::vector<size_t>;
 
     /* the actual members */
-    index_file<c_dbIndexType, c_origSbjAlph, c_transAlph> indexFile;
+    index_file<c_dbIndexType, c_origSbjAlph> indexFile;
 
+    TTransSbjSeqs       transSubjSeqs =
+        initHelper<TTransAlph>(indexFile.seqs, seqan3::view::translate_join);
     TRedSbjSeqs         redSubjSeqs =
-        initHelper<TRedAlph>(indexFile.transSeqs, seqan3::view::deep{seqan3::view::convert<TRedAlph>});
+        initHelper<TRedAlph>(transSubjSeqs, seqan3::view::deep{seqan3::view::convert<TRedAlph>});
 
-    TUntransQrySeqs     untranslatedQrySeqs;    // used iff outformat is sam or bam
-    TTransQrySeqs       qrySeqs;                // TODO: make these be a view::translate_join when available
+    TQrySeqs            qrySeqs;    // used iff outformat is sam or bam
+    TTransQrySeqs       transQrySeqs =
+        initHelper<TTransAlph>(qrySeqs, seqan3::view::translate_join);
     TRedQrySeqs         redQrySeqs =
-        initHelper<TRedAlph>(qrySeqs, seqan3::view::deep{seqan3::view::convert<TRedAlph>});
+        initHelper<TRedAlph>(transQrySeqs, seqan3::view::deep{seqan3::view::convert<TRedAlph>});
     TQryIds             qryIds;
 
     TBlastTabFile       outfileBlastTab;
@@ -494,7 +510,9 @@ public:
     using TGlobalHolder = TGlobalHolder_;
     using TMatch        = typename TGlobalHolder::TMatch;
     using TScoreExtension = seqan::AffineGaps;
-    using TSeqInfix     = decltype(std::declval<seqan3::reference_t<typename TGlobalHolder::TTransQrySeqs>>()
+    using TSeqInfix0     = decltype(std::declval<seqan3::reference_t<typename TGlobalHolder::TTransQrySeqs>>()
+                                   | seqan3::view::slice(0, 1));
+    using TSeqInfix1     = decltype(std::declval<seqan3::reference_t<typename TGlobalHolder::TTransSbjSeqs>>()
                                    | seqan3::view::slice(0, 1));
 
 
@@ -518,7 +536,8 @@ public:
 
     // regarding extension
 //     using TAlignRow = seqan::Gaps<seqan::Infix<typename TGlobalHolder::TSeqAn2TransSeq>,
-    using TAlignRow = seqan::Gaps<TSeqInfix, seqan::ArrayGaps>;
+    using TAlignRow0 = seqan::Gaps<TSeqInfix0, seqan::ArrayGaps>;
+    using TAlignRow1 = seqan::Gaps<TSeqInfix1, seqan::ArrayGaps>;
 
 #if (SEQAN_VERSION_MINOR < 4)
     using TDPContextNoSIMD = seqan::DPContext<typename seqan::Value<typename TGlobalHolder::TScoreScheme>::Type, TScoreExtension>;
@@ -540,7 +559,7 @@ public:
     using TDPContextNoSIMD  = seqan::DPContext<TDPCellNoSIMD, TTraceValueNoSIMD, TScoreHostNoSIMD, TTraceHostNoSIMD>;
 #endif
 
-    using TAliExtContext = seqan::AliExtContext_<TAlignRow, TAlignRow, TDPContextNoSIMD>;
+    using TAliExtContext = seqan::AliExtContext_<TAlignRow0, TAlignRow1, TDPContextNoSIMD>;
 
     TAliExtContext      alignContext;
 // #if defined(SEQAN_SIMD_ENABLED)
@@ -584,7 +603,7 @@ public:
         if (options.extensionMode == LambdaOptions::ExtensionMode::FULL_SIMD)
         {
             indexBeginQry = qNumFrames(blastProgram) * i * 10;
-            indexEndQry = std::min<size_t>(qNumFrames(blastProgram) * (i+1) * 10, gH.qrySeqs.size());
+            indexEndQry = std::min<size_t>(qNumFrames(blastProgram) * (i+1) * 10, gH.transQrySeqs.size());
         } else
         {
             indexBeginQry = qNumFrames(blastProgram) * i;
@@ -600,3 +619,31 @@ public:
     }
 };
 
+namespace seqan
+{
+struct BisulfiteScoreMatrix {};
+
+template <>
+struct ScoringMatrixData_<int, Dna5, BisulfiteScoreMatrix> // TODO change to DNA4
+{
+    enum
+    {
+        VALUE_SIZE = ValueSize<Dna5>::VALUE,
+        TAB_SIZE = VALUE_SIZE * VALUE_SIZE
+    };
+
+    static inline int const * getData()
+    {
+        static int const _data[TAB_SIZE] =
+        {
+            1, 0, 0, 0, 0,
+            0, 1, 0, 1, 0,
+            0, 0, 1, 0, 0,
+            0, 0, 0, 1, 0,
+            0, 0, 0, 0, 0
+        };
+        return _data;
+    }
+
+};
+} // namespace seqan
