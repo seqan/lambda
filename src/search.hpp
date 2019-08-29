@@ -320,12 +320,12 @@ void realMain(LambdaOptions     const & options)
     //                      << globalHolder.redQrySeqs.back() << "\n";
     //
     // seqan3::debug_stream << "1st Subject:\n"
-    //                      << globalHolder.redSubjSeqs.front() << "\n"
-    //                      << globalHolder.redSubjSeqs.front() << "\n";
+    //                      << globalHolder.redSbjSeqs.front() << "\n"
+    //                      << globalHolder.redSbjSeqs.front() << "\n";
     //
     // seqan3::debug_stream << "last Subject:\n"
-    //                      << globalHolder.redSubjSeqs.back() << "\n"
-    //                      << globalHolder.redSubjSeqs.back() << "\n";
+    //                      << globalHolder.redSbjSeqs.back() << "\n"
+    //                      << globalHolder.redSbjSeqs.back() << "\n";
 
     myWriteHeader(globalHolder, options);
 

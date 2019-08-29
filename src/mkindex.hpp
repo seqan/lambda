@@ -170,71 +170,60 @@ void realMain(LambdaIndexerOptions     const & options)
     index_file<c_dbIndexType, c_origAlph> f;
     f.options = options.indexFileOptions;
 
-    using TOrigSubjAlph = _alphabetEnumToType<c_origAlph>;
-    using TTransSubjAlph = _alphabetEnumToType<c_transAlph>;
-    using TRedSubjAlph = _alphabetEnumToType<c_redAlph>;
+    using TOrigSbjAlph = _alphabetEnumToType<c_origAlph>;
+    using TTransSbjAlph = _alphabetEnumToType<c_transAlph>;
+    using TRedSbjAlph = _alphabetEnumToType<c_redAlph>;
 
     {
         std::unordered_map<std::string, uint64_t> accToIdRank;
 
         // ids get saved to disk again immediately and are not kept in memory
-        // std::tie(f.ids, originalSeqs, accToIdRank) = loadSubjSeqsAndIds<TOrigSubjAlph>(options);
-        std::tie(f.ids, f.seqs, accToIdRank) = loadSubjSeqsAndIds<TOrigSubjAlph>(options);
-
-        // preserve lengths of untranslated sequences
-        // if constexpr (c_origAlph != c_transAlph)
-        //     f.origSeqLengths = saveOriginalSeqLengths(originalSeqs, options);
+        std::tie(f.ids, f.seqs, accToIdRank) = loadSubjSeqsAndIds<TOrigSbjAlph>(options);
 
         if (options.hasSTaxIds)
         {
             std::vector<bool> taxIdIsPresent;
 
             // read the mapping file and save relevant mappings to disk
-            // std::tie(f.sTaxIds, taxIdIsPresent) = mapTaxIDs(accToIdRank, std::ranges::size(originalSeqs), options);
             std::tie(f.sTaxIds, taxIdIsPresent) = mapTaxIDs(accToIdRank, std::ranges::size(f.seqs), options);
 
             // read the mapping file and save relevant mappings to disk
             std::tie(f.taxonParentIDs, f.taxonHeights, f.taxonNames) = parseAndStoreTaxTree(taxIdIsPresent, options);
         }
-
-        // translate or move-through depending on program
-        // f.seqs = translateSeqs<TTransSubjAlph>(originalSeqs, options);
     }
 
     // see if final sequence set actually fits into index
 //     checkIndexSize(translatedSeqs, options, seqan::BlastProgramSelector<p>());
 
-    using TSubjSeqs = TCDStringSet<std::vector<TOrigSubjAlph>>;
+    using TSbjSeqs = TCDStringSet<std::vector<TOrigSbjAlph>>;
 
     using TTransSbjSeqs   =
-      lazy_conditional_t<c_origAlph == c_transAlph,
-                         TSubjSeqs &,                                                              // reference to owner
-                         lazy<TTransAlphModString, TSubjSeqs> >;
+      seqan3::detail::lazy_conditional_t<c_origAlph == c_transAlph,
+                         TSbjSeqs &,                                                              // reference to owner
+                         seqan3::detail::lazy<TTransAlphModString, TSbjSeqs> >;
 
     using TRedSbjSeqs   =
-      lazy_conditional_t<c_transAlph == c_redAlph,
-                         TTransSbjSeqs &,                                                                 // reference to owner
-                         lazy<TRedAlphModString,  TTransSbjSeqs, TRedSubjAlph> >;
+      seqan3::detail::lazy_conditional_t<c_transAlph == c_redAlph,
+                         TTransSbjSeqs &,                                                          // reference to owner
+                         seqan3::detail::lazy<TRedAlphModString,  TTransSbjSeqs, TRedSbjAlph> >;
 
 
-    TTransSbjSeqs       transSubjSeqs =
-        initHelper<TTransSubjAlph>(f.seqs, seqan3::view::translate_join);
-    TRedSbjSeqs         redSubjSeqs =
-        initHelper<TRedSubjAlph>(transSubjSeqs, seqan3::view::deep{seqan3::view::convert<TRedSubjAlph>});
+    TTransSbjSeqs       transSbjSeqs =
+        initHelper<TTransSbjAlph>(f.seqs, seqan3::view::translate_join);
+    TRedSbjSeqs         redSbjSeqs =
+        initHelper<TRedSbjAlph>(transSbjSeqs, seqan3::view::deep{seqan3::view::convert<TRedSbjAlph>});
 
     if constexpr (c_origAlph != c_transAlph)
     {
-        transSubjSeqs = f.seqs
-                      | seqan3::view::translate_join;
+        transSbjSeqs = f.seqs | seqan3::view::translate_join;
     }
 
     if constexpr (c_transAlph != c_redAlph)
     {
-        redSubjSeqs = transSubjSeqs
-                    | seqan3::view::deep{seqan3::view::convert<TRedSubjAlph>};
+        redSbjSeqs = transSbjSeqs | seqan3::view::deep{seqan3::view::convert<TRedSbjAlph>};
     }
 
-    f.index = generateIndex<c_dbIndexType == DbIndexType::BI_FM_INDEX>(redSubjSeqs, options);
+    f.index = generateIndex<c_dbIndexType == DbIndexType::BI_FM_INDEX>(redSbjSeqs, options);
 
     myPrint(options, 1, "Writing Index to disk...");
     double s = sysTime();

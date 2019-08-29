@@ -48,8 +48,6 @@ inline constexpr bool is_new_range<seqan3::detail::view_take<t, b1, b2>> = true;
 template <typename t>
 SEQAN3_CONCEPT NonSeqAn2Range = is_new_range<seqan3::remove_cvref_t<t>>;
 
-static_assert(NonSeqAn2Range<seqan3::detail::view_take<ranges::drop_view<seqan3::detail::view_translate_single<ranges::ref_view<std::vector<seqan3::dna5> > > >, false, false>>, "not a nonseqan2range");
-
 template <NonSeqAn2Range T>
 struct Value<T>
 {

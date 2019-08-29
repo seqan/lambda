@@ -346,24 +346,10 @@ myWriteHeader(TGH & globalHolder, TLambdaOptions const & options)
         auto & subjSeqLengths   = seqan::contigLengths(context);
         auto & subjIds          = seqan::contigNames(context);
 
-        // set sequence seqan::lengths
-        // if constexpr (seqan::sIsTranslated(TGH::blastProgram))
-        // {
-        //     seqan::copy_range(globalHolder.indexFile.origSeqLengths, subjSeqLengths);
-        //     seqan::resize(subjSeqLengths, seqan::length(subjSeqLengths) - 1);
-        // } else
-        // {
-        //     // compute seqan::lengths ultra-fast
-        //     seqan::resize(subjSeqLengths, globalHolder.redSubjSeqs.size());
-        //     SEQAN_OMP_PRAGMA(parallel for simd)
-        //     for (size_t i = 0; i < globalHolder.redSubjSeqs.size(); ++i)
-        //         subjSeqLengths[i] = globalHolder.indexFile.seqs[i].size();
-        // }
-
         // compute seqan::lengths ultra-fast
-        seqan::resize(subjSeqLengths, globalHolder.redSubjSeqs.size());
+        seqan::resize(subjSeqLengths, globalHolder.redSbjSeqs.size());
         SEQAN_OMP_PRAGMA(parallel for simd)
-        for (size_t i = 0; i < globalHolder.redSubjSeqs.size(); ++i)
+        for (size_t i = 0; i < globalHolder.redSbjSeqs.size(); ++i)
             subjSeqLengths[i] = globalHolder.indexFile.seqs[i].size();
 
         // set namestore

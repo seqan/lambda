@@ -150,11 +150,6 @@ struct LambdaFMIndexConfigInBi : LambdaFMIndexConfig
 template <typename TString>
 using TCDStringSet = std::vector<TString>; //TODO seqan3::concatenated_sequences
 
-
-// template <DbIndexType           dbIndexType,
-//           AlphabetEnum          origAlph,
-//           AlphabetEnum          transAlph>    // <- all members of index_file_options that influence types
-
 template <DbIndexType           dbIndexType,
           AlphabetEnum          origAlph>    // <- all members of index_file_options that influence types
 struct index_file
@@ -211,41 +206,6 @@ auto initHelper(TRange & input, TAdapt && adapt)
 {
     return input | std::forward<TAdapt>(adapt);
 }
-
-template <template <typename ...> typename template_t, typename ...spec_t>
-struct lazy
-{};
-
-template <typename t>
-struct instantiate
-{
-    using type = t;
-};
-
-template <template <typename ...> typename template_t, typename ...spec_t>
-struct instantiate<lazy<template_t, spec_t...>>
-{
-    using type = template_t<spec_t...>;
-};
-
-template <typename t>
-using instantiate_t = typename instantiate<t>::type;
-
-template <bool decision, typename on_true_t, typename on_false_t>
-struct lazy_conditional;
-
-
-template <typename on_true_t, typename on_false_t>
-struct lazy_conditional<true, on_true_t, on_false_t>
-{
-    using type = instantiate_t<on_true_t>;
-};
-
-template <typename on_true_t, typename on_false_t>
-struct lazy_conditional<false, on_true_t, on_false_t>
-{
-    using type = instantiate_t<on_false_t>;
-};
 
 template <typename TSpec>
 using TTransAlphModString =

@@ -24,6 +24,7 @@
 #include <seqan3/alignment/scoring/aminoacid_scoring_scheme.hpp>
 #include <seqan3/alignment/scoring/nucleotide_scoring_scheme.hpp>
 #include <seqan3/alignment/scoring/gap_scheme.hpp>
+#include <seqan3/core/type_traits/lazy.hpp>
 #include <seqan3/range/view/convert.hpp>
 #include <seqan3/range/view/deep.hpp>
 #include <seqan3/range/view/translate_join.hpp>
@@ -327,9 +328,6 @@ void printStats(StatsHolder const & stats, LambdaOptions const & options)
 // struct GlobalDataHolder  -- one object per program
 // ----------------------------------------------------------------------------
 
-template <bool decision, typename on_true_t, typename on_false_t>
-using lazy_conditional_t = typename lazy_conditional<decision, on_true_t, on_false_t>::type;
-
 template <DbIndexType   c_dbIndexType,
           AlphabetEnum  c_origSbjAlph,
           AlphabetEnum  c_transAlph,
@@ -369,7 +367,7 @@ public:
 
     /* untranslated query sequences (ONLY USED FOR SAM/BAM OUTPUT) */
     using TQrySeqs = TCDStringSet<std::vector<TOrigQryAlph>>;
-    using TSubjSeqs = TCDStringSet<std::vector<TOrigSbjAlph>>;
+    using TSbjSeqs = TCDStringSet<std::vector<TOrigSbjAlph>>;
 
     /* Possibly translated but yet unreduced sequences */
     // using TTransQrySeqs  = TCDStringSet<std::vector<TTransAlph>>;
@@ -382,39 +380,24 @@ public:
     /* Translated sequence objects, either as modstrings or as references to original strings */
 
     using TTransQrySeqs   =
-      lazy_conditional_t<c_origQryAlph == c_transAlph,
-                         TQrySeqs &,                                                                  // reference to owner
-                         lazy<TTransAlphModString, TQrySeqs> >;                                                        // modview
+      seqan3::detail::lazy_conditional_t<c_origQryAlph == c_transAlph,
+                         TQrySeqs &,                                                               // reference to owner
+                         seqan3::detail::lazy<TTransAlphModString, TQrySeqs> >;                                               // modview
 
     using TTransSbjSeqs   =
-      lazy_conditional_t<c_origSbjAlph == c_transAlph,
-                         TSubjSeqs &,                                                                 // reference to owner
-                         lazy<TTransAlphModString,  TSubjSeqs> >;                                                       // modview
-    // using TTransQrySeqs   =
-    //   std::conditional_t<c_origQryAlph == c_transAlph,
-    //                      TQrySeqs &,                                                               // reference to owner
-    //                      seqan3::detail::valid_template_spec_or_t<void, TTransAlphModString, TQrySeqs>>;      // modview
-
-    // using TTransSbjSeqs   =
-    //   std::conditional_t<c_origSbjAlph == c_transAlph,
-    //                      TSubjSeqs &,                                                              // reference to owner
-    //                      seqan3::detail::valid_template_spec_or_t<void, TTransAlphModString, TSubjSeqs>>;     // modview
-
-    /* Reduced sequence objects, either as modstrings or as references to trans-strings */
-    // template <typename TSpec>
-    // using TRedAlphModString =
-    //     decltype(std::declval<TSpec &>() | seqan3::view::deep{seqan3::view::convert<TRedAlph>});
-
+      seqan3::detail::lazy_conditional_t<c_origSbjAlph == c_transAlph,
+                         TSbjSeqs &,                                                              // reference to owner
+                         seqan3::detail::lazy<TTransAlphModString,  TSbjSeqs> >;                                             // modview
 
     using TRedQrySeqs   =
-        lazy_conditional_t<c_transAlph == c_redAlph,
-                           TTransQrySeqs &,                                                                  // reference to owner
-                           lazy<TRedAlphModString, TTransQrySeqs, TRedAlph> >;
+        seqan3::detail::lazy_conditional_t<c_transAlph == c_redAlph,
+                           TTransQrySeqs &,                                                        // reference to owner
+                           seqan3::detail::lazy<TRedAlphModString, TTransQrySeqs, TRedAlph> >;
 
     using TRedSbjSeqs   =
-        lazy_conditional_t<c_transAlph == c_redAlph,
-                           TTransSbjSeqs &,                                                                 // reference to owner
-                           lazy<TRedAlphModString, TTransSbjSeqs, TRedAlph> >;
+        seqan3::detail::lazy_conditional_t<c_transAlph == c_redAlph,
+                           TTransSbjSeqs &,                                                        // reference to owner
+                           seqan3::detail::lazy<TRedAlphModString, TTransSbjSeqs, TRedAlph> >;
 
     /* sequence ID strings */
     using TIds          = TCDStringSet<std::string>;
@@ -446,10 +429,10 @@ public:
     /* the actual members */
     index_file<c_dbIndexType, c_origSbjAlph> indexFile;
 
-    TTransSbjSeqs       transSubjSeqs =
+    TTransSbjSeqs       transSbjSeqs =
         initHelper<TTransAlph>(indexFile.seqs, seqan3::view::translate_join);
-    TRedSbjSeqs         redSubjSeqs =
-        initHelper<TRedAlph>(transSubjSeqs, seqan3::view::deep{seqan3::view::convert<TRedAlph>});
+    TRedSbjSeqs         redSbjSeqs =
+        initHelper<TRedAlph>(transSbjSeqs, seqan3::view::deep{seqan3::view::convert<TRedAlph>});
 
     TQrySeqs            qrySeqs;    // used iff outformat is sam or bam
     TTransQrySeqs       transQrySeqs =
@@ -477,26 +460,26 @@ public:
  * !alphReduction && !indexIsFM  e.g. BLASTN and SA-Index
  *
  *   subjSeqs           is & and initialized with indexText()
- *   redSubjSeqs        is & and initialized with subjSeqs
+ *   redSbjSeqs        is & and initialized with subjSeqs
  *   indexText(dbIndex) is non-ref owner StringSet assigned by loadDbIndexFromDisk()
  *
  * !alphReduction && indexIsFM  e.g. BLASTN and FM-Index
  *
  *   subjSeqs           is non-ref owner StringSet and assigned in loadSubjects()
- *   redSubjSeqs        is & and initialized with subjSeqs
+ *   redSbjSeqs        is & and initialized with subjSeqs
  *   indexText(dbIndex) is non-ref owner StringSet, but never set (fmIndex doesnt need it)
  *
  * alphReduction && indexIsFM  e.g. default
  *
  *   subjSeqs           is non-ref owner StringSet and assigned in loadSubjects()
- *   redSubjSeqs        is lightweight reduced StringSet and initialized with subjSeqs
+ *   redSbjSeqs        is lightweight reduced StringSet and initialized with subjSeqs
  *   indexText(dbIndex) is lightweight reduced StringSet, but never set (fmIndex doesnt need it)
  *
  * alphReduction && !indexIsFM  e.g. default
  *
  *   subjSeqs           is non-ref owner StringSet and assigned in loadSubjects()
- *   redSubjSeqs        is lightweight reduced StringSet and initialized with subjSeqs
- *   indexText(dbIndex) is lightweight reduced StringSet and assigned redSubjSeqs in loadDbIndexFromDisk
+ *   redSbjSeqs        is lightweight reduced StringSet and initialized with subjSeqs
+ *   indexText(dbIndex) is lightweight reduced StringSet and assigned redSbjSeqs in loadDbIndexFromDisk
  */
 
 // ----------------------------------------------------------------------------
