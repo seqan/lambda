@@ -73,6 +73,12 @@ int searchMain(int const argc, char const ** argv)
     LambdaOptions options;
     parseCommandLine(options, argc, argv);
 
+#ifdef _OPENMP
+    omp_set_num_threads(options.threads);
+#else
+    options.threads = 1;
+#endif
+
 #ifdef NDEBUG
     try
     {
@@ -305,21 +311,21 @@ void realMain(LambdaOptions     const & options)
     loadQuery(globalHolder, options);
 
 
-    seqan3::debug_stream << "1st Query:\n"
-                         << globalHolder.qrySeqs.front() << "\n"
-                         << globalHolder.redQrySeqs.front() << "\n";
-
-    seqan3::debug_stream << "last Query:\n"
-                         << globalHolder.qrySeqs.back() << "\n"
-                         << globalHolder.redQrySeqs.back() << "\n";
-
-    seqan3::debug_stream << "1st Subject:\n"
-                         << globalHolder.redSubjSeqs.front() << "\n"
-                         << globalHolder.redSubjSeqs.front() << "\n";
-
-    seqan3::debug_stream << "last Subject:\n"
-                         << globalHolder.redSubjSeqs.back() << "\n"
-                         << globalHolder.redSubjSeqs.back() << "\n";
+    // seqan3::debug_stream << "1st Query:\n"
+    //                      << globalHolder.transQrySeqs.front() << "\n"
+    //                      << globalHolder.redQrySeqs.front() << "\n";
+    //
+    // seqan3::debug_stream << "last Query:\n"
+    //                      << globalHolder.transQrySeqs.back() << "\n"
+    //                      << globalHolder.redQrySeqs.back() << "\n";
+    //
+    // seqan3::debug_stream << "1st Subject:\n"
+    //                      << globalHolder.redSbjSeqs.front() << "\n"
+    //                      << globalHolder.redSbjSeqs.front() << "\n";
+    //
+    // seqan3::debug_stream << "last Subject:\n"
+    //                      << globalHolder.redSbjSeqs.back() << "\n"
+    //                      << globalHolder.redSbjSeqs.back() << "\n";
 
     myWriteHeader(globalHolder, options);
 
@@ -370,7 +376,6 @@ void realMain(LambdaOptions     const & options)
             }
 #endif
             // extend
-
             if (localHolder.matches.size() > 0)
                 res = iterateMatches(localHolder);
 
@@ -403,4 +408,3 @@ void realMain(LambdaOptions     const & options)
     printStats(globalHolder.stats, options);
 
 }
-

@@ -735,4 +735,3 @@ printOptions(LambdaOptions const & options)
     #endif
               << "\n";
 }
-

@@ -37,7 +37,7 @@
 #include <seqan/align_extend.h>
 
 
-#include <seqan3/range/view/translate.hpp>
+#include <seqan3/range/view/translate_join.hpp>
 #include <seqan3/io/sequence_file/input.hpp>
 #include <seqan3/search/algorithm/search.hpp>
 
@@ -269,10 +269,16 @@ loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
         throw 88;
     }
 
+    if constexpr (!std::is_lvalue_reference_v<typename TGlobalHolder::TTransSbjSeqs>) // is view
+    {
+        // update view, now that underlying range is available
+        globalHolder.transSbjSeqs = globalHolder.indexFile.seqs | seqan3::view::translate_join;
+    }
+
     if constexpr (!std::is_lvalue_reference_v<typename TGlobalHolder::TRedSbjSeqs>) // is view
     {
         // update view, now that underlying range is available
-        globalHolder.redSubjSeqs = globalHolder.indexFile.transSeqs
+        globalHolder.redSbjSeqs = globalHolder.transSbjSeqs
                                  | seqan3::view::deep{seqan3::view::convert<typename TGlobalHolder::TRedAlph>};
     }
 
@@ -284,13 +290,20 @@ loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
     if constexpr (seqan::sIsTranslated(TGlobalHolder::blastProgram))
     {
         // last value has sum of lengths
-        seqan::context(globalHolder.outfileBlastTab).dbTotalLength  = globalHolder.indexFile.origSeqLengths.back();
-        seqan::context(globalHolder.outfileBlastTab).dbNumberOfSeqs = globalHolder.indexFile.origSeqLengths.size() - 1;
+        // seqan::context(globalHolder.outfileBlastTab).dbTotalLength  = globalHolder.indexFile.origSeqLengths.back();
+        // seqan::context(globalHolder.outfileBlastTab).dbNumberOfSeqs = globalHolder.indexFile.origSeqLengths.size() - 1;
+        seqan::context(globalHolder.outfileBlastTab).dbTotalLength  =
+            std::accumulate(globalHolder.indexFile.seqs.begin(), globalHolder.indexFile.seqs.end(), 0,
+                [](size_t sum, std::vector<typename TGlobalHolder::TOrigSbjAlph> const & a)
+                {
+                    return sum + std::ranges::size(a);
+                });
+        seqan::context(globalHolder.outfileBlastTab).dbNumberOfSeqs = std::ranges::size(globalHolder.indexFile.seqs);
     } else
     {
         seqan::context(globalHolder.outfileBlastTab).dbTotalLength  =
-            std::ranges::distance(globalHolder.redSubjSeqs | std::view::join);
-        seqan::context(globalHolder.outfileBlastTab).dbNumberOfSeqs = std::ranges::size(globalHolder.redSubjSeqs);
+            std::ranges::distance(globalHolder.redSbjSeqs | std::view::join);
+        seqan::context(globalHolder.outfileBlastTab).dbNumberOfSeqs = std::ranges::size(globalHolder.redSbjSeqs);
     }
 
     seqan::context(globalHolder.outfileBlastTab).dbName = options.indexFilePath;
@@ -325,14 +338,14 @@ loadQuery(GlobalDataHolder<c_indexType, c_origSbjAlph, c_transAlph, c_redAlph, c
           LambdaOptions                                                                       const & options)
 {
     using TGH = GlobalDataHolder<c_indexType, c_origSbjAlph, c_transAlph, c_redAlph, c_origQryAlph>;
-    using TOrigAlph = typename TGH::TOrigQryAlph;
+    // using TOrigAlph = typename TGH::TOrigQryAlph;
     using TRedAlph  = typename TGH::TRedAlph;
     double start = sysTime();
 
     std::string strIdent = "Loading Query Sequences and Ids...";
     myPrint(options, 1, strIdent);
 
-    TCDStringSet<std::vector<TOrigAlph>> origSeqs;
+    // TCDStringSet<std::vector<TOrigAlph>> origSeqs;
 
     // load
     seqan3::sequence_file_input<QueryFileTraits<c_origQryAlph>, seqan3::fields<seqan3::field::ID, seqan3::field::SEQ>>
@@ -340,43 +353,31 @@ loadQuery(GlobalDataHolder<c_indexType, c_origSbjAlph, c_transAlph, c_redAlph, c
 
 // TODO change to this once https://github.com/seqan/seqan3/issues/1135 is fixed
 //     globalHolder.qryIds                 = std::move(seqan3::get<0>(infile));
-//     globalHolder.untranslatedQrySeqs    = std::move(seqan3::get<1>(infile));
+//     globalHolder.qrySeqs    = std::move(seqan3::get<1>(infile));
 
     for (auto & [ id, seq ] : infile)
     {
         globalHolder.qryIds.push_back(std::move(id));
-        globalHolder.untranslatedQrySeqs.push_back(std::move(seq));
+        globalHolder.qrySeqs.push_back(std::move(seq));
     }
 
 
-    if (globalHolder.untranslatedQrySeqs.size() == 0)
+    if (globalHolder.qrySeqs.size() == 0)
     {
         throw QueryException{"Zero sequences submitted."};
     }
 
-    // translate
-    if constexpr (c_origQryAlph != c_transAlph) // needs translation
-    {
+    // TODO if constexpr BLASTN mode, reverse complements
 
-        globalHolder.qrySeqs = globalHolder.untranslatedQrySeqs
-                             | seqan3::view::translate //TODO geneticCode
-                             | std::view::join
-                             | std::view::transform([] (auto && elem)
-                               {
-                                   return std::forward<decltype(elem)>(elem) | std::ranges::to<std::vector>;
-                               })
-                             | std::ranges::to<decltype(globalHolder.qrySeqs)>;
-    }
-    else
+    if constexpr (c_origQryAlph != c_transAlph)
     {
-        // TODO if constexpr BLASTN mode, reverse complements
-        // TODO this will become unecessary once qrySeqs is a view
-        std::swap(globalHolder.qrySeqs, globalHolder.untranslatedQrySeqs);
+        globalHolder.transQrySeqs = globalHolder.qrySeqs
+                                  | seqan3::view::translate_join;
     }
 
     if constexpr (c_transAlph != c_redAlph)
     {
-        globalHolder.redQrySeqs = globalHolder.qrySeqs
+        globalHolder.redQrySeqs = globalHolder.transQrySeqs
                                 | seqan3::view::deep{seqan3::view::convert<TRedAlph>};
     }
 
@@ -384,13 +385,13 @@ loadQuery(GlobalDataHolder<c_indexType, c_origSbjAlph, c_transAlph, c_redAlph, c
     myPrint(options, 1, " done.\n");
 
     unsigned long maxLen = 0ul;
-    for (auto const & s : globalHolder.qrySeqs)
+    for (auto const & s : globalHolder.transQrySeqs)
         if (s.size() > maxLen)
             maxLen = s.size();
 
     myPrint(options, 2, "Runtime: ", finish, "s \n",
             "Number of effective query sequences: ",
-            globalHolder.qrySeqs.size(), "\nLongest query sequence: ",
+            globalHolder.transQrySeqs.size(), "\nLongest query sequence: ",
             maxLen, "\n\n");
 }
 
@@ -428,14 +429,14 @@ seedLooksPromising(LocalDataHolder<TGlobalHolder> const & lH,
         }
 
         effectiveLength = std::min({
-                            static_cast<uint64_t>(std::ranges::size(lH.gH.qrySeqs[m.qryId]) - effectiveQBegin),
-                            static_cast<uint64_t>(std::ranges::size(lH.gH.indexFile.transSeqs[m.subjId]) - effectiveSBegin),
+                            static_cast<uint64_t>(std::ranges::size(lH.gH.transQrySeqs[m.qryId]) - effectiveQBegin),
+                            static_cast<uint64_t>(std::ranges::size(lH.gH.transSbjSeqs[m.subjId]) - effectiveSBegin),
                             effectiveLength});
     }
 
-    auto const & qSeq = lH.gH.qrySeqs[m.qryId]
+    auto const & qSeq = lH.gH.transQrySeqs[m.qryId]
                       | seqan3::view::slice(effectiveQBegin, effectiveQBegin + effectiveLength);
-    auto const & sSeq = lH.gH.indexFile.transSeqs[m.subjId]
+    auto const & sSeq = lH.gH.transSbjSeqs[m.subjId]
                       | seqan3::view::slice(effectiveSBegin, effectiveSBegin + effectiveLength);
 
     int             s = 0;
@@ -479,7 +480,7 @@ search(LocalDataHolder<TGlobalHolder> & lH)
         for (size_t seedBegin = 0; /* below */; seedBegin += lH.options.seedOffset)
         {
             // skip proteine 'X' or Dna 'N'
-            while ((lH.gH.qrySeqs[i][seedBegin] == seqan3::assign_char_to('`', TTransAlph{})) && // assume that '°' gets converted to UNKNOWN
+            while ((lH.gH.transQrySeqs[i][seedBegin] == seqan3::assign_char_to('`', TTransAlph{})) && // assume that '°' gets converted to UNKNOWN
                    (seedBegin <= (lH.gH.redQrySeqs[i].size() - lH.options.seedLength)))
                 ++seedBegin;
 
@@ -670,7 +671,7 @@ _setupAlignInfix(TBlastMatch & bm,
 {
     int64_t startMod = (int64_t)m.subjStart - (int64_t)m.qryStart;
 
-    bm.qEnd = lH.gH.qrySeqs[m.qryId].size();
+    bm.qEnd = lH.gH.transQrySeqs[m.qryId].size();
     decltype(bm.qEnd) band = _bandSize(bm.qEnd , lH);
     if (startMod >= 0)
     {
@@ -682,15 +683,15 @@ _setupAlignInfix(TBlastMatch & bm,
         bm.sStart = 0;
         bm.qStart = -startMod;
     }
-    bm.sEnd = std::min<size_t>(bm.sStart + bm.qEnd - bm.qStart + band, lH.gH.indexFile.transSeqs[m.subjId].size());
+    bm.sEnd = std::min<size_t>(bm.sStart + bm.qEnd - bm.qStart + band, lH.gH.transSbjSeqs[m.subjId].size());
 
     if (bm.sStart >= band)
         bm.sStart -= band;
     else
         bm.sStart = 0;
 
-    seqan::assignSource(bm.alignRow0, lH.gH.qrySeqs[m.qryId] | seqan3::view::slice(bm.qStart, bm.qEnd));
-    seqan::assignSource(bm.alignRow1, lH.gH.indexFile.transSeqs[m.subjId] | seqan3::view::slice(bm.sStart, bm.sEnd));
+    seqan::assignSource(bm.alignRow0, lH.gH.transQrySeqs[m.qryId] | seqan3::view::slice(bm.qStart, bm.qEnd));
+    seqan::assignSource(bm.alignRow1, lH.gH.transSbjSeqs[m.subjId] | seqan3::view::slice(bm.sStart, bm.sEnd));
 }
 
 template <typename TBlastMatch,
@@ -757,8 +758,8 @@ _expandAlign(TBlastMatch & bm,
     auto oldSLen = seqan::length(source(bm.alignRow1));
 
     // replace source from underneath without triggereng reset
-    bm.alignRow0._source = lH.gH.qrySeqs[_untrueQryId(bm, lH)];
-    bm.alignRow1._source = lH.gH.indexFile.transSeqs[_untrueSubjId(bm, lH)];
+    bm.alignRow0._source = lH.gH.transQrySeqs[_untrueQryId(bm, lH)] | seqan3::view::slice(0, std::ranges::size(lH.gH.transQrySeqs[_untrueQryId(bm, lH)]));
+    bm.alignRow1._source = lH.gH.transSbjSeqs[_untrueSubjId(bm, lH)] | seqan3::view::slice(0, std::ranges::size(lH.gH.transSbjSeqs[_untrueSubjId(bm, lH)]));
 
     // insert fields into array gaps
     if (bm.alignRow0._array[0] == 0)
@@ -906,8 +907,8 @@ iterateMatchesFullSimd(TLocalHolder & lH)
 //     using TPos          = typename TMatch::TPos;
     using TBlastPos     = uint32_t; //TODO why can't this be == TPos
     using TBlastMatch   = BlastMatch<
-                           typename TLocalHolder::TAlignRow,
-                           typename TLocalHolder::TAlignRow,
+                           typename TLocalHolder::TAlignRow0,
+                           typename TLocalHolder::TAlignRow1,
                            TBlastPos,
                            decltype(lH.gH.qryIds[0]),
                            decltype(lH.gH.indexFile.subjIds[0]),
@@ -946,7 +947,7 @@ iterateMatchesFullSimd(TLocalHolder & lH)
 
         bm.sLength = sIsTranslated(TGlobalHolder::blastProgram)
                         ? lH.gH.untransSubjSeqLengths[bm._n_sId]
-                        : length(lH.gH.indexFile.transSeqs[it->subjId]);
+                        : length(lH.gH.transSbjSeqs[it->subjId]);
 
         _setupAlignInfix(bm, *it, lH);
 
@@ -1000,7 +1001,7 @@ iterateMatchesFullSimd(TLocalHolder & lH)
         computeEValueThreadSafe(bm,
                                 qIsTranslated(TGlobalHolder::blastProgram)
                                     ? lH.gH.untransQrySeqLengths[bm._n_qId]
-                                    : length(lH.gH.qrySeqs[bm._n_qId]),
+                                    : length(lH.gH.transQrySeqs[bm._n_qId]),
                                 seqan::context(lH.gH.outfileBlastTab));
 
         if (bm.eValue > lH.options.eCutOff)
@@ -1074,7 +1075,7 @@ iterateMatchesFullSimd(TLocalHolder & lH)
             TBlastRecord record(lH.gH.qryIds[itLast->_n_qId]);
             record.qLength = (qIsTranslated(TGlobalHolder::blastProgram)
                                 ? lH.gH.untransQrySeqLengths[itLast->_n_qId]
-                                : length(lH.gH.qrySeqs[itLast->_n_qId]));
+                                : length(lH.gH.transQrySeqs[itLast->_n_qId]));
             // move the matches into the record
             record.matches.splice(record.matches.begin(),
                                   blastMatches,
@@ -1109,8 +1110,8 @@ iterateMatchesFullSerial(TLocalHolder & lH)
     using TBlastPos     = uint32_t; //TODO why can't this be == TPos
 
     using TBlastMatch   = seqan::BlastMatch<
-                           typename TLocalHolder::TAlignRow,
-                           typename TLocalHolder::TAlignRow,
+                           typename TLocalHolder::TAlignRow0,
+                           typename TLocalHolder::TAlignRow1,
                            TBlastPos,
                            seqan3::value_type_t<typename TGlobalHolder::TQryIds>,// TODO: reference_t?
                            seqan3::value_type_t<typename TGlobalHolder::TSubjIds>// TODO: reference_t?
@@ -1126,8 +1127,8 @@ iterateMatchesFullSerial(TLocalHolder & lH)
 
     TBlastRecord record(lH.gH.qryIds[trueQryId]);
     record.qLength = qIsTranslated(TGlobalHolder::blastProgram) ?
-                     lH.gH.untranslatedQrySeqs[trueQryId].size() :
-                     lH.gH.qrySeqs[trueQryId].size();
+                     lH.gH.qrySeqs[trueQryId].size() :
+                     lH.gH.transQrySeqs[trueQryId].size();
 
 
     unsigned band = _bandSize(record.qLength, lH);
@@ -1150,8 +1151,8 @@ iterateMatchesFullSerial(TLocalHolder & lH)
         bm._n_sId = it->subjId / seqan::sNumFrames(TGlobalHolder::blastProgram);
 
         bm.sLength = seqan::sIsTranslated(TGlobalHolder::blastProgram)
-                        ? lH.gH.indexFile.origSeqLengths[bm._n_sId]
-                        : lH.gH.indexFile.transSeqs[it->subjId].size();
+                        ? lH.gH.indexFile.seqs[it->subjId].size()
+                        : lH.gH.transSbjSeqs[it->subjId].size();
 
         _setupAlignInfix(bm, *it, lH);
 

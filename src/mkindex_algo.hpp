@@ -25,6 +25,7 @@
 #include <seqan3/io/detail/misc_input.hpp>
 #include <seqan3/range/view/convert.hpp>
 #include <seqan3/range/view/translate.hpp>
+#include <seqan3/range/view/translate_join.hpp>
 #include <seqan3/std/charconv>
 #include <seqan3/std/concepts>
 
@@ -179,83 +180,6 @@ auto loadSubjSeqsAndIds(LambdaIndexerOptions const & options)
     myPrint(options, 2, "\n");
 
     return ret;
-}
-
-// --------------------------------------------------------------------------
-// Function loadSubj()
-// --------------------------------------------------------------------------
-
-template <typename TSeqSet>
-std::vector<uint64_t>
-saveOriginalSeqLengths(TSeqSet const & seqSet,
-                       LambdaIndexerOptions const & /**/)
-{
-//     double start = sysTime();
-//     myPrint(options, 1, "Dumping untranslated subject lengths...");
-
-    std::vector<uint64_t> limits;
-    limits.resize(std::ranges::size(seqSet) + 1); // last holds sum
-
-    uint64_t sum = 0;
-    for (size_t i = 0; i < limits.size() - 1; ++i)
-    {
-        limits[i] = std::ranges::size(seqSet[i]);
-        sum += std::ranges::size(seqSet[i]);
-    }
-    limits.back() = sum;
-
-    return limits;
-
-//     std::string _path = options.indexDir + "/untranslated_seq_lengths";
-//
-//     {
-//         std::ofstream os{_path.c_str()};
-//
-//         cereal::BinaryOutputArchive oarchive(os); // Create an output archive
-//         oarchive(limits);
-//     }
-//
-//     myPrint(options, 1, " done.\n");
-//     double finish = sysTime() - start;
-//     myPrint(options, 2, "Runtime: ", finish, "s \n\n");
-}
-
-// --------------------------------------------------------------------------
-// Function loadSubj()
-// --------------------------------------------------------------------------
-
-template <typename TTransAlph, typename TOrigAlph>
-TCDStringSet<std::vector<TTransAlph>>
-translateSeqs(TCDStringSet<std::vector<TOrigAlph>> & in,
-              LambdaIndexerOptions const & options)
-{
-    TCDStringSet<std::vector<TTransAlph>> out;
-
-    double start = sysTime();
-    myPrint(options, 1, "Translating Subj Sequences...");
-
-    auto tmp  = in | seqan3::view::translate //TODO geneticCode
-                   | std::view::join
-                   | std::view::transform([] (auto && elem)
-                     {
-                         return std::forward<decltype(elem)>(elem) | std::ranges::to<std::vector>;
-                     })
-                   | std::ranges::to<decltype(out)>;
-
-    myPrint(options, 1, " done.\n");
-    double finish = sysTime() - start;
-    myPrint(options, 2, "Runtime: ", finish, "s \n\n");
-
-    return out;
-}
-
-template <typename TTransAlph, typename TOrigAlph>
-    requires std::Same<TTransAlph, TOrigAlph>
-TCDStringSet<std::vector<TTransAlph>>
-translateSeqs(TCDStringSet<std::vector<TOrigAlph>> & in,
-              LambdaIndexerOptions const & /**/)
-{
-    return std::move(in);
 }
 
 // --------------------------------------------------------------------------
