@@ -332,6 +332,11 @@ myWriteHeader(TGH & globalHolder, TLambdaOptions const & options)
         }
         else // BLAST-tab
         {
+            if (options.blastTabularWithComments)
+                seqan::context(globalHolder.outfileBlastTab).tabularSpec = seqan::BlastTabularSpec::COMMENTS;
+            else
+                seqan::context(globalHolder.outfileBlastTab).tabularSpec = seqan::BlastTabularSpec::NO_COMMENTS;
+
             seqan::context(globalHolder.outfileBlastTab).versionString += versionString;
             seqan::open(globalHolder.outfileBlastTab, options.output.c_str());
             seqan::context(globalHolder.outfileBlastTab).fields = options.columns;
