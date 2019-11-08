@@ -36,7 +36,7 @@
 
 #include <seqan/align_extend.h>
 
-
+#include <seqan3/range/view/complement.hpp>
 #include <seqan3/range/view/translate_join.hpp>
 #include <seqan3/io/sequence_file/input.hpp>
 #include <seqan3/search/algorithm/search.hpp>
@@ -367,7 +367,26 @@ loadQuery(GlobalDataHolder<c_indexType, c_origSbjAlph, c_transAlph, c_redAlph, c
         throw QueryException{"Zero sequences submitted."};
     }
 
-    // TODO if constexpr BLASTN mode, reverse complements
+    if constexpr (TGH::blastProgram == seqan::BlastProgram::BLASTN)
+    {
+        //TODO view-ify this at some point. Better yet, move to index.
+        // ATTENTION, this won't work well if qryseqs is concatenated_sequences
+
+        decltype(globalHolder.qrySeqs) tmp;
+
+        tmp.resize(std::ranges::size(globalHolder.qrySeqs) * 2);
+        for (size_t i = 0; i < std::ranges::size(tmp); ++i)
+        {
+            if (i % 2 == 0)
+                tmp[i] = std::move(globalHolder.qrySeqs[i / 2]);
+            else
+                tmp[i] = tmp[i-1] | std::view::reverse | seqan3::view::complement;
+//                        | seqan3::views::to<std::ranges::range_value_t<decltype(tmp)>>;
+
+        }
+
+        std::swap(globalHolder.qrySeqs, tmp);
+    }
 
     if constexpr (c_origQryAlph != c_transAlph)
     {

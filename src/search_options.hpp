@@ -58,6 +58,7 @@ struct LambdaOptions : public SharedOptions
     bool            revComp     = true;
 
     int32_t         outFileFormat; // -1 = BLAST-Report, 0 = BLAST-Tabular, 1 = SAM, 2 = BAM
+    bool            blastTabularWithComments = false;
     std::string     output = "output.m8";
     std::vector<seqan::BlastMatchField<>::Enum> columns;
     std::string     outputBam;
@@ -423,8 +424,18 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         options.outFileFormat = 2;
     else if (std::filesystem::path(outputPath).extension() == ".m0")
         options.outFileFormat = -1;
-    else
+    else if (std::filesystem::path(outputPath).extension() == ".m8")
+    {
         options.outFileFormat = 0;
+        options.blastTabularWithComments = false;
+    } else if (std::filesystem::path(outputPath).extension() == ".m9")
+    {
+        options.outFileFormat = 0;
+        options.blastTabularWithComments = true;
+    } else
+    {
+        throw 99;
+    }
 
     // help page for output columns
     if (outputColumnsTmp == "help")
