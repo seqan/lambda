@@ -42,9 +42,8 @@ matrix:
       addons:
         apt:
           sources: ['ubuntu-toolchain-r-test']
-          packages: ['g++-7', 'cmake', 'cmake-data', 'zlib1g-dev', 'libbz2-dev', 'libboost-dev', 'python', 'python-nose', 'python-jinja2', 'python-pip'] # g++ required for newer libstdc++
-      install: export CXX="/usr/local/clang-5.0.0/bin/clang++"
-      env: CMAKE_ARGS="-DCMAKE_BUILD_TYPE=RelWithDebInfo" LD_LIBRARY_PATH="/usr/local/clang-5.0.0/lib/:${LD_LIBRARY_PATH}"
+          packages: ['clang-5.0', 'g++-7', 'cmake', 'cmake-data', 'zlib1g-dev', 'libbz2-dev', 'libboost-dev', 'python', 'python-nose', 'python-jinja2', 'python-pip'] # g++ required for newer libstdc++
+      install: export CXX="clang++-5.0"
 
     - os: osx
       compiler: gcc-4.9
@@ -55,6 +54,7 @@ matrix:
       env: CMAKE_ARGS="-DLAMBDA_FASTBUILD=1 -DLAMBDA_STATIC_BUILD=1"
 
     - os: osx
+      osx_image: xcode10.1
       compiler: gcc-7
       before_install:
         - brew update
