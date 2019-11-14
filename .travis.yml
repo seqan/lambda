@@ -25,6 +25,7 @@ matrix:
     env:
 
   - os: osx
+    osx_image: xcode10.1
     compiler: gcc-9
     before_install:
       - brew update
