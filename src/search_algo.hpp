@@ -966,7 +966,7 @@ iterateMatchesFullSimd(TLocalHolder & lH)
 
         bm.sLength = sIsTranslated(TGlobalHolder::blastProgram)
                         ? lH.gH.untransSubjSeqLengths[bm._n_sId]
-                        : length(lH.gH.transSbjSeqs[it->subjId]);
+                        : length(lH.gH.subjSeqs[_untrueSubjId(bm, lH)]);
 
         _setupAlignInfix(bm, *it, lH);
 
@@ -1020,8 +1020,8 @@ iterateMatchesFullSimd(TLocalHolder & lH)
         computeEValueThreadSafe(bm,
                                 qIsTranslated(TGlobalHolder::blastProgram)
                                     ? lH.gH.untransQrySeqLengths[bm._n_qId]
-                                    : length(lH.gH.transQrySeqs[bm._n_qId]),
-                                seqan::context(lH.gH.outfileBlastTab));
+                                    : length(lH.gH.qrySeqs[_untrueQryId(bm, lH)]),
+                                context(lH.gH.outfile));
 
         if (bm.eValue > lH.options.eCutOff)
         {
@@ -1094,7 +1094,7 @@ iterateMatchesFullSimd(TLocalHolder & lH)
             TBlastRecord record(lH.gH.qryIds[itLast->_n_qId]);
             record.qLength = (qIsTranslated(TGlobalHolder::blastProgram)
                                 ? lH.gH.untransQrySeqLengths[itLast->_n_qId]
-                                : length(lH.gH.transQrySeqs[itLast->_n_qId]));
+                                : length(lH.gH.qrySeqs[_untrueQryId(*itLast, lH)]));
             // move the matches into the record
             record.matches.splice(record.matches.begin(),
                                   blastMatches,

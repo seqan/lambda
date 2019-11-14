@@ -440,7 +440,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     // help page for output columns
     if (outputColumnsTmp == "help")
     {
-        std::cout << "Please specify the columns in this format -oc 'column1 column2', i.e. space-seperated and "
+        std::cout << "Please specify the columns in this format -oc 'column1 column2', i.e. space-separated and "
                   << "enclosed in single quotes.\nThe specifiers are the same as in NCBI Blast, currently "
                   << "the following are supported:\n";
         for (unsigned i = 0; i < seqan::length(seqan::BlastMatchField<>::implemented); ++i)
@@ -497,7 +497,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     // help page for SAM/BAM tags
     if (samBamTagsTmp == "help")
     {
-        std::cout << "Please specify the tags in this format -oc 'tag1 tag2', i.e. space-seperated and "
+        std::cout << "Please specify the tags in this format -oc 'tag1 tag2', i.e. space-separated and "
                   << "enclosed in quotes. The order of tags is not preserved.\nThe following specifiers are "
                   << "supported:\n";
 
