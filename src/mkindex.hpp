@@ -55,7 +55,13 @@ void argConv2(LambdaIndexerOptions const & options);
 template <DbIndexType   c_indexType,
           AlphabetEnum  c_origAlph,
           AlphabetEnum  c_transAlph>
-void argConv3(LambdaIndexerOptions const & options);
+void argConv3a(LambdaIndexerOptions const & options);
+
+template <DbIndexType   c_indexType,
+          AlphabetEnum  c_origAlph,
+          AlphabetEnum  c_transAlph>
+void argConv3b(LambdaIndexerOptions const & options);
+
 
 template <DbIndexType           c_indexType,
           AlphabetEnum          c_origAlph,
@@ -129,7 +135,7 @@ void argConv1(LambdaIndexerOptions & options)
     {
 //         case AlphabetEnum::DNA4:            return argConv2<c_indexType, AlphabetEnum::DNA4>(options);
         case AlphabetEnum::DNA5:            return argConv2<c_indexType, AlphabetEnum::DNA5>(options);
-        case AlphabetEnum::AMINO_ACID:      return argConv3<c_indexType, AlphabetEnum::AMINO_ACID, AlphabetEnum::AMINO_ACID>(options);
+        case AlphabetEnum::AMINO_ACID:      return argConv3a<c_indexType, AlphabetEnum::AMINO_ACID, AlphabetEnum::AMINO_ACID>(options);
         default:                            throw 43;
     }
 }
@@ -141,8 +147,8 @@ void argConv2(LambdaIndexerOptions const & options)
     switch (options.indexFileOptions.transAlph)
     {
 //         case AlphabetEnum::DNA4:            return realMain<c_indexType, c_origAlph, AlphabetEnum::DNA4>(options);
-        case AlphabetEnum::DNA5:            return realMain<c_indexType, c_origAlph, AlphabetEnum::DNA5, AlphabetEnum::DNA5>(options);
-        case AlphabetEnum::AMINO_ACID:      return argConv3<c_indexType, c_origAlph, AlphabetEnum::AMINO_ACID>(options);
+        case AlphabetEnum::DNA5:            return argConv3b<c_indexType, c_origAlph, AlphabetEnum::DNA5>(options);
+        case AlphabetEnum::AMINO_ACID:      return argConv3a<c_indexType, c_origAlph, AlphabetEnum::AMINO_ACID>(options);
         default:                            throw 44;
     }
 }
@@ -150,7 +156,7 @@ void argConv2(LambdaIndexerOptions const & options)
 template <DbIndexType   c_indexType,
           AlphabetEnum  c_origAlph,
           AlphabetEnum  c_transAlph>
-void argConv3(LambdaIndexerOptions const & options)
+void argConv3a(LambdaIndexerOptions const & options)
 {
     switch (options.indexFileOptions.redAlph)
     {
@@ -158,6 +164,19 @@ void argConv3(LambdaIndexerOptions const & options)
         case AlphabetEnum::MURPHY10:        return realMain<c_indexType, c_origAlph, c_transAlph, AlphabetEnum::MURPHY10>(options);
         //TODO other reduced alphabets
         default:                            throw 45;
+    }
+}
+
+template <DbIndexType   c_indexType,
+          AlphabetEnum  c_origAlph,
+          AlphabetEnum  c_transAlph>
+void argConv3b(LambdaIndexerOptions const & options)
+{
+    switch (options.indexFileOptions.redAlph)
+    {
+        case AlphabetEnum::DNA5:       return realMain<c_indexType, c_origAlph, c_transAlph, AlphabetEnum::DNA5>(options);
+        case AlphabetEnum::DNA4:       return realMain<c_indexType, c_origAlph, c_transAlph, AlphabetEnum::DNA4>(options);
+        default:                       throw 364;
     }
 }
 
@@ -199,19 +218,20 @@ void realMain(LambdaIndexerOptions     const & options)
 
     using TTransSbjSeqs   =
       seqan3::detail::lazy_conditional_t<c_origAlph == c_transAlph,
-                         TSbjSeqs &,                                                              // reference to owner
+                         TSbjSeqs &,                                                               // reference to owner
                          seqan3::detail::lazy<TTransAlphModString, TSbjSeqs> >;
 
     using TRedSbjSeqs   =
       seqan3::detail::lazy_conditional_t<c_transAlph == c_redAlph,
                          TTransSbjSeqs &,                                                          // reference to owner
-                         seqan3::detail::lazy<TRedAlphModString,  TTransSbjSeqs, TRedSbjAlph> >;
-
+                         seqan3::detail::lazy_conditional_t<c_transAlph != AlphabetEnum::AMINO_ACID,
+                                         seqan3::detail::lazy<TRedNuclAlphModString, TTransSbjSeqs, TRedSbjAlph>,
+                                         seqan3::detail::lazy<TRedAlphModString, TTransSbjSeqs, TRedSbjAlph> > >;
 
     TTransSbjSeqs       transSbjSeqs =
-        initHelper<TTransSbjAlph>(f.seqs, seqan3::view::translate_join);
+        initHelper<TTransSbjAlph>(f.seqs, seqan3::view::translate_join, seqan3::view::translate_join);
     TRedSbjSeqs         redSbjSeqs =
-        initHelper<TRedSbjAlph>(transSbjSeqs, seqan3::view::deep{seqan3::view::convert<TRedSbjAlph>});
+        initHelper<TRedSbjAlph>(transSbjSeqs, seqan3::view::deep{seqan3::view::convert<TRedSbjAlph>}, seqan3::view::dna_n_to_random);
 
     if constexpr (c_origAlph != c_transAlph)
     {
@@ -220,7 +240,14 @@ void realMain(LambdaIndexerOptions     const & options)
 
     if constexpr (c_transAlph != c_redAlph)
     {
-        redSbjSeqs = transSbjSeqs | seqan3::view::deep{seqan3::view::convert<TRedSbjAlph>};
+        if constexpr (c_transAlph != AlphabetEnum::AMINO_ACID)
+        {
+            redSbjSeqs = transSbjSeqs | seqan3::view::dna_n_to_random;
+        }
+        else
+        {
+            redSbjSeqs = transSbjSeqs | seqan3::view::deep{seqan3::view::convert<TRedSbjAlph>};
+        }
     }
 
     f.index = generateIndex<c_dbIndexType == DbIndexType::BI_FM_INDEX>(redSbjSeqs, options);

@@ -40,6 +40,7 @@
 #include <seqan3/range/view/translate_join.hpp>
 #include <seqan3/io/sequence_file/input.hpp>
 #include <seqan3/search/algorithm/search.hpp>
+#include <seqan3/alphabet/aminoacid/aa27.hpp>
 
 // #include "search_datastructures.hpp"
 
@@ -278,8 +279,16 @@ loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
     if constexpr (!std::is_lvalue_reference_v<typename TGlobalHolder::TRedSbjSeqs>) // is view
     {
         // update view, now that underlying range is available
-        globalHolder.redSbjSeqs = globalHolder.transSbjSeqs
-                                 | seqan3::view::deep{seqan3::view::convert<typename TGlobalHolder::TRedAlph>};
+        if constexpr (TGlobalHolder::blastProgram == seqan::BlastProgram::BLASTN)
+        {
+            globalHolder.redSbjSeqs = globalHolder.transSbjSeqs
+                                    | seqan3::view::dna_n_to_random;
+        }
+        else
+        {
+            globalHolder.redSbjSeqs = globalHolder.transSbjSeqs
+                                    | seqan3::view::deep{seqan3::view::convert<typename TGlobalHolder::TRedAlph>};
+        }
     }
 
     double finish = sysTime() - start;
@@ -396,9 +405,18 @@ loadQuery(GlobalDataHolder<c_indexType, c_origSbjAlph, c_transAlph, c_redAlph, c
 
     if constexpr (c_transAlph != c_redAlph)
     {
-        globalHolder.redQrySeqs = globalHolder.transQrySeqs
-                                | seqan3::view::deep{seqan3::view::convert<TRedAlph>};
+        if constexpr (c_transAlph != AlphabetEnum::AMINO_ACID)
+        {
+            globalHolder.redQrySeqs = globalHolder.transQrySeqs
+                                    | seqan3::view::dna_n_to_random;
+        }
+        else
+        {
+            globalHolder.redQrySeqs = globalHolder.transQrySeqs
+                                    | seqan3::view::deep{seqan3::view::convert<TRedAlph>};
+        }
     }
+
 
     double finish = sysTime() - start;
     myPrint(options, 1, " done.\n");

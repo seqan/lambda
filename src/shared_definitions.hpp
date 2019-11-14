@@ -28,6 +28,7 @@
 
 
 #include "shared_options.hpp"
+#include "view_dna_n_to_random.hpp"
 
 // ==========================================================================
 // Global variables
@@ -194,17 +195,26 @@ struct fake_index_file
     }
 };
 
-template <typename TTargetAlph, typename TRange, typename TAdapt>
+template <typename TTargetAlph, typename TRange, typename TAdaptProt, typename TAdaptNucl>
     requires std::Same<seqan3::innermost_value_type_t<TRange>, TTargetAlph>
-TRange & initHelper(TRange & input, TAdapt &&)
+TRange & initHelper(TRange & input, TAdaptProt &&, TAdaptNucl &&)
 {
     return input;
 }
 
-template <typename TTargetAlph, typename TRange, typename TAdapt>
-auto initHelper(TRange & input, TAdapt && adapt)
+template <typename TTargetAlph, typename TRange, typename TAdaptProt, typename TAdaptNucl>
+    requires seqan3::NucleotideAlphabet<TTargetAlph> &&
+             (!std::Same<seqan3::innermost_value_type_t<TRange>, TTargetAlph>)
+auto initHelper(TRange & input, TAdaptProt &&, TAdaptNucl && adaptNucl)
 {
-    return input | std::forward<TAdapt>(adapt);
+    return input | std::forward<TAdaptNucl>(adaptNucl);
+}
+
+template <typename TTargetAlph, typename TRange, typename TAdaptProt, typename TAdaptNucl>
+    requires !std::Same<seqan3::innermost_value_type_t<TRange>, TTargetAlph>
+auto initHelper(TRange & input, TAdaptProt && adaptProt, TAdaptNucl &&)
+{
+    return input | std::forward<TAdaptProt>(adaptProt);
 }
 
 template <typename TSpec>
@@ -214,3 +224,7 @@ using TTransAlphModString =
 template <typename TSpec, typename TAlph>
 using TRedAlphModString =
   decltype(std::declval<TSpec &>() | seqan3::view::deep{seqan3::view::convert<TAlph>});
+
+template <typename TSpec, typename TAlph>
+using TRedNuclAlphModString =
+  decltype(std::declval<TSpec &>() | seqan3::view::dna_n_to_random);
