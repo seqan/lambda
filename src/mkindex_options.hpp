@@ -120,17 +120,24 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
         "other than BLAST Pairwise (.m0).");
 
     std::string inputAlphabetTmp = "auto";
-    std::string alphabetReductionTmp = "murphy10";
+    std::string alphabetReductionTmp;
     int geneticCodeTmp = 1;
 
     if (options.nucleotide_mode)
     {
+        alphabetReductionTmp = "dna4";
         options.indexFileOptions.origAlph     = AlphabetEnum::DNA5;
         options.indexFileOptions.transAlph    = AlphabetEnum::DNA5;
-        options.indexFileOptions.redAlph      = AlphabetEnum::DNA5;
+        options.indexFileOptions.redAlph      = AlphabetEnum::DNA4;
+
+        parser.add_section("Alphabet reduction");
+
+        parser.add_option(alphabetReductionTmp, 'r', "alphabet-reduction", "Alphabet Reduction for seeding phase.",
+            seqan3::option_spec::ADVANCED, seqan3::value_list_validator({"none", "dna4"}));
     }
     else
     {
+        alphabetReductionTmp = "murphy10";
         options.indexFileOptions.origAlph   = AlphabetEnum::UNDEFINED;
         options.indexFileOptions.transAlph  = AlphabetEnum::AMINO_ACID;
         options.indexFileOptions.redAlph    = AlphabetEnum::MURPHY10;
@@ -189,6 +196,13 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
         else
             options.indexFileOptions.redAlph    = _alphabetNameToEnum(alphabetReductionTmp);
         options.indexFileOptions.geneticCode    = static_cast<seqan3::genetic_code>(geneticCodeTmp);
+    }
+    else
+    {
+        if (alphabetReductionTmp == "none")
+            options.indexFileOptions.redAlph    = AlphabetEnum::DNA5;
+        else
+            options.indexFileOptions.redAlph    = _alphabetNameToEnum(alphabetReductionTmp);
     }
 
     // set algorithm option

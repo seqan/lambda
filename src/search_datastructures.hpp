@@ -382,22 +382,26 @@ public:
     using TTransQrySeqs   =
       seqan3::detail::lazy_conditional_t<c_origQryAlph == c_transAlph,
                          TQrySeqs &,                                                               // reference to owner
-                         seqan3::detail::lazy<TTransAlphModString, TQrySeqs> >;                                               // modview
+                         seqan3::detail::lazy<TTransAlphModString, TQrySeqs> >;                               // modview
 
     using TTransSbjSeqs   =
       seqan3::detail::lazy_conditional_t<c_origSbjAlph == c_transAlph,
-                         TSbjSeqs &,                                                              // reference to owner
-                         seqan3::detail::lazy<TTransAlphModString,  TSbjSeqs> >;                                             // modview
+                         TSbjSeqs &,                                                               // reference to owner
+                         seqan3::detail::lazy<TTransAlphModString,  TSbjSeqs> >;                              // modview
 
     using TRedQrySeqs   =
-        seqan3::detail::lazy_conditional_t<c_transAlph == c_redAlph,
-                           TTransQrySeqs &,                                                        // reference to owner
-                           seqan3::detail::lazy<TRedAlphModString, TTransQrySeqs, TRedAlph> >;
+     seqan3::detail::lazy_conditional_t<c_transAlph == c_redAlph,
+                        TTransQrySeqs &,                                                           // reference to owner
+                        seqan3::detail::lazy_conditional_t<c_transAlph != AlphabetEnum::AMINO_ACID,
+                                        seqan3::detail::lazy<TRedNuclAlphModString, TTransQrySeqs, TRedAlph>,
+                                        seqan3::detail::lazy<TRedAlphModString, TTransQrySeqs, TRedAlph> > >;
 
     using TRedSbjSeqs   =
-        seqan3::detail::lazy_conditional_t<c_transAlph == c_redAlph,
-                           TTransSbjSeqs &,                                                        // reference to owner
-                           seqan3::detail::lazy<TRedAlphModString, TTransSbjSeqs, TRedAlph> >;
+     seqan3::detail::lazy_conditional_t<c_transAlph == c_redAlph,
+                        TTransSbjSeqs &,                                                           // reference to owner
+                        seqan3::detail::lazy_conditional_t<c_transAlph != AlphabetEnum::AMINO_ACID,
+                                        seqan3::detail::lazy<TRedNuclAlphModString, TTransSbjSeqs, TRedAlph>,
+                                        seqan3::detail::lazy<TRedAlphModString, TTransSbjSeqs, TRedAlph> > >;
 
     /* sequence ID strings */
     using TIds          = TCDStringSet<std::string>;
@@ -430,15 +434,16 @@ public:
     index_file<c_dbIndexType, c_origSbjAlph> indexFile;
 
     TTransSbjSeqs       transSbjSeqs =
-        initHelper<TTransAlph>(indexFile.seqs, seqan3::view::translate_join);
+        initHelper<TTransAlph>(indexFile.seqs, seqan3::view::translate_join, seqan3::view::translate_join);
     TRedSbjSeqs         redSbjSeqs =
-        initHelper<TRedAlph>(transSbjSeqs, seqan3::view::deep{seqan3::view::convert<TRedAlph>});
+        initHelper<TRedAlph>(transSbjSeqs, seqan3::view::deep{seqan3::view::convert<TRedAlph>}, seqan3::view::dna_n_to_random);
 
-    TQrySeqs            qrySeqs;    // used iff outformat is sam or bam
+    TQrySeqs            qrySeqs; // used iff outformat is sam or bam
     TTransQrySeqs       transQrySeqs =
-        initHelper<TTransAlph>(qrySeqs, seqan3::view::translate_join);
+        initHelper<TTransAlph>(qrySeqs, seqan3::view::translate_join, seqan3::view::translate_join);
     TRedQrySeqs         redQrySeqs =
-        initHelper<TRedAlph>(transQrySeqs, seqan3::view::deep{seqan3::view::convert<TRedAlph>});
+        initHelper<TRedAlph>(transQrySeqs, seqan3::view::deep{seqan3::view::convert<TRedAlph>}, seqan3::view::dna_n_to_random);
+
     TQryIds             qryIds;
 
     TBlastTabFile       outfileBlastTab;
