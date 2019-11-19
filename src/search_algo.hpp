@@ -503,16 +503,13 @@ search(LocalDataHolder<TGlobalHolder> & lH)
     using TTransAlph = typename TGlobalHolder::TTransAlph;
     using TMatch = typename TGlobalHolder::TMatch;
 
-    seqan3::configuration const cfg = seqan3::search_cfg::max_error{seqan3::search_cfg::total{1},
-                                                                    seqan3::search_cfg::substitution{1},
-                                                                    seqan3::search_cfg::insertion{0},
-                                                                    seqan3::search_cfg::deletion{0}};
+    seqan3::configuration const cfg =
+        seqan3::search_cfg::max_error{seqan3::search_cfg::substitution{lH.options.maxSeedDist}};
 
     for (size_t i = lH.indexBeginQry; i < lH.indexEndQry; ++i)
     {
         if (lH.gH.redQrySeqs[i].size() < lH.options.seedLength)
             continue;
-
 
         for (size_t seedBegin = 0; /* below */; seedBegin += lH.options.seedOffset)
         {
@@ -526,7 +523,8 @@ search(LocalDataHolder<TGlobalHolder> & lH)
                 break;
 
             auto results = seqan3::search(lH.gH.redQrySeqs[i] | seqan3::view::slice(seedBegin, seedBegin + lH.options.seedLength),
-                                          lH.gH.indexFile.index);
+                                          lH.gH.indexFile.index,
+                                          cfg);
 
             for (auto [ subjNo, subjOffset ] : results)
             {
@@ -537,16 +535,11 @@ search(LocalDataHolder<TGlobalHolder> & lH)
                           static_cast<typename TMatch::TPos>(subjOffset),
                           static_cast<typename TMatch::TPos>(subjOffset + lH.options.seedLength)};
 
-                bool discarded = false;
-
                 ++lH.stats.hitsAfterSeeding;
-                if (!seedLooksPromising(lH, m))
-                {
-                    discarded = true;
-                    ++lH.stats.hitsFailedPreExtendTest;
-                }
 
-                if (!discarded)
+                if (!seedLooksPromising(lH, m))
+                    ++lH.stats.hitsFailedPreExtendTest;
+                else
                     lH.matches.emplace_back(m);
             }
         }
