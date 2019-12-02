@@ -79,7 +79,7 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
 
     // TODO Change file extensions, make more generic
     parser.add_option(options.dbFile, 'd', "database", "Database sequences.", seqan3::option_spec::REQUIRED,
-        seqan3::input_file_validator({"fa", "fq", "fasta", "fastq", "gz"}));
+        seqan3::input_file_validator{{"fa", "fq", "fasta", "fastq", "gz"}});
 
     std::vector<std::string> taxExtensions{"accession2taxid", "dat"};
 #ifdef SEQAN_HAS_ZLIB
@@ -109,7 +109,7 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
     parser.add_option(options.indexFilePath, 'i', "index",
         "The output path for the index file.",
         seqan3::option_spec::DEFAULT,
-        seqan3::output_file_validator({"lba", "lta"}));
+        seqan3::output_file_validator{{"lba", "lta"}});
 
     std::string dbIndexTypeTmp = "fm";
     parser.add_option(dbIndexTypeTmp, '\0', "db-index-type", "FM-Index oder bidirectional FM-Index.",
@@ -133,7 +133,7 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
         parser.add_section("Alphabet reduction");
 
         parser.add_option(alphabetReductionTmp, 'r', "alphabet-reduction", "Alphabet Reduction for seeding phase.",
-            seqan3::option_spec::ADVANCED, seqan3::value_list_validator({"none", "dna4"}));
+            seqan3::option_spec::ADVANCED, seqan3::value_list_validator{"none", "dna4"});
     }
     else
     {
@@ -147,23 +147,23 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
         parser.add_option(inputAlphabetTmp,'a', "input-alphabet",
             "Alphabet of the database sequences (specify to override auto-detection); "
             "if input is Dna, it will be translated.",
-            seqan3::option_spec::ADVANCED, seqan3::value_list_validator({"auto", "dna5", "aminoacid"}));
+            seqan3::option_spec::ADVANCED, seqan3::value_list_validator{"auto", "dna5", "aminoacid"});
 
         parser.add_option(geneticCodeTmp, 'g', "genetic-code",
             "The translation table to use if input is Dna. See "
             "https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi?mode=c"
             " for ids. (default is generic)", seqan3::option_spec::ADVANCED,
-            seqan3::value_list_validator({0, 1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 13, 14, 15, 16, 21, 22, 23, 24, 25}));
+            seqan3::value_list_validator{0, 1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 13, 14, 15, 16, 21, 22, 23, 24, 25});
 
         parser.add_option(alphabetReductionTmp, 'r', "alphabet-reduction", "Alphabet Reduction for seeding phase.",
-            seqan3::option_spec::ADVANCED, seqan3::value_list_validator({"none", "murphy10"}));
+            seqan3::option_spec::ADVANCED, seqan3::value_list_validator{"none", "murphy10"});
     }
 
     std::string algorithmTmp = "radixsort";
     parser.add_option(algorithmTmp, '\0', "algorithm",
         "Algorithm for SA construction (also used for FM; see Memory Requirements below!).",
         seqan3::option_spec::ADVANCED,
-        seqan3::value_list_validator({"mergesort", "quicksortbuckets", "quicksort", "radixsort", "skew7ext"}));
+        seqan3::value_list_validator{"mergesort", "quicksortbuckets", "quicksort", "radixsort", "skew7ext"});
 
     parser.add_option(options.threads, 't', "threads",
         "Number of threads to run concurrently (ignored if a == skew7ext).", seqan3::option_spec::ADVANCED,

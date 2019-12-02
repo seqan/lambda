@@ -219,7 +219,7 @@ argConv0(LambdaOptions & options)
     switch (options.indexFileOptions.indexType)
     {
         case DbIndexType::FM_INDEX:     return argConv1<DbIndexType::FM_INDEX>(options);
-        case DbIndexType::BI_FM_INDEX:  return argConv1<DbIndexType::BI_FM_INDEX>(options);
+        // case DbIndexType::BI_FM_INDEX:  return argConv1<DbIndexType::BI_FM_INDEX>(options);
         default: throw 52;
     }
 }
@@ -331,9 +331,7 @@ void realMain(LambdaOptions     const & options)
 
     loadDbIndexFromDisk(globalHolder, options);
 
-
     loadQuery(globalHolder, options);
-
 
     // seqan3::debug_stream << "1st Query:\n"
     //                      << globalHolder.transQrySeqs.front() << "\n"

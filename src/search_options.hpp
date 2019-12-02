@@ -158,7 +158,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     // TODO Better solution for file extensions
     parser.add_option(options.queryFile, 'q', "query", "Query sequences.", seqan3::option_spec::REQUIRED,
-        seqan3::input_file_validator({"fa", "fasta", "fq", "fastq", "gz"}));
+        seqan3::input_file_validator{{"fa", "fasta", "fq", "fastq", "gz"}});
 
     std::string inputAlphabetTmp = "auto";
     int32_t geneticCodeTmp = 1;
@@ -171,14 +171,14 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     {
         parser.add_option(inputAlphabetTmp, 'a', "input-alphabet",
             "Alphabet of the query sequences (specify to override auto-detection). Dna sequences will be translated.",
-            seqan3::option_spec::ADVANCED, seqan3::value_list_validator({"auto", "dna5", "aminoacid"}));
+            seqan3::option_spec::ADVANCED, seqan3::value_list_validator{"auto", "dna5", "aminoacid"});
 
         parser.add_option(geneticCodeTmp, 'g', "genetic-code",
             "The translation table to use if input is Dna. See "
             "https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi?mode=c"
             " for ids. Default is to use the same table that was used for the index or 1/CANONICAL if the index "
             "was not translated.", seqan3::option_spec::ADVANCED,
-            seqan3::value_list_validator({0, 1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 13, 14, 15, 16, 21, 22, 23, 24, 25}));
+            seqan3::value_list_validator{0, 1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 13, 14, 15, 16, 21, 22, 23, 24, 25});
     }
 
     // TODO Does this input directory structure work?
@@ -189,7 +189,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
                         (options.nucleotide_mode ? "mkindexn" : "mkindexp") +
                         "' command).",
                       seqan3::option_spec::REQUIRED,
-                      seqan3::input_file_validator({"lba", "lta"}));
+                      seqan3::input_file_validator{{"lba", "lta"}});
 
     parser.add_section("Output options");
 
@@ -200,7 +200,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
                       "File to hold reports on hits (.m* are blastall -m* formats; .m8 is tab-seperated "
                       ".m9 is tab-seperated with with comments, .m0 is pairwise format).",
                       seqan3::option_spec::DEFAULT,
-                      seqan3::output_file_validator({"m0", "m8", "m9", "bam", "sam", "gz", "bz2"}));
+                      seqan3::output_file_validator{{"m0", "m8", "m9", "bam", "sam", "gz", "bz2"}});
 
     std::string outputColumnsTmp = "std";
     parser.add_option(outputColumnsTmp, '\0', "output-columns",
@@ -239,7 +239,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     std::string samBamSeqDescrTmp = "uniq";
     parser.add_option(samBamSeqDescrTmp, '\0', "sam-bam-seq", samBamSeqDescr + " If set to uniq than the sequence is "
         "omitted iff it is identical to the previous match's subsequence.", seqan3::option_spec::ADVANCED,
-        seqan3::value_list_validator({"always", "uniq", "never"}));
+        seqan3::value_list_validator{"always", "uniq", "never"});
 
     std::string samBamTagsTmp = "AS NM ae ai qf";
     parser.add_option(samBamTagsTmp, '\0', "sam-bam-tags",
@@ -250,7 +250,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     parser.add_option(samBamClip, '\0', "sam-bam-clip",
         "Whether to hard-clip or soft-clip the regions beyond the local match. Soft-clipping retains the full sequence "
         "in the output file, but obviously uses more space.", seqan3::option_spec::ADVANCED,
-        seqan3::value_list_validator({"hard", "soft"}));
+        seqan3::value_list_validator{"hard", "soft"});
 
     parser.add_option(options.versionInformationToOutputFile, '\0', "version-to-outputfile",
         "Write the Lambda program tag and version number to the output file.", seqan3::option_spec::HIDDEN);
@@ -344,7 +344,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     {
         parser.add_option(options.scoringMethod,'s', "scoring-scheme",
             "Use '45' for Blosum45; '62' for Blosum62 (default); '80' for Blosum80.", seqan3::option_spec::ADVANCED,
-            seqan3::value_list_validator({45, 62, 80}));
+            seqan3::value_list_validator{45, 62, 80});
     }
 
     if (options.nucleotide_mode)
@@ -377,11 +377,11 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 #ifdef SEQAN_SIMD_ENABLED
     parser.add_option(extensionModeTmp,'m', "extension-mode",
         "Choice of extension algorithms.", seqan3::option_spec::ADVANCED,
-        seqan3::value_list_validator({"fullSerial", "fullSIMD"}));
+        seqan3::value_list_validator{"fullSerial", "fullSIMD"});
 #else
     parser.add_option(extensionModeTmp,'m', "extension-mode",
         "Choice of extension algorithms.", seqan3::option_spec::ADVANCED,
-        seqan3::value_list_validator({"fullSerial"}));
+        seqan3::value_list_validator<std::string>{"fullSerial"});
 #endif
 
     parser.add_section("Tuning");

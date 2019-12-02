@@ -23,9 +23,9 @@
 
 #include <seqan3/io/sequence_file/input.hpp>
 #include <seqan3/io/detail/misc_input.hpp>
-#include <seqan3/range/view/convert.hpp>
-#include <seqan3/range/view/translate.hpp>
-#include <seqan3/range/view/translate_join.hpp>
+#include <seqan3/range/views/convert.hpp>
+#include <seqan3/range/views/translate.hpp>
+#include <seqan3/range/views/translate_join.hpp>
 #include <seqan3/std/charconv>
 #include <seqan3/std/concepts>
 
@@ -85,7 +85,7 @@ auto loadSubjSeqsAndIds(LambdaIndexerOptions const & options)
     auto extractAccIds = [&accToIdRank, &accRegEx, &noAcc, &multiAcc] (auto && id, uint64_t const rank)
     {
 
-        std::conditional_t<(bool)std::Constructible<std::string const &, decltype(id)>, std::string const &, std::string>
+        std::conditional_t<(bool)std::constructible_from<std::string const &, decltype(id)>, std::string const &, std::string>
         buf{id};
 
         uint64_t count = 0;
@@ -111,7 +111,7 @@ auto loadSubjSeqsAndIds(LambdaIndexerOptions const & options)
     double start = sysTime();
     myPrint(options, 1, "Loading Subject Sequences and Ids...");
 
-    using seq_traits = std::conditional_t<seqan3::NucleotideAlphabet<TOrigAlph>,
+    using seq_traits = std::conditional_t<seqan3::nucleotide_alphabet<TOrigAlph>,
                                           seqan3::sequence_file_input_default_traits_dna,
                                           seqan3::sequence_file_input_default_traits_aa>;
     seqan3::sequence_file_input<seq_traits, seqan3::fields<seqan3::field::ID, seqan3::field::SEQ>>
@@ -124,7 +124,7 @@ auto loadSubjSeqsAndIds(LambdaIndexerOptions const & options)
             extractAccIds(id, count);
 
         if (options.truncateIDs)
-            ids.push_back(id | seqan3::view::take_until(seqan3::is_space) | std::ranges::to<std::string>);
+            ids.push_back(id | seqan3::views::take_until(seqan3::is_space) | seqan3::views::to<std::string>);
         else
             ids.push_back(std::move(id));
 
@@ -405,7 +405,7 @@ auto parseAndStoreTaxTree(std::vector<bool>          & taxIdIsPresent,
     while (std::ranges::begin(file_view) != std::ranges::end(file_view))
     {
         // read line
-        buf = file_view | seqan3::view::take_line | std::ranges::to<std::string>;
+        buf = file_view | seqan3::views::take_line | seqan3::views::to<std::string>;
 
         uint32_t n = 0;
         uint32_t parent = 0;
@@ -614,7 +614,7 @@ auto parseAndStoreTaxTree(std::vector<bool>          & taxIdIsPresent,
     while (std::ranges::begin(file_view2) != std::ranges::end(file_view2))
     {
         // read line
-        buf = file_view | seqan3::view::take_line | std::ranges::to<std::string>;
+        buf = file_view | seqan3::views::take_line | seqan3::views::to<std::string>;
 
         uint32_t taxId = 0;
 
@@ -691,42 +691,29 @@ auto parseAndStoreTaxTree(std::vector<bool>          & taxIdIsPresent,
 
 
 template <bool is_bi,
+          AlphabetEnum c_redAlph,
           typename TStringSet>
 auto generateIndex(TStringSet                       & seqs,
                    LambdaIndexerOptions       const & options)
 {
     using TIndex = std::conditional_t<is_bi,
-                                      seqan3::bi_fm_index<seqan3::text_layout::collection>,
-                                      seqan3::fm_index<seqan3::text_layout::collection>>;
+                                      seqan3::bi_fm_index<seqan3::innermost_value_type_t<decltype(seqs)>, seqan3::text_layout::collection>,
+                                      seqan3::fm_index<seqan3::innermost_value_type_t<decltype(seqs)>, seqan3::text_layout::collection>>;
+    using TRedAlph       = _alphabetEnumToType<c_redAlph>;
+
     TIndex index;
 
     myPrint(options, 1, "Generating Index...");
     double s = sysTime();
 
-    if constexpr (std::Same<seqan3::innermost_value_type_t<TStringSet>, seqan3::aa27>)
+    if constexpr (std::same_as<seqan3::innermost_value_type_t<TStringSet>, TRedAlph>)
     {
-        switch (options.indexFileOptions.redAlph)
-        {
-            case AlphabetEnum::MURPHY10:
-            {
-                auto redSeqs = seqs | seqan3::view::deep{seqan3::view::convert<seqan3::aa10murphy>};
-                index = TIndex{redSeqs};
-            } break;
-
-            case AlphabetEnum::AMINO_ACID: // no reduction
-            {
-                index = TIndex{seqs};
-            } break;
-
-            default:
-            {
-                throw std::runtime_error{"This reduced alphabet is not handled correctly."};
-            } break;
-        }
+         index = TIndex{seqs};
     }
-    else // BLASTN
+    else
     {
-        index = TIndex{seqs};
+        auto redSeqs = seqs | seqan3::views::deep{seqan3::views::convert<TRedAlph>};
+        index = TIndex{redSeqs};
     }
 
     double e = sysTime() - s;
