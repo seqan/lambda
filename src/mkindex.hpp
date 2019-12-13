@@ -115,7 +115,7 @@ void argConv0(LambdaIndexerOptions & options)
     switch (options.indexFileOptions.indexType)
     {
         case DbIndexType::FM_INDEX:         return argConv1<DbIndexType::FM_INDEX>(options);
-        case DbIndexType::BI_FM_INDEX:      return argConv1<DbIndexType::BI_FM_INDEX>(options);
+        // case DbIndexType::BI_FM_INDEX:      return argConv1<DbIndexType::BI_FM_INDEX>(options);
         default:                            throw 42;
     }
 }
@@ -186,7 +186,7 @@ template <DbIndexType   c_dbIndexType,
           AlphabetEnum  c_redAlph>
 void realMain(LambdaIndexerOptions     const & options)
 {
-    index_file<c_dbIndexType, c_origAlph> f;
+    index_file<c_dbIndexType, c_origAlph, c_redAlph> f;
     f.options = options.indexFileOptions;
 
     using TOrigSbjAlph = _alphabetEnumToType<c_origAlph>;
@@ -229,28 +229,28 @@ void realMain(LambdaIndexerOptions     const & options)
                                          seqan3::detail::lazy<TRedAlphModString, TTransSbjSeqs, TRedSbjAlph> > >;
 
     TTransSbjSeqs       transSbjSeqs =
-        initHelper<TTransSbjAlph>(f.seqs, seqan3::view::translate_join, seqan3::view::translate_join);
+        initHelper<TTransSbjAlph>(f.seqs, seqan3::views::translate_join, seqan3::views::translate_join);
     TRedSbjSeqs         redSbjSeqs =
-        initHelper<TRedSbjAlph>(transSbjSeqs, seqan3::view::deep{seqan3::view::convert<TRedSbjAlph>}, seqan3::view::dna_n_to_random);
+        initHelper<TRedSbjAlph>(transSbjSeqs, seqan3::views::deep{seqan3::views::convert<TRedSbjAlph>}, seqan3::views::dna_n_to_random);
 
     if constexpr (c_origAlph != c_transAlph)
     {
-        transSbjSeqs = f.seqs | seqan3::view::translate_join;
+        transSbjSeqs = f.seqs | seqan3::views::translate_join;
     }
 
     if constexpr (c_transAlph != c_redAlph)
     {
         if constexpr (c_transAlph != AlphabetEnum::AMINO_ACID)
         {
-            redSbjSeqs = transSbjSeqs | seqan3::view::dna_n_to_random;
+            redSbjSeqs = transSbjSeqs | seqan3::views::dna_n_to_random;
         }
         else
         {
-            redSbjSeqs = transSbjSeqs | seqan3::view::deep{seqan3::view::convert<TRedSbjAlph>};
+            redSbjSeqs = transSbjSeqs | seqan3::views::deep{seqan3::views::convert<TRedSbjAlph>};
         }
     }
 
-    f.index = generateIndex<c_dbIndexType == DbIndexType::BI_FM_INDEX>(redSbjSeqs, options);
+    f.index = generateIndex<c_dbIndexType == DbIndexType::BI_FM_INDEX, c_redAlph>(redSbjSeqs, options);
 
     myPrint(options, 1, "Writing Index to disk...");
     double s = sysTime();

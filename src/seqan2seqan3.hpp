@@ -4,7 +4,7 @@
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
 #include <seqan3/alphabet/concept.hpp>
 #include <seqan3/core/type_traits/pre.hpp>
-#include <seqan3/range/view/translate_join.hpp>
+#include <seqan3/range/views/translate_join.hpp>
 #include <seqan3/std/ranges>
 #include <seqan3/std/span>
 
@@ -13,7 +13,7 @@
 namespace seqan
 {
 
-template <std::ranges::InputRange T>
+template <std::ranges::input_range T>
     requires !std::is_lvalue_reference_v<seqan3::reference_t<T>>
 inline void const * getObjectId(T const & me)
 {
@@ -37,7 +37,7 @@ inline constexpr bool is_new_range<std::span<t, j>> = true;
 template <typename ...ts>
 inline constexpr bool is_new_range<ranges::transform_view<ts...>> = true;
 template <typename ...ts>
-inline constexpr bool is_new_range<std::ranges::subrange<ts...>> = true;
+inline constexpr bool is_new_range<ranges::subrange<ts...>> = true;
 template <typename ...ts>
 inline constexpr bool is_new_range<seqan3::detail::view_translate_join<ts...>> = true;
 template <typename ...ts>
@@ -146,11 +146,11 @@ struct Reference<Iter<T const, StdIteratorAdaptor> >
 };
 template <NonSeqAn2Range T>
 struct IsContiguous<T> :
-    std::conditional_t<std::ranges::ContiguousRange<T>, True, False>
+    std::conditional_t<std::ranges::contiguous_range<T>, True, False>
 {};
 template <NonSeqAn2Range T>
 struct HasSubscriptOperator<T> :
-    std::conditional_t<std::ranges::RandomAccessRange<T>, True, False>
+    std::conditional_t<std::ranges::random_access_range<T>, True, False>
 {};
 
 template <NonSeqAn2Range T>
@@ -162,10 +162,10 @@ SEQAN_CONCEPT_IMPL((T), (StlContainerConcept));
 // range stuff
 // –---------------------------------------------------------------------------
 
-template <std::ranges::ForwardRange TSource, typename TVal, typename TSpec>
+template <std::ranges::forward_range TSource, typename TVal, typename TSpec>
 void copy_range(TSource && in, String<TVal, TSpec> & out)
 {
-    if constexpr (std::ranges::SizedRange<TSource>)
+    if constexpr (std::ranges::sized_range<TSource>)
     {
         resize(out, std::ranges::size(in));
         size_t i = 0;
@@ -180,20 +180,20 @@ void copy_range(TSource && in, String<TVal, TSpec> & out)
     }
 }
 
-// // template <typename TValue, typename TSpec, std::ranges::InputRange T>
+// // template <typename TValue, typename TSpec, std::ranges::input_range T>
 // // inline void append(String<TValue, TSpec> & out, T const & in)
 // // {
-// //     if constexpr (std::ranges::SizedRange<T>)
+// //     if constexpr (std::ranges::sized_range<T>)
 // //         reserve(out, length(out) + std::ranges::size(in));
 // //
 // //     for (auto && v : in)
 // //         appendValue(out, std::forward<decltype(v)>(v));
 // // }
 // //
-// // template <typename TValue, typename TSpec, std::ranges::InputRange T>
+// // template <typename TValue, typename TSpec, std::ranges::input_range T>
 // // inline void append(String<TValue, TSpec> & out, T & in)
 // // {
-// //     if constexpr (std::ranges::SizedRange<T>)
+// //     if constexpr (std::ranges::sized_range<T>)
 // //         reserve(out, length(out) + std::ranges::size(in));
 // //
 // //     for (auto && v : in)
@@ -205,8 +205,8 @@ void copy_range(TSource && in, String<TVal, TSpec> & out)
 // alphabet stuff
 // –---------------------------------------------------------------------------
 
-template <typename stream_t, seqan3::Alphabet alph_t>
-    requires !std::Integral<alph_t>
+template <typename stream_t, seqan3::alphabet alph_t>
+    requires !std::integral<alph_t>
 inline void write(stream_t & s, alph_t const alph)
 {
     write(s, seqan3::to_char(alph));
@@ -215,27 +215,27 @@ inline void write(stream_t & s, alph_t const alph)
 
 
 template <typename alph_t>
-    requires !std::Integral<alph_t> && requires (alph_t & a) { { seqan3::to_char(a) }; }
+    requires !std::integral<alph_t> && requires (alph_t & a) { { seqan3::to_char(a) }; }
 inline bool operator==(alph_t alph, char c)
 {
     return seqan3::to_char(alph) == c;
 }
 
 template <typename alph_t>
-    requires !std::Integral<alph_t> && requires (alph_t & a) { { seqan3::to_char(a) }; }
+    requires !std::integral<alph_t> && requires (alph_t & a) { { seqan3::to_char(a) }; }
 inline bool operator==(char c, alph_t alph)
 {
     return seqan3::to_char(alph) == c;
 }
 
-template <typename TValue, typename TSequenceValue, typename TSpec, seqan3::AminoacidAlphabet alph_t>
+template <typename TValue, typename TSequenceValue, typename TSpec, seqan3::aminoacid_alphabet alph_t>
 inline auto score(Score<TValue, ScoreMatrix<TSequenceValue, TSpec>> const & scheme, alph_t const a1, alph_t const a2)
 {
     return score(scheme, AminoAcid{seqan3::to_char(a1)}, AminoAcid{seqan3::to_char(a2)});
 }
 
 // conflict with seqan::complement
-template <typename TValue, typename TSpec, seqan3::NucleotideAlphabet alph_t>
+template <typename TValue, typename TSpec, seqan3::nucleotide_alphabet alph_t>
 inline auto score(Score<TValue, TSpec> const & scheme, alph_t const a1, alph_t const a2)
 {
     return score(scheme, Iupac{seqan3::to_char(a1)}, Iupac{seqan3::to_char(a2)});

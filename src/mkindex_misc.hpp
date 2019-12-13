@@ -23,8 +23,8 @@
 
 #include <seqan3/core/char_operations/predicate.hpp>
 #include <seqan3/range/detail/misc.hpp>         // seqan3::detail::consume
-#include <seqan3/range/view/take_line.hpp>
-#include <seqan3/range/view/take_until.hpp>
+#include <seqan3/range/views/take_line.hpp>
+#include <seqan3/range/views/take_until.hpp>
 
 bool setEnv(std::string const & key, std::string const & value)
 {
@@ -48,7 +48,7 @@ _readMappingFileUniProt(TInputView                                            & 
                         std::unordered_map<std::string, uint64_t>       const & accToIdRank)
 {
     // skip line with headers
-    seqan3::detail::consume(fiv | seqan3::view::take_line_or_throw);
+    seqan3::detail::consume(fiv | seqan3::views::take_line_or_throw);
 
     //TODO this is too slow, investigate whether its the lookup or the allocs
     std::string acc;
@@ -57,19 +57,19 @@ _readMappingFileUniProt(TInputView                                            & 
     while (std::ranges::begin(fiv) != std::ranges::end(fiv))
     {
         // read accession number
-        acc = fiv | seqan3::view::take_until(seqan3::is_blank) | std::ranges::to<std::string>; //TODO and_consume
+        acc = fiv | seqan3::views::take_until(seqan3::is_blank) | seqan3::views::to<std::string>; //TODO and_consume
         // skip whitespace
-        seqan3::detail::consume(fiv | seqan3::view::take_until(seqan3::is_alnum));
+        seqan3::detail::consume(fiv | seqan3::views::take_until(seqan3::is_alnum));
         // read accession number
-        nextColumn = fiv | seqan3::view::take_until(seqan3::is_blank) | std::ranges::to<std::string>; //TODO and_consume
+        nextColumn = fiv | seqan3::views::take_until(seqan3::is_blank) | seqan3::views::to<std::string>; //TODO and_consume
 
         if ((nextColumn == "NCBI_TaxID") && (accToIdRank.count(acc) == 1))
         {
             auto & sTaxIdV = sTaxIds[accToIdRank.at(acc)];
             // skip whitespace
-            seqan3::detail::consume(fiv | seqan3::view::take_until(seqan3::is_alnum));
+            seqan3::detail::consume(fiv | seqan3::views::take_until(seqan3::is_alnum));
             // read tax id
-            nextColumn = fiv | seqan3::view::take_until(seqan3::is_space) | std::ranges::to<std::string>; //TODO and_consume
+            nextColumn = fiv | seqan3::views::take_until(seqan3::is_space) | seqan3::views::to<std::string>; //TODO and_consume
 
             uint32_t idNum = 0;
             auto [p, ec] = std::from_chars(nextColumn.data(), nextColumn.data() + nextColumn.size(), idNum);
@@ -87,7 +87,7 @@ _readMappingFileUniProt(TInputView                                            & 
             taxIdIsPresent[idNum] = true;
         }
 
-        seqan3::detail::consume(fiv | seqan3::view::take_line);
+        seqan3::detail::consume(fiv | seqan3::views::take_line);
     }
 }
 
@@ -100,26 +100,26 @@ _readMappingFileNCBI(TInputView                                            & fiv
                      std::unordered_map<std::string, uint64_t>       const & accToIdRank)
 {
     // skip line with headers
-    seqan3::detail::consume(fiv | seqan3::view::take_line_or_throw);
+    seqan3::detail::consume(fiv | seqan3::views::take_line_or_throw);
 
     //TODO this is too slow, investigate whether its the lookup or the allocs
     std::string buf;
     while (std::ranges::begin(fiv) != std::ranges::end(fiv))
     {
         // read accession number
-        buf = fiv | seqan3::view::take_until(seqan3::is_blank) | std::ranges::to<std::string>; //TODO and_consume
+        buf = fiv | seqan3::views::take_until(seqan3::is_blank) | seqan3::views::to<std::string>; //TODO and_consume
         // we have a sequence with this ID in our database
         if (accToIdRank.count(buf) == 1)
         {
             auto & sTaxIdV = sTaxIds[accToIdRank.at(buf)];
             // skip whitespace
-            seqan3::detail::consume(fiv | seqan3::view::take_until(seqan3::is_alnum));
+            seqan3::detail::consume(fiv | seqan3::views::take_until(seqan3::is_alnum));
             // skip versioned acc
-            seqan3::detail::consume(fiv | seqan3::view::take_until(seqan3::is_blank));
+            seqan3::detail::consume(fiv | seqan3::views::take_until(seqan3::is_blank));
             // skip whitespace
-            seqan3::detail::consume(fiv | seqan3::view::take_until(seqan3::is_alnum));
+            seqan3::detail::consume(fiv | seqan3::views::take_until(seqan3::is_alnum));
             // read tax id
-            buf = fiv | seqan3::view::take_until(seqan3::is_blank) | std::ranges::to<std::string>; //TODO and_consume
+            buf = fiv | seqan3::views::take_until(seqan3::is_blank) | seqan3::views::to<std::string>; //TODO and_consume
 
             uint32_t idNum = 0;
             auto [p, ec] = std::from_chars(buf.data(), buf.data() + buf.size(), idNum);
@@ -136,6 +136,6 @@ _readMappingFileNCBI(TInputView                                            & fiv
             taxIdIsPresent[idNum] = true;
         }
 
-        seqan3::detail::consume(fiv | seqan3::view::take_line);
+        seqan3::detail::consume(fiv | seqan3::views::take_line);
     }
 }

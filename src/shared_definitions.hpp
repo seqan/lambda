@@ -23,8 +23,8 @@
 
 #include <seqan3/search/fm_index/fm_index.hpp>
 #include <seqan3/search/fm_index/bi_fm_index.hpp>
-#include <seqan3/range/view/convert.hpp>
-#include <seqan3/range/view/deep.hpp>
+#include <seqan3/range/views/convert.hpp>
+#include <seqan3/range/views/deep.hpp>
 
 
 #include "shared_options.hpp"
@@ -152,7 +152,8 @@ template <typename TString>
 using TCDStringSet = std::vector<TString>; //TODO seqan3::concatenated_sequences
 
 template <DbIndexType           dbIndexType,
-          AlphabetEnum          origAlph>    // <- all members of index_file_options that influence types
+          AlphabetEnum          origAlph,
+          AlphabetEnum          redAlph>    // <- all members of index_file_options that influence types
 struct index_file
 {
     index_file_options options{};
@@ -165,9 +166,10 @@ struct index_file
     std::vector<uint8_t>                                        taxonHeights;
     std::vector<std::string>                                    taxonNames; //TODO TCDStringSet?
 
+    using TRedAlph       = _alphabetEnumToType<redAlph>;
     std::conditional_t<dbIndexType == DbIndexType::BI_FM_INDEX,
-                       seqan3::bi_fm_index<seqan3::text_layout::collection>,
-                       seqan3::fm_index<seqan3::text_layout::collection>>     index;
+                       seqan3::bi_fm_index<TRedAlph, seqan3::text_layout::collection>,
+                       seqan3::fm_index<TRedAlph, seqan3::text_layout::collection>>     index;
 
     template <typename TArchive>
     void serialize(TArchive & archive)
@@ -196,22 +198,22 @@ struct fake_index_file
 };
 
 template <typename TTargetAlph, typename TRange, typename TAdaptProt, typename TAdaptNucl>
-    requires std::Same<seqan3::innermost_value_type_t<TRange>, TTargetAlph>
+    requires std::same_as<seqan3::innermost_value_type_t<TRange>, TTargetAlph>
 TRange & initHelper(TRange & input, TAdaptProt &&, TAdaptNucl &&)
 {
     return input;
 }
 
 template <typename TTargetAlph, typename TRange, typename TAdaptProt, typename TAdaptNucl>
-    requires seqan3::NucleotideAlphabet<TTargetAlph> &&
-             (!std::Same<seqan3::innermost_value_type_t<TRange>, TTargetAlph>)
+    requires seqan3::nucleotide_alphabet<TTargetAlph> &&
+             (!std::same_as<seqan3::innermost_value_type_t<TRange>, TTargetAlph>)
 auto initHelper(TRange & input, TAdaptProt &&, TAdaptNucl && adaptNucl)
 {
     return input | std::forward<TAdaptNucl>(adaptNucl);
 }
 
 template <typename TTargetAlph, typename TRange, typename TAdaptProt, typename TAdaptNucl>
-    requires !std::Same<seqan3::innermost_value_type_t<TRange>, TTargetAlph>
+    requires !std::same_as<seqan3::innermost_value_type_t<TRange>, TTargetAlph>
 auto initHelper(TRange & input, TAdaptProt && adaptProt, TAdaptNucl &&)
 {
     return input | std::forward<TAdaptProt>(adaptProt);
@@ -219,12 +221,12 @@ auto initHelper(TRange & input, TAdaptProt && adaptProt, TAdaptNucl &&)
 
 template <typename TSpec>
 using TTransAlphModString =
-  decltype(std::declval<TSpec &>() | seqan3::view::translate_join);
+  decltype(std::declval<TSpec &>() | seqan3::views::translate_join);
 
 template <typename TSpec, typename TAlph>
 using TRedAlphModString =
-  decltype(std::declval<TSpec &>() | seqan3::view::deep{seqan3::view::convert<TAlph>});
+  decltype(std::declval<TSpec &>() | seqan3::views::deep{seqan3::views::convert<TAlph>});
 
 template <typename TSpec, typename TAlph>
 using TRedNuclAlphModString =
-  decltype(std::declval<TSpec &>() | seqan3::view::dna_n_to_random);
+  decltype(std::declval<TSpec &>() | seqan3::views::dna_n_to_random);

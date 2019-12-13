@@ -119,7 +119,7 @@ void parseCommandLineMain(int argc, char const ** argv)
 
     std::string command{};
     parser.add_positional_option(command, "The sub-program to execute. See below.",
-        seqan3::value_list_validator({"searchp", "searchn", "mkindexp", "mkindexn"}));
+        seqan3::value_list_validator{"searchp", "searchn", "mkindexp", "mkindexn"});
 
     parser.info.description.push_back("Available commands");
     parser.info.description.push_back("\\fBsearchp  \\fP– Perform a protein search (BLASTP, BLASTX, TBLASTN, TBLASTX).");

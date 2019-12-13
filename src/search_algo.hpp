@@ -36,8 +36,8 @@
 
 #include <seqan/align_extend.h>
 
-#include <seqan3/range/view/complement.hpp>
-#include <seqan3/range/view/translate_join.hpp>
+#include <seqan3/range/views/complement.hpp>
+#include <seqan3/range/views/translate_join.hpp>
 #include <seqan3/io/sequence_file/input.hpp>
 #include <seqan3/search/algorithm/search.hpp>
 #include <seqan3/alphabet/aminoacid/aa27.hpp>
@@ -273,7 +273,7 @@ loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
     if constexpr (!std::is_lvalue_reference_v<typename TGlobalHolder::TTransSbjSeqs>) // is view
     {
         // update view, now that underlying range is available
-        globalHolder.transSbjSeqs = globalHolder.indexFile.seqs | seqan3::view::translate_join;
+        globalHolder.transSbjSeqs = globalHolder.indexFile.seqs | seqan3::views::translate_join;
     }
 
     if constexpr (!std::is_lvalue_reference_v<typename TGlobalHolder::TRedSbjSeqs>) // is view
@@ -282,12 +282,12 @@ loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
         if constexpr (TGlobalHolder::blastProgram == seqan::BlastProgram::BLASTN)
         {
             globalHolder.redSbjSeqs = globalHolder.transSbjSeqs
-                                    | seqan3::view::dna_n_to_random;
+                                    | seqan3::views::dna_n_to_random;
         }
         else
         {
             globalHolder.redSbjSeqs = globalHolder.transSbjSeqs
-                                    | seqan3::view::deep{seqan3::view::convert<typename TGlobalHolder::TRedAlph>};
+                                    | seqan3::views::deep{seqan3::views::convert<typename TGlobalHolder::TRedAlph>};
         }
     }
 
@@ -311,7 +311,7 @@ loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
     } else
     {
         seqan::context(globalHolder.outfileBlastTab).dbTotalLength  =
-            std::ranges::distance(globalHolder.redSbjSeqs | std::view::join);
+            std::ranges::distance(globalHolder.redSbjSeqs | std::views::join);
         seqan::context(globalHolder.outfileBlastTab).dbNumberOfSeqs = std::ranges::size(globalHolder.redSbjSeqs);
     }
 
@@ -389,8 +389,9 @@ loadQuery(GlobalDataHolder<c_indexType, c_origSbjAlph, c_transAlph, c_redAlph, c
             if (i % 2 == 0)
                 tmp[i] = std::move(globalHolder.qrySeqs[i / 2]);
             else
-                tmp[i] = tmp[i-1] | std::view::reverse | seqan3::view::complement;
-//                        | seqan3::views::to<std::ranges::range_value_t<decltype(tmp)>>;
+                tmp[i] = tmp[i-1] | std::views::reverse
+                                  | seqan3::views::complement
+                                  | seqan3::views::to<std::ranges::range_value_t<decltype(tmp)>>;
 
         }
 
@@ -400,7 +401,7 @@ loadQuery(GlobalDataHolder<c_indexType, c_origSbjAlph, c_transAlph, c_redAlph, c
     if constexpr (c_origQryAlph != c_transAlph)
     {
         globalHolder.transQrySeqs = globalHolder.qrySeqs
-                                  | seqan3::view::translate_join;
+                                  | seqan3::views::translate_join;
     }
 
     if constexpr (c_transAlph != c_redAlph)
@@ -408,12 +409,12 @@ loadQuery(GlobalDataHolder<c_indexType, c_origSbjAlph, c_transAlph, c_redAlph, c
         if constexpr (c_transAlph != AlphabetEnum::AMINO_ACID)
         {
             globalHolder.redQrySeqs = globalHolder.transQrySeqs
-                                    | seqan3::view::dna_n_to_random;
+                                    | seqan3::views::dna_n_to_random;
         }
         else
         {
             globalHolder.redQrySeqs = globalHolder.transQrySeqs
-                                    | seqan3::view::deep{seqan3::view::convert<TRedAlph>};
+                                    | seqan3::views::deep{seqan3::views::convert<TRedAlph>};
         }
     }
 
@@ -472,9 +473,9 @@ seedLooksPromising(LocalDataHolder<TGlobalHolder> const & lH,
     }
 
     auto const & qSeq = lH.gH.transQrySeqs[m.qryId]
-                      | seqan3::view::slice(effectiveQBegin, effectiveQBegin + effectiveLength);
+                      | seqan3::views::slice(effectiveQBegin, static_cast<int64_t>(effectiveQBegin + effectiveLength));
     auto const & sSeq = lH.gH.transSbjSeqs[m.subjId]
-                      | seqan3::view::slice(effectiveSBegin, effectiveSBegin + effectiveLength);
+                      | seqan3::views::slice(effectiveSBegin, static_cast<int64_t>(effectiveSBegin + effectiveLength));
 
     int             s = 0;
     int      maxScore = 0;
@@ -522,7 +523,7 @@ search(LocalDataHolder<TGlobalHolder> & lH)
             if (seedBegin > (lH.gH.redQrySeqs[i].size() - lH.options.seedLength))
                 break;
 
-            auto results = seqan3::search(lH.gH.redQrySeqs[i] | seqan3::view::slice(seedBegin, seedBegin + lH.options.seedLength),
+            auto results = seqan3::search(lH.gH.redQrySeqs[i] | seqan3::views::slice(seedBegin, seedBegin + lH.options.seedLength),
                                           lH.gH.indexFile.index,
                                           cfg);
 
@@ -720,8 +721,8 @@ _setupAlignInfix(TBlastMatch & bm,
     else
         bm.sStart = 0;
 
-    seqan::assignSource(bm.alignRow0, lH.gH.transQrySeqs[m.qryId] | seqan3::view::slice(bm.qStart, bm.qEnd));
-    seqan::assignSource(bm.alignRow1, lH.gH.transSbjSeqs[m.subjId] | seqan3::view::slice(bm.sStart, bm.sEnd));
+    seqan::assignSource(bm.alignRow0, lH.gH.transQrySeqs[m.qryId] | seqan3::views::slice(bm.qStart, bm.qEnd));
+    seqan::assignSource(bm.alignRow1, lH.gH.transSbjSeqs[m.subjId] | seqan3::views::slice(bm.sStart, bm.sEnd));
 }
 
 template <typename TBlastMatch,
@@ -788,8 +789,8 @@ _expandAlign(TBlastMatch & bm,
     auto oldSLen = seqan::length(source(bm.alignRow1));
 
     // replace source from underneath without triggereng reset
-    bm.alignRow0._source = lH.gH.transQrySeqs[_untrueQryId(bm, lH)] | seqan3::view::slice(0, std::ranges::size(lH.gH.transQrySeqs[_untrueQryId(bm, lH)]));
-    bm.alignRow1._source = lH.gH.transSbjSeqs[_untrueSubjId(bm, lH)] | seqan3::view::slice(0, std::ranges::size(lH.gH.transSbjSeqs[_untrueSubjId(bm, lH)]));
+    bm.alignRow0._source = lH.gH.transQrySeqs[_untrueQryId(bm, lH)] | seqan3::views::slice(0, std::ranges::size(lH.gH.transQrySeqs[_untrueQryId(bm, lH)]));
+    bm.alignRow1._source = lH.gH.transSbjSeqs[_untrueSubjId(bm, lH)] | seqan3::views::slice(0, std::ranges::size(lH.gH.transSbjSeqs[_untrueSubjId(bm, lH)]));
 
     // insert fields into array gaps
     if (bm.alignRow0._array[0] == 0)

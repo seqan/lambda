@@ -90,17 +90,17 @@ _untranslateSequence(TSequence1                     & target,
 {
     if (qFrameShift >= 0)
     {
-        seqan::copy_range(source | seqan3::view::slice(3 * qStart + std::abs(qFrameShift) - 1,
+        seqan::copy_range(source | seqan3::views::slice(3 * qStart + std::abs(qFrameShift) - 1,
                                                        3 * qEnd + std::abs(qFrameShift) - 1)
-                                 | seqan3::view::to_char,
+                                 | seqan3::views::to_char,
                           target);
 
     }
     else
     {
-         seqan::copy_range(source | seqan3::view::slice(seqan::length(source) - (3 * qEnd + std::abs(qFrameShift) - 1),
+         seqan::copy_range(source | seqan3::views::slice(seqan::length(source) - (3 * qEnd + std::abs(qFrameShift) - 1),
                                                         seqan::length(source) - (3 * qStart + std::abs(qFrameShift) - 1))
-                                  | seqan3::view::to_char,
+                                  | seqan3::views::to_char,
                            target);
 
         reverseComplement(target);
@@ -363,8 +363,8 @@ myWriteHeader(TGH & globalHolder, TLambdaOptions const & options)
         for (unsigned i = 0; i < globalHolder.indexFile.ids.size(); ++i)
         {
             //TODO replace with assign algo
-            subjIds[i] = globalHolder.indexFile.ids[i] | seqan3::view::take_until(seqan3::is_space)
-                                                       | std::ranges::to<std::string>;
+            subjIds[i] = globalHolder.indexFile.ids[i] | seqan3::views::take_until(seqan3::is_space)
+                                                       | seqan3::views::to<std::string>;
         }
 
         typedef seqan::BamHeaderRecord::TTag   TTag;
@@ -543,9 +543,9 @@ myWriteRecord(TLH & lH, TRecord const & record)
                     if (writeSeq)
                     {
                         seqan::copy_range(seqan::source(mIt->alignRow0)
-                                   | seqan3::view::slice(seqan::beginPosition(mIt->alignRow0),
+                                   | seqan3::views::slice(seqan::beginPosition(mIt->alignRow0),
                                                          seqan::endPosition(mIt->alignRow0))
-                                   | std::view::transform([] (seqan3::dna5 a)
+                                   | std::views::transform([] (seqan3::dna5 a)
                                      {
                                          return seqan::Iupac{seqan3::to_char(a)};
                                      }),
@@ -556,7 +556,7 @@ myWriteRecord(TLH & lH, TRecord const & record)
                     if (writeSeq)
                     {
                         seqan::copy_range(seqan::source(mIt->alignRow0)
-                                   | std::view::transform([] (seqan3::dna5 a)
+                                   | std::views::transform([] (seqan3::dna5 a)
                                      {
                                          return seqan::Iupac{seqan3::to_char(a)};
                                      }),
@@ -660,15 +660,15 @@ myWriteRecord(TLH & lH, TRecord const & record)
                     seqan::appendTagValue(bamR.tags,
                                           std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::Q_AA_SEQ]),
                                           seqan::source(mIt->alignRow0)
-                                           | seqan3::view::slice(seqan::beginPosition(mIt->alignRow0),
+                                           | seqan3::views::slice(seqan::beginPosition(mIt->alignRow0),
                                                                  seqan::endPosition(mIt->alignRow0))
-                                           | seqan3::view::to_char,
+                                           | seqan3::views::to_char,
                                           'Z');
                 else // full prot sequence
                     seqan::appendTagValue(bamR.tags,
                                           std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::Q_AA_SEQ]),
                                           seqan::source(mIt->alignRow0)
-                                           | seqan3::view::to_char,
+                                           | seqan3::views::to_char,
                                           'Z');
             }
             if (lH.options.samBamTags[SamBamExtraTags<>::Q_AA_CIGAR])

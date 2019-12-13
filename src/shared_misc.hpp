@@ -30,7 +30,7 @@
 #include <unistd.h>
 
 #include <seqan3/io/sequence_file/input.hpp>
-#include <seqan3/range/view/to_upper.hpp>
+#include <seqan3/range/views/to_upper.hpp>
 
 // #include <seqan/basic.h>
 // #include <seqan/sequence.h>
@@ -118,21 +118,21 @@ AlphabetEnum detectSeqFileAlphabet(std::string const & path)
 
     auto & seq = std::get<0>(*f.begin());
 
-    if (std::ranges::equal(seq | seqan3::view::char_to<seqan3::dna5> | seqan3::view::to_char,
-                           seq | seqan3::view::to_upper))
+    if (std::ranges::equal(seq | seqan3::views::char_to<seqan3::dna5> | seqan3::views::to_char,
+                           seq | seqan3::views::to_upper))
     {
         return AlphabetEnum::DNA5;
     }
-    else if (std::ranges::equal(seq | seqan3::view::char_to<seqan3::dna15> | seqan3::view::to_char,
-                                seq | seqan3::view::to_upper))
+    else if (std::ranges::equal(seq | seqan3::views::char_to<seqan3::dna15> | seqan3::views::to_char,
+                                seq | seqan3::views::to_upper))
     {
         std::cerr << "\nWARNING: You query file was detected as non-standard DNA, but it could be AminoAcid, too.\n"
                     "To explicitly read as AminoAcid, add '--query-alphabet aminoacid'.\n"
                     "To ignore and disable this warning, add '--query-alphabet dna5'.\n";
         return AlphabetEnum::DNA5;
     }
-    else if (std::ranges::equal(seq | seqan3::view::char_to<seqan3::aa27> | seqan3::view::to_char,
-                                seq | seqan3::view::to_upper))
+    else if (std::ranges::equal(seq | seqan3::views::char_to<seqan3::aa27> | seqan3::views::to_char,
+                                seq | seqan3::views::to_upper))
     {
         return AlphabetEnum::AMINO_ACID;
     }
