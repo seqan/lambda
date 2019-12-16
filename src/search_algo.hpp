@@ -357,7 +357,7 @@ loadQuery(GlobalDataHolder<c_indexType, c_origSbjAlph, c_transAlph, c_redAlph, c
     // TCDStringSet<std::vector<TOrigAlph>> origSeqs;
 
     // load
-    seqan3::sequence_file_input<QueryFileTraits<c_origQryAlph>, seqan3::fields<seqan3::field::ID, seqan3::field::SEQ>>
+    seqan3::sequence_file_input<QueryFileTraits<c_origQryAlph>, seqan3::fields<seqan3::field::id, seqan3::field::seq>>
         infile{options.queryFile};
 
 // TODO change to this once https://github.com/seqan/seqan3/issues/1135 is fixed
@@ -505,7 +505,7 @@ search(LocalDataHolder<TGlobalHolder> & lH)
     using TMatch = typename TGlobalHolder::TMatch;
 
     seqan3::configuration const cfg =
-        seqan3::search_cfg::max_error{seqan3::search_cfg::substitution{lH.options.maxSeedDist}};
+        seqan3::search_cfg::max_error{seqan3::search_cfg::substitution{static_cast<uint8_t>(lH.options.maxSeedDist)}};
 
     for (size_t i = lH.indexBeginQry; i < lH.indexEndQry; ++i)
     {
@@ -832,28 +832,26 @@ template <typename TDepSetH,
 inline void
 _setupDepSets(TDepSetH & depSetH, TDepSetV & depSetV, TBlastMatches const & blastMatches)
 {
-    using namespace seqan;
+    using TSimdAlign    = typename seqan::SimdVector<int16_t>::Type;
+    unsigned constexpr sizeBatch = seqan::LENGTH<TSimdAlign>::VALUE;
+    unsigned const      fullSize = sizeBatch * ((seqan::length(blastMatches) + sizeBatch - 1) / sizeBatch);
 
-    using TSimdAlign    = typename SimdVector<int16_t>::Type;
-    unsigned constexpr sizeBatch = LENGTH<TSimdAlign>::VALUE;
-    unsigned const      fullSize = sizeBatch * ((length(blastMatches) + sizeBatch - 1) / sizeBatch);
-
-    clear(depSetH);
-    clear(depSetV);
-    reserve(depSetH, fullSize);
-    reserve(depSetV, fullSize);
+    seqan::clear(depSetH);
+    seqan::clear(depSetV);
+    seqan::reserve(depSetH, fullSize);
+    seqan::reserve(depSetV, fullSize);
 
     for (auto const & bm : blastMatches)
     {
-        appendValue(depSetH, source(bm.alignRow0));
-        appendValue(depSetV, source(bm.alignRow1));
+        seqan::appendValue(depSetH, seqan::source(bm.alignRow0));
+        seqan::appendValue(depSetV, seqan::source(bm.alignRow1));
     }
 
     // fill up last batch
-    for (size_t i = length(blastMatches); i < fullSize; ++i)
+    for (size_t i = seqan::length(blastMatches); i < fullSize; ++i)
     {
-        appendValue(depSetH, source(back(blastMatches).alignRow0));
-        appendValue(depSetV, source(back(blastMatches).alignRow1));
+        seqan::appendValue(depSetH, seqan::source(seqan::back(blastMatches).alignRow0));
+        seqan::appendValue(depSetV, seqan::source(seqan::back(blastMatches).alignRow1));
     }
 }
 
@@ -869,27 +867,27 @@ _performAlignment(TDepSetH & depSetH,
                   TLocalHolder & lH,
                   std::integral_constant<bool, withTrace> const &)
 {
-    using namespace seqan;
-
     using TGlobalHolder = typename TLocalHolder::TGlobalHolder;
-    using TAlignConfig  = AlignConfig2<LocalAlignment_<>,
-                                       DPBandConfig<BandOff>,
-                                       FreeEndGaps_<True, True, True, True>,
-                                       std::conditional_t<withTrace,
-                                                          TracebackOn<TracebackConfig_<CompleteTrace, GapsLeft> >,
-                                                          TracebackOff> >;
-    using TSimdAlign    = typename SimdVector<int16_t>::Type;
-    using TSimdScore    = Score<TSimdAlign, ScoreSimdWrapper<typename TGlobalHolder::TScoreScheme> >;
-    using TSize         = typename Size<typename TLocalHolder::TAlignRow0>::Type;
+    using TAlignConfig  = seqan::AlignConfig2<seqan::LocalAlignment_<>,
+                                              seqan::DPBandConfig<seqan::BandOff>,
+                                              seqan::FreeEndGaps_<seqan::True, seqan::True, seqan::True, seqan::True>,
+                                              std::conditional_t<withTrace,
+                                                                 seqan::TracebackOn<
+                                                                     seqan::TracebackConfig_<seqan::CompleteTrace,
+                                                                                             seqan::GapsLeft> >,
+                                                                 seqan::TracebackOff> >;
+    using TSimdAlign    = typename seqan::SimdVector<int16_t>::Type;
+    using TSimdScore    = seqan::Score<TSimdAlign, seqan::ScoreSimdWrapper<typename TGlobalHolder::TScoreScheme> >;
+    using TSize         = typename seqan::Size<typename TLocalHolder::TAlignRow0>::Type;
     using TMatch        = typename TGlobalHolder::TMatch;
     using TPos          = typename TMatch::TPos;
-    using TTraceSegment = TraceSegment_<TPos, TSize>;
+    using TTraceSegment = seqan::TraceSegment_<TPos, TSize>;
 
-    unsigned constexpr sizeBatch = LENGTH<TSimdAlign>::VALUE;
-    unsigned const      fullSize = sizeBatch * ((length(blastMatches) + sizeBatch - 1) / sizeBatch);
+    unsigned constexpr sizeBatch = seqan::LENGTH<TSimdAlign>::VALUE;
+    unsigned const      fullSize = sizeBatch * ((seqan::length(blastMatches) + sizeBatch - 1) / sizeBatch);
 
-    TSimdScore simdScoringScheme(seqanScheme(context(lH.gH.outfileBlastTab).scoringScheme));
-    StringSet<String<TTraceSegment> > trace;
+    TSimdScore simdScoringScheme(seqan::seqanScheme(seqan::context(lH.gH.outfileBlastTab).scoringScheme));
+    seqan::StringSet<seqan::String<TTraceSegment> > trace;
 
     // TODO when band is available, create inside block with band
     TAlignConfig config;//(0, 2*band)
@@ -902,22 +900,22 @@ _performAlignment(TDepSetH & depSetH,
 
         TSimdAlign resultsBatch;
 
-        clear(trace);
-        resize(trace, sizeBatch, Exact());
+        seqan::clear(trace);
+        seqan::resize(trace, sizeBatch, seqan::Exact());
 
         // TODO pass in lH.dpSIMDContext
-        _prepareAndRunSimdAlignment(resultsBatch,
-                                    trace,
-                                    infSetH,
-                                    infSetV,
-                                    simdScoringScheme,
-                                    config,
-                                    typename TLocalHolder::TScoreExtension());
+        seqan::_prepareAndRunSimdAlignment(resultsBatch,
+                                           trace,
+                                           infSetH,
+                                           infSetV,
+                                           simdScoringScheme,
+                                           config,
+                                           typename TLocalHolder::TScoreExtension());
 
-        for(auto x = pos; x < pos + sizeBatch && x < length(blastMatches); ++x)
+        for(auto x = pos; x < pos + sizeBatch && x < seqan::length(blastMatches); ++x)
         {
             if constexpr (withTrace)
-                _adaptTraceSegmentsTo(matchIt->alignRow0, matchIt->alignRow1, trace[x - pos]);
+                seqan::_adaptTraceSegmentsTo(matchIt->alignRow0, matchIt->alignRow1, trace[x - pos]);
             else
                 matchIt->alignStats.alignmentScore = resultsBatch[x - pos];
 
@@ -931,35 +929,33 @@ template <typename TLocalHolder>
 inline int
 iterateMatchesFullSimd(TLocalHolder & lH)
 {
-    using namespace seqan;
-
     using TGlobalHolder = typename TLocalHolder::TGlobalHolder;
-//     using TMatch        = typename TGlobalHolder::TMatch;
-//     using TPos          = typename TMatch::TPos;
-    using TBlastPos     = uint32_t; //TODO why can't this be == TPos
-    using TBlastMatch   = BlastMatch<
+    using TBlastPos     = uint32_t;
+    using TBlastMatch   = seqan::BlastMatch<
                            typename TLocalHolder::TAlignRow0,
                            typename TLocalHolder::TAlignRow1,
                            TBlastPos,
-                           decltype(lH.gH.qryIds[0]),
-                           decltype(lH.gH.indexFile.subjIds[0]),
-                           >;
-    using TBlastRecord  = BlastRecord<TBlastMatch,
-                                      decltype(lH.gH.qryIds[0]),
-                                      std::vector<std::string>,
-                                      decltype(lH.gH.indexFile.taxNames[0]),
-                                      uint32_t>;
+                           std::string_view,
+                           std::string_view,
+                           std::vector<std::string>, // not used
+                           std::span<uint32_t>>;
+
+    using TBlastRecord  = seqan::BlastRecord<TBlastMatch,
+                                             std::string_view,
+                                             std::vector<std::string>, // not used
+                                             std::string_view,
+                                             uint32_t>;
     // statistics
 #ifdef LAMBDA_MICRO_STATS
     ++lH.stats.numQueryWithExt;
-    lH.stats.numExtScore += length(lH.matches);
+    lH.stats.numExtScore += seqan::length(lH.matches);
 
     double start = sysTime();
 #endif
 
     // Prepare string sets with sequences.
-    StringSet<typename Source<typename TLocalHolder::TAlignRow0>::Type> depSetH;
-    StringSet<typename Source<typename TLocalHolder::TAlignRow1>::Type> depSetV;
+    seqan::StringSet<typename seqan::Source<typename TLocalHolder::TAlignRow0>::Type> depSetH;
+    seqan::StringSet<typename seqan::Source<typename TLocalHolder::TAlignRow1>::Type> depSetV;
 
     // container of blastMatches (possibly from multiple queries
     decltype(TBlastRecord().matches) blastMatches;
@@ -968,17 +964,15 @@ iterateMatchesFullSimd(TLocalHolder & lH)
     for (auto it = lH.matches.begin(), itEnd = lH.matches.end(); it != itEnd; ++it)
     {
         // create blastmatch in list without copy or move
-        blastMatches.emplace_back(lH.gH.qryIds [it->qryId / qNumFrames(TGlobalHolder::blastProgram)],
-                                    lH.gH.subjIds[it->subjId / sNumFrames(TGlobalHolder::blastProgram)]);
+        blastMatches.emplace_back(lH.gH.qryIds [it->qryId / seqan::qNumFrames(TGlobalHolder::blastProgram)],
+                                  lH.gH.indexFile.ids[it->subjId / seqan::sNumFrames(TGlobalHolder::blastProgram)]);
 
-        auto & bm = back(blastMatches);
+        auto & bm = seqan::back(blastMatches);
 
-        bm._n_qId = it->qryId / qNumFrames(TGlobalHolder::blastProgram);
-        bm._n_sId = it->subjId / sNumFrames(TGlobalHolder::blastProgram);
+        bm._n_qId = it->qryId / seqan::qNumFrames(TGlobalHolder::blastProgram);
+        bm._n_sId = it->subjId / seqan::sNumFrames(TGlobalHolder::blastProgram);
 
-        bm.sLength = sIsTranslated(TGlobalHolder::blastProgram)
-                        ? lH.gH.untransSubjSeqLengths[bm._n_sId]
-                        : length(lH.gH.subjSeqs[_untrueSubjId(bm, lH)]);
+        bm.sLength = seqan::length(lH.gH.indexFile.seqs[bm._n_sId]);
 
         _setupAlignInfix(bm, *it, lH);
 
@@ -994,7 +988,7 @@ iterateMatchesFullSimd(TLocalHolder & lH)
     // filter out duplicates
     start = sysTime();
 #endif
-    auto before = length(blastMatches);
+    auto before = seqan::length(blastMatches);
     blastMatches.sort([] (auto const & l, auto const & r)
     {
         return std::tie(l._n_qId, l._n_sId, l.sStart, l.sEnd, l.qStart, l.qEnd, l.qFrameShift, l.sFrameShift) <
@@ -1005,13 +999,13 @@ iterateMatchesFullSimd(TLocalHolder & lH)
         return std::tie(l._n_qId, l._n_sId, l.sStart, l.sEnd, l.qStart, l.qEnd, l.qFrameShift, l.sFrameShift) ==
                std::tie(r._n_qId, r._n_sId, r.sStart, r.sEnd, r.qStart, r.qEnd, r.qFrameShift, r.sFrameShift);
     });
-    lH.stats.hitsDuplicate += (before - length(blastMatches));
+    lH.stats.hitsDuplicate += (before - seqan::length(blastMatches));
 
     // sort by lengths to minimize padding in SIMD
     blastMatches.sort([] (auto const & l, auto const & r)
     {
-        return std::make_tuple(length(source(l.alignRow0)), length(source(l.alignRow1))) <
-               std::make_tuple(length(source(r.alignRow0)), length(source(r.alignRow1)));
+        return std::make_tuple(seqan::length(seqan::source(l.alignRow0)), seqan::length(seqan::source(l.alignRow1))) <
+               std::make_tuple(seqan::length(seqan::source(r.alignRow0)), seqan::length(seqan::source(r.alignRow1)));
     });
 #ifdef LAMBDA_MICRO_STATS
     lH.stats.timeSort += sysTime() - start;
@@ -1029,11 +1023,7 @@ iterateMatchesFullSimd(TLocalHolder & lH)
     {
         TBlastMatch & bm = *it;
 
-        computeEValueThreadSafe(bm,
-                                qIsTranslated(TGlobalHolder::blastProgram)
-                                    ? lH.gH.untransQrySeqLengths[bm._n_qId]
-                                    : length(lH.gH.qrySeqs[_untrueQryId(bm, lH)]),
-                                context(lH.gH.outfile));
+        computeEValueThreadSafe(bm, seqan::length(lH.gH.qrySeqs[bm._n_qId]), seqan::context(lH.gH.outfileBlastTab));
 
         if (bm.eValue > lH.options.eCutOff)
         {
@@ -1044,12 +1034,12 @@ iterateMatchesFullSimd(TLocalHolder & lH)
 
         ++it;
     }
-    if (length(blastMatches) == 0)
+    if (seqan::length(blastMatches) == 0)
         return 0;
 
     // statistics
 #ifdef LAMBDA_MICRO_STATS
-    lH.stats.numExtAli += length(blastMatches);
+    lH.stats.numExtAli += seqan::length(blastMatches);
     lH.stats.timeExtend += sysTime() - start;
     start = sysTime();
 #endif
@@ -1073,7 +1063,7 @@ iterateMatchesFullSimd(TLocalHolder & lH)
 
         _expandAlign(bm, lH);
 
-        computeAlignmentStats(bm, seqan::context(lH.gH.outfileBlastTab));
+        seqan::computeAlignmentStats(bm, seqan::context(lH.gH.outfileBlastTab));
 
         if (bm.alignStats.alignmentIdentity < lH.options.idCutOff)
         {
@@ -1082,7 +1072,7 @@ iterateMatchesFullSimd(TLocalHolder & lH)
             continue;
         }
 
-        computeBitScore(bm, seqan::context(lH.gH.outfileBlastTab));
+        seqan::computeBitScore(bm, seqan::context(lH.gH.outfileBlastTab));
 
         // evalue computed previously
 
@@ -1092,21 +1082,19 @@ iterateMatchesFullSimd(TLocalHolder & lH)
     lH.stats.timeExtendTrace += sysTime() - start;
 #endif
 
-    if (length(blastMatches) == 0)
+    if (seqan::length(blastMatches) == 0)
         return 0;
 
     // devide matches into records (per query) and write
     for (auto it = blastMatches.begin(), itLast = blastMatches.begin();
-         length(blastMatches) > 0;
+         seqan::length(blastMatches) > 0;
          /*below*/)
     {
         if ((it == blastMatches.end()) || ((it != blastMatches.begin()) && (it->_n_qId != itLast->_n_qId)))
         {
             // create a record for each query
             TBlastRecord record(lH.gH.qryIds[itLast->_n_qId]);
-            record.qLength = (qIsTranslated(TGlobalHolder::blastProgram)
-                                ? lH.gH.untransQrySeqLengths[itLast->_n_qId]
-                                : length(lH.gH.qrySeqs[_untrueQryId(*itLast, lH)]));
+            record.qLength = seqan::length(lH.gH.qrySeqs[itLast->_n_qId]);
             // move the matches into the record
             record.matches.splice(record.matches.begin(),
                                   blastMatches,
@@ -1133,25 +1121,22 @@ template <typename TLocalHolder>
 inline int
 iterateMatchesFullSerial(TLocalHolder & lH)
 {
-    using namespace seqan;
-
     using TGlobalHolder = typename TLocalHolder::TGlobalHolder;
-//     using TMatch        = typename TGlobalHolder::TMatch;
-//     using TPos          = typename TMatch::TPos;
-    using TBlastPos     = uint32_t; //TODO why can't this be == TPos
+    using TBlastPos     = uint32_t;
 
     using TBlastMatch   = seqan::BlastMatch<
                            typename TLocalHolder::TAlignRow0,
                            typename TLocalHolder::TAlignRow1,
                            TBlastPos,
-                           seqan3::value_type_t<typename TGlobalHolder::TQryIds>,// TODO: reference_t?
-                           seqan3::value_type_t<typename TGlobalHolder::TSubjIds>// TODO: reference_t?
-                           >;
+                           std::string_view,
+                           std::string_view,
+                           std::vector<std::string>, // not used
+                           std::span<uint32_t>>;
 
     using TBlastRecord  = seqan::BlastRecord<TBlastMatch,
-                                             seqan3::value_type_t<typename TGlobalHolder::TQryIds>,
-                                             std::vector<std::string>,
-                                             std::string, //seqan3::value_type_t<typename TGlobalHolder::TTaxNames>,
+                                             std::string_view,
+                                             std::vector<std::string>, // not used
+                                             std::string_view,
                                              uint32_t>;
 
     auto const trueQryId = lH.matches[0].qryId / qNumFrames(TGlobalHolder::blastProgram);
@@ -1172,8 +1157,8 @@ iterateMatchesFullSerial(TLocalHolder & lH)
     for (auto it = lH.matches.begin(), itEnd = lH.matches.end(); it != itEnd; ++it)
     {
         // create blastmatch in list without copy or move
-        record.matches.emplace_back(lH.gH.qryIds [it->qryId / qNumFrames(TGlobalHolder::blastProgram)],
-                                    lH.gH.indexFile.ids[it->subjId / sNumFrames(TGlobalHolder::blastProgram)]);
+        record.matches.emplace_back(lH.gH.qryIds [it->qryId / seqan::qNumFrames(TGlobalHolder::blastProgram)],
+                                    lH.gH.indexFile.ids[it->subjId / seqan::sNumFrames(TGlobalHolder::blastProgram)]);
 
         auto & bm = record.matches.back();
         auto &  m = *it;
@@ -1191,20 +1176,20 @@ iterateMatchesFullSerial(TLocalHolder & lH)
 
         // Run extension WITHOUT TRACEBACK
         typedef seqan::AlignConfig2<seqan::LocalAlignment_<>,
-                                    seqan::DPBandConfig<BandOn>,
-                                    seqan::FreeEndGaps_<True, True, True, True>,
+                                    seqan::DPBandConfig<seqan::BandOn>,
+                                    seqan::FreeEndGaps_<seqan::True, seqan::True, seqan::True, seqan::True>,
                                     seqan::TracebackOff> TAlignConfig;
 
         seqan::DPScoutState_<seqan::Default> scoutState;
 
         bm.alignStats.alignmentScore =
-        _setUpAndRunAlignment(lH.alignContext.dpContext,
-                              lH.alignContext.traceSegment,
-                              scoutState,
-                              seqan::source(bm.alignRow0),
-                              seqan::source(bm.alignRow1),
-                              seqan::seqanScheme(seqan::context(lH.gH.outfileBlastTab).scoringScheme),
-                              TAlignConfig(-band, +band));
+        seqan::_setUpAndRunAlignment(lH.alignContext.dpContext,
+                                     lH.alignContext.traceSegment,
+                                     scoutState,
+                                     seqan::source(bm.alignRow0),
+                                     seqan::source(bm.alignRow1),
+                                     seqan::seqanScheme(seqan::context(lH.gH.outfileBlastTab).scoringScheme),
+                                     TAlignConfig(-band, +band));
 
         computeEValueThreadSafe(bm, record.qLength, seqan::context(lH.gH.outfileBlastTab));
 

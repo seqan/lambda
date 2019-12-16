@@ -114,7 +114,7 @@ auto loadSubjSeqsAndIds(LambdaIndexerOptions const & options)
     using seq_traits = std::conditional_t<seqan3::nucleotide_alphabet<TOrigAlph>,
                                           seqan3::sequence_file_input_default_traits_dna,
                                           seqan3::sequence_file_input_default_traits_aa>;
-    seqan3::sequence_file_input<seq_traits, seqan3::fields<seqan3::field::ID, seqan3::field::SEQ>>
+    seqan3::sequence_file_input<seq_traits, seqan3::fields<seqan3::field::id, seqan3::field::seq>>
         infile{options.dbFile};
 
     size_t count = 0;

@@ -114,7 +114,7 @@ struct alphabet_detection_traits : seqan3::sequence_file_input_default_traits_dn
 
 AlphabetEnum detectSeqFileAlphabet(std::string const & path)
 {
-    seqan3::sequence_file_input<alphabet_detection_traits, seqan3::fields<seqan3::field::SEQ>> f{path};
+    seqan3::sequence_file_input<alphabet_detection_traits, seqan3::fields<seqan3::field::seq>> f{path};
 
     auto & seq = std::get<0>(*f.begin());
 
