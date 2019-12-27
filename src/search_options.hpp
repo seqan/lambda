@@ -78,7 +78,6 @@ struct LambdaOptions : public SharedOptions
 
     int32_t         seedGravity     = 10;
     unsigned        seedOffset      = 0;
-    unsigned        minSeedLength   = 0;
     bool            seedDeltaIncreasesLength = false;
 
 //     unsigned int    minSeedEVal     = 0;
@@ -108,7 +107,12 @@ struct LambdaOptions : public SharedOptions
         FULL_SERIAL,
         FULL_SIMD
     };
-    ExtensionMode   extensionMode = ExtensionMode::AUTO;
+    // ExtensionMode   extensionMode = ExtensionMode::AUTO;
+#ifdef SEQAN_SIMD_ENABLED
+    ExtensionMode   extensionMode = ExtensionMode::FULL_SIMD;
+#else
+    ExtensionMode   extensionMode = ExtensionMode::FULL_SERIAL;
+#endif
 
     bool            filterPutativeDuplicates = false;
     bool            filterPutativeAbundant = false;
@@ -303,9 +307,6 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         "consider setting this option to the same value.", seqan3::option_spec::HIDDEN);
 
     options.seedGravity = defaultSeedLength;
-    parser.add_option(options.minSeedLength, '\0', "seed-min-length",
-        "After postproc shorter seeds are discarded (if unset = seed-length).  If you set 'seed-length', please "
-        "consider setting this option to the same value.", seqan3::option_spec::HIDDEN);
 
     parser.add_section("Miscellaneous Heuristics");
 
@@ -372,17 +373,17 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         " -2 means sqrt of query length; -1 means full dp; n means band of size 2n+1)",
         seqan3::option_spec::ADVANCED, seqan3::arithmetic_range_validator{-3, 1000});
 
-    std::string extensionModeTmp;
+//      std::string extensionModeTmp;
 
-#ifdef SEQAN_SIMD_ENABLED
-    parser.add_option(extensionModeTmp,'m', "extension-mode",
-        "Choice of extension algorithms.", seqan3::option_spec::ADVANCED,
-        seqan3::value_list_validator{"fullSerial", "fullSIMD"});
-#else
-    parser.add_option(extensionModeTmp,'m', "extension-mode",
-        "Choice of extension algorithms.", seqan3::option_spec::ADVANCED,
-        seqan3::value_list_validator<std::string>{"fullSerial"});
-#endif
+// #ifdef SEQAN_SIMD_ENABLED
+//     parser.add_option(extensionModeTmp,'m', "extension-mode",
+//         "Choice of extension algorithms.", seqan3::option_spec::ADVANCED,
+//         seqan3::value_list_validator{"fullSerial", "fullSIMD"});
+// #else
+//     parser.add_option(extensionModeTmp,'m', "extension-mode",
+//         "Choice of extension algorithms.", seqan3::option_spec::ADVANCED,
+//         seqan3::value_list_validator<std::string>{"fullSerial"});
+// #endif
 
     parser.add_section("Tuning");
     parser.add_line("Tuning the seeding parameters and (de)activating alphabet "
@@ -564,33 +565,32 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 //             options.seedHalfExact = true;
 //     }
 
-    // Set options depending on extension mode
-    if (extensionModeTmp == "fullSIMD")
-    {
-        options.extensionMode = LambdaOptions::ExtensionMode::FULL_SIMD;
+//     // Set options depending on extension mode
+//     if (extensionModeTmp == "fullSIMD")
+//     {
+//         options.extensionMode = LambdaOptions::ExtensionMode::FULL_SIMD;
 //         options.filterPutativeAbundant = false;
 //         options.filterPutativeDuplicates = false;
 //         options.mergePutativeSiblings = false;
 //         options.xDropOff = -1;
-    }
-    else if (extensionModeTmp == "fullSerial")
-    {
-        options.extensionMode = LambdaOptions::ExtensionMode::FULL_SERIAL;
+//      }
+//      else if (extensionModeTmp == "fullSerial")
+//      {
+//         options.extensionMode = LambdaOptions::ExtensionMode::FULL_SERIAL;
 //         options.filterPutativeAbundant = false;
 //         options.filterPutativeDuplicates = false;
 //         options.mergePutativeSiblings = false;
 //         options.xDropOff = -1;
-    }
+//     }
 //     else if (extensionModeTmp == "xdrop")
 //     {
 //         options.extensionMode = LambdaOptions::ExtensionMode::XDROP;
 //     }
-    else
-    {
+//     else
+//     {
 //         options.extensionMode = LambdaOptions::ExtensionMode::AUTO;
-    }
+//     }
 }
-
 
 // --------------------------------------------------------------------------
 // Function printOptions()
@@ -638,7 +638,6 @@ printOptions(LambdaOptions const & options)
               << "  seed delta:               " << uint(options.maxSeedDist) << "\n"
               << "  seeds ungapped:           " << uint(options.hammingOnly) << "\n"
               << "  seed gravity:             " << uint(options.seedGravity) << "\n"
-              << "  min seed length:          " << uint(options.minSeedLength) << "\n"
               << "  seed delta length inc.:   " << (options.seedDeltaIncreasesLength
                                                     ? std::string("on")
                                                     : std::string("off")) << "\n"
