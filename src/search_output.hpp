@@ -306,7 +306,6 @@ template <typename TGH, typename TLambdaOptions>
 inline void
 myWriteHeader(TGH & globalHolder, TLambdaOptions const & options)
 {
-    std::cout << __FILE__ << ": " << __LINE__ << '\n';
     if (options.outFileFormat <= 0) // Blast
     {
         std::string versionString;
@@ -328,7 +327,6 @@ myWriteHeader(TGH & globalHolder, TLambdaOptions const & options)
             seqan::open(globalHolder.outfileBlastRep, options.output.c_str());
             seqan::context(globalHolder.outfileBlastRep).fields = options.columns;
             seqan::writeHeader(globalHolder.outfileBlastRep);
-            std::cout << __FILE__ << ": " << __LINE__ << '\n';
         }
         else // BLAST-tab
         {
@@ -341,7 +339,6 @@ myWriteHeader(TGH & globalHolder, TLambdaOptions const & options)
             seqan::open(globalHolder.outfileBlastTab, options.output.c_str());
             seqan::context(globalHolder.outfileBlastTab).fields = options.columns;
             seqan::writeHeader(globalHolder.outfileBlastTab);
-            std::cout << __FILE__ << ": " << __LINE__ << '\n';
         }
 
     } else // SAM or BAM
@@ -490,12 +487,9 @@ myWriteRecord(TLH & lH, TRecord const & record)
             bamR.flag       = seqan::BAM_FLAG_SECONDARY; // all are secondary for now
             if (mIt->qFrameShift < 0)
                 bamR.flag   |= seqan::BAM_FLAG_RC;
-            // truncated query name
-            bamR.qName      = seqan::prefix(record.qId,
-                                     std::find(seqan::begin(record.qId,  seqan::Standard()),
-                                               seqan::end(record.qId,  seqan::Standard()),
-                                               ' ')
-                                     - seqan::begin(record.qId,  seqan::Standard()));
+            // truncated query name+
+            for (char c : record.qId | seqan3::views::take_until(seqan3::is_space))
+                seqan::appendValue(bamR.qName, c);
             // reference ID
             bamR.rID        = mIt->_n_sId;
 

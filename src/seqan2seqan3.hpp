@@ -5,6 +5,7 @@
 #include <seqan3/alphabet/concept.hpp>
 #include <seqan3/core/type_traits/pre.hpp>
 #include <seqan3/range/views/translate_join.hpp>
+#include <seqan3/range/views/to_rank.hpp>
 #include <seqan3/std/ranges>
 #include <seqan3/std/span>
 
@@ -32,8 +33,12 @@ namespace seqan
 
 template <typename t>
 inline constexpr bool is_new_range = false;
+template <typename char_t, typename traits_t>
+inline constexpr bool is_new_range<std::basic_string_view<char_t, traits_t>> = true;
 template <typename t, auto j>
 inline constexpr bool is_new_range<std::span<t, j>> = true;
+template <typename t>
+inline constexpr bool is_new_range<std::span<t, -1>> = true;
 template <typename ...ts>
 inline constexpr bool is_new_range<ranges::transform_view<ts...>> = true;
 template <typename ...ts>
@@ -156,7 +161,17 @@ struct HasSubscriptOperator<T> :
 template <NonSeqAn2Range T>
 SEQAN_CONCEPT_IMPL((T), (StlContainerConcept));
 
+template <NonSeqAn2Range TContainer>
+struct GetValue<Iter<TContainer, StdIteratorAdaptor> >
+{
+    using Type = seqan3::reference_t<TContainer>;
+};
 
+template <NonSeqAn2Range TContainer>
+struct GetValue<Iter<TContainer const, StdIteratorAdaptor> >
+{
+    using Type = seqan3::reference_t<TContainer const>;
+};
 
 // –---------------------------------------------------------------------------
 // range stuff
@@ -241,12 +256,56 @@ inline auto score(Score<TValue, TSpec> const & scheme, alph_t const a1, alph_t c
     return score(scheme, Iupac{seqan3::to_char(a1)}, Iupac{seqan3::to_char(a2)});
 }
 
-
 // –---------------------------------------------------------------------------
-// random fixes
+// SIMD Support
+// SeqAn2 converts input sequence values into SIMD lanes via implicit conversion.
+// This works for SeqAn2 alphabets, because they are implicitly convertible
+// to all integral types but fails for SeqAn3 alphabets that are not.
+//
+// Below is an overload of the SIMD representation conversion function in SeqAn2.
+// It gets chosen for ranges-over-ranges-over-SeqAn3-alphabet.
+// And it applies a two-dimensional SeqAn2 View on top of that range-of-range
+// that lazily converts the SeqAn3 alphabet to its rank representation which
+// can then be used to create the SIMD lanes.
+//
 // –---------------------------------------------------------------------------
 
+#ifdef SEQAN_SIMD_ENABLED
+struct seqan2_to_rank_inner
+{
+    using result_type = uint8_t;
 
+    template <typename t>
+    constexpr uint8_t operator()(t const c) const noexcept
+    {
+        return seqan3::to_rank(c);
+    }
+};
 
+template <typename input_t>
+struct seqan2_to_rank_outer
+{
+    using argument_type = typename GetValue<input_t const>::Type;
+    using result_type = seqan::ModifiedString<std::remove_reference_t<argument_type> const,
+                                              seqan::ModView<seqan2_to_rank_inner>>;
+
+    constexpr result_type operator()(argument_type const & c) const noexcept
+    {
+        return result_type{c};
+    }
+};
+
+template <typename TSimdVecs,
+          typename TStrings>
+    requires (!std::integral<decltype(std::declval<TStrings&>()[0][0])>) &&
+             seqan3::alphabet<decltype(std::declval<TStrings&>()[0][0])>
+inline void
+_createSimdRepImpl(TSimdVecs & simdStr,
+                   TStrings const & strings)
+{
+    using TModT   = seqan::ModifiedString<TStrings const, seqan::ModView<seqan2_to_rank_outer<TStrings const>>>;
+    _createSimdRepImpl(simdStr, TModT(strings));
+}
+#endif // SEQAN_SIMD_ENABLED
 
 } // namespace seqan
