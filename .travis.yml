@@ -14,6 +14,7 @@ matrix:
         sources: ['ubuntu-toolchain-r-test']
         packages: ['g++-7', 'cmake', 'cmake-data', 'zlib1g-dev', 'libbz2-dev', 'libboost-dev', 'python', 'python-nose', 'python-jinja2', 'python-pip']
     install: export CXX="g++-7"
+    env: CMAKE_ARGS="-DLAMBDA_NATIVE_BUILD=0"
 
   - os: linux
     compiler: gcc-8
@@ -22,19 +23,25 @@ matrix:
         sources: ['ubuntu-toolchain-r-test']
         packages: ['g++-8', 'cmake', 'cmake-data', 'zlib1g-dev', 'libbz2-dev', 'libboost-dev', 'python', 'python-nose', 'python-jinja2', 'python-pip']
     install: export CXX="g++-8"
-    env:
+    env: CMAKE_ARGS="-DLAMBDA_NATIVE_BUILD=1"
+
+  - os: linux
+    compiler: gcc-9
+    addons:
+      apt:
+        sources: ['ubuntu-toolchain-r-test']
+        packages: ['g++-9', 'cmake', 'cmake-data', 'zlib1g-dev', 'libbz2-dev', 'libboost-dev', 'python', 'python-nose', 'python-jinja2', 'python-pip']
+    install: export CXX="g++-9"
+    env: CMAKE_ARGS="-DLAMBDA_NATIVE_BUILD=0 -DCMAKE_CXX_FLAGS=-std=c++2a"
 
   - os: osx
     osx_image: xcode10.1
     compiler: gcc-9
-    before_install:
-      - brew update
-      - brew install gcc@9
     install: export CXX="g++-9"
     env: CMAKE_ARGS="-DLAMBDA_FASTBUILD=1"
 
 script:
   - mkdir -p build && cd build
-  - cmake .. -DLAMBDA_NATIVE_BUILD=0 -DLAMBDA_COMPILE_THREADS=2 ${CMAKE_ARGS}
+  - cmake .. -DLAMBDA_COMPILE_THREADS=2 ${CMAKE_ARGS}
   - travis_wait make VERBOSE=1 # need to prefix with travis_wait because it might take > 10min
   - ctest .
