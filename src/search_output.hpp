@@ -323,7 +323,9 @@ myWriteHeader(TGH & globalHolder, TLambdaOptions const & options)
             // copy details from tabular file
             seqan::context(globalHolder.outfileBlastRep) = seqan::context(globalHolder.outfileBlastTab);
 
-            seqan::context(globalHolder.outfileBlastRep).versionString += versionString;
+            if (options.versionInformationToOutputFile)
+                seqan::context(globalHolder.outfileBlastRep).versionString += versionString;
+
             seqan::open(globalHolder.outfileBlastRep, options.output.c_str());
             seqan::context(globalHolder.outfileBlastRep).fields = options.columns;
             seqan::writeHeader(globalHolder.outfileBlastRep);
@@ -335,7 +337,9 @@ myWriteHeader(TGH & globalHolder, TLambdaOptions const & options)
             else
                 seqan::context(globalHolder.outfileBlastTab).tabularSpec = seqan::BlastTabularSpec::NO_COMMENTS;
 
-            seqan::context(globalHolder.outfileBlastTab).versionString += versionString;
+            if (options.versionInformationToOutputFile)
+                seqan::context(globalHolder.outfileBlastTab).versionString += versionString;
+                
             seqan::open(globalHolder.outfileBlastTab, options.output.c_str());
             seqan::context(globalHolder.outfileBlastTab).fields = options.columns;
             seqan::writeHeader(globalHolder.outfileBlastTab);

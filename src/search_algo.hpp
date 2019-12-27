@@ -1175,22 +1175,11 @@ iterateMatchesFullSerial(TLocalHolder & lH)
         _setFrames(bm, m, lH);
 
         // Run extension WITHOUT TRACEBACK
-        typedef seqan::AlignConfig2<seqan::LocalAlignment_<>,
-                                    seqan::DPBandConfig<seqan::BandOn>,
-                                    seqan::FreeEndGaps_<seqan::True, seqan::True, seqan::True, seqan::True>,
-                                    seqan::TracebackOff> TAlignConfig;
-
-        seqan::DPScoutState_<seqan::Default> scoutState;
-
-        bm.alignStats.alignmentScore =
-        seqan::_setUpAndRunAlignment(lH.alignContext.dpContext,
-                                     lH.alignContext.traceSegment,
-                                     scoutState,
-                                     seqan::source(bm.alignRow0),
-                                     seqan::source(bm.alignRow1),
-                                     seqan::seqanScheme(seqan::context(lH.gH.outfileBlastTab).scoringScheme),
-                                     TAlignConfig(-band, +band));
-
+        bm.alignStats.alignmentScore = localAlignmentScore(bm.alignRow0,
+                                                           bm.alignRow1,
+                                                           seqanScheme(context(lH.gH.outfileBlastTab).scoringScheme),
+                                                           -band,
+                                                           +band);
         computeEValueThreadSafe(bm, record.qLength, seqan::context(lH.gH.outfileBlastTab));
 
         if (bm.eValue > lH.options.eCutOff)
