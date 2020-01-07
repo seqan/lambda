@@ -515,8 +515,8 @@ search(LocalDataHolder<TGlobalHolder> & lH)
         for (size_t seedBegin = 0; /* below */; seedBegin += lH.options.seedOffset)
         {
             // skip proteine 'X' or Dna 'N'
-            while ((lH.gH.transQrySeqs[i][seedBegin] == seqan3::assign_char_to('`', TTransAlph{})) && // assume that '°' gets converted to UNKNOWN
-                   (seedBegin <= (lH.gH.redQrySeqs[i].size() - lH.options.seedLength)))
+            while ((seedBegin <= (lH.gH.redQrySeqs[i].size() - lH.options.seedLength)) &&
+                   (lH.gH.transQrySeqs[i][seedBegin] == seqan3::assign_char_to('`', TTransAlph{}))) // assume that '°' gets converted to UNKNOWN
                 ++seedBegin;
 
             // termination criterium
@@ -912,7 +912,7 @@ _performAlignment(TDepSetH & depSetH,
                                            config,
                                            typename TLocalHolder::TScoreExtension());
 
-        for(auto x = pos; x < pos + sizeBatch && x < seqan::length(blastMatches); ++x)
+        for (auto x = pos; x < pos + sizeBatch && x < seqan::length(blastMatches); ++x)
         {
             if constexpr (withTrace)
                 seqan::_adaptTraceSegmentsTo(matchIt->alignRow0, matchIt->alignRow1, trace[x - pos]);
@@ -972,7 +972,10 @@ iterateMatchesFullSimd(TLocalHolder & lH)
         bm._n_qId = it->qryId / seqan::qNumFrames(TGlobalHolder::blastProgram);
         bm._n_sId = it->subjId / seqan::sNumFrames(TGlobalHolder::blastProgram);
 
-        bm.sLength = seqan::length(lH.gH.indexFile.seqs[bm._n_sId]);
+        bm.qLength = //std::ranges::size(lH.gH.transQrySeqs[it->qryId]);
+                    std::ranges::size(lH.gH.qrySeqs[bm._n_qId]);
+
+        bm.sLength = std::ranges::size(lH.gH.transSbjSeqs[it->subjId]);
 
         _setupAlignInfix(bm, *it, lH);
 
@@ -1023,7 +1026,7 @@ iterateMatchesFullSimd(TLocalHolder & lH)
     {
         TBlastMatch & bm = *it;
 
-        computeEValueThreadSafe(bm, seqan::length(lH.gH.qrySeqs[bm._n_qId]), seqan::context(lH.gH.outfileBlastTab));
+        computeEValueThreadSafe(bm, bm.qLength, seqan::context(lH.gH.outfileBlastTab));
 
         if (bm.eValue > lH.options.eCutOff)
         {
@@ -1142,12 +1145,8 @@ iterateMatchesFullSerial(TLocalHolder & lH)
     auto const trueQryId = lH.matches[0].qryId / qNumFrames(TGlobalHolder::blastProgram);
 
     TBlastRecord record(lH.gH.qryIds[trueQryId]);
-    record.qLength = qIsTranslated(TGlobalHolder::blastProgram) ?
-                     lH.gH.qrySeqs[trueQryId].size() :
-                     lH.gH.transQrySeqs[trueQryId].size();
 
-
-    unsigned band = _bandSize(record.qLength, lH);
+    size_t band = _bandSize(seqan::length(lH.gH.transQrySeqs[lH.matches[0].qryId]), lH);
 
 #ifdef LAMBDA_MICRO_STATS
     double start = sysTime();
@@ -1166,9 +1165,9 @@ iterateMatchesFullSerial(TLocalHolder & lH)
         bm._n_qId = it->qryId / seqan::qNumFrames(TGlobalHolder::blastProgram);
         bm._n_sId = it->subjId / seqan::sNumFrames(TGlobalHolder::blastProgram);
 
-        bm.sLength = seqan::sIsTranslated(TGlobalHolder::blastProgram)
-                        ? lH.gH.indexFile.seqs[it->subjId].size()
-                        : lH.gH.transSbjSeqs[it->subjId].size();
+        bm.qLength = //std::ranges::size(lH.gH.transQrySeqs[it->qryId]);
+                     std::ranges::size(lH.gH.qrySeqs[bm._n_qId]);
+        bm.sLength = std::ranges::size(lH.gH.transSbjSeqs[it->subjId]);
 
         _setupAlignInfix(bm, *it, lH);
 
@@ -1180,7 +1179,7 @@ iterateMatchesFullSerial(TLocalHolder & lH)
                                                            seqanScheme(context(lH.gH.outfileBlastTab).scoringScheme),
                                                            -band,
                                                            +band);
-        computeEValueThreadSafe(bm, record.qLength, seqan::context(lH.gH.outfileBlastTab));
+        computeEValueThreadSafe(bm, bm.qLength, seqan::context(lH.gH.outfileBlastTab));
 
         if (bm.eValue > lH.options.eCutOff)
         {
