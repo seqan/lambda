@@ -373,17 +373,17 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         " -2 means sqrt of query length; -1 means full dp; n means band of size 2n+1)",
         seqan3::option_spec::ADVANCED, seqan3::arithmetic_range_validator{-3, 1000});
 
-//      std::string extensionModeTmp;
-
-// #ifdef SEQAN_SIMD_ENABLED
-//     parser.add_option(extensionModeTmp,'m', "extension-mode",
-//         "Choice of extension algorithms.", seqan3::option_spec::ADVANCED,
-//         seqan3::value_list_validator{"fullSerial", "fullSIMD"});
-// #else
-//     parser.add_option(extensionModeTmp,'m', "extension-mode",
-//         "Choice of extension algorithms.", seqan3::option_spec::ADVANCED,
-//         seqan3::value_list_validator<std::string>{"fullSerial"});
-// #endif
+#ifdef SEQAN_SIMD_ENABLED
+    std::string extensionModeTmp = "fullSIMD";
+    parser.add_option(extensionModeTmp,'m', "extension-mode",
+        "Choice of extension algorithms.", seqan3::option_spec::ADVANCED,
+        seqan3::value_list_validator{"fullSerial", "fullSIMD"});
+#else
+    std::string extensionModeTmp = "fullSerial";
+    parser.add_option(extensionModeTmp,'m', "extension-mode",
+        "Choice of extension algorithms.", seqan3::option_spec::ADVANCED,
+        seqan3::value_list_validator<std::string>{"fullSerial"});
+#endif
 
     parser.add_section("Tuning");
     parser.add_line("Tuning the seeding parameters and (de)activating alphabet "
@@ -565,31 +565,11 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 //             options.seedHalfExact = true;
 //     }
 
-//     // Set options depending on extension mode
-//     if (extensionModeTmp == "fullSIMD")
-//     {
-//         options.extensionMode = LambdaOptions::ExtensionMode::FULL_SIMD;
-//         options.filterPutativeAbundant = false;
-//         options.filterPutativeDuplicates = false;
-//         options.mergePutativeSiblings = false;
-//         options.xDropOff = -1;
-//      }
-//      else if (extensionModeTmp == "fullSerial")
-//      {
-//         options.extensionMode = LambdaOptions::ExtensionMode::FULL_SERIAL;
-//         options.filterPutativeAbundant = false;
-//         options.filterPutativeDuplicates = false;
-//         options.mergePutativeSiblings = false;
-//         options.xDropOff = -1;
-//     }
-//     else if (extensionModeTmp == "xdrop")
-//     {
-//         options.extensionMode = LambdaOptions::ExtensionMode::XDROP;
-//     }
-//     else
-//     {
-//         options.extensionMode = LambdaOptions::ExtensionMode::AUTO;
-//     }
+    // Set options depending on extension mode
+    if (extensionModeTmp == "fullSIMD")
+        options.extensionMode = LambdaOptions::ExtensionMode::FULL_SIMD;
+    else if (extensionModeTmp == "fullSerial")
+        options.extensionMode = LambdaOptions::ExtensionMode::FULL_SERIAL;
 }
 
 // --------------------------------------------------------------------------
