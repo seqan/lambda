@@ -691,30 +691,22 @@ auto parseAndStoreTaxTree(std::vector<bool>          & taxIdIsPresent,
 
 
 template <bool is_bi,
-          AlphabetEnum c_redAlph,
           typename TStringSet>
 auto generateIndex(TStringSet                       & seqs,
                    LambdaIndexerOptions       const & options)
 {
-    using TIndex = std::conditional_t<is_bi,
-                                      seqan3::bi_fm_index<seqan3::innermost_value_type_t<decltype(seqs)>, seqan3::text_layout::collection>,
-                                      seqan3::fm_index<seqan3::innermost_value_type_t<decltype(seqs)>, seqan3::text_layout::collection>>;
-    using TRedAlph       = _alphabetEnumToType<c_redAlph>;
+    using TRedAlph       = seqan3::innermost_value_type_t<TStringSet>;
 
-    TIndex index;
+    constexpr auto is_collection = seqan3::text_layout::collection;
+    using TSpec = TIndexSpec<seqan3::alphabet_size<TRedAlph> + 2>;
+    using TIndex = std::conditional_t<is_bi,
+                                      seqan3::bi_fm_index<TRedAlph, is_collection, TSpec>,
+                                      seqan3::fm_index<TRedAlph, is_collection, TSpec>>;
 
     myPrint(options, 1, "Generating Index...");
     double s = sysTime();
 
-    if constexpr (std::same_as<seqan3::innermost_value_type_t<TStringSet>, TRedAlph>)
-    {
-         index = TIndex{seqs};
-    }
-    else
-    {
-        auto redSeqs = seqs | seqan3::views::deep{seqan3::views::convert<TRedAlph>};
-        index = TIndex{redSeqs};
-    }
+    TIndex index = TIndex{seqs};
 
     double e = sysTime() - s;
     myPrint(options, 1, " done.\n");

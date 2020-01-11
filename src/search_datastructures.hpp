@@ -408,11 +408,6 @@ public:
     using TQryIds       = TIds;
     using TSubjIds      = TIds;
 
-    /* indeces and their type */
-    using TDbIndex      = std::conditional_t<c_dbIndexType == DbIndexType::BI_FM_INDEX,
-                                             seqan3::bi_fm_index<TRedAlph, seqan3::text_layout::collection>,
-                                             seqan3::fm_index<TRedAlph, seqan3::text_layout::collection>>;
-
     /* output file */
     using TScoreScheme3  = std::conditional_t<seqan3::nucleotide_alphabet<TRedAlph>,
                                               seqan3::nucleotide_scoring_scheme<>,

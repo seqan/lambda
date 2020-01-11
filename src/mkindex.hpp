@@ -250,7 +250,7 @@ void realMain(LambdaIndexerOptions     const & options)
         }
     }
 
-    f.index = generateIndex<c_dbIndexType == DbIndexType::BI_FM_INDEX, c_redAlph>(redSbjSeqs, options);
+    f.index = generateIndex<c_dbIndexType == DbIndexType::BI_FM_INDEX>(redSbjSeqs, options);
 
     myPrint(options, 1, "Writing Index to disk...");
     double s = sysTime();
