@@ -698,7 +698,7 @@ auto generateIndex(TStringSet                       & seqs,
     using TRedAlph       = seqan3::innermost_value_type_t<TStringSet>;
 
     constexpr auto is_collection = seqan3::text_layout::collection;
-    using TSpec = TIndexSpec<seqan3::alphabet_size<TRedAlph> + 2>;
+    using TSpec = IndexSpec<seqan3::alphabet_size<TRedAlph>>;
     using TIndex = std::conditional_t<is_bi,
                                       seqan3::bi_fm_index<TRedAlph, is_collection, TSpec>,
                                       seqan3::fm_index<TRedAlph, is_collection, TSpec>>;
