@@ -1,4 +1,7 @@
+#pragma once
+
 #include <seqan3/alphabet/concept.hpp>
+#include <seqan3/alphabet/gap/all.hpp>
 #include <seqan3/alphabet/aminoacid/concept.hpp>
 #include <seqan3/alphabet/nucleotide/concept.hpp>
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
@@ -9,7 +12,8 @@
 #include <seqan3/std/ranges>
 #include <seqan3/std/span>
 
-#pragma once
+// Some things needs to be defined before including SeqAn2 headers.
+// This does not make sense, but oh well ¯\_(ツ)_/¯
 
 namespace seqan
 {
@@ -22,11 +26,24 @@ inline void const * getObjectId(T const & me)
     return std::addressof(me);
 }
 
+template <typename alph_t>
+inline seqan3::gapped<alph_t> gapValueImpl(seqan3::gapped<alph_t> *)
+{
+    return seqan3::gapped<alph_t>{seqan3::gap{}};
 }
 
-#include <seqan/basic/metaprogramming_logic.h>
+template <typename alph_t>
+inline seqan3::gapped<alph_t> gapValueImpl(seqan3::gapped<alph_t> const *)
+{
+    return seqan3::gapped<alph_t>{seqan3::gap{}};
+}
+
+}
+
+#include <seqan/basic.h>
 #include <seqan/sequence.h>
 #include <seqan/score.h>
+#include <seqan/align.h>
 
 namespace seqan
 {
@@ -244,17 +261,85 @@ inline bool operator==(char c, alph_t alph)
 }
 
 template <typename TValue, typename TSequenceValue, typename TSpec, seqan3::aminoacid_alphabet alph_t>
-inline auto score(Score<TValue, ScoreMatrix<TSequenceValue, TSpec>> const & scheme, alph_t const a1, alph_t const a2)
+inline auto score(Score<TValue, ScoreMatrix<TSequenceValue, TSpec>> const & scheme,
+                  alph_t const a1,
+                  alph_t const a2)
 {
     return score(scheme, AminoAcid{seqan3::to_char(a1)}, AminoAcid{seqan3::to_char(a2)});
 }
 
-// conflict with seqan::complement
+template <typename TValue, typename TSequenceValue, typename TSpec, seqan3::alphabet alph_t>
+inline auto score(Score<TValue, ScoreMatrix<TSequenceValue, TSpec>> const & scheme,
+                  seqan3::gapped<alph_t> const a1,
+                  seqan3::gapped<alph_t> const a2)
+{
+    // TODO convert_unsafely_to
+    return score(scheme,
+                 a1.template convert_to<alph_t>(),
+                 a2.template convert_to<alph_t>());
+}
+
 template <typename TValue, typename TSpec, seqan3::nucleotide_alphabet alph_t>
-inline auto score(Score<TValue, TSpec> const & scheme, alph_t const a1, alph_t const a2)
+inline auto score(Score<TValue, TSpec> const & scheme,
+                  alph_t const a1,
+                  alph_t const a2)
 {
     return score(scheme, Iupac{seqan3::to_char(a1)}, Iupac{seqan3::to_char(a2)});
 }
+
+template <typename TValue, typename TSpec, seqan3::alphabet alph_t>
+inline auto score(Score<TValue, TSpec> const & scheme,
+                  seqan3::gapped<alph_t> const a1,
+                  seqan3::gapped<alph_t> const a2)
+{
+    return score(scheme,
+                 a1.template convert_to<alph_t>(),
+                 a2.template convert_to<alph_t>());
+}
+
+template <seqan3::alphabet alph_t>
+    requires !std::integral<alph_t>
+char convertImpl(seqan::Convert<char, alph_t>, alph_t const & a)
+{
+    return seqan3::to_char(a);
+}
+
+template <std::integral int_t, seqan3::alphabet alph_t>
+    requires !std::integral<alph_t>
+int_t convertImpl(seqan::Convert<int_t, alph_t>, alph_t const & a)
+{
+    return seqan3::to_rank(a);
+}
+
+template <seqan3::alphabet alph_t>
+    requires !std::integral<alph_t>
+alph_t convertImpl(seqan::Convert<alph_t, seqan3::gapped<alph_t>>, seqan3::gapped<alph_t> const & a)
+{
+//     return a.template convert_unsafely_to<seqan3::gap>();
+    return a.template convert_to<alph_t>();
+}
+
+template <seqan3::alphabet alph_t>
+    requires !std::integral<alph_t>
+struct GappedValueType<alph_t>
+{
+    using Type = seqan3::gapped<alph_t>;
+};
+
+
+#ifdef SEQAN_SIMD_ENABLED
+
+// default is invalid; only used for alphabets that are scored with matrixes
+template <typename seqan3_alph_t>
+inline constexpr std::array<uint8_t, 1> seqan3rank_to_seqan2rank{};
+
+// aa27 are not:
+template <>
+inline constexpr std::array<uint8_t, 27> seqan3rank_to_seqan2rank<seqan3::aa27> =
+//A  B  C  D  E  F  G  H  I  J  K   L   M   N   O   P   Q   R   S   T   U   V   W   X   Y   Z   *       <- seqan3
+{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 25, 23, 24, 26 };
+//A  B  C  D  E  F  G  H  I  J  K   L   M   N   O   P   Q   R   S   T   U   V   W   Y   Z   X   *       <- seqan2
+//                                                                                  ↑   ↑   ↑
 
 // –---------------------------------------------------------------------------
 // SIMD Support
@@ -270,7 +355,6 @@ inline auto score(Score<TValue, TSpec> const & scheme, alph_t const a1, alph_t c
 //
 // –---------------------------------------------------------------------------
 
-#ifdef SEQAN_SIMD_ENABLED
 struct seqan2_to_rank_inner
 {
     using result_type = uint8_t;
@@ -278,7 +362,10 @@ struct seqan2_to_rank_inner
     template <typename t>
     constexpr uint8_t operator()(t const c) const noexcept
     {
-        return seqan3::to_rank(c);
+        if constexpr (std::is_same_v<t, seqan3::aa27> /* or dna3bs*/)
+            return seqan3rank_to_seqan2rank<t>[seqan3::to_rank(c)];
+        else // alphabets that are scored with seqan::SimpleScore don't need extra conversion
+            return seqan3::to_rank(c);
     }
 };
 

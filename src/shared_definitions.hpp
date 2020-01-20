@@ -26,131 +26,81 @@
 #include <seqan3/range/views/convert.hpp>
 #include <seqan3/range/views/deep.hpp>
 
-
 #include "shared_options.hpp"
 #include "view_dna_n_to_random.hpp"
 
 // ==========================================================================
-// Global variables
+//  Global variables
 // ==========================================================================
 
 // this is increased after incompatible changes to on-disk format
 inline constexpr uint64_t currentIndexGeneration = 0;
 
 // ==========================================================================
-// Metafunctions
+//  Index specs TODO experiment with these
 // ==========================================================================
 
-// SIZE TYPES
-#if 0
-// Expected Number of Sequences
-template <typename TAlph>
-using SizeTypeNum_ = uint32_t;
+/* default */
+template <size_t>
+using IndexSpec = seqan3::default_sdsl_index_type;
 
-// Expected Lengths of Sequences
-template <typename T>
-struct SizeTypePosMeta_
-{
-#ifdef LAMBDA_LONG_PROTEIN_SUBJ_SEQS
-    using Type = uint32_t;
-#else
-    using Type = uint16_t;
-#endif
-};
+/* default, spelled out */
+// template <size_t>
+// using IndexSpec = sdsl::csa_wt<sdsl::wt_blcd<sdsl::bit_vector,
+//                                               sdsl::rank_support_v<>,
+//                                               sdsl::select_support_scan<>,
+//                                               sdsl::select_support_scan<0> >,
+//                                 16,
+//                                 10000000,
+//                                 sdsl::sa_order_sa_sampling<>,
+//                                 sdsl::isa_sampling<>,
+//                                 sdsl::plain_byte_alphabet>;
 
-template <>
-struct SizeTypePosMeta_<Dna5>
-{
-    // DNA sequences are expected to be longer
-    using Type = uint32_t;
-};
+/* huffman, doesn't satisfy concept at the moment */
+// template <size_t>
+// using IndexSpec = sdsl::csa_wt<sdsl::wt_huff<sdsl::bit_vector,
+//                                               sdsl::rank_support_v<>,
+//                                               sdsl::select_support_scan<>,
+//                                               sdsl::select_support_scan<0> >,
+//                                 16,
+//                                 10000000,
+//                                 sdsl::sa_order_sa_sampling<>,
+//                                 sdsl::isa_sampling<>,
+//                                 sdsl::plain_byte_alphabet>;
 
-template <typename TAlph>
-using SizeTypePos_ = typename SizeTypePosMeta_<TAlph>::Type;
+/* epr, in experimental branch */
+// template <size_t alph_size>
+// using IndexSpec = sdsl::csa_wt<sdsl::wt_epr<alph_size + 2>, // +1 for sentinels, +1 for collection
+//                                 16,
+//                                 1'0000'000,
+//                                 sdsl::sa_order_sa_sampling<>,
+//                                 sdsl::isa_sampling<>,
+//                                 sdsl::plain_byte_alphabet>;
 
+// ==========================================================================
+//  Misc. aliases
+// ==========================================================================
 
-// suffix array overloads
-namespace seqan
-{
-
-template<typename TSpec1, typename TSpec2, typename TSpec3>
-struct SAValue<StringSet<String<ReducedAminoAcid<TSpec1>, TSpec2>, TSpec3> >
-{
-    typedef Pair<SizeTypeNum_<TSpec1>, SizeTypePos_<TSpec1>, Pack> Type;
-};
-
-template<typename TSpec1, typename TSpec2, typename TSpec3, typename TFunctor>
-struct SAValue<StringSet<ModifiedString<String<TSpec1, TSpec2>, TFunctor>, TSpec3> >
-{
-    typedef Pair<SizeTypeNum_<TSpec1>, SizeTypePos_<TSpec1>, Pack> Type;
-};
-
-template<typename TSpec1, typename TSpec2, typename TSpec3, typename TFunctor, typename TFunctor2>
-struct SAValue<StringSet<ModifiedString<ModifiedString<String<TSpec1, TSpec2>, TFunctor>, TFunctor2>, TSpec3> >
-{
-    typedef Pair<SizeTypeNum_<TSpec1>, SizeTypePos_<TSpec1>, Pack> Type;
-};
-
-template<typename TSpec1, typename TSpec2, typename TSpec3>
-struct SAValue<StringSet<String<TSpec1, TSpec2>, TSpec3> >
-{
-    typedef Pair<SizeTypeNum_<TSpec1>, SizeTypePos_<TSpec1>, Pack> Type;
-};
-
-template <typename TString, typename TSpec>
-struct DefaultIndexStringSpec<StringSet<TString, TSpec>>
-{
-#if !defined(LAMBDA_INDEXER) && defined(LAMBDA_MMAPPED_DB)
-    using Type    = MMap<>;
-#else
-    using Type    = Alloc<>;
-#endif
-};
-
-// our custom Bam Overload
-template <typename TDirection, typename TStorageSpec>
-struct FormattedFileContext<FormattedFile<Bam, TDirection, BlastTabular>, TStorageSpec>
-{
-    typedef typename DefaultIndexStringSpec<StringSet<void, void>>::Type TStringSpec; // see above
-    typedef StringSet<Segment<String<char, TStringSpec>, InfixSegment> > TNameStore;
-    typedef NameStoreCache<TNameStore>                                   TNameStoreCache;
-    typedef BamIOContext<TNameStore, TNameStoreCache, TStorageSpec>      Type;
-};
-
-}
-
-// Index Specs
-struct LambdaFMIndexConfig
-{
-    using LengthSum = size_t;
-#if !defined(LAMBDA_INDEXER) && defined(LAMBDA_MMAPPED_DB)
-    using TAlloc    = MMap<>;
-#else
-    using TAlloc    = Alloc<>;
-#endif
-
-    using Bwt       = Levels<void, LevelsRDConfig<LengthSum, TAlloc, 3, 3> >;
-    using Sentinels = Levels<void, LevelsRDConfig<LengthSum, TAlloc> >;
-
-    static const unsigned SAMPLING = 10;
-};
-
-struct LambdaFMIndexConfigInBi : LambdaFMIndexConfig
-{
-    using Bwt       = Levels<void, LevelsPrefixRDConfig<LengthSum, TAlloc, 3, 3> >;
-};
-#endif
-
-// template <typename TText = void>
-// using TFMIndex = seqan3::fm_index<TText>;
-//
-// template <typename TText = void>
-// using TFMIndexInBi = seqan3::bi_fm_index<TText>;
-
-// lazy...
 template <typename TString>
 using TCDStringSet = std::vector<TString>; //TODO seqan3::concatenated_sequences
 
+template <typename TSpec>
+using TTransAlphModString =
+  decltype(std::declval<TSpec &>() | seqan3::views::translate_join);
+
+template <typename TSpec, typename TAlph>
+using TRedAlphModString =
+  decltype(std::declval<TSpec &>() | seqan3::views::deep{seqan3::views::convert<TAlph>});
+
+template <typename TSpec, typename TAlph>
+using TRedNuclAlphModString =
+  decltype(std::declval<TSpec &>() | seqan3::views::dna_n_to_random);
+
+// ==========================================================================
+//  The index
+// ==========================================================================
+
+/* actual index */
 template <DbIndexType           dbIndexType,
           AlphabetEnum          origAlph,
           AlphabetEnum          redAlph>    // <- all members of index_file_options that influence types
@@ -166,10 +116,13 @@ struct index_file
     std::vector<uint8_t>                                        taxonHeights;
     std::vector<std::string>                                    taxonNames; //TODO TCDStringSet?
 
-    using TRedAlph       = _alphabetEnumToType<redAlph>;
-    std::conditional_t<dbIndexType == DbIndexType::BI_FM_INDEX,
-                       seqan3::bi_fm_index<TRedAlph, seqan3::text_layout::collection>,
-                       seqan3::fm_index<TRedAlph, seqan3::text_layout::collection>>     index;
+    using TRedAlph      = _alphabetEnumToType<redAlph>;
+    using TIndexSpec    = IndexSpec<seqan3::alphabet_size<TRedAlph>>;
+    using TIndex        = std::conditional_t<dbIndexType == DbIndexType::BI_FM_INDEX,
+        seqan3::bi_fm_index<TRedAlph, seqan3::text_layout::collection, TIndexSpec>,
+        seqan3::fm_index<TRedAlph, seqan3::text_layout::collection, TIndexSpec>>;
+
+    TIndex index;
 
     template <typename TArchive>
     void serialize(TArchive & archive)
@@ -185,7 +138,7 @@ struct index_file
     }
 };
 
-
+/* pseudo-index that can be used to only load the options from disk */
 struct fake_index_file
 {
     index_file_options & options;
@@ -196,6 +149,10 @@ struct fake_index_file
         archive(cereal::make_nvp("options",          options));
     }
 };
+
+// ==========================================================================
+//  Misc. functions
+// ==========================================================================
 
 template <typename TTargetAlph, typename TRange, typename TAdaptProt, typename TAdaptNucl>
     requires std::same_as<seqan3::innermost_value_type_t<TRange>, TTargetAlph>
@@ -219,14 +176,4 @@ auto initHelper(TRange & input, TAdaptProt && adaptProt, TAdaptNucl &&)
     return input | std::forward<TAdaptProt>(adaptProt);
 }
 
-template <typename TSpec>
-using TTransAlphModString =
-  decltype(std::declval<TSpec &>() | seqan3::views::translate_join);
 
-template <typename TSpec, typename TAlph>
-using TRedAlphModString =
-  decltype(std::declval<TSpec &>() | seqan3::views::deep{seqan3::views::convert<TAlph>});
-
-template <typename TSpec, typename TAlph>
-using TRedNuclAlphModString =
-  decltype(std::declval<TSpec &>() | seqan3::views::dna_n_to_random);
