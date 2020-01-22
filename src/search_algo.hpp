@@ -2378,6 +2378,10 @@ iterateMatchesFullSimd(TLocalHolder & lH)
                         ? lH.gH.untransSubjSeqLengths[bm._n_sId]
                         : length(lH.gH.subjSeqs[it->subjId]);
 
+        bm.qLength = qIsTranslated(TGlobalHolder::blastProgram)
+                        ? lH.gH.untransQrySeqLengths[bm._n_qId ]
+                        : length(lH.gH.qrySeqs[it->qryId]);
+
         _setupAlignInfix(bm, *it, lH);
 
         _setFrames(bm, *it, lH);
@@ -2555,7 +2559,7 @@ iterateMatchesFullSerial(TLocalHolder & lH)
                         ? lH.gH.untransQrySeqLengths[trueQryId]
                         : length(lH.gH.qrySeqs[lH.matches[0].qryId]));
 
-    unsigned band = _bandSize(record.qLength, lH);
+    size_t band = _bandSize(length(lH.gH.qrySeqs[lH.matches[0].qryId]), lH);
 
 #ifdef LAMBDA_MICRO_STATS
     double start = sysTime();
@@ -2578,25 +2582,20 @@ iterateMatchesFullSerial(TLocalHolder & lH)
                         ? lH.gH.untransSubjSeqLengths[bm._n_sId]
                         : length(lH.gH.subjSeqs[it->subjId]);
 
+        bm.qLength = qIsTranslated(TGlobalHolder::blastProgram)
+                        ? lH.gH.untransQrySeqLengths[bm._n_qId ]
+                        : length(lH.gH.qrySeqs[it->qryId]);
+
         _setupAlignInfix(bm, *it, lH);
 
         _setFrames(bm, m, lH);
 
         // Run extension WITHOUT TRACEBACK
-        typedef AlignConfig2<LocalAlignment_<>,
-                            DPBandConfig<BandOn>,
-                            FreeEndGaps_<True, True, True, True>,
-                            TracebackOff> TAlignConfig;
-
-        DPScoutState_<Default> scoutState;
-
-        bm.alignStats.alignmentScore = _setUpAndRunAlignment(lH.alignContext.dpContext,
-                                                             lH.alignContext.traceSegment,
-                                                             scoutState,
-                                                             source(bm.alignRow0),
-                                                             source(bm.alignRow1),
-                                                             seqanScheme(context(lH.gH.outfile).scoringScheme),
-                                                             TAlignConfig(-band, +band));
+        bm.alignStats.alignmentScore = localAlignmentScore(bm.alignRow0,
+                                                           bm.alignRow1,
+                                                           seqanScheme(context(lH.gH.outfile).scoringScheme),
+                                                           -band,
+                                                           +band);
 
         computeEValueThreadSafe(bm, record.qLength, context(lH.gH.outfile));
 
