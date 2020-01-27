@@ -30,6 +30,7 @@
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
 #include <seqan3/alphabet/aminoacid/aa27.hpp>
 #include <seqan3/alphabet/aminoacid/aa10murphy.hpp>
+#include <seqan3/alphabet/aminoacid/aa10li.hpp>
 #include <seqan3/alphabet/aminoacid/translation_genetic_code.hpp>
 #include <seqan3/std/filesystem>
 
@@ -112,11 +113,11 @@ _alphTypeToName(seqan3::aa10murphy const & /**/)
     return "murphy10";
 }
 
-// constexpr const char *
-// _alphTypeToName(ReducedAminoAcid<Murphy10> const & /**/)
-// {
-//     return "murphy10";
-// }
+constexpr const char *
+_alphTypeToName(seqan3::aa10li const & /**/)
+{
+    return "li10";
+}
 
 enum class AlphabetEnum : uint8_t
 {
@@ -125,6 +126,7 @@ enum class AlphabetEnum : uint8_t
     DNA5,
     AMINO_ACID,
     MURPHY10,
+    LI10,
 };
 
 inline std::string
@@ -137,6 +139,7 @@ _alphabetEnumToName(AlphabetEnum const t)
         case AlphabetEnum::DNA5:        return _alphTypeToName(seqan3::dna5{});
         case AlphabetEnum::AMINO_ACID:  return _alphTypeToName(seqan3::aa27{});
         case AlphabetEnum::MURPHY10:    return _alphTypeToName(seqan3::aa10murphy{});
+        case AlphabetEnum::LI10:        return _alphTypeToName(seqan3::aa10li{});
     }
 
     throw std::runtime_error("Error: unknown alphabet type");
@@ -156,6 +159,8 @@ _alphabetNameToEnum(std::string const t)
         return AlphabetEnum::AMINO_ACID;
     else if (t == _alphTypeToName(seqan3::aa10murphy{}))
         return AlphabetEnum::MURPHY10;
+    else if (t == _alphTypeToName(seqan3::aa10li{}))
+        return AlphabetEnum::LI10;
 
     throw std::runtime_error("Error: unknown alphabet type");
     return AlphabetEnum::DNA4;
@@ -186,6 +191,12 @@ template <>
 struct _alphabetEnumToType_<AlphabetEnum::MURPHY10>
 {
     using type = seqan3::aa10murphy;
+};
+
+template <>
+struct _alphabetEnumToType_<AlphabetEnum::LI10>
+{
+    using type = seqan3::aa10li;
 };
 
 template <AlphabetEnum e>

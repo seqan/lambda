@@ -280,6 +280,10 @@ void argCon2b(LambdaOptions const & options)
                                                             c_origSbjAlph,
                                                             AlphabetEnum::AMINO_ACID,
                                                             AlphabetEnum::MURPHY10>(options);
+        case AlphabetEnum::LI10:            return argCon3<c_indexType,
+                                                            c_origSbjAlph,
+                                                            AlphabetEnum::AMINO_ACID,
+                                                            AlphabetEnum::LI10>(options);
         default: throw 54;
     }
 }
