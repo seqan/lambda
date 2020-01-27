@@ -293,7 +293,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         seqan3::option_spec::DEFAULT, seqan3::arithmetic_range_validator{1, 50});
 
     parser.add_option(options.maxSeedDist, '\0', "seed-delta",
-        "Maximum seed distance.", seqan3::option_spec::ADVANCED, seqan3::arithmetic_range_validator{0, 1});
+        "Maximum seed distance.", seqan3::option_spec::ADVANCED, seqan3::arithmetic_range_validator{0, 5});
 
     parser.add_option(options.seedDeltaIncreasesLength, '\0', "seed-delta-increases-length",
         "Seed delta increases the min. seed length (for affected seeds).", seqan3::option_spec::ADVANCED);

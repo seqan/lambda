@@ -706,7 +706,18 @@ auto generateIndex(TStringSet                       & seqs,
     myPrint(options, 1, "Generating Index...");
     double s = sysTime();
 
-    TIndex index = TIndex{seqs};
+    TIndex index;
+
+    if constexpr (is_bi)
+    {
+        // WORKAROUND https://github.com/seqan/seqan3/pull/1519
+        std::vector<std::vector<TRedAlph>> tmp = seqs | seqan3::views::to<std::vector<std::vector<TRedAlph>>>;
+        index = TIndex{tmp};
+    }
+    else
+    {
+        index = TIndex{seqs};
+    }
 
     double e = sysTime() - s;
     myPrint(options, 1, " done.\n");
