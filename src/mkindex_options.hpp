@@ -156,7 +156,7 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
             seqan3::value_list_validator{0, 1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 13, 14, 15, 16, 21, 22, 23, 24, 25});
 
         parser.add_option(alphabetReductionTmp, 'r', "alphabet-reduction", "Alphabet Reduction for seeding phase.",
-            seqan3::option_spec::ADVANCED, seqan3::value_list_validator{"none", "murphy10"});
+            seqan3::option_spec::ADVANCED, seqan3::value_list_validator{"none", "murphy10", "li10"});
     }
 
     std::string algorithmTmp = "radixsort";

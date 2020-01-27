@@ -162,7 +162,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     // TODO Better solution for file extensions
     parser.add_option(options.queryFile, 'q', "query", "Query sequences.", seqan3::option_spec::REQUIRED,
-        seqan3::input_file_validator{{"fa", "fasta", "fq", "fastq", "gz"}});
+        seqan3::input_file_validator<seqan3::sequence_file_input<>>{});
 
     std::string inputAlphabetTmp = "auto";
     int32_t geneticCodeTmp = 1;
