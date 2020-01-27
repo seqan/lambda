@@ -975,7 +975,8 @@ iterateMatchesFullSimd(TLocalHolder & lH)
         bm.qLength = //std::ranges::size(lH.gH.transQrySeqs[it->qryId]);
                     std::ranges::size(lH.gH.qrySeqs[bm._n_qId]);
 
-        bm.sLength = std::ranges::size(lH.gH.transSbjSeqs[it->subjId]);
+        bm.sLength = // std::ranges::size(lH.gH.transSbjSeqs[it->subjId]);
+                     std::ranges::size(lH.gH.indexFile.seqs[bm._n_sId]);
 
         _setupAlignInfix(bm, *it, lH);
 
@@ -1167,7 +1168,8 @@ iterateMatchesFullSerial(TLocalHolder & lH)
 
         bm.qLength = //std::ranges::size(lH.gH.transQrySeqs[it->qryId]);
                      std::ranges::size(lH.gH.qrySeqs[bm._n_qId]);
-        bm.sLength = std::ranges::size(lH.gH.transSbjSeqs[it->subjId]);
+        bm.sLength = //std::ranges::size(lH.gH.transSbjSeqs[it->subjId]);
+                     std::ranges::size(lH.gH.indexFile.seqs[bm._n_sId]);
 
         _setupAlignInfix(bm, *it, lH);
 

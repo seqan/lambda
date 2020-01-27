@@ -112,27 +112,33 @@ struct alphabet_detection_traits : seqan3::sequence_file_input_default_traits_dn
     using sequence_container = std::vector<alph>;
 };
 
+template <typename TAlph, typename TRange>
+constexpr bool all_valid(TRange && r)
+{
+    for (auto const c : r)
+        if (!seqan3::char_is_valid_for<TAlph>(c))
+            return false;
+    return true;
+}
+
 AlphabetEnum detectSeqFileAlphabet(std::string const & path)
 {
     seqan3::sequence_file_input<alphabet_detection_traits, seqan3::fields<seqan3::field::seq>> f{path};
 
     auto & seq = std::get<0>(*f.begin());
 
-    if (std::ranges::equal(seq | seqan3::views::char_to<seqan3::dna5> | seqan3::views::to_char,
-                           seq | seqan3::views::to_upper))
+    if (all_valid<seqan3::dna5>(seq))
     {
         return AlphabetEnum::DNA5;
     }
-    else if (std::ranges::equal(seq | seqan3::views::char_to<seqan3::dna15> | seqan3::views::to_char,
-                                seq | seqan3::views::to_upper))
+    else if (all_valid<seqan3::dna15>(seq))
     {
         std::cerr << "\nWARNING: You query file was detected as non-standard DNA, but it could be AminoAcid, too.\n"
                     "To explicitly read as AminoAcid, add '--query-alphabet aminoacid'.\n"
                     "To ignore and disable this warning, add '--query-alphabet dna5'.\n";
         return AlphabetEnum::DNA5;
     }
-    else if (std::ranges::equal(seq | seqan3::views::char_to<seqan3::aa27> | seqan3::views::to_char,
-                                seq | seqan3::views::to_upper))
+    else if (all_valid<seqan3::aa27>(seq))
     {
         return AlphabetEnum::AMINO_ACID;
     }
