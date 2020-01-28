@@ -408,6 +408,11 @@ public:
     using TQryIds       = TIds;
     using TSubjIds      = TIds;
 
+    /* index */
+    using TIndexFile    = index_file<c_dbIndexType, c_origSbjAlph, c_redAlph>;
+    using TIndex        = typename TIndexFile::TIndex;
+    using TIndexCursor  = typename TIndex::cursor_type;
+
     /* output file */
     using TScoreScheme3  = std::conditional_t<seqan3::nucleotide_alphabet<TRedAlph>,
                                               seqan3::nucleotide_scoring_scheme<>,
@@ -426,7 +431,7 @@ public:
     using TPositions    = std::vector<size_t>;
 
     /* the actual members */
-    index_file<c_dbIndexType, c_origSbjAlph, c_redAlph> indexFile;
+    TIndexFile          indexFile;
 
     TTransSbjSeqs       transSbjSeqs =
         initHelper<TTransAlph>(indexFile.seqs, seqan3::views::translate_join, seqan3::views::translate_join);
@@ -512,10 +517,12 @@ public:
     uint64_t            indexBeginQry;
     uint64_t            indexEndQry;
 
-    // regarding seedingp
-    std::vector<TMatch>   matches;
-    std::vector<typename TMatch::TQId> seedRefs;  // mapping seed -> query
-    std::vector<typename TMatch::TPos> seedRanks; // mapping seed -> relative rank
+    // regarding seeding
+    std::vector<typename TGlobalHolder::TIndexCursor>   cursor_buffer;
+    std::vector<std::pair<size_t, size_t>>              matches_buffer;
+    std::vector<TMatch>                                 matches;
+    std::vector<typename TMatch::TQId>                  seedRefs;  // mapping seed -> query
+    std::vector<typename TMatch::TPos>                  seedRanks; // mapping seed -> relative rank
 
     // regarding extension
 //     using TAlignRow = seqan::Gaps<seqan::Infix<typename TGlobalHolder::TSeqAn2TransSeq>,
