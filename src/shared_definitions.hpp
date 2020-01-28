@@ -149,31 +149,3 @@ struct fake_index_file
         archive(cereal::make_nvp("options",          options));
     }
 };
-
-// ==========================================================================
-//  Misc. functions
-// ==========================================================================
-
-template <typename TTargetAlph, typename TRange, typename TAdaptProt, typename TAdaptNucl>
-    requires std::same_as<seqan3::innermost_value_type_t<TRange>, TTargetAlph>
-TRange & initHelper(TRange & input, TAdaptProt &&, TAdaptNucl &&)
-{
-    return input;
-}
-
-template <typename TTargetAlph, typename TRange, typename TAdaptProt, typename TAdaptNucl>
-    requires seqan3::nucleotide_alphabet<TTargetAlph> &&
-             (!std::same_as<seqan3::innermost_value_type_t<TRange>, TTargetAlph>)
-auto initHelper(TRange & input, TAdaptProt &&, TAdaptNucl && adaptNucl)
-{
-    return input | std::forward<TAdaptNucl>(adaptNucl);
-}
-
-template <typename TTargetAlph, typename TRange, typename TAdaptProt, typename TAdaptNucl>
-    requires !std::same_as<seqan3::innermost_value_type_t<TRange>, TTargetAlph>
-auto initHelper(TRange & input, TAdaptProt && adaptProt, TAdaptNucl &&)
-{
-    return input | std::forward<TAdaptProt>(adaptProt);
-}
-
-

@@ -246,9 +246,13 @@ prepareScoring(GlobalDataHolder<c_dbIndexType, c_origSbjAlph, c_transAlph, c_red
 // Function loadIndexFromDisk()
 // --------------------------------------------------------------------------
 
-template <typename TGlobalHolder>
+template <DbIndexType   c_indexType,
+          AlphabetEnum  c_origSbjAlph,
+          AlphabetEnum  c_transAlph,
+          AlphabetEnum  c_redAlph,
+          AlphabetEnum  c_origQryAlph>
 void
-loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
+loadDbIndexFromDisk(GlobalDataHolder<c_indexType, c_origSbjAlph, c_transAlph, c_redAlph, c_origQryAlph> & globalHolder,
                     LambdaOptions const & options)
 {
     std::string strIdent = "Loading Database Index...";
@@ -270,16 +274,18 @@ loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
         throw 88;
     }
 
-    if constexpr (!std::is_lvalue_reference_v<typename TGlobalHolder::TTransSbjSeqs>) // is view
-    {
-        // update view, now that underlying range is available
+    if constexpr (c_origSbjAlph == c_transAlph)
+        globalHolder.transSbjSeqs = globalHolder.indexFile.seqs | seqan3::views::type_reduce;       // no-op view
+    else
         globalHolder.transSbjSeqs = globalHolder.indexFile.seqs | seqan3::views::translate_join;
-    }
 
-    if constexpr (!std::is_lvalue_reference_v<typename TGlobalHolder::TRedSbjSeqs>) // is view
+    if constexpr (c_transAlph == c_redAlph)
     {
-        // update view, now that underlying range is available
-        if constexpr (TGlobalHolder::blastProgram == seqan::BlastProgram::BLASTN)
+        globalHolder.redSbjSeqs = globalHolder.transSbjSeqs | seqan3::views::type_reduce;           // no-op view
+    }
+    else
+    {
+        if constexpr (c_transAlph == AlphabetEnum::DNA5) // BLASTN mode
         {
             globalHolder.redSbjSeqs = globalHolder.transSbjSeqs
                                     | seqan3::views::dna_n_to_random;
@@ -287,7 +293,7 @@ loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
         else
         {
             globalHolder.redSbjSeqs = globalHolder.transSbjSeqs
-                                    | seqan3::views::deep{seqan3::views::convert<typename TGlobalHolder::TRedAlph>};
+                                    | seqan3::views::deep{seqan3::views::convert<_alphabetEnumToType<c_redAlph>>};
         }
     }
 
@@ -296,14 +302,14 @@ loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
     myPrint(options, 2, "Runtime: ", finish, "s \n\n");
 
     // this is actually part of prepareScoring(), but the values are just available now
-    if constexpr (seqan::sIsTranslated(TGlobalHolder::blastProgram))
+    if constexpr (c_origSbjAlph != c_transAlph)
     {
         // last value has sum of lengths
         // seqan::context(globalHolder.outfileBlastTab).dbTotalLength  = globalHolder.indexFile.origSeqLengths.back();
         // seqan::context(globalHolder.outfileBlastTab).dbNumberOfSeqs = globalHolder.indexFile.origSeqLengths.size() - 1;
         seqan::context(globalHolder.outfileBlastTab).dbTotalLength  =
             std::accumulate(globalHolder.indexFile.seqs.begin(), globalHolder.indexFile.seqs.end(), 0,
-                [](size_t sum, std::vector<typename TGlobalHolder::TOrigSbjAlph> const & a)
+                [](size_t sum, auto const & a)
                 {
                     return sum + std::ranges::size(a);
                 });
@@ -316,6 +322,7 @@ loadDbIndexFromDisk(TGlobalHolder       & globalHolder,
     }
 
     seqan::context(globalHolder.outfileBlastTab).dbName = options.indexFilePath;
+    //TODO did we forget outfileBlastRep here? Or is that copied in output?
 }
 
 // --------------------------------------------------------------------------
@@ -400,8 +407,11 @@ loadQuery(GlobalDataHolder<c_indexType, c_origSbjAlph, c_transAlph, c_redAlph, c
 
     if constexpr (c_origQryAlph != c_transAlph)
     {
-        globalHolder.transQrySeqs = globalHolder.qrySeqs
-                                  | seqan3::views::translate_join;
+        globalHolder.transQrySeqs = globalHolder.qrySeqs | seqan3::views::translate_join;
+    }
+    else
+    {
+        globalHolder.transQrySeqs = globalHolder.qrySeqs | seqan3::views::type_reduce;
     }
 
     if constexpr (c_transAlph != c_redAlph)
@@ -416,6 +426,10 @@ loadQuery(GlobalDataHolder<c_indexType, c_origSbjAlph, c_transAlph, c_redAlph, c
             globalHolder.redQrySeqs = globalHolder.transQrySeqs
                                     | seqan3::views::deep{seqan3::views::convert<TRedAlph>};
         }
+    }
+    else
+    {
+        globalHolder.redQrySeqs = globalHolder.transQrySeqs | seqan3::views::type_reduce;
     }
 
 

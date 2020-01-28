@@ -27,6 +27,7 @@
 #include <seqan3/core/type_traits/lazy.hpp>
 #include <seqan3/range/views/convert.hpp>
 #include <seqan3/range/views/deep.hpp>
+#include <seqan3/range/views/type_reduce.hpp>
 #include <seqan3/range/views/translate_join.hpp>
 
 #include <seqan/align_extend.h>
@@ -381,24 +382,24 @@ public:
 
     using TTransQrySeqs   =
       seqan3::detail::lazy_conditional_t<c_origQryAlph == c_transAlph,
-                         TQrySeqs &,                                                               // reference to owner
-                         seqan3::detail::lazy<TTransAlphModString, TQrySeqs> >;                               // modview
+                         decltype(seqan3::views::type_reduce(std::declval<TQrySeqs &>())),  // no-op view
+                         seqan3::detail::lazy<TTransAlphModString, TQrySeqs> >;             // trans view
 
     using TTransSbjSeqs   =
       seqan3::detail::lazy_conditional_t<c_origSbjAlph == c_transAlph,
-                         TSbjSeqs &,                                                               // reference to owner
-                         seqan3::detail::lazy<TTransAlphModString,  TSbjSeqs> >;                              // modview
+                         decltype(seqan3::views::type_reduce(std::declval<TSbjSeqs &>())),  // no-op view
+                         seqan3::detail::lazy<TTransAlphModString, TSbjSeqs> >;             // trans view
 
     using TRedQrySeqs   =
      seqan3::detail::lazy_conditional_t<c_transAlph == c_redAlph,
-                        TTransQrySeqs &,                                                           // reference to owner
+                        decltype(seqan3::views::type_reduce(std::declval<TTransQrySeqs &>())),   // no-op view
                         seqan3::detail::lazy_conditional_t<c_transAlph != AlphabetEnum::AMINO_ACID,
                                         seqan3::detail::lazy<TRedNuclAlphModString, TTransQrySeqs, TRedAlph>,
                                         seqan3::detail::lazy<TRedAlphModString, TTransQrySeqs, TRedAlph> > >;
 
     using TRedSbjSeqs   =
      seqan3::detail::lazy_conditional_t<c_transAlph == c_redAlph,
-                        TTransSbjSeqs &,                                                           // reference to owner
+                        decltype(seqan3::views::type_reduce(std::declval<TTransSbjSeqs &>())),   // no-op view
                         seqan3::detail::lazy_conditional_t<c_transAlph != AlphabetEnum::AMINO_ACID,
                                         seqan3::detail::lazy<TRedNuclAlphModString, TTransSbjSeqs, TRedAlph>,
                                         seqan3::detail::lazy<TRedAlphModString, TTransSbjSeqs, TRedAlph> > >;
@@ -433,16 +434,12 @@ public:
     /* the actual members */
     TIndexFile          indexFile;
 
-    TTransSbjSeqs       transSbjSeqs =
-        initHelper<TTransAlph>(indexFile.seqs, seqan3::views::translate_join, seqan3::views::translate_join);
-    TRedSbjSeqs         redSbjSeqs =
-        initHelper<TRedAlph>(transSbjSeqs, seqan3::views::deep{seqan3::views::convert<TRedAlph>}, seqan3::views::dna_n_to_random);
+    TTransSbjSeqs       transSbjSeqs;
+    TRedSbjSeqs         redSbjSeqs;
 
     TQrySeqs            qrySeqs; // used iff outformat is sam or bam
-    TTransQrySeqs       transQrySeqs =
-        initHelper<TTransAlph>(qrySeqs, seqan3::views::translate_join, seqan3::views::translate_join);
-    TRedQrySeqs         redQrySeqs =
-        initHelper<TRedAlph>(transQrySeqs, seqan3::views::deep{seqan3::views::convert<TRedAlph>}, seqan3::views::dna_n_to_random);
+    TTransQrySeqs       transQrySeqs;
+    TRedQrySeqs         redQrySeqs;
 
     TQryIds             qryIds;
 
@@ -459,33 +456,6 @@ public:
         stats{}
     {}
 };
-
-/* Documentation on the confusing type resolution used in the above class:
- *
- * !alphReduction && !indexIsFM  e.g. BLASTN and SA-Index
- *
- *   subjSeqs           is & and initialized with indexText()
- *   redSbjSeqs        is & and initialized with subjSeqs
- *   indexText(dbIndex) is non-ref owner StringSet assigned by loadDbIndexFromDisk()
- *
- * !alphReduction && indexIsFM  e.g. BLASTN and FM-Index
- *
- *   subjSeqs           is non-ref owner StringSet and assigned in loadSubjects()
- *   redSbjSeqs        is & and initialized with subjSeqs
- *   indexText(dbIndex) is non-ref owner StringSet, but never set (fmIndex doesnt need it)
- *
- * alphReduction && indexIsFM  e.g. default
- *
- *   subjSeqs           is non-ref owner StringSet and assigned in loadSubjects()
- *   redSbjSeqs        is lightweight reduced StringSet and initialized with subjSeqs
- *   indexText(dbIndex) is lightweight reduced StringSet, but never set (fmIndex doesnt need it)
- *
- * alphReduction && !indexIsFM  e.g. default
- *
- *   subjSeqs           is non-ref owner StringSet and assigned in loadSubjects()
- *   redSbjSeqs        is lightweight reduced StringSet and initialized with subjSeqs
- *   indexText(dbIndex) is lightweight reduced StringSet and assigned redSbjSeqs in loadDbIndexFromDisk
- */
 
 // ----------------------------------------------------------------------------
 // struct LocalDataHolder  -- one object per thread
