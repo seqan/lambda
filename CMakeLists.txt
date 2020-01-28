@@ -2,7 +2,7 @@
 #                  Lambda
 # ===========================================================================
 
-cmake_minimum_required (VERSION 3.0.0)
+cmake_minimum_required (VERSION 3.4.0)
 string(ASCII 27 Esc)
 set(ColourBold  "${Esc}[1m")
 set(ColourReset "${Esc}[m")

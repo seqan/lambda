@@ -70,17 +70,9 @@ message ("\n${ColourBold}Build configuration${ColourReset}")
 
 message (STATUS "LAMBDA version is: ${SEQAN_APP_VERSION}")
 
-option (LAMBDA_FASTBUILD                "Build only blastp and blastx modes (speeds up build)."                                     OFF)
-option (LAMBDA_LINGAPS_OPT              "Add optimized codepaths for linear gap costs (increases bin size and compile time)."       OFF)
-option (LAMBDA_LONG_PROTEIN_SUBJ_SEQS   "Make max protein sequence length == 4.3billion instead of 65,535. INVALIDATES INDEXS!"     OFF)
-option (LAMBDA_MMAPPED_DB               "Use mmapped access to the database."                                                       OFF)
 option (LAMBDA_NATIVE_BUILD             "Architecture-specific optimizations, i.e. g++ -march=native."                              ON)
 option (LAMBDA_MULTIOPT_BUILD           "Build and install multiple binaries with different optimisation levels + a dispatcher."    OFF)
 option (LAMBDA_STATIC_BUILD             "Include all libraries in the binaries."                                                    OFF)
-
-if (LAMBDA_FASTBUILD)
-    add_definitions (-DFASTBUILD=1)
-endif (LAMBDA_FASTBUILD)
 
 if (LAMBDA_NATIVE_BUILD)
     add_definitions (-DLAMBDA_NATIVE_BUILD=1)
@@ -106,23 +98,8 @@ if (LAMBDA_STATIC_BUILD)
     endif (CMAKE_SYSTEM_NAME MATCHES "Linux")
 endif (LAMBDA_STATIC_BUILD)
 
-if (LAMBDA_MMAPPED_DB)
-    add_definitions (-DLAMBDA_MMAPPED_DB=1)
-endif (LAMBDA_MMAPPED_DB)
-
-if (LAMBDA_LINGAPS_OPT)
-    add_definitions (-DLAMBDA_LINGAPS_OPT=1)
-endif ()
-
-if (LAMBDA_LONG_PROTEIN_SUBJ_SEQS)
-    add_definitions (-DLAMBDA_LONG_PROTEIN_SUBJ_SEQS=1)
-endif ()
 
 message(STATUS "The following options are selected for the build:")
-message(   "     LAMBDA_FASTBUILD                ${LAMBDA_FASTBUILD}")
-message(   "     LAMBDA_LINGAPS_OPT              ${LAMBDA_LINGAPS_OPT}")
-message(   "     LAMBDA_LONG_PROTEIN_SUBJ_SEQS   ${LAMBDA_LONG_PROTEIN_SUBJ_SEQS}")
-message(   "     LAMBDA_MMAPPED_DB               ${LAMBDA_MMAPPED_DB}")
 message(   "     LAMBDA_NATIVE_BUILD             ${LAMBDA_NATIVE_BUILD}")
 message(   "     LAMBDA_MULTIOPT_BUILD           ${LAMBDA_MULTIOPT_BUILD}")
 message(   "     LAMBDA_STATIC_BUILD             ${LAMBDA_STATIC_BUILD}")
