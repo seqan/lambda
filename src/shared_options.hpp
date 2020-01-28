@@ -1,8 +1,8 @@
 // ==========================================================================
 //                                  lambda
 // ==========================================================================
-// Copyright (c) 2013-2019, Hannes Hauswedell <h2 @ fsfe.org>
-// Copyright (c) 2016-2019, Knut Reinert and Freie Universität Berlin
+// Copyright (c) 2013-2020, Hannes Hauswedell <h2 @ fsfe.org>
+// Copyright (c) 2016-2020, Knut Reinert and Freie Universität Berlin
 // All rights reserved.
 //
 // This file is part of Lambda.
@@ -74,9 +74,9 @@ inline void sharedSetup(seqan3::argument_parser & parser)
     parser.info.version = SEQAN_APP_VERSION;
     parser.info.date = __DATE__;
     parser.info.citation = "Hauswedell et al (2014); doi: 10.1093/bioinformatics/btu439";
-    parser.info.short_copyright = "2013-2019 Hannes Hauswedell, released under the GNU AGPL v3 (or later); "
-                                  "2016-2019 Knut Reinert and Freie Universität Berlin, released under the 3-clause-BSDL";
-    parser.info.long_copyright = " Copyright (c) 2013-2019, Hannes Hauswedell\n"
+    parser.info.short_copyright = "2013-2020 Hannes Hauswedell, released under the GNU AGPL v3 (or later); "
+                                  "2016-2020 Knut Reinert and Freie Universität Berlin, released under the 3-clause-BSDL";
+    parser.info.long_copyright = " Copyright (c) 2013-2020, Hannes Hauswedell\n"
                                  " All rights reserved.\n"
                                  "\n"
                                  " This program is free software: you can redistribute it and/or modify\n"
@@ -92,7 +92,7 @@ inline void sharedSetup(seqan3::argument_parser & parser)
                                  " You should have received a copy of the GNU Affero General Public License\n"
                                  " along with this program.  If not, see <http://www.gnu.org/licenses/>.\n"
                                  "\n"
-                                 " Copyright (c) 2016-2019 Knut Reinert and Freie Universität Berlin\n"
+                                 " Copyright (c) 2016-2020 Knut Reinert and Freie Universität Berlin\n"
                                  " All rights reserved.\n"
                                  "\n"
                                  " Redistribution and use in source and binary forms, with or without\n"
