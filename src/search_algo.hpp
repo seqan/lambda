@@ -679,44 +679,41 @@ _writeRecord(TBlastRecord & record,
         // sort and remove duplicates -> STL, yeah!
         auto const before = record.matches.size();
 
-        if (!lH.options.filterPutativeDuplicates)
+        record.matches.sort([] (auto const & m1, auto const & m2)
         {
-            record.matches.sort([] (auto const & m1, auto const & m2)
-            {
-                return std::tie(m1._n_sId,
-                                m1.qStart,
-                                m1.qEnd,
-                                m1.sStart,
-                                m1.sEnd,
-                                m1.qFrameShift,
-                                m1.sFrameShift) <
-                       std::tie(m2._n_sId,
-                                m2.qStart,
-                                m2.qEnd,
-                                m2.sStart,
-                                m2.sEnd,
-                                m2.qFrameShift,
-                                m2.sFrameShift);
-            });
-            record.matches.unique([] (auto const & m1, auto const & m2)
-            {
-                return std::tie(m1._n_sId,
-                                m1.qStart,
-                                m1.qEnd,
-                                m1.sStart,
-                                m1.sEnd,
-                                m1.qFrameShift,
-                                m1.sFrameShift) ==
-                       std::tie(m2._n_sId,
-                                m2.qStart,
-                                m2.qEnd,
-                                m2.sStart,
-                                m2.sEnd,
-                                m2.qFrameShift,
-                                m2.sFrameShift);
-            });
-            lH.stats.hitsDuplicate += before - record.matches.size();
-        }
+            return std::tie(m1._n_sId,
+                            m1.qStart,
+                            m1.qEnd,
+                            m1.sStart,
+                            m1.sEnd,
+                            m1.qFrameShift,
+                            m1.sFrameShift) <
+                    std::tie(m2._n_sId,
+                            m2.qStart,
+                            m2.qEnd,
+                            m2.sStart,
+                            m2.sEnd,
+                            m2.qFrameShift,
+                            m2.sFrameShift);
+        });
+        record.matches.unique([] (auto const & m1, auto const & m2)
+        {
+            return std::tie(m1._n_sId,
+                            m1.qStart,
+                            m1.qEnd,
+                            m1.sStart,
+                            m1.sEnd,
+                            m1.qFrameShift,
+                            m1.sFrameShift) ==
+                    std::tie(m2._n_sId,
+                            m2.qStart,
+                            m2.qEnd,
+                            m2.sStart,
+                            m2.sEnd,
+                            m2.qFrameShift,
+                            m2.sFrameShift);
+        });
+        lH.stats.hitsDuplicate += before - record.matches.size();
 
         // sort by evalue before writing
         record.matches.sort([] (auto const & m1, auto const & m2)

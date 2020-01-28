@@ -34,8 +34,7 @@
 struct LambdaIndexerOptions : public SharedOptions
 {
     std::string     dbFile;
-//     std::string     segFile = "";
-    std::string     algo = "radixsort";
+    std::string     algo = "default";
     std::string     accToTaxMapFile;
     std::string     taxDumpDir;
 
@@ -103,7 +102,9 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
 
     parser.add_option(options.taxDumpDir,'x', "tax-dump-dir",
         "A directory that contains nodes.dmp and names.dmp; unzipped from "
-        "ftp://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump.tar.gz");
+        "ftp://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump.tar.gz",
+        seqan3::option_spec::DEFAULT,
+        seqan3::input_directory_validator());
 
     parser.add_section("Output Options");
 
@@ -161,15 +162,17 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
             seqan3::option_spec::ADVANCED, seqan3::value_list_validator{"none", "murphy10", "li10"});
     }
 
-    std::string algorithmTmp = "radixsort";
-    parser.add_option(algorithmTmp, '\0', "algorithm",
+    // TODO: try to get out-of-memory version from SeqAn3/SDSL now; get parallel version later
+    parser.add_option(options.algo, '\0', "algorithm",
         "Algorithm for SA construction (also used for FM; see Memory Requirements below!).",
         seqan3::option_spec::ADVANCED,
-        seqan3::value_list_validator{"mergesort", "quicksortbuckets", "quicksort", "radixsort", "skew7ext"});
+        seqan3::value_list_validator<std::string>{"default"});
 
+#if 0 // re-add if a parallel algorithm is added
     parser.add_option(options.threads, 't', "threads",
         "Number of threads to run concurrently (ignored if a == skew7ext).", seqan3::option_spec::ADVANCED,
-        seqan3::arithmetic_range_validator{1, static_cast<double>(options.threads)});
+        seqan3::arithmetic_range_validator{1, 1000});
+#endif
 
     parser.add_option(options.tmpdir,'\0', "tmp-dir", "temporary directory used by skew, defaults to working directory.",
         seqan3::option_spec::ADVANCED, seqan3::output_directory_validator());
@@ -177,8 +180,8 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
     parser.add_section("Remarks");
     parser.add_line("Please see the wiki (<https://github.com/seqan/lambda/wiki>) for more information on which indexes"
         " to chose and which algorithms to pick.", false);
-    parser.add_line("Note that the indexes created are binary and not compatible between different CPU endiannesses. "
-        "Also the on-disk format is still subject to change between Lambda versions.", false);
+    parser.add_line("Since SeqAn3, indexes are compatible between different CPU endiannesses. "
+        "The on-disk format is still subject to change between Lambda versions.", false);
 
     // parse command line.
     parser.parse();
@@ -207,15 +210,6 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
             options.indexFileOptions.redAlph    = _alphabetNameToEnum(alphabetReductionTmp);
     }
 
-    // set algorithm option
-    if ((algorithmTmp == "mergesort") || (algorithmTmp == "quicksort") || (algorithmTmp == "quicksortbuckets"))
-    {
-        std::cerr << "WARNING: " << algorithmTmp << " tag is deprecated and superseded by \"radixsort\", please "
-                  << "adapt your program calls.\n";
-        algorithmTmp = "radixsort";
-    }
-    options.algo = algorithmTmp;
-
     setEnv("TMPDIR", options.tmpdir);
 
     // set hasSTaxIds based on taxonomy file
@@ -229,13 +223,6 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
         throw seqan3::parser_invalid_argument("ERROR: An output file already exists at " +
                                               options.indexFilePath.string() +
                                               "\n       Remove it, or choose a different location.\n");
-    }
-    else
-    {
-//         if (mkdir(options.indexFilePath.c_str(), S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH))
-//         {
-//             throw seqan3::parser_invalid_argument("ERROR: Cannot create output directory at " + options.indexFilePath + '\n');
-//         }
     }
 
     if (!options.taxDumpDir.empty())

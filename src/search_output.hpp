@@ -339,7 +339,7 @@ myWriteHeader(TGH & globalHolder, TLambdaOptions const & options)
 
             if (options.versionInformationToOutputFile)
                 seqan::context(globalHolder.outfileBlastTab).versionString += versionString;
-                
+
             seqan::open(globalHolder.outfileBlastTab, options.output.c_str());
             seqan::context(globalHolder.outfileBlastTab).fields = options.columns;
             seqan::writeHeader(globalHolder.outfileBlastTab);

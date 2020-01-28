@@ -19,8 +19,6 @@
 // lambda.cpp: Main File for the main application
 // ==========================================================================
 
-#include "seqan2seqan3.hpp" // must come first
-
 #include <initializer_list>
 #include <iostream>
 
@@ -80,12 +78,6 @@ int mkindexMain(int const argc, char const ** argv)
     LambdaIndexerOptions options;
     parseCommandLine(options, argc, argv);
 
-#ifdef _OPENMP
-    omp_set_num_threads(options.threads);
-#else
-    options.threads = 1;
-#endif
-
 #ifdef NDEBUG
     try
     {
@@ -133,7 +125,6 @@ void argConv1(LambdaIndexerOptions & options)
 
     switch (options.indexFileOptions.origAlph)
     {
-//         case AlphabetEnum::DNA4:            return argConv2<c_indexType, AlphabetEnum::DNA4>(options);
         case AlphabetEnum::DNA5:            return argConv2<c_indexType, AlphabetEnum::DNA5>(options);
         case AlphabetEnum::AMINO_ACID:      return argConv3a<c_indexType, AlphabetEnum::AMINO_ACID, AlphabetEnum::AMINO_ACID>(options);
         default:                            throw 43;
@@ -146,7 +137,6 @@ void argConv2(LambdaIndexerOptions const & options)
 {
     switch (options.indexFileOptions.transAlph)
     {
-//         case AlphabetEnum::DNA4:            return realMain<c_indexType, c_origAlph, AlphabetEnum::DNA4>(options);
         case AlphabetEnum::DNA5:            return argConv3b<c_indexType, c_origAlph, AlphabetEnum::DNA5>(options);
         case AlphabetEnum::AMINO_ACID:      return argConv3a<c_indexType, c_origAlph, AlphabetEnum::AMINO_ACID>(options);
         default:                            throw 44;

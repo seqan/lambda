@@ -40,12 +40,8 @@
 // struct Match
 // ----------------------------------------------------------------------------
 
-// template<typename TAlph>
 struct Match
 {
-//     typedef SizeTypeNum_<TAlph>    TQId;
-//     typedef SizeTypeNum_<TAlph>    TSId;
-//     typedef SizeTypePos_<TAlph>    TPos;
     using TQId = uint64_t;
     using TSId = uint64_t;
     using TPos = uint64_t;
@@ -117,8 +113,6 @@ struct StatsHolder
 
 // pre-extension
     uint64_t hitsFailedPreExtendTest;
-    uint64_t hitsPutativeDuplicate;
-    uint64_t hitsPutativeAbundant;
 
 // post-extension
     uint64_t hitsFailedExtendPercentIdentTest;
@@ -157,8 +151,6 @@ struct StatsHolder
         hitsMasked = 0;
 
         hitsFailedPreExtendTest = 0;
-        hitsPutativeDuplicate = 0;
-        hitsPutativeAbundant = 0;
 
         hitsFailedExtendPercentIdentTest = 0;
         hitsFailedExtendEValueTest = 0;
@@ -190,8 +182,6 @@ struct StatsHolder
         hitsMasked += rhs.hitsMasked;
 
         hitsFailedPreExtendTest += rhs.hitsFailedPreExtendTest;
-        hitsPutativeDuplicate += rhs.hitsPutativeDuplicate;
-        hitsPutativeAbundant += rhs.hitsPutativeAbundant;
 
         hitsFailedExtendPercentIdentTest += rhs.hitsFailedExtendPercentIdentTest;
         hitsFailedExtendEValueTest += rhs.hitsFailedExtendEValueTest;
@@ -245,17 +235,6 @@ void printStats(StatsHolder const & stats, LambdaOptions const & options)
         if (stats.hitsMasked)
             std::cout << "\n - masked                   " << R << stats.hitsMasked
                       << RR << (rem -= stats.hitsMasked);
-        if (options.mergePutativeSiblings)
-            std::cout << "\n - merged                   " << R << stats.hitsMerged
-                      << RR << (rem -= stats.hitsMerged);
-        if (options.filterPutativeDuplicates)
-            std::cout << "\n - putative duplicates      " << R
-                      << stats.hitsPutativeDuplicate << RR
-                      << (rem -= stats.hitsPutativeDuplicate);
-        if (options.filterPutativeAbundant)
-            std::cout << "\n - putative abundant        " << R
-                      << stats.hitsPutativeAbundant   << RR
-                      << (rem -= stats.hitsPutativeAbundant);
         if (options.preScoring)
             std::cout << "\n - failed pre-extend test   " << R
                       << stats.hitsFailedPreExtendTest  << RR
@@ -351,32 +330,9 @@ public:
       /*(c_origQryAlph != AlphabetEnum::AMINO_ACID && c_origSbjAlph != c_origQryAlph) ?*/ seqan::BlastProgram::BLASTX;
 
 
-
-//     static constexpr bool indexIsBiFM           = std::is_same<TIndexSpec_, BidirectionalIndex<TFMIndexInBi<>>>::value;
-//     static constexpr bool indexIsFM             = std::is_same<TIndexSpec_, TFMIndex<>>::value || indexIsBiFM;
-//     static constexpr bool alphReduction         = !std::is_same<TransAlph<p>, TRedAlph>::value;
-
-    /* Sequence storage types */
-//     using TStringTag    = Alloc<>;
-// #if defined(LAMBDA_MMAPPED_DB)
-//     using TDirectStringTag = MMap<>;
-// #else
-//     using TDirectStringTag = TStringTag;
-// #endif
-//     using TQryTag  = TStringTag;
-//     using TSubjTag = TDirectStringTag; // even if subjects were translated they are now loaded from disk
-
     /* untranslated query sequences (ONLY USED FOR SAM/BAM OUTPUT) */
     using TQrySeqs = TCDStringSet<std::vector<TOrigQryAlph>>;
     using TSbjSeqs = TCDStringSet<std::vector<TOrigSbjAlph>>;
-
-    /* Possibly translated but yet unreduced sequences */
-    // using TTransQrySeqs  = TCDStringSet<std::vector<TTransAlph>>;
-    // using TTransSubjSeqs = TCDStringSet<std::vector<TTransAlph>>;
-
-    // using TSeqAn2TransSeq = seqan::String<std::conditional_t<c_transAlph == AlphabetEnum::AMINO_ACID,
-                                                      // seqan::AminoAcid,
-                                                      // seqan::Dna5>>;
 
     /* Translated sequence objects, either as modstrings or as references to original strings */
 
@@ -495,36 +451,8 @@ public:
     std::vector<typename TMatch::TPos>                  seedRanks; // mapping seed -> relative rank
 
     // regarding extension
-//     using TAlignRow = seqan::Gaps<seqan::Infix<typename TGlobalHolder::TSeqAn2TransSeq>,
     using TAlignRow0 = seqan::Gaps<TSeqInfix0, seqan::ArrayGaps>;
     using TAlignRow1 = seqan::Gaps<TSeqInfix1, seqan::ArrayGaps>;
-
-#if (SEQAN_VERSION_MINOR < 4)
-    using TDPContextNoSIMD = seqan::DPContext<typename seqan::Value<typename TGlobalHolder::TScoreScheme>::Type, TScoreExtension>;
-#else
-//     #if defined(SEQAN_SIMD_ENABLED)
-//     using TCellValueSIMD  = typename SimdVector<int16_t>::TYPE;
-//     using TDPCellSIMD     = DPCell_<TCellValueSIMD, TScoreExtension_>;
-//     using TTraceValueSIMD = typename TraceBitMap_<TCellValueSIMD>::Type;
-//     using TScoreHostSIMD  = String<TDPCellSIMD, Alloc<OverAligned> >;
-//     using TTraceHostSIMD  = String<TTraceValueSIMD, Alloc<OverAligned> >;
-//     using TDPContextSIMD  = DPContext<TDPCellSIMD, TTraceValueSIMD, TScoreHostSIMD, TTraceHostSIMD>;
-//     #endif
-
-    using TCellValueNoSIMD  = int16_t;
-    using TDPCellNoSIMD     = seqan::DPCell_<TCellValueNoSIMD, TScoreExtension>;
-    using TTraceValueNoSIMD = typename seqan::TraceBitMap_<TCellValueNoSIMD>::Type;
-    using TScoreHostNoSIMD  = seqan::String<TDPCellNoSIMD, seqan::Alloc<seqan::OverAligned> >;
-    using TTraceHostNoSIMD  = seqan::String<TTraceValueNoSIMD, seqan::Alloc<seqan::OverAligned> >;
-    using TDPContextNoSIMD  = seqan::DPContext<TDPCellNoSIMD, TTraceValueNoSIMD, TScoreHostNoSIMD, TTraceHostNoSIMD>;
-#endif
-
-    using TAliExtContext = seqan::AliExtContext_<TAlignRow0, TAlignRow1, TDPContextNoSIMD>;
-
-    TAliExtContext      alignContext;
-// #if defined(SEQAN_SIMD_ENABLED)
-//     TDPContextSIMD      alignSIMDContext;
-// #endif
 
     // map from sequence length to band size
     std::unordered_map<uint64_t, int> bandTable;

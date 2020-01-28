@@ -61,11 +61,6 @@ auto loadSubjSeqsAndIds(LambdaIndexerOptions const & options)
                   << "         Split you sequence file into many smaller ones or use a computer\n"
                   << "         with more memory!\n";
 
-
-
-
-
-
     // see http://www.uniprot.org/help/accession_numbers
     // https://www.ncbi.nlm.nih.gov/Sequin/acc.html
     // https://www.ncbi.nlm.nih.gov/refseq/about/
@@ -157,19 +152,6 @@ auto loadSubjSeqsAndIds(LambdaIndexerOptions const & options)
     }
     myPrint(options, 2, "Number of sequences read: ", std::ranges::size(originalSeqs),
             "\nLongest sequence read: ", maxLen, "\n");
-
-//     if (std::ranges::size(originalSeqs) * 6 >= std::numeric_limits<SizeTypeNum_<TOrigAlph>>::max())
-//     {
-//         throw std::runtime_error(std::string("ERROR: Too many sequences submitted. The maximum (including frames) is ")
-//                                  + std::to_string(std::numeric_limits<SizeTypeNum_<TOrigAlph>>::max()) + ".\n");
-//     }
-//
-//     if (maxLen >= std::numeric_limits<SizeTypePos_<TOrigAlph>>::max())
-//     {
-//         throw std::runtime_error(std::string("ERROR: one or more of your subject sequences are too long. "
-//                   "The maximum length is ") + std::to_string(std::numeric_limits<SizeTypePos_<TOrigAlph>>::max()) +
-//                   ".\n");
-//     }
 
     if (options.hasSTaxIds)
     {
@@ -293,6 +275,7 @@ auto mapTaxIDs(std::unordered_map<std::string, uint64_t>       const & accToIdRa
     // transparent decompressor
     auto vstream = seqan3::detail::make_secondary_istream(fin);
 
+    // TODO: use seqan3::views::istreambuf instead, it's faster
     auto file_view = std::ranges::subrange<std::istreambuf_iterator<char>, std::istreambuf_iterator<char>>
     {
         std::istreambuf_iterator<char>{*vstream},
@@ -343,20 +326,6 @@ auto mapTaxIDs(std::unordered_map<std::string, uint64_t>       const & accToIdRa
                             "         Maybe you specified the wrong map file?\n\n");
 
     return ret;
-
-//     myPrint(options, 1,"Dumping Subject Taxonomy IDs... ");
-//     start = sysTime();
-//
-//     std::string _path = options.indexDir + "/staxids";
-//
-//     {
-//         std::ofstream os{_path.c_str()};
-//
-//         cereal::BinaryOutputArchive oarchive(os); // Create an output archive
-//         oarchive(sTaxIds);
-//     }
-//     myPrint(options, 1, "done.\n");
-//     myPrint(options, 2, "Runtime: ", sysTime() - start, "s\n\n");
 }
 
 // --------------------------------------------------------------------------
@@ -389,6 +358,7 @@ auto parseAndStoreTaxTree(std::vector<bool>          & taxIdIsPresent,
     // transparent decompressor
     auto vstream = seqan3::detail::make_secondary_istream(fin);
 
+    // TODO: use seqan3::views::istreambuf instead, it's faster
     auto file_view = std::ranges::subrange<std::istreambuf_iterator<char>, std::istreambuf_iterator<char>>
     {
         std::istreambuf_iterator<char>{*vstream},
@@ -550,22 +520,6 @@ auto parseAndStoreTaxTree(std::vector<bool>          & taxIdIsPresent,
         myPrint(options, 2, "Maximum Tree Height: ", heightMax, "\n\n");
     }
 
-
-//     myPrint(options, 1,"Dumping Taxonomy Tree... ");
-//     start = sysTime();
-//     std::string _path = options.indexDir + "/tax";
-//
-//     {
-//         std::ofstream os{_path.c_str()};
-//
-//         cereal::BinaryOutputArchive oarchive(os);
-//         oarchive(taxonParentIDs);
-//         oarchive(taxonHeights);
-//     }
-//
-//     myPrint(options, 1, "done.\n");
-//     myPrint(options, 2, "Runtime: ", sysTime() - start, "s\n\n");
-
     // DEBUG
     #ifndef NDEBUG
     for (uint32_t i = 0; i < std::ranges::size(taxonParentIDs); ++i)
@@ -671,20 +625,6 @@ auto parseAndStoreTaxTree(std::vector<bool>          & taxIdIsPresent,
             taxonNames[i] = "n/a";
         }
     }
-
-//     myPrint(options, 1,"Dumping Taxon names... ");
-//     start = sysTime();
-//     std::string _path2 = options.indexDir + "/tax_names";
-//
-//     {
-//         std::ofstream os{_path2.c_str()};
-//
-//         cereal::BinaryOutputArchive oarchive(os); // Create an output archive
-//         oarchive(taxonNames);
-//     }
-//
-//     myPrint(options, 1, "done.\n");
-//     myPrint(options, 2, "Runtime: ", sysTime() - start, "s\n\n");
 
     return ret;
 }
