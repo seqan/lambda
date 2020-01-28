@@ -31,8 +31,8 @@
 #include <seqan/index.h>
 #include <seqan/blast.h>
 
+#include <seqan3/argument_parser/all.hpp>
 #include <seqan3/std/filesystem>
-
 
 // ==========================================================================
 // Forwards
@@ -616,11 +616,12 @@ printOptions(LambdaOptions const & options)
               << "  seed length:              " << uint(options.seedLength) << "\n"
               << "  seed offset:              " << uint(options.seedOffset) << "\n"
               << "  seed delta:               " << uint(options.maxSeedDist) << "\n"
-              << "  seeds ungapped:           " << uint(options.hammingOnly) << "\n"
-              << "  seed gravity:             " << uint(options.seedGravity) << "\n"
-              << "  seed delta length inc.:   " << (options.seedDeltaIncreasesLength
-                                                    ? std::string("on")
-                                                    : std::string("off")) << "\n"
+              << "  adaptive seeding:         " << uint(options.adaptiveSeeding) << "\n"
+//               << "  seeds ungapped:           " << uint(options.hammingOnly) << "\n"
+//               << "  seed gravity:             " << uint(options.seedGravity) << "\n"
+//               << "  seed delta length inc.:   " << (options.seedDeltaIncreasesLength
+//                                                     ? std::string("on")
+//                                                     : std::string("off")) << "\n"
               << " MISCELLANEOUS HEURISTICS\n"
               << "  pre-scoring:              " << (options.preScoring
                                                     ? std::string("on")

@@ -25,6 +25,8 @@
 #include <unistd.h>
 #include <bitset>
 
+#include <seqan3/argument_parser/all.hpp>
+
 // --------------------------------------------------------------------------
 // Class LambdaIndexerOptions
 // --------------------------------------------------------------------------

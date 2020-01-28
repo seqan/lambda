@@ -121,7 +121,7 @@ constexpr bool all_valid(TRange && r)
     return true;
 }
 
-AlphabetEnum detectSeqFileAlphabet(std::string const & path)
+inline AlphabetEnum detectSeqFileAlphabet(std::string const & path)
 {
     seqan3::sequence_file_input<alphabet_detection_traits, seqan3::fields<seqan3::field::seq>> f{path};
 
@@ -387,7 +387,7 @@ inline double sysTime()
 // Function fileSize()
 // ----------------------------------------------------------------------------
 
-uint64_t fileSize(char const * fileName)
+inline uint64_t fileSize(char const * fileName)
 {
     struct stat st;
     if (stat(fileName, &st) != 0)
@@ -399,7 +399,7 @@ uint64_t fileSize(char const * fileName)
 // Function dirSize()
 // ----------------------------------------------------------------------------
 
-uint64_t dirSize(char const * dirName)
+inline uint64_t dirSize(char const * dirName)
 {
     DIR *d;
     struct dirent *de;
@@ -434,7 +434,7 @@ uint64_t dirSize(char const * dirName)
 // Function fileSize()
 // ----------------------------------------------------------------------------
 
-uint64_t getTotalSystemMemory()
+inline uint64_t getTotalSystemMemory()
 {
 #if defined(__APPLE__)
     uint64_t mem;

@@ -497,6 +497,24 @@ seedLooksPromising(LocalDataHolder<TGlobalHolder> const & lH,
     return false;
 }
 
+/*** THIS ACCESSES seqan3::detail:: IT SHOULD BE REPLACED WITH OFFICIAL INTERFACE ONCE OPTIMISED ***/
+template <typename TGlobalHolder, typename TSeed>
+inline void
+search_impl(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
+{
+    seqan3::detail::search_param max_error{static_cast<uint8_t>(lH.options.maxSeedDist), // total
+                                           static_cast<uint8_t>(lH.options.maxSeedDist), // substitutions
+                                           0,                                            // insertions
+                                           0};                                           // deletions
+
+    auto delegate = [&lH] (auto const & it)
+    {
+        lH.cursor_buffer.push_back(it);
+    };
+
+    seqan3::detail::search_algo<false>(lH.gH.indexFile.index, seed, max_error, delegate);
+}
+
 template <typename TGlobalHolder>
 inline void
 search(LocalDataHolder<TGlobalHolder> & lH)
@@ -504,8 +522,20 @@ search(LocalDataHolder<TGlobalHolder> & lH)
     using TTransAlph = typename TGlobalHolder::TTransAlph;
     using TMatch = typename TGlobalHolder::TMatch;
 
+#if 0 // official search interface currently slow
     seqan3::configuration const cfg =
         seqan3::search_cfg::max_error{seqan3::search_cfg::substitution{static_cast<uint8_t>(lH.options.maxSeedDist)}};
+#endif
+
+    /* Adaptive seeding uses a very simple heuristic right now.
+     * We define the desiredHits threshold here that is vaguely tied to lH.options.maxMatches but not strongly
+     * because we don't know how many of the current hits will lead to valid matches later on.
+     * Also lH.options.maxMatches is per-read, while desiredHits is per cursor (and there are multiple cursors
+     * per seed and multiple seeds per read).
+     * A strategy that takes into account the previously found hits for the current read did not improve results.
+     */
+    size_t const heuristicFactor = 5;
+    size_t const desiredHits = lH.options.maxMatches * heuristicFactor;
 
     for (size_t i = lH.indexBeginQry; i < lH.indexEndQry; ++i)
     {
@@ -523,25 +553,54 @@ search(LocalDataHolder<TGlobalHolder> & lH)
             if (seedBegin > (lH.gH.redQrySeqs[i].size() - lH.options.seedLength))
                 break;
 
+#if 0 // official search interface currently slow
             auto results = seqan3::search(lH.gH.redQrySeqs[i] | seqan3::views::slice(seedBegin, seedBegin + lH.options.seedLength),
                                           lH.gH.indexFile.index,
                                           cfg);
+#endif
+            // results are in cursor_buffer
+            lH.cursor_buffer.clear();
+            search_impl(lH, lH.gH.redQrySeqs[i] | seqan3::views::slice(seedBegin, seedBegin + lH.options.seedLength));
 
-            for (auto [ subjNo, subjOffset ] : results)
+            for (auto & cursor : lH.cursor_buffer)
             {
-                TMatch m {static_cast<typename TMatch::TQId>(i),
-                          static_cast<typename TMatch::TSId>(subjNo),
-                          static_cast<typename TMatch::TPos>(seedBegin),
-                          static_cast<typename TMatch::TPos>(seedBegin + lH.options.seedLength),
-                          static_cast<typename TMatch::TPos>(subjOffset),
-                          static_cast<typename TMatch::TPos>(subjOffset + lH.options.seedLength)};
+                size_t seedLength = lH.options.seedLength;
 
-                ++lH.stats.hitsAfterSeeding;
+                // elongate seeds
+                if (lH.options.adaptiveSeeding)
+                {
+                    // This aborts when we fall under the threshold
+                    while ((seedBegin + seedLength < lH.gH.redQrySeqs[i].size()) &&
+                           (cursor.count() > desiredHits))
+                    {
+                        cursor.extend_right(lH.gH.redQrySeqs[i][seedBegin + seedLength]);
+                        ++seedLength;
+                    }
 
-                if (!seedLooksPromising(lH, m))
-                    ++lH.stats.hitsFailedPreExtendTest;
-                else
-                    lH.matches.emplace_back(m);
+                }
+
+                // locate hits
+#if 0 // use this if SeqAn3 gets out-parameter interface for locate
+                lH.matches_buffer.clear();
+                cursor.locate(lH.matches_buffer);
+                for (auto [ subjNo, subjOffset ] : lH.matches_buffer)
+#endif
+                for (auto [ subjNo, subjOffset ] : cursor.lazy_locate())
+                {
+                    TMatch m {static_cast<typename TMatch::TQId>(i),
+                              static_cast<typename TMatch::TSId>(subjNo),
+                              static_cast<typename TMatch::TPos>(seedBegin),
+                              static_cast<typename TMatch::TPos>(seedBegin + seedLength),
+                              static_cast<typename TMatch::TPos>(subjOffset),
+                              static_cast<typename TMatch::TPos>(subjOffset + seedLength)};
+
+                    ++lH.stats.hitsAfterSeeding;
+
+                    if (!seedLooksPromising(lH, m))
+                        ++lH.stats.hitsFailedPreExtendTest;
+                    else
+                        lH.matches.push_back(m);
+                }
             }
         }
     }

@@ -25,7 +25,7 @@
 
 #include "search.hpp"
 #include "mkindex.hpp"
-// using namespace seqan;
+#include "shared_options.hpp"
 
 void parseCommandLineMain(int argc, char const ** argv);
 
