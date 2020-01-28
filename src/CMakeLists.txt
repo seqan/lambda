@@ -191,22 +191,7 @@ set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN_CXX_FLAGS} -Wall -pedantic")
 
 # Update the list of file names below if you add source files to your application.
-set (LAMBDA_SOURCE_FILES
-                lambda.cpp
-                    shared_definitions.hpp
-                    shared_misc.hpp
-                    shared_options.hpp
-                search.hpp
-                    search_algo.hpp
-                    search_datastructures.hpp
-                    search_misc.hpp
-                    search_output.hpp
-                    search_options.hpp
-                mkindex.hpp
-                    mkindex_algo.hpp
-                    mkindex_misc.hpp
-                    mkindex_options.hpp
-                    mkindex_saca.hpp)
+set (LAMBDA_SOURCE_FILES lambda.cpp  search.cpp mkindex.cpp)
 
 add_executable (lambda3 ${LAMBDA_SOURCE_FILES})
 target_link_libraries (lambda3 ${SEQAN_LIBRARIES} seqan3::seqan3)

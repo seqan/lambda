@@ -19,6 +19,8 @@
 // lambda.cpp: Main File for the main application
 // ==========================================================================
 
+#include "seqan2seqan3.hpp" // must come first
+
 #include <initializer_list>
 #include <iostream>
 
@@ -36,8 +38,6 @@
 #include "mkindex_options.hpp"
 // #include "mkindex_saca.hpp"
 #include "mkindex_algo.hpp"
-
-// using namespace seqan;
 
 // ==========================================================================
 // Forwards

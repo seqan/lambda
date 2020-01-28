@@ -31,8 +31,8 @@
 #include <seqan/index.h>
 #include <seqan/blast.h>
 
+#include <seqan3/argument_parser/all.hpp>
 #include <seqan3/std/filesystem>
-
 
 // ==========================================================================
 // Forwards

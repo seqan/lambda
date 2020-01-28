@@ -19,7 +19,7 @@
 // lambda.cpp: Main File for Lambda
 // ==========================================================================
 
-#pragma once
+#include "seqan2seqan3.hpp" // must come first
 
 #include <iostream>
 

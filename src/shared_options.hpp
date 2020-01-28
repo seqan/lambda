@@ -32,6 +32,7 @@
 #include <seqan3/alphabet/aminoacid/aa10murphy.hpp>
 #include <seqan3/alphabet/aminoacid/aa10li.hpp>
 #include <seqan3/alphabet/aminoacid/translation_genetic_code.hpp>
+#include <seqan3/argument_parser/all.hpp>
 #include <seqan3/std/filesystem>
 
 // #include <seqan/basic.h>
@@ -291,7 +292,7 @@ struct SharedOptions
 // Function sharedSetup()
 // --------------------------------------------------------------------------
 
-void sharedSetup(seqan3::argument_parser & parser)
+inline void sharedSetup(seqan3::argument_parser & parser)
 {
     // Set short description, version, and date
     parser.info.version = SEQAN_APP_VERSION;
