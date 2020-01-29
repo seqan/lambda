@@ -304,18 +304,39 @@ void printStats(StatsHolder const & stats, LambdaOptions const & options)
 
 }
 
+template <AlphabetEnum c_origQryAlph>
+struct QueryFileTraits : std::conditional_t<c_origQryAlph == AlphabetEnum::DNA5,
+                                            seqan3::sequence_file_input_default_traits_dna,
+                                            seqan3::sequence_file_input_default_traits_aa>
+{
+    template <typename _sequence_container>
+    using sequence_container_container      = TCDStringSet<_sequence_container>;
+
+    template <typename _id_container>
+    using id_container_container            = TCDStringSet<_id_container>;
+
+    template <typename _quality_container>
+    using quality_container_container       = TCDStringSet<_quality_container>;
+};
+
 // ----------------------------------------------------------------------------
 // struct GlobalDataHolder  -- one object per program
 // ----------------------------------------------------------------------------
 
-template <DbIndexType   c_dbIndexType,
-          AlphabetEnum  c_origSbjAlph,
-          AlphabetEnum  c_transAlph,
-          AlphabetEnum  c_redAlph,
-          AlphabetEnum  c_origQryAlph>
+template <DbIndexType   c_dbIndexType_,
+          AlphabetEnum  c_origSbjAlph_,
+          AlphabetEnum  c_transAlph_,
+          AlphabetEnum  c_redAlph_,
+          AlphabetEnum  c_origQryAlph_>
 class GlobalDataHolder
 {
 public:
+    static constexpr DbIndexType   c_dbIndexType   = c_dbIndexType_;
+    static constexpr AlphabetEnum  c_origSbjAlph   = c_origSbjAlph_;
+    static constexpr AlphabetEnum  c_transAlph     = c_transAlph_;
+    static constexpr AlphabetEnum  c_redAlph       = c_redAlph_;
+    static constexpr AlphabetEnum  c_origQryAlph   = c_origQryAlph_;
+
     using TOrigQryAlph   = _alphabetEnumToType<c_origQryAlph>;
     using TOrigSbjAlph   = _alphabetEnumToType<c_origSbjAlph>;
     using TTransAlph     = _alphabetEnumToType<c_transAlph>;
@@ -330,8 +351,11 @@ public:
       /*(c_origQryAlph != AlphabetEnum::AMINO_ACID && c_origSbjAlph != c_origQryAlph) ?*/ seqan::BlastProgram::BLASTX;
 
 
+    using TQueryFile    = seqan3::sequence_file_input<QueryFileTraits<c_origQryAlph>,
+                                                      seqan3::fields<seqan3::field::id, seqan3::field::seq>>;
+
     /* untranslated query sequences (ONLY USED FOR SAM/BAM OUTPUT) */
-    using TQrySeqs = TCDStringSet<std::vector<TOrigQryAlph>>;
+    using TQrySeqs = std::vector<std::vector<TOrigQryAlph>>;
     using TSbjSeqs = TCDStringSet<std::vector<TOrigSbjAlph>>;
 
     /* Translated sequence objects, either as modstrings or as references to original strings */
@@ -362,7 +386,7 @@ public:
 
     /* sequence ID strings */
     using TIds          = TCDStringSet<std::string>;
-    using TQryIds       = TIds;
+    using TQryIds       = std::vector<std::string>;
     using TSubjIds      = TIds;
 
     /* index */
@@ -390,14 +414,9 @@ public:
     /* the actual members */
     TIndexFile          indexFile;
 
+    // origin sbjSeqs in indexFile
     TTransSbjSeqs       transSbjSeqs;
     TRedSbjSeqs         redSbjSeqs;
-
-    TQrySeqs            qrySeqs; // used iff outformat is sam or bam
-    TTransQrySeqs       transQrySeqs;
-    TRedQrySeqs         redQrySeqs;
-
-    TQryIds             qryIds;
 
     TBlastTabFile       outfileBlastTab;
     TBlastRepFile       outfileBlastRep;
@@ -406,11 +425,11 @@ public:
     TScoreScheme3       scoringScheme;
     seqan3::gap_scheme<int8_t> gapScheme;
 
-    StatsHolder         stats;
+    StatsHolder         stats{};
 
-    GlobalDataHolder() :
-        stats{}
-    {}
+    size_t              queryTotal = 0;
+    std::atomic<size_t> queryCount = 0;
+    size_t              records_per_batch = 100;
 };
 
 // ----------------------------------------------------------------------------
@@ -429,26 +448,23 @@ public:
     using TSeqInfix1     = decltype(std::declval<seqan3::reference_t<typename TGlobalHolder::TTransSbjSeqs>>()
                                    | seqan3::views::slice(0, 1));
 
-
     // references to global stuff
     LambdaOptions     const & options;
     TGlobalHolder /*const*/ & gH;
     static constexpr seqan::BlastProgram blastProgram = TGlobalHolder::blastProgram;
 
-    // this is the localHolder for the i-th part of the queries
-    uint64_t            i;
-    uint64_t            nBlocks;
 
-    // regarding range of queries
-    uint64_t            indexBeginQry;
-    uint64_t            indexEndQry;
+    // query data
+    typename TGlobalHolder::TQryIds         qryIds;
+    typename TGlobalHolder::TQrySeqs        qrySeqs;
+    typename TGlobalHolder::TTransQrySeqs   transQrySeqs;
+    typename TGlobalHolder::TRedQrySeqs     redQrySeqs;
+    size_t                                  queryCount = 0;
 
     // regarding seeding
     std::vector<typename TGlobalHolder::TIndexCursor>   cursor_buffer;
     std::vector<std::pair<size_t, size_t>>              matches_buffer;
     std::vector<TMatch>                                 matches;
-    std::vector<typename TMatch::TQId>                  seedRefs;  // mapping seed -> query
-    std::vector<typename TMatch::TPos>                  seedRanks; // mapping seed -> relative rank
 
     // regarding extension
     using TAlignRow0 = seqan::Gaps<TSeqInfix0, seqan::ArrayGaps>;
@@ -458,53 +474,42 @@ public:
     std::unordered_map<uint64_t, int> bandTable;
 
     // regarding the gathering of stats
-    StatsHolder         stats;
+    StatsHolder         stats{};
 
-    // progress string
-    std::stringstream   statusStr;
+    LocalDataHolder(LambdaOptions const & _options, TGlobalHolder & _gH) :
+        options{_options}, gH{_gH}, stats{}
+    {}
 
-    // constructor
-    LocalDataHolder(LambdaOptions     const & _options,
-                    TGlobalHolder     /*const*/ & _globalHolder) :
-        options(_options), gH(_globalHolder), stats()
+    void reset()
     {
-        if (options.extensionMode == LambdaOptions::ExtensionMode::FULL_SIMD)
-        {
-            // division with rounding up
-            nBlocks = (gH.redQrySeqs.size() + seqan::qNumFrames(blastProgram) * 10 - 1) / (seqan::qNumFrames(blastProgram) * 10);
-        } else
-        {
-            nBlocks = gH.redQrySeqs.size() / seqan::qNumFrames(blastProgram);
-        }
-    }
-
-    // copy constructor SHALLOW COPY ONLY, REQUIRED FOR firsprivate()
-    LocalDataHolder(LocalDataHolder const & rhs) :
-        options(rhs.options), gH(rhs.gH), stats()
-    {
-    }
-
-    void init(uint64_t const _i)
-    {
-        i = _i;
-
-        if (options.extensionMode == LambdaOptions::ExtensionMode::FULL_SIMD)
-        {
-            indexBeginQry = qNumFrames(blastProgram) * i * 10;
-            indexEndQry = std::min<size_t>(qNumFrames(blastProgram) * (i+1) * 10, gH.transQrySeqs.size());
-        } else
-        {
-            indexBeginQry = qNumFrames(blastProgram) * i;
-            indexEndQry = qNumFrames(blastProgram) * (i+1);
-        }
-
+        // clear storage
+        queryCount = 0;
         matches.clear();
-        seedRefs.clear();
-        seedRanks.clear();
-//         stats.clear();
-        statusStr.clear();
-        statusStr.precision(2);
+        qryIds.clear();
+        qrySeqs.clear();
+
+        // stats explicitly not cleared, because accumulated
     }
+
+    void resetViews()
+    {
+        using TGH = TGlobalHolder;
+
+        // trans view
+        if constexpr (TGH::c_origQryAlph == TGH::c_transAlph)
+            transQrySeqs = qrySeqs | seqan3::views::type_reduce;
+        else
+            transQrySeqs = qrySeqs | seqan3::views::translate_join;
+
+        // reduced view
+        if constexpr (TGH::c_transAlph == TGH::c_redAlph)
+            redQrySeqs = transQrySeqs | seqan3::views::type_reduce;
+        else if constexpr (TGH::c_transAlph == AlphabetEnum::AMINO_ACID)
+            redQrySeqs = transQrySeqs | seqan3::views::deep{seqan3::views::convert<_alphabetEnumToType<TGH::c_redAlph>>};
+        else
+            redQrySeqs = transQrySeqs| seqan3::views::dna_n_to_random;
+    }
+
 };
 
 namespace seqan

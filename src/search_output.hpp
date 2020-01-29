@@ -568,7 +568,7 @@ myWriteRecord(TLH & lH, TRecord const & record)
                 {
                     if (writeSeq)
                         _untranslateSequence(bamR.seq,
-                                             lH.gH.qrySeqs[mIt->_n_qId],
+                                             lH.qrySeqs[mIt->_n_qId],
                                              mIt->qStart,
                                              mIt->qEnd,
                                              mIt->qFrameShift);
@@ -576,7 +576,7 @@ myWriteRecord(TLH & lH, TRecord const & record)
                 {
                     if (writeSeq)
                         _untranslateSequence(bamR.seq,
-                                             lH.gH.qrySeqs[mIt->_n_qId],
+                                             lH.qrySeqs[mIt->_n_qId],
                                              decltype(seqan::length(seqan::source(mIt->alignRow0)))(0u),
                                              seqan::length(seqan::source(mIt->alignRow0)),
                                              mIt->qFrameShift);
