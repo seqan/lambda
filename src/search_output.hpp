@@ -330,7 +330,7 @@ myWriteHeader(TGH & globalHolder, TLambdaOptions const & options)
         if (sIsTranslated(TGH::blastProgram))
         {
             //TODO can we get around a copy?
-            subjSeqLengths = globalHolder.untransSubjSeqLengths;
+            subjSeqLengths = prefix(globalHolder.untransSubjSeqLengths, length(globalHolder.untransSubjSeqLengths) - 1);
         } else
         {
             // compute lengths ultra-fast
