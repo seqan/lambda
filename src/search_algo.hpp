@@ -1216,6 +1216,7 @@ iterateMatchesFullSerial(TLocalHolder & lH)
     auto const trueQryId = lH.matches[0].qryId / qNumFrames(TGlobalHolder::blastProgram);
 
     TBlastRecord record(lH.gH.qryIds[trueQryId]);
+    record.qLength = seqan::length(lH.gH.qrySeqs[trueQryId]);
 
     size_t band = _bandSize(seqan::length(lH.gH.transQrySeqs[lH.matches[0].qryId]), lH);
 
