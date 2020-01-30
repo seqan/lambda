@@ -1,8 +1,8 @@
 // ==========================================================================
 //                                  lambda
 // ==========================================================================
-// Copyright (c) 2013-2019, Hannes Hauswedell <h2 @ fsfe.org>
-// Copyright (c) 2016-2019, Knut Reinert and Freie Universität Berlin
+// Copyright (c) 2013-2020, Hannes Hauswedell <h2 @ fsfe.org>
+// Copyright (c) 2016-2020, Knut Reinert and Freie Universität Berlin
 // All rights reserved.
 //
 // This file is part of Lambda.
@@ -51,7 +51,6 @@ struct SamBamExtraTags;
 
 struct LambdaOptions : public SharedOptions
 {
-
     std::string     queryFile;
 
     AlphabetEnum    qryOrigAlphabet;
@@ -68,20 +67,13 @@ struct LambdaOptions : public SharedOptions
     bool            samBamHardClip;
     bool            versionInformationToOutputFile = true;
 
-//     bool            semiGlobal;
 
     bool            adaptiveSeeding;
 
     unsigned        seedLength  = 0;
     unsigned        maxSeedDist = 1;
-    bool            hammingOnly = true;
 
-    int32_t         seedGravity     = 10;
     unsigned        seedOffset      = 0;
-    bool            seedDeltaIncreasesLength = false;
-
-//     unsigned int    minSeedEVal     = 0;
-//     double          minSeedBitS     = -1;
 
     // 0 = manual, positive X = blosumX, negative Y = pamY
     int32_t         scoringMethod   = 62;
@@ -91,7 +83,6 @@ struct LambdaOptions : public SharedOptions
     int32_t         match           = 2; // only for manual
     int32_t         misMatch        = -3; // only for manual
 
-    int32_t         xDropOff    = 30;
     int32_t         band        = -3;
     double          eCutOff     = 1e-04;
     int32_t         idCutOff    = 0;
@@ -114,20 +105,8 @@ struct LambdaOptions : public SharedOptions
     ExtensionMode   extensionMode = ExtensionMode::FULL_SERIAL;
 #endif
 
-    bool            filterPutativeDuplicates = false;
-    bool            filterPutativeAbundant = false;
-    bool            mergePutativeSiblings = false;
-    bool            seedHalfExact = false;
-
     int32_t         preScoring = 2; // 0 = off, 1 = seed, 2 = region
     double          preScoringThresh    = 2.0;
-
-
-//     seqan::BlastProgram blastProgram;
-    LambdaOptions() :
-        SharedOptions()
-    {
-    }
 };
 
 void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
@@ -177,15 +156,16 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
             "Alphabet of the query sequences (specify to override auto-detection). Dna sequences will be translated.",
             seqan3::option_spec::ADVANCED, seqan3::value_list_validator{"auto", "dna5", "aminoacid"});
 
+#if 0 // TODO: we currently don't support other code, but we should
         parser.add_option(geneticCodeTmp, 'g', "genetic-code",
             "The translation table to use if input is Dna. See "
             "https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi?mode=c"
             " for ids. Default is to use the same table that was used for the index or 1/CANONICAL if the index "
             "was not translated.", seqan3::option_spec::ADVANCED,
             seqan3::value_list_validator{0, 1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 13, 14, 15, 16, 21, 22, 23, 24, 25});
+#endif
     }
 
-    // TODO Does this input directory structure work?
     parser.add_option(options.indexFilePath,
                       'i',
                       "index",
@@ -264,7 +244,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 #ifdef _OPENMP
     parser.add_option(options.threads, 't', "threads", "Number of threads to run concurrently.",
         seqan3::option_spec::ADVANCED,
-        seqan3::arithmetic_range_validator{1, (double) omp_get_max_threads() * 10});
+        seqan3::arithmetic_range_validator{1, 1000});
 #else
     parser.add_option(options.threads, 't', "threads",
         "LAMBDA BUILT WITHOUT OPENMP; setting this option has no effect.", seqan3::option_spec::ADVANCED,
@@ -287,30 +267,17 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     parser.add_option(options.seedLength, '\0', "seed-length", "Length of the seeds.", seqan3::option_spec::ADVANCED,
         seqan3::arithmetic_range_validator{3, 50});
 
-    options.seedOffset = defaultSeedLength / 2;
-    parser.add_option(options.seedOffset, '\0', "seed-offset", "Offset for seeding (if unset = seed-length/2). "
-        "If you set 'seed-length', please consider setting this option to 'seedLength / 2'.",
+    options.seedOffset = options.seedLength;
+    parser.add_option(options.seedOffset, '\0', "seed-offset", "Offset for seeding. "
+        "If you set 'seed-length', please consider setting this option to the same value.",
         seqan3::option_spec::DEFAULT, seqan3::arithmetic_range_validator{1, 50});
 
     parser.add_option(options.maxSeedDist, '\0', "seed-delta",
         "Maximum seed distance.", seqan3::option_spec::ADVANCED, seqan3::arithmetic_range_validator{0, 5});
 
-    parser.add_option(options.seedDeltaIncreasesLength, '\0', "seed-delta-increases-length",
-        "Seed delta increases the min. seed length (for affected seeds).", seqan3::option_spec::ADVANCED);
-
-    parser.add_option(options.seedHalfExact, '\0', "seed-half-exact",
-        "Allow errors only in second half of seed.", seqan3::option_spec::ADVANCED);
-
-    options.seedGravity = defaultSeedLength;
-    parser.add_option(options.seedGravity, '\0', "seed-gravity",
-        "Seeds closer than this are merged into region (if unset = seed-length). If you set 'seed-length', please "
-        "consider setting this option to the same value.", seqan3::option_spec::HIDDEN);
-
-    options.seedGravity = defaultSeedLength;
-
     parser.add_section("Miscellaneous Heuristics");
 
-    parser.add_option(options.preScoring, '\0', "Pre-scoring",
+    parser.add_option(options.preScoring, '\0', "pre-scoring",
         "Evaluate score of a region NUM times the size of the seed "
         "before extension (0 -> no pre-scoring, 1 -> evaluate seed, n-> area "
         "around seed, as well; default = 1 if no reduction is used).",
@@ -319,17 +286,6 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     parser.add_option(options.preScoringThresh, '\0', "pre-scoring-threshold",
         "Minimum average score per position in pre-scoring region.", seqan3::option_spec::ADVANCED,
         seqan3::arithmetic_range_validator{0, 20});
-
-//     parser.add_option(options.filterPutativeDuplicates, '\0', "filter-putative-duplicates",
-//         "Filter hits that will likely duplicate a match already found.", seqan3::option_spec::ADVANCED);
-//
-//     parser.add_option(options.filterPutativeAbundant, '\0', "filter-putative-abundant",
-//         "If the maximum number of matches per query are found already, "
-//         "stop searching if the remaining realm looks unfeasible.", seqan3::option_spec::ADVANCED);
-//
-//     parser.add_option(options.mergePutativeSiblings, '\0', "merge-putative-siblings",
-//         "Merge seed from one region, "
-//         "stop searching if the remaining realm looks unfeasable.", seqan3::option_spec::ADVANCED);
 
     parser.add_section("Scoring");
 
@@ -366,9 +322,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     parser.add_section("Extension");
 
-    parser.add_option(options.xDropOff, 'x', "x-drop", "Stop Banded extension if score x below the maximum seen "
-        "(-1 means no xdrop).", seqan3::option_spec::ADVANCED, seqan3::arithmetic_range_validator{-1, 1000});
-
+    //TODO this is only used in serial mode right now
     parser.add_option(options.band, 'b', "band", "Size of the DP-band used in extension (-3 means log2 of query length;"
         " -2 means sqrt of query length; -1 means full dp; n means band of size 2n+1)",
         seqan3::option_spec::ADVANCED, seqan3::arithmetic_range_validator{-3, 1000});
@@ -385,6 +339,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         seqan3::value_list_validator<std::string>{"fullSerial"});
 #endif
 
+#if 0 //TODO make new guide
     parser.add_section("Tuning");
     parser.add_line("Tuning the seeding parameters and (de)activating alphabet "
                     "reduction has a strong "
@@ -393,6 +348,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     parser.add_line("fast (high similarity):    --seed-delta-increases-length on", false);
     parser.add_line("sensitive (lower similarity): --seed-offset 3", false);
     parser.add_line("For further information see the wiki: <https://github.com/seqan/lambda/wiki>", false);
+#endif
 
     // parse command line.
     parser.parse();
@@ -546,25 +502,6 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     // set samBamHardClip
     options.samBamHardClip = (samBamClip == "hard");
 
-//     // set options depending on maxSeedDist
-//     if (options.maxSeedDist == 0)
-//     {
-//         if (options.dbIndexType == DbIndexType::BI_FM_INDEX)
-//         {
-//             std::cerr << "WARNING: Exact seeeding doesn't benefit from bi-fm-index, so regular index is used.\n";
-//             options.dbIndexType = DbIndexType::FM_INDEX;
-//         }
-//     }
-//
-//     // Set options based on dbIndexType
-//     if (options.dbIndexType == DbIndexType::BI_FM_INDEX)
-//     {
-//         if (options.seedHalfExact)
-//             std::cerr << "WARNING: seedHalfExact is already implied by bidirectional indexes.\n";
-//         else
-//             options.seedHalfExact = true;
-//     }
-
     // Set options depending on extension mode
     if (extensionModeTmp == "fullSIMD")
         options.extensionMode = LambdaOptions::ExtensionMode::FULL_SIMD;
@@ -616,12 +553,9 @@ printOptions(LambdaOptions const & options)
               << "  seed length:              " << uint(options.seedLength) << "\n"
               << "  seed offset:              " << uint(options.seedOffset) << "\n"
               << "  seed delta:               " << uint(options.maxSeedDist) << "\n"
-              << "  adaptive seeding:         " << uint(options.adaptiveSeeding) << "\n"
-//               << "  seeds ungapped:           " << uint(options.hammingOnly) << "\n"
-//               << "  seed gravity:             " << uint(options.seedGravity) << "\n"
-//               << "  seed delta length inc.:   " << (options.seedDeltaIncreasesLength
-//                                                     ? std::string("on")
-//                                                     : std::string("off")) << "\n"
+              << "  adaptive seeding:         " << (options.adaptiveSeeding
+                                                    ? std::string("on")
+                                                    : std::string("off")) << "\n"
               << " MISCELLANEOUS HEURISTICS\n"
               << "  pre-scoring:              " << (options.preScoring
                                                     ? std::string("on")
@@ -635,16 +569,6 @@ printOptions(LambdaOptions const & options)
                                                     ? std::to_string(
                                                        options.preScoringThresh)
                                                     : std::string("n/a")) << "\n"
-              << "  putative-abundancy:       " << (options.filterPutativeAbundant
-                                                    ? std::string("on")
-                                                    : std::string("off")) << "\n"
-              << "  putative-duplicates:      " << (options.filterPutativeDuplicates
-                                                    ? std::string("on")
-                                                    : std::string("off")) << "\n"
-              << "  seed half exact:          " << (options.seedHalfExact
-                                                    ? std::string("on")
-                                                    : std::string("off")) << "\n"
-
               << " SCORING\n"
               << "  scoring scheme:           " << options.scoringMethod << "\n"
               << "  score-match:              " << (options.scoringMethod
@@ -661,37 +585,26 @@ printOptions(LambdaOptions const & options)
         case LambdaOptions::ExtensionMode::AUTO:
             std::cout
               << "  extensionMode:            auto (depends on query length)\n"
-              << "  x-drop:                   " << options.xDropOff << "\n"
               << "  band:                     " << bandStr << "\n"
               << "  [depending on the automatically chosen mode x-drop or band might get disabled.\n";
               break;
         case LambdaOptions::ExtensionMode::XDROP:
             std::cout
               << "  extensionMode:            individual\n"
-              << "  x-drop:                   " << options.xDropOff << "\n"
               << "  band:                     " << bandStr << "\n";
             break;
         case LambdaOptions::ExtensionMode::FULL_SERIAL:
             std::cout
               << "  extensionMode:            batch, but serialized\n"
-              << "  x-drop:                   not used\n"
               << "  band:                     " << bandStr << "\n";
             break;
         case LambdaOptions::ExtensionMode::FULL_SIMD:
             std::cout
-              << "  extensionMode:            batch with SIMD\n"
-              << "  x-drop:                   not used\n"
               << "  band:                     not used\n";
             break;
     }
     std::cout << " BUILD OPTIONS:\n"
               << "  cmake_build_type:         " << std::string(CMAKE_BUILD_TYPE) << "\n"
-              << "  fastbuild:                "
-    #if defined(FASTBUILD)
-              << "on\n"
-    #else
-              << "off\n"
-    #endif
               << "  native_build:             "
     #if defined(LAMBDA_NATIVE_BUILD)
               << "on\n"
@@ -700,18 +613,6 @@ printOptions(LambdaOptions const & options)
     #endif
               << "  static_build:             "
     #if defined(LAMBDA_STATIC_BUILD)
-              << "on\n"
-    #else
-              << "off\n"
-    #endif
-              << "  mmapped_db:               "
-    #if defined(LAMBDA_MMAPPED_DB)
-              << "on\n"
-    #else
-              << "off\n"
-    #endif
-              << "  lingaps_opt:              "
-    #if defined(LAMBDA_LINGAPS_OPT)
               << "on\n"
     #else
               << "off\n"

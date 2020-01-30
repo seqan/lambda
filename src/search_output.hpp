@@ -1,8 +1,8 @@
 // ==========================================================================
 //                                  lambda
 // ==========================================================================
-// Copyright (c) 2013-2019, Hannes Hauswedell <h2 @ fsfe.org>
-// Copyright (c) 2016-2019, Knut Reinert and Freie Universität Berlin
+// Copyright (c) 2013-2020, Hannes Hauswedell <h2 @ fsfe.org>
+// Copyright (c) 2016-2020, Knut Reinert and Freie Universität Berlin
 // All rights reserved.
 //
 // This file is part of Lambda.
@@ -339,7 +339,7 @@ myWriteHeader(TGH & globalHolder, TLambdaOptions const & options)
 
             if (options.versionInformationToOutputFile)
                 seqan::context(globalHolder.outfileBlastTab).versionString += versionString;
-                
+
             seqan::open(globalHolder.outfileBlastTab, options.output.c_str());
             seqan::context(globalHolder.outfileBlastTab).fields = options.columns;
             seqan::writeHeader(globalHolder.outfileBlastTab);

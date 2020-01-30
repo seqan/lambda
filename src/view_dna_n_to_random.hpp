@@ -2,7 +2,7 @@
 //                                  lambda
 // ==========================================================================
 // Copyright (c) 2019, Sara Hetzel <hetzel @ molgen.mpg.de>
-// Copyright (c) 2016-2019, Knut Reinert and Freie Universität Berlin
+// Copyright (c) 2016-2020, Knut Reinert and Freie Universität Berlin
 // All rights reserved.
 //
 // This file is part of Lambda.

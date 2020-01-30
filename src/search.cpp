@@ -1,8 +1,8 @@
 // ==========================================================================
 //                                  lambda
 // ==========================================================================
-// Copyright (c) 2013-2019, Hannes Hauswedell <h2 @ fsfe.org>
-// Copyright (c) 2016-2019, Knut Reinert and Freie Universität Berlin
+// Copyright (c) 2013-2020, Hannes Hauswedell <h2 @ fsfe.org>
+// Copyright (c) 2016-2020, Knut Reinert and Freie Universität Berlin
 // All rights reserved.
 //
 // This file is part of Lambda.
@@ -329,29 +329,12 @@ void realMain(LambdaOptions     const & options)
         printOptions<TLocalHolder>(options);
 
     TGlobalHolder globalHolder;
-//     context(globalHolder.outfile).scoringScheme._internalScheme = matr;
 
     prepareScoring(globalHolder, options);
 
     loadDbIndexFromDisk(globalHolder, options);
 
     loadQuery(globalHolder, options);
-
-    // seqan3::debug_stream << "1st Query:\n"
-    //                      << globalHolder.transQrySeqs.front() << "\n"
-    //                      << globalHolder.redQrySeqs.front() << "\n";
-    //
-    // seqan3::debug_stream << "last Query:\n"
-    //                      << globalHolder.transQrySeqs.back() << "\n"
-    //                      << globalHolder.redQrySeqs.back() << "\n";
-    //
-    // seqan3::debug_stream << "1st Subject:\n"
-    //                      << globalHolder.redSbjSeqs.front() << "\n"
-    //                      << globalHolder.redSbjSeqs.front() << "\n";
-    //
-    // seqan3::debug_stream << "last Subject:\n"
-    //                      << globalHolder.redSbjSeqs.back() << "\n"
-    //                      << globalHolder.redSbjSeqs.back() << "\n";
 
     myWriteHeader(globalHolder, options);
 
@@ -383,24 +366,6 @@ void realMain(LambdaOptions     const & options)
             localHolder.stats.timeSearch += sysTime() - buf;
         #endif
 
-            // TODO DEBUG
-//             for (auto const & m : localHolder.matches)
-//                 _printMatch(m);
-#if 0
-            // sort
-            if (options.filterPutativeAbundant || options.filterPutativeDuplicates || options.mergePutativeSiblings)
-            {
-            #ifdef LAMBDA_MICRO_STATS
-                buf = sysTime();
-            #endif
-
-                sortMatches(localHolder);
-
-            #ifdef LAMBDA_MICRO_STATS
-                localHolder.stats.timeSort += sysTime() - buf;
-            #endif
-            }
-#endif
             // extend
             if (localHolder.matches.size() > 0)
                 res = iterateMatches(localHolder);

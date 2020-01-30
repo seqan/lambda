@@ -1,8 +1,8 @@
 // ==========================================================================
 //                                  lambda
 // ==========================================================================
-// Copyright (c) 2013-2019, Hannes Hauswedell <h2 @ fsfe.org>
-// Copyright (c) 2016-2019, Knut Reinert and Freie Universität Berlin
+// Copyright (c) 2013-2020, Hannes Hauswedell <h2 @ fsfe.org>
+// Copyright (c) 2016-2020, Knut Reinert and Freie Universität Berlin
 // All rights reserved.
 //
 // This file is part of Lambda.
@@ -18,8 +18,6 @@
 // ==========================================================================
 // lambda.cpp: Main File for the main application
 // ==========================================================================
-
-#include "seqan2seqan3.hpp" // must come first
 
 #include <initializer_list>
 #include <iostream>
@@ -80,12 +78,6 @@ int mkindexMain(int const argc, char const ** argv)
     LambdaIndexerOptions options;
     parseCommandLine(options, argc, argv);
 
-#ifdef _OPENMP
-    omp_set_num_threads(options.threads);
-#else
-    options.threads = 1;
-#endif
-
 #ifdef NDEBUG
     try
     {
@@ -133,7 +125,6 @@ void argConv1(LambdaIndexerOptions & options)
 
     switch (options.indexFileOptions.origAlph)
     {
-//         case AlphabetEnum::DNA4:            return argConv2<c_indexType, AlphabetEnum::DNA4>(options);
         case AlphabetEnum::DNA5:            return argConv2<c_indexType, AlphabetEnum::DNA5>(options);
         case AlphabetEnum::AMINO_ACID:      return argConv3a<c_indexType, AlphabetEnum::AMINO_ACID, AlphabetEnum::AMINO_ACID>(options);
         default:                            throw 43;
@@ -146,7 +137,6 @@ void argConv2(LambdaIndexerOptions const & options)
 {
     switch (options.indexFileOptions.transAlph)
     {
-//         case AlphabetEnum::DNA4:            return realMain<c_indexType, c_origAlph, AlphabetEnum::DNA4>(options);
         case AlphabetEnum::DNA5:            return argConv3b<c_indexType, c_origAlph, AlphabetEnum::DNA5>(options);
         case AlphabetEnum::AMINO_ACID:      return argConv3a<c_indexType, c_origAlph, AlphabetEnum::AMINO_ACID>(options);
         default:                            throw 44;
@@ -191,7 +181,6 @@ void realMain(LambdaIndexerOptions     const & options)
     f.options = options.indexFileOptions;
 
     using TOrigSbjAlph = _alphabetEnumToType<c_origAlph>;
-    using TTransSbjAlph = _alphabetEnumToType<c_transAlph>;
     using TRedSbjAlph = _alphabetEnumToType<c_redAlph>;
 
     {
@@ -219,36 +208,34 @@ void realMain(LambdaIndexerOptions     const & options)
 
     using TTransSbjSeqs   =
       seqan3::detail::lazy_conditional_t<c_origAlph == c_transAlph,
-                         TSbjSeqs &,                                                               // reference to owner
-                         seqan3::detail::lazy<TTransAlphModString, TSbjSeqs> >;
+                         decltype(seqan3::views::type_reduce(std::declval<TSbjSeqs &>())),  // no-op view
+                         seqan3::detail::lazy<TTransAlphModString, TSbjSeqs> >;             // trans view
 
     using TRedSbjSeqs   =
-      seqan3::detail::lazy_conditional_t<c_transAlph == c_redAlph,
-                         TTransSbjSeqs &,                                                          // reference to owner
-                         seqan3::detail::lazy_conditional_t<c_transAlph != AlphabetEnum::AMINO_ACID,
-                                         seqan3::detail::lazy<TRedNuclAlphModString, TTransSbjSeqs, TRedSbjAlph>,
-                                         seqan3::detail::lazy<TRedAlphModString, TTransSbjSeqs, TRedSbjAlph> > >;
+     seqan3::detail::lazy_conditional_t<c_transAlph == c_redAlph,
+                        decltype(seqan3::views::type_reduce(std::declval<TTransSbjSeqs &>())),   // no-op view
+                        seqan3::detail::lazy_conditional_t<c_transAlph != AlphabetEnum::AMINO_ACID,
+                                        seqan3::detail::lazy<TRedNuclAlphModString, TTransSbjSeqs, TRedSbjAlph>,
+                                        seqan3::detail::lazy<TRedAlphModString, TTransSbjSeqs, TRedSbjAlph> > >;
 
-    TTransSbjSeqs       transSbjSeqs =
-        initHelper<TTransSbjAlph>(f.seqs, seqan3::views::translate_join, seqan3::views::translate_join);
-    TRedSbjSeqs         redSbjSeqs =
-        initHelper<TRedSbjAlph>(transSbjSeqs, seqan3::views::deep{seqan3::views::convert<TRedSbjAlph>}, seqan3::views::dna_n_to_random);
+    TTransSbjSeqs       transSbjSeqs;
+    TRedSbjSeqs         redSbjSeqs;
 
-    if constexpr (c_origAlph != c_transAlph)
-    {
+    if constexpr (c_origAlph == c_transAlph)
+        transSbjSeqs = f.seqs | seqan3::views::type_reduce;     // no-op view
+    else
         transSbjSeqs = f.seqs | seqan3::views::translate_join;
-    }
 
-    if constexpr (c_transAlph != c_redAlph)
+    if constexpr (c_transAlph == c_redAlph)
     {
-        if constexpr (c_transAlph != AlphabetEnum::AMINO_ACID)
-        {
-            redSbjSeqs = transSbjSeqs | seqan3::views::dna_n_to_random;
-        }
-        else
-        {
+        redSbjSeqs = transSbjSeqs | seqan3::views::type_reduce; // no-op view
+    }
+    else
+    {
+        if constexpr (c_transAlph == AlphabetEnum::AMINO_ACID)
             redSbjSeqs = transSbjSeqs | seqan3::views::deep{seqan3::views::convert<TRedSbjAlph>};
-        }
+        else
+            redSbjSeqs = transSbjSeqs | seqan3::views::dna_n_to_random;
     }
 
     f.index = generateIndex<c_dbIndexType == DbIndexType::BI_FM_INDEX>(redSbjSeqs, options);

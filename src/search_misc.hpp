@@ -1,8 +1,8 @@
 // ==========================================================================
 //                                  lambda
 // ==========================================================================
-// Copyright (c) 2013-2019, Hannes Hauswedell <h2 @ fsfe.org>
-// Copyright (c) 2016-2019, Knut Reinert and Freie Universität Berlin
+// Copyright (c) 2013-2020, Hannes Hauswedell <h2 @ fsfe.org>
+// Copyright (c) 2016-2020, Knut Reinert and Freie Universität Berlin
 // All rights reserved.
 //
 // This file is part of Lambda.
@@ -37,123 +37,10 @@ struct QueryException : public std::runtime_error
     using std::runtime_error::runtime_error;
 };
 
-// ============================================================================
-// Seeding related
-// ============================================================================
-
-template <typename TGH>
-inline void
-myHyperSortSingleIndex(std::vector<Match> & matches,
-                       TGH const &)
-{
-    using TId = typename Match::TQId;
-
-    // regular sort
-    std::sort(matches.begin(), matches.end());
-
-    //                    trueQryId, begin,    end
-    std::vector<std::tuple<TId, TId, TId>> intervals;
-    for (TId i = 1; i <= std::ranges::size(matches); ++i)
-    {
-        if ((i == std::ranges::size(matches))                      ||
-            (matches[i-1].qryId != matches[i].qryId)    ||
-            (matches[i-1].subjId / seqan::sNumFrames(TGH::blastProgram)) !=
-             (matches[i].subjId / seqan::sNumFrames(TGH::blastProgram)))
-        {
-            if (std::ranges::size(intervals) == 0) // first interval
-                intervals.emplace_back(std::make_tuple(matches[i-1].qryId
-                                                       / seqan::qNumFrames(TGH::blastProgram),
-                                                       0,
-                                                       i));
-            else
-                intervals.emplace_back(std::make_tuple(matches[i-1].qryId
-                                                       / seqan::qNumFrames(TGH::blastProgram),
-                                                       std::get<2>(intervals.back()),
-                                                       i));
-        }
-    }
-
-    // sort by lengths of interval, since trueQryId is the same anyway
-    std::sort(intervals.begin(), intervals.end(),
-            [] (std::tuple<TId, TId, TId> const & i1,
-                std::tuple<TId, TId, TId> const & i2)
-    {
-        return (std::get<2>(i1) - std::get<1>(i1))
-            >  (std::get<2>(i2) - std::get<1>(i2));
-    });
-
-    std::vector<Match> tmpVector;
-    tmpVector.resize(matches.size());
-
-    TId newIndex = 0;
-    for (auto const & i : intervals)
-    {
-        TId limit = std::get<2>(i);
-        for (TId j = std::get<1>(i); j < limit; ++j)
-        {
-            tmpVector[newIndex] = matches[j];
-            newIndex++;
-        }
-    }
-    std::swap(tmpVector, matches);
-}
-
 
 // ============================================================================
 // Alignment-related
 // ============================================================================
-
-template <typename T1, typename T2>
-inline uint64_t
-quickHamming(T1 const & s1, T2 const & s2)
-{
-    SEQAN_ASSERT_EQ(length(s1), length(s2));
-
-    uint64_t ret = 0;
-
-    for (uint64_t i = 0; i < length(s1); ++i)
-        if (s1[i] != s2[i])
-            ++ret;
-
-    return ret;
-}
-
-
-template <typename TSource0, typename TGapsSpec0,
-          typename TSource1, typename TGapsSpec1,
-          typename TScoreValue, typename TScoreSpec,
-          typename TAlignContext>
-inline TScoreValue
-localAlignment2(seqan::Gaps<TSource0, TGapsSpec0> & row0,
-                seqan::Gaps<TSource1, TGapsSpec1> & row1,
-                seqan::Score<TScoreValue, TScoreSpec> const & scoringScheme,
-                int const lowerDiag,
-                int const upperDiag,
-                TAlignContext & alignContext)
-{
-    seqan::clear(alignContext.traceSegment);
-
-    typedef seqan::FreeEndGaps_<seqan::True, seqan::True, seqan::True, seqan::True> TFreeEndGaps;
-    typedef seqan::AlignConfig2<seqan::LocalAlignment_<>,
-                         seqan::DPBand,
-                         TFreeEndGaps,
-                         seqan::TracebackOn<seqan::TracebackConfig_<seqan::CompleteTrace,
-                                                                    seqan::GapsLeft> > > TAlignConfig;
-
-    TScoreValue score;
-    seqan::DPScoutState_<seqan::Default> scoutState;
-    score = seqan::_setUpAndRunAlignment(alignContext.dpContext,
-                                  alignContext.traceSegment,
-                                  scoutState,
-                                  row0,
-                                  row1,
-                                  scoringScheme,
-                                  TAlignConfig(lowerDiag, upperDiag));
-
-    seqan::_adaptTraceSegmentsTo(row0, row1, alignContext.traceSegment);
-    return score;
-}
-
 
 template <typename TLocalHolder>
 inline int
