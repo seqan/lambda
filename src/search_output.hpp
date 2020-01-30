@@ -128,6 +128,7 @@ blastMatchOneCigar(TCigar & cigar,
     // clips resulting from translation / frameshift are always hard clips
     unsigned const leftFrameClip  = std::abs(m.qFrameShift) - 1;
     unsigned const rightFrameClip = qIsTranslated(TGlobalHolder::blastProgram) ? (r.qLength - leftFrameClip) % 3 : 0;
+
     // regular clipping from local alignment (regions outside match) can be hard or soft
     unsigned const leftClip       = m.qStart * transFac;
     unsigned const rightClip      = (seqan::length(seqan::source(m.alignRow0)) - m.qEnd) * transFac;
@@ -353,9 +354,9 @@ myWriteHeader(TGH & globalHolder, TLambdaOptions const & options)
         auto & subjIds          = seqan::contigNames(context);
 
         // compute seqan::lengths ultra-fast
-        seqan::resize(subjSeqLengths, globalHolder.redSbjSeqs.size());
+        seqan::resize(subjSeqLengths, globalHolder.indexFile.seqs.size());
         SEQAN_OMP_PRAGMA(parallel for simd)
-        for (size_t i = 0; i < globalHolder.redSbjSeqs.size(); ++i)
+        for (size_t i = 0; i < globalHolder.indexFile.seqs.size(); ++i)
             subjSeqLengths[i] = globalHolder.indexFile.seqs[i].size();
 
         // set namestore
@@ -467,7 +468,6 @@ myWriteRecord(TLH & lH, TRecord const & record)
     } else // SAM or BAM
     {
         // convert multi-match blast-record to multiple SAM/BAM-Records
-
         std::vector<seqan::BamAlignmentRecord> bamRecords;
         bamRecords.resize(record.matches.size());
 
