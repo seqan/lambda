@@ -30,6 +30,8 @@
 #include <seqan/reduced_aminoacid.h>
 #include <seqan/misc/terminal.h>
 
+#include <seqan3/range/views/async_input_buffer.hpp>
+
 #include "shared_definitions.hpp"
 #include "shared_options.hpp"
 #include "shared_misc.hpp"
@@ -334,7 +336,7 @@ void realMain(LambdaOptions     const & options)
 
     loadDbIndexFromDisk(globalHolder, options);
 
-    loadQuery(globalHolder, options);
+    countQuery(globalHolder, options);
 
     myWriteHeader(globalHolder, options);
 
@@ -345,17 +347,43 @@ void realMain(LambdaOptions     const & options)
 
     uint64_t lastPercent = 0;
 
+    typename TGlobalHolder::TQueryFile  infile{options.queryFile};
+    auto file_view = infile | seqan3::views::async_input_buffer(globalHolder.records_per_batch * options.threads);
 
     SEQAN_OMP_PRAGMA(parallel)
     {
         TLocalHolder localHolder(options, globalHolder);
 
-        SEQAN_OMP_PRAGMA(for schedule(dynamic))
-        for (uint64_t t = 0; t < localHolder.nBlocks; ++t)
+        while (true)
         {
-            int res = 0;
+            localHolder.reset();
 
-            localHolder.init(t);
+            // load records until batch is full or file at end
+            for (auto & [ id, seq ] : file_view)
+            {
+                localHolder.qryIds.push_back(std::move(id));
+                localHolder.qrySeqs.push_back(std::move(seq));
+
+                //TODO this is not ideal:
+                if constexpr (c_transAlph == AlphabetEnum::DNA5) // BLASTN
+                {
+                    auto revComp = localHolder.qrySeqs.back()
+                                 | std::views::reverse
+                                 | seqan3::views::complement
+                                 | seqan3::views::to<std::ranges::range_value_t<decltype(localHolder.qrySeqs)>>;
+                    localHolder.qrySeqs.push_back(std::move(revComp));
+                }
+
+                if (++localHolder.queryCount == globalHolder.records_per_batch)
+                    break;
+            }
+
+            if (localHolder.queryCount == 0) // no more records in file
+                break;
+
+            globalHolder.queryCount += localHolder.queryCount; // atomic can be written from multiple threads
+
+            localHolder.resetViews(); // views reset after sequences have been loaders
 
             // seed
         #ifdef LAMBDA_MICRO_STATS
@@ -368,14 +396,12 @@ void realMain(LambdaOptions     const & options)
 
             // extend
             if (localHolder.matches.size() > 0)
-                res = iterateMatches(localHolder);
-
-            if (res)
-                continue;
+                iterateMatches(localHolder);
 
             if ((omp_get_thread_num() == 0) && (options.verbosity >= 1))
             {
-                unsigned curPercent = ((t * 50) / localHolder.nBlocks) * 2; // round to even
+                // round to even
+                size_t curPercent = ((globalHolder.queryCount.load() * 50) / globalHolder.queryTotal) * 2;
                 printProgressBar(lastPercent, curPercent);
             }
 
