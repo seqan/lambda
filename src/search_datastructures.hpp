@@ -430,6 +430,12 @@ public:
     size_t              queryTotal = 0;
     std::atomic<size_t> queryCount = 0;
     size_t              records_per_batch = 100;
+
+    GlobalDataHolder() = default;
+    GlobalDataHolder(GlobalDataHolder const &) = delete;
+    GlobalDataHolder(GlobalDataHolder &&) = delete;
+    GlobalDataHolder & operator=(GlobalDataHolder const &) = delete;
+    GlobalDataHolder & operator=(GlobalDataHolder &&) = delete;
 };
 
 // ----------------------------------------------------------------------------
@@ -475,6 +481,12 @@ public:
 
     // regarding the gathering of stats
     StatsHolder         stats{};
+
+    LocalDataHolder() = delete;
+    LocalDataHolder(LocalDataHolder const &) = delete;
+    LocalDataHolder(LocalDataHolder &&) = delete;
+    LocalDataHolder & operator=(LocalDataHolder const &) = delete;
+    LocalDataHolder & operator=(LocalDataHolder &&) = delete;
 
     LocalDataHolder(LambdaOptions const & _options, TGlobalHolder & _gH) :
         options{_options}, gH{_gH}, stats{}
