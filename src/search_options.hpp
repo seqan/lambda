@@ -66,7 +66,7 @@ struct LambdaOptions : public SharedOptions
     unsigned        samBamSeq;
     bool            samBamHardClip;
     bool            versionInformationToOutputFile = true;
-
+    size_t          maximumQueryBlockSize = 10;
 
     bool            adaptiveSeeding;
 
@@ -504,9 +504,15 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     // Set options depending on extension mode
     if (extensionModeTmp == "fullSIMD")
+    {
         options.extensionMode = LambdaOptions::ExtensionMode::FULL_SIMD;
+        options.maximumQueryBlockSize = 10;
+    }
     else if (extensionModeTmp == "fullSerial")
+    {
         options.extensionMode = LambdaOptions::ExtensionMode::FULL_SERIAL;
+        options.maximumQueryBlockSize = 1;
+    }
 }
 
 // --------------------------------------------------------------------------
