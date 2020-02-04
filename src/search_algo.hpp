@@ -349,9 +349,9 @@ countQuery(GlobalDataHolder<c_indexType, c_origSbjAlph, c_transAlph, c_redAlph, 
     // parse the file completely and get count in one line:
     globalHolder.queryTotal = std::ranges::distance(infile);
 
-    // batch-size 100 unless too few sequences
+    // batch-size as set in options (unless too few sequences)
     globalHolder.records_per_batch = std::max<size_t>(std::min<size_t>(globalHolder.queryTotal / (options.threads * 10),
-                                                                       100),
+                                                                       options.maximumQueryBlockSize),
                                                       1);
     double finish = sysTime() - start;
     myPrint(options, 1, " done.\n");
