@@ -8,24 +8,27 @@ enable_testing ()
 include (CTest)
 
 ## only subset of tests
-if (LAMBDA_FASTBUILD)
-    set (PROGS blastp blastx)
-else ()
-    set (PROGS blastn blastp blastx tblastn tblastx)
-endif ()
+set (PROGS blastn blastp blastx tblastn tblastx)
+set (MODES fullSerial fullSIMD)
 
 ## basic indexer tests
 foreach(PROG ${PROGS})
-    add_test (NAME test_mkindex_${PROG}
-              COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/maintests.sh
-                      "${CMAKE_SOURCE_DIR}" "${CMAKE_BINARY_DIR}" ${PROG} ${DI} "MKINDEX" " ")
+    foreach(DI fm bifm)
+        add_test (NAME test_mkindex_${PROG}_${DI}
+                COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/maintests.sh
+            "${CMAKE_SOURCE_DIR}" "${CMAKE_BINARY_DIR}" ${PROG} ${DI} " " "MKINDEX" " ")
+    endforeach()
 endforeach()
 
 ## basic search tests
 foreach(PROG ${PROGS})
-    foreach(FF m0 m8 m9 sam bam m9.gz sam.bz2)
-        add_test (NAME test_search_${PROG}_${FF}
-                  COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/maintests.sh
-                          "${CMAKE_SOURCE_DIR}" "${CMAKE_BINARY_DIR}" ${PROG} ${DI} "SEARCH" ${FF})
+    foreach(DI fm bifm)
+        foreach(MODE ${MODES})
+            foreach(FF m0 m8 m9 sam bam m9.gz sam.bz2)
+                add_test (NAME test_search_${PROG}_${DI}_${MODE}_${FF}
+                        COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/maintests.sh
+                    "${CMAKE_SOURCE_DIR}" "${CMAKE_BINARY_DIR}" ${PROG} ${DI} ${MODE} "SEARCH" ${FF})
+            endforeach()
+        endforeach()
     endforeach()
 endforeach()

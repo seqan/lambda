@@ -7,13 +7,15 @@ errorout()
     exit 1
 }
 
-[ $# -ne 5 ] && exit 1
+[ $# -ne 7 ] && exit 1
 
 SRCDIR=$1
 BINDIR=$2
 PROG=$3
-MODE=$4
-EXTENSION=$5
+DI=$4
+MODE=$5
+TOOL=$6
+EXTENSION=$7
 
 # check existence of commands
 which openssl gunzip mktemp diff cat zcat zgrep > /dev/null
@@ -58,19 +60,14 @@ cd "$MYTMP"
 gunzip < "${SRCDIR}/tests/db_${SALPHIN}.fasta.gz" > db.fasta
 [ $? -eq 0 ] || errorout "Could not unzip database file"
 
-${BINDIR}/bin/lambda3 ${MKINDEX} -d db.fasta -i index.lba
+${BINDIR}/bin/lambda3 ${MKINDEX} -d db.fasta -i db_${SALPH}_${DI}.fasta.gz.lba --db-index-type ${DI}
 [ $? -eq 0 ] || errorout "Could not run the indexer"
 
-# openssl md5 * > md5sums
-# [ $? -eq 0 ] || errorout "Could not run md5 or md5sums"
+[ "$(openssl md5 db_${SALPH}_${DI}.fasta.gz.lba)" = \
+"$(zgrep "(db_${SALPH}_${DI}.fasta.gz.lba)" "${SRCDIR}/tests/index_test_outfile.md5sums.gz")" ] || errorout "MD5 mismatch of index file"
 
-# gunzip < "${SRCDIR}/tests/db_${SALPH}_${DI}.md5sums.gz" > md5sums.orig
-# [ $? -eq 0 ] || errorout "Could not unzip md5sums.orig"
-
-# [ "$(cat md5sums)" = "$(cat md5sums.orig)" ] || errorout "$(diff -u md5sums md5sums.orig)"
-
-## INDEXER tests end here
-if [ "$MODE" = "MKINDEX" ]; then
+# INDEXER tests end here
+if [ "$TOOL" = "MKINDEX" ]; then
     rm -r "${MYTMP}"
     exit 0
 fi
@@ -78,11 +75,11 @@ fi
 gunzip < "${SRCDIR}/tests/queries_${QALPHIN}.fasta.gz" > queries.fasta
 [ $? -eq 0 ] || errorout "Could not unzip queries.fasta"
 
-${BINDIR}/bin/lambda3 ${SEARCH} -i index.lba -q queries.fasta -t 1 --version-to-outputfile off \
--o output_${PROG}_${DI}.${EXTENSION}
+${BINDIR}/bin/lambda3 ${SEARCH} -i db_${SALPH}_${DI}.fasta.gz.lba -q queries.fasta -t 1 --version-to-outputfile 0 --seed-offset 7 --seed-length 14 --adaptive-seeding 1 -m $MODE \
+-o output_${PROG}_${DI}_${MODE}.${EXTENSION}
 [ $? -eq 0 ] || errorout "Search failed."
 
-# [ "$(openssl md5 output_${PROG}_${DI}.${EXTENSION})" = \
-# "$(zgrep "(output_${PROG}_${DI}.${EXTENSION})" "${SRCDIR}/tests/search_test_outfile.md5sums.gz")" ] || errorout "MD5 mismatch of output file"
+[ "$(openssl md5 output_${PROG}_${DI}_${MODE}.${EXTENSION})" = \
+"$(zgrep "(output_${PROG}_${DI}_${MODE}.${EXTENSION})" "${SRCDIR}/tests/search_test_outfile.md5sums.gz")" ] || errorout "MD5 mismatch of output file"
 
-# rm -r "${MYTMP}"
+rm -r "${MYTMP}"
