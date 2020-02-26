@@ -568,7 +568,7 @@ auto parseAndStoreTaxTree(std::vector<bool>          & taxIdIsPresent,
     while (std::ranges::begin(file_view2) != std::ranges::end(file_view2))
     {
         // read line
-        buf = file_view | seqan3::views::take_line | seqan3::views::to<std::string>;
+        buf = file_view2 | seqan3::views::take_line | seqan3::views::to<std::string>;
 
         uint32_t taxId = 0;
 
