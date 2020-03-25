@@ -32,6 +32,8 @@
 
 #include <seqan/align_extend.h>
 
+#include "bisulfite_scoring.hpp"
+
 // ============================================================================
 // Tags, Classes, Enums
 // ============================================================================
@@ -395,15 +397,28 @@ public:
     using TIndexCursor  = typename TIndex::cursor_type;
 
     /* output file */
+    // SeqAn3 scoring scheme type for evaluation of seeds after search
     using TScoreScheme3  = std::conditional_t<seqan3::nucleotide_alphabet<TRedAlph>,
-                                              seqan3::nucleotide_scoring_scheme<>,
+                                              std::conditional_t<c_redAlph == AlphabetEnum::DNA3BS,
+                                                                 bisulfite_scoring_scheme<>,
+                                                                 seqan3::nucleotide_scoring_scheme<>>,
                                               seqan3::aminoacid_scoring_scheme<>>;
 
-    using TScoreScheme  =
+    // SeqAn2 scoring scheme for local alignment of extended seeds. This can be adapted for bisulfite scoring.
+    using TScoreSchemeAlign  =
+        std::conditional_t<seqan3::nucleotide_alphabet<TRedAlph>,
+                           std::conditional_t<c_redAlph == AlphabetEnum::DNA3BS,
+                                              seqan::Score<int, seqan::ScoreMatrix<seqan::Dna5, seqan::BisulfiteMatrix>>,
+                                              seqan::Score<int, seqan::Simple>>,
+                           seqan::Score<int, seqan::ScoreMatrix<seqan::AminoAcid, seqan::ScoreSpecSelectable>>>;
+
+    // SeqAn2 scoring scheme for blast statistics (does not work with bisulfite scoring scheme)
+    using TScoreSchemeStats  =
         std::conditional_t<seqan3::nucleotide_alphabet<TRedAlph>,
                            seqan::Score<int, seqan::Simple>,
                            seqan::Score<int, seqan::ScoreMatrix<seqan::AminoAcid, seqan::ScoreSpecSelectable>>>;
-    using TIOContext    = seqan::BlastIOContext<TScoreScheme, blastProgram>;
+
+    using TIOContext    = seqan::BlastIOContext<TScoreSchemeStats, blastProgram>;
     using TBlastTabFile = seqan::FormattedFile<seqan::BlastTabular, seqan::Output, TIOContext>;
     using TBlastRepFile = seqan::FormattedFile<seqan::BlastReport, seqan::Output, TIOContext>;
     using TBamFile      = seqan::FormattedFile<seqan::Bam, seqan::Output, seqan::BlastTabular>;
@@ -422,7 +437,8 @@ public:
     TBlastRepFile       outfileBlastRep;
     TBamFile            outfileBam;
 
-    TScoreScheme3       scoringScheme;
+    TScoreScheme3       scoringSchemePreScoring;
+    TScoreSchemeAlign   scoringSchemeAlign;
     seqan3::gap_scheme<int8_t> gapScheme;
 
     StatsHolder         stats{};
@@ -519,36 +535,7 @@ public:
         else if constexpr (TGH::c_transAlph == AlphabetEnum::AMINO_ACID)
             redQrySeqs = transQrySeqs | seqan3::views::deep{seqan3::views::convert<_alphabetEnumToType<TGH::c_redAlph>>};
         else
-            redQrySeqs = transQrySeqs| seqan3::views::dna_n_to_random;
+            redQrySeqs = transQrySeqs| seqan3::views::dna_n_to_random<_alphabetEnumToType<TGH::c_redAlph>>;
     }
 
 };
-
-namespace seqan
-{
-struct BisulfiteScoreMatrix {};
-
-template <>
-struct ScoringMatrixData_<int, Dna5, BisulfiteScoreMatrix> // TODO change to DNA4
-{
-    enum
-    {
-        VALUE_SIZE = ValueSize<Dna5>::VALUE,
-        TAB_SIZE = VALUE_SIZE * VALUE_SIZE
-    };
-
-    static inline int const * getData()
-    {
-        static int const _data[TAB_SIZE] =
-        {
-            1, 0, 0, 0, 0,
-            0, 1, 0, 1, 0,
-            0, 0, 1, 0, 0,
-            0, 0, 0, 1, 0,
-            0, 0, 0, 0, 0
-        };
-        return _data;
-    }
-
-};
-} // namespace seqan

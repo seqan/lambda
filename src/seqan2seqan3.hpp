@@ -5,6 +5,7 @@
 #include <seqan3/alphabet/aminoacid/concept.hpp>
 #include <seqan3/alphabet/nucleotide/concept.hpp>
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
+#include <seqan3/alphabet/nucleotide/dna3bs.hpp>
 #include <seqan3/alphabet/concept.hpp>
 #include <seqan3/core/type_traits/pre.hpp>
 #include <seqan3/range/views/translate_join.hpp>
@@ -44,6 +45,8 @@ inline seqan3::gapped<alph_t> gapValueImpl(seqan3::gapped<alph_t> const *)
 #include <seqan/sequence.h>
 #include <seqan/score.h>
 #include <seqan/align.h>
+
+#include "bisulfite_scoring.hpp"
 
 namespace seqan
 {
@@ -268,6 +271,14 @@ inline auto score(Score<TValue, ScoreMatrix<TSequenceValue, TSpec>> const & sche
     return score(scheme, AminoAcid{seqan3::to_char(a1)}, AminoAcid{seqan3::to_char(a2)});
 }
 
+template <typename TValue, seqan3::nucleotide_alphabet alph_t>
+inline auto score(Score<TValue, ScoreMatrix<Dna5, BisulfiteMatrix>> const & scheme,
+                  alph_t const a1,
+                  alph_t const a2)
+{
+    return score(scheme, Dna5{seqan3::to_char(a1)}, Dna5{seqan3::to_char(a2)});
+}
+
 template <typename TValue, typename TSequenceValue, typename TSpec, seqan3::alphabet alph_t>
 inline auto score(Score<TValue, ScoreMatrix<TSequenceValue, TSpec>> const & scheme,
                   seqan3::gapped<alph_t> const a1,
@@ -340,6 +351,13 @@ inline constexpr std::array<uint8_t, 27> seqan3rank_to_seqan2rank<seqan3::aa27> 
 { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 25, 23, 24, 26 };
 //A  B  C  D  E  F  G  H  I  J  K   L   M   N   O   P   Q   R   S   T   U   V   W   Y   Z   X   *       <- seqan2
 //                                                                                  ↑   ↑   ↑
+// dna5 is scored via matrix in bisulfite-mode
+template <>
+inline constexpr std::array<uint8_t, 5> seqan3rank_to_seqan2rank<seqan3::dna5> =
+//A  C  G  N  T       <- seqan3
+{ 0, 1, 2, 4, 3 };
+//A  C  G  T  N       <- seqan2
+//         ↑  ↑
 
 // –---------------------------------------------------------------------------
 // SIMD Support
@@ -362,7 +380,7 @@ struct seqan2_to_rank_inner
     template <typename t>
     constexpr uint8_t operator()(t const c) const noexcept
     {
-        if constexpr (std::is_same_v<t, seqan3::aa27> /* or dna3bs*/)
+        if constexpr (std::is_same_v<t, seqan3::aa27> || std::is_same_v<t, seqan3::dna5>) // dna5 used in bisulfite-mode
             return seqan3rank_to_seqan2rank<t>[seqan3::to_rank(c)];
         else // alphabets that are scored with seqan::SimpleScore don't need extra conversion
             return seqan3::to_rank(c);

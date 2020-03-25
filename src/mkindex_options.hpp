@@ -136,7 +136,7 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
         parser.add_section("Alphabet reduction");
 
         parser.add_option(alphabetReductionTmp, 'r', "alphabet-reduction", "Alphabet Reduction for seeding phase.",
-            seqan3::option_spec::ADVANCED, seqan3::value_list_validator{"none", "dna4"});
+            seqan3::option_spec::ADVANCED, seqan3::value_list_validator{"none", "dna4", "dna3bs"});
     }
     else
     {

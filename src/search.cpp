@@ -51,17 +51,17 @@ void argConv1(LambdaOptions const & options);
 
 template <DbIndexType   c_indexType,
           AlphabetEnum  c_origSbjAlph>
-void argCon2a(LambdaOptions const & options);
+void argConv2a(LambdaOptions const & options);
 
 template <DbIndexType   c_indexType,
           AlphabetEnum  c_origSbjAlph>
-void argCon2b(LambdaOptions const & options);
+void argConv2b(LambdaOptions const & options);
 
 template <DbIndexType   c_indexType,
           AlphabetEnum  c_origSbjAlph,
           AlphabetEnum  c_transAlph,
           AlphabetEnum  c_redAlph>
-void argCon3(LambdaOptions     const & options);
+void argConv3(LambdaOptions     const & options);
 
 template <DbIndexType   c_indexType,
           AlphabetEnum  c_origSbjAlph,
@@ -162,7 +162,7 @@ argConv0(LambdaOptions & options)
         myPrint(options, 2, "  reduced alphabet:    ", _alphabetEnumToName(options.indexFileOptions.redAlph), "\n\n");
     }
 
-    if ((options.nucleotide_mode) && (options.indexFileOptions.redAlph != AlphabetEnum::DNA5 && options.indexFileOptions.redAlph != AlphabetEnum::DNA4))
+    if ((options.nucleotide_mode) && (options.indexFileOptions.redAlph != AlphabetEnum::DNA5 && options.indexFileOptions.redAlph != AlphabetEnum::DNA4  && options.indexFileOptions.redAlph != AlphabetEnum::DNA3BS))
     {
         throw std::runtime_error("You are attempting a nucleotide search on a protein index. "
                                  "Did you want to use 'lambda3 searchp' instead?");
@@ -231,15 +231,15 @@ void argConv1(LambdaOptions const & options)
 {
     if (options.nucleotide_mode)
     {
-        return argCon2a<c_indexType, AlphabetEnum::DNA5>(options);
+        return argConv2a<c_indexType, AlphabetEnum::DNA5>(options);
     }
     else
     {
         switch (options.indexFileOptions.origAlph)
         {
-            case AlphabetEnum::DNA5:        return argCon2b<c_indexType,
+            case AlphabetEnum::DNA5:        return argConv2b<c_indexType,
                                                             AlphabetEnum::DNA5>(options);
-            case AlphabetEnum::AMINO_ACID:  return argCon2b<c_indexType,
+            case AlphabetEnum::AMINO_ACID:  return argConv2b<c_indexType,
                                                             AlphabetEnum::AMINO_ACID>(options);
             default: throw 53;
         }
@@ -248,7 +248,7 @@ void argConv1(LambdaOptions const & options)
 
 template <DbIndexType   c_indexType,
           AlphabetEnum  c_origSbjAlph>
-void argCon2a(LambdaOptions const & options)
+void argConv2a(LambdaOptions const & options)
 {
     // transalph is always amino acid, unless in nucleotide_mode
     switch (options.indexFileOptions.redAlph)
@@ -263,26 +263,31 @@ void argCon2a(LambdaOptions const & options)
                                                       AlphabetEnum::DNA5,
                                                       AlphabetEnum::DNA4,
                                                       AlphabetEnum::DNA5>(options);
+        case AlphabetEnum::DNA3BS:    return realMain<c_indexType,
+                                                      c_origSbjAlph,
+                                                      AlphabetEnum::DNA5,
+                                                      AlphabetEnum::DNA3BS,
+                                                      AlphabetEnum::DNA5>(options);
         default: throw 555;
     }
 }
 
 template <DbIndexType   c_indexType,
           AlphabetEnum  c_origSbjAlph>
-void argCon2b(LambdaOptions const & options)
+void argConv2b(LambdaOptions const & options)
 {
     // transalph is always amino acid, unless in nucleotide_mode
     switch (options.indexFileOptions.redAlph)
     {
-        case AlphabetEnum::AMINO_ACID:      return argCon3<c_indexType,
+        case AlphabetEnum::AMINO_ACID:      return argConv3<c_indexType,
                                                             c_origSbjAlph,
                                                             AlphabetEnum::AMINO_ACID,
                                                             AlphabetEnum::AMINO_ACID>(options);
-        case AlphabetEnum::MURPHY10:        return argCon3<c_indexType,
+        case AlphabetEnum::MURPHY10:        return argConv3<c_indexType,
                                                             c_origSbjAlph,
                                                             AlphabetEnum::AMINO_ACID,
                                                             AlphabetEnum::MURPHY10>(options);
-        case AlphabetEnum::LI10:            return argCon3<c_indexType,
+        case AlphabetEnum::LI10:            return argConv3<c_indexType,
                                                             c_origSbjAlph,
                                                             AlphabetEnum::AMINO_ACID,
                                                             AlphabetEnum::LI10>(options);
@@ -294,7 +299,7 @@ template <DbIndexType   c_indexType,
           AlphabetEnum  c_origSbjAlph,
           AlphabetEnum  c_transAlph,
           AlphabetEnum  c_redAlph>
-void argCon3(LambdaOptions     const & options)
+void argConv3(LambdaOptions     const & options)
 {
     // transalph is always amino acid, unless in nucleotide_mode
     switch (options.qryOrigAlphabet)
