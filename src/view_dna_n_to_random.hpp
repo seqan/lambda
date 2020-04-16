@@ -16,7 +16,8 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 //
 // ==========================================================================
-// view_dna_n_to_random.hpp: View that converts N into random selection of {A,C,G,T}
+// view_dna_n_to_random.hpp: View that converts N into random selection of
+// {A,C,G,T} if target alphabet is dna4 or {A,G,T} if target alphabet is dna3bs
 // ==========================================================================
 
 #pragma once
@@ -29,6 +30,7 @@
 #include <seqan3/range/views/deep.hpp>
 #include <seqan3/std/ranges>
 
+template <seqan3::nucleotide_alphabet TAlph>
 struct dna_n_to_random_fn
 {
     template <std::ranges::range urng_t>
@@ -49,11 +51,11 @@ struct dna_n_to_random_fn
         {
             if (seqan3::to_char(in) == 'N')
             {
-                return seqan3::assign_rank_to(rng() % 4, seqan3::dna4{});
+                return seqan3::assign_rank_to(rng() % seqan3::alphabet_size<TAlph>, TAlph{});
             }
             else
             {
-                return static_cast<seqan3::dna4>(in);
+                return static_cast<TAlph>(in);
             }
         });
     }
@@ -68,6 +70,7 @@ struct dna_n_to_random_fn
 namespace seqan3::views
 {
 
-inline constexpr auto dna_n_to_random = seqan3::views::deep{dna_n_to_random_fn{}};
+template <typename TAlph = seqan3::dna4>
+inline constexpr auto dna_n_to_random = seqan3::views::deep{dna_n_to_random_fn<TAlph>{}};
 
 } // namespace seqan3::view

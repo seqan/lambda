@@ -167,6 +167,7 @@ void argConv3b(LambdaIndexerOptions const & options)
     {
         case AlphabetEnum::DNA5:       return realMain<c_indexType, c_origAlph, c_transAlph, AlphabetEnum::DNA5>(options);
         case AlphabetEnum::DNA4:       return realMain<c_indexType, c_origAlph, c_transAlph, AlphabetEnum::DNA4>(options);
+        case AlphabetEnum::DNA3BS:     return realMain<c_indexType, c_origAlph, c_transAlph, AlphabetEnum::DNA3BS>(options);
         default:                       throw 364;
     }
 }
@@ -235,7 +236,7 @@ void realMain(LambdaIndexerOptions     const & options)
         if constexpr (c_transAlph == AlphabetEnum::AMINO_ACID)
             redSbjSeqs = transSbjSeqs | seqan3::views::deep{seqan3::views::convert<TRedSbjAlph>};
         else
-            redSbjSeqs = transSbjSeqs | seqan3::views::dna_n_to_random;
+            redSbjSeqs = transSbjSeqs | seqan3::views::dna_n_to_random<TRedSbjAlph>;
     }
 
     f.index = generateIndex<c_dbIndexType == DbIndexType::BI_FM_INDEX>(redSbjSeqs, options);
