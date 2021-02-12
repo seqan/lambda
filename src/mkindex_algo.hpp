@@ -16,7 +16,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 //
 // ==========================================================================
-// lambda_indexer.hpp: Main File for the indexer application
+// mkindex_algo.hpp: Functions for the indexer application
 // ==========================================================================
 
 #pragma once

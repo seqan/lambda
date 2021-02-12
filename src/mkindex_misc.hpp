@@ -16,7 +16,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 //
 // ==========================================================================
-// lambda_indexer_misc.hpp: misc stuff for indexer
+// mkindex_misc.hpp: misc stuff for indexer
 // ==========================================================================
 
 #pragma once

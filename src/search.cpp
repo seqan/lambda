@@ -16,7 +16,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 //
 // ==========================================================================
-// lambda.cpp: Main File for Lambda
+// search.cpp: Main File for the search
 // ==========================================================================
 
 #include "seqan2seqan3.hpp" // must come first
@@ -369,16 +369,6 @@ void realMain(LambdaOptions     const & options)
                 localHolder.qryIds.push_back(std::move(id));
                 localHolder.qrySeqs.push_back(std::move(seq));
 
-                //TODO this is not ideal:
-                if constexpr (c_transAlph == AlphabetEnum::DNA5) // BLASTN
-                {
-                    auto revComp = localHolder.qrySeqs.back()
-                                 | std::views::reverse
-                                 | seqan3::views::complement
-                                 | seqan3::views::to<std::ranges::range_value_t<decltype(localHolder.qrySeqs)>>;
-                    localHolder.qrySeqs.push_back(std::move(revComp));
-                }
-
                 if (++localHolder.queryCount == globalHolder.records_per_batch)
                     break;
             }
@@ -398,7 +388,6 @@ void realMain(LambdaOptions     const & options)
         #ifdef LAMBDA_MICRO_STATS
             localHolder.stats.timeSearch += sysTime() - buf;
         #endif
-
             // extend
             if (localHolder.matches.size() > 0)
                 iterateMatches(localHolder);

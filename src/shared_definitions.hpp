@@ -16,7 +16,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 //
 // ==========================================================================
-// options.h: contains the options and argument parser
+// shared_definitions.h: commonly used types and functions
 // ==========================================================================
 
 #pragma once
@@ -33,8 +33,12 @@
 #include <seqan3/range/views/convert.hpp>
 #include <seqan3/range/views/deep.hpp>
 #include <seqan3/range/views/translate_join.hpp>
+#include <seqan3/range/views/type_reduce.hpp>
 
+#include "view_add_reverse_complement.hpp"
 #include "view_dna_n_to_random.hpp"
+#include "view_duplicate.hpp"
+#include "view_reduce_to_bisulfite.hpp"
 
 // ==========================================================================
 //  DbIndexType
@@ -76,7 +80,7 @@ _indexNameToEnum(std::string const t)
 // ==========================================================================
 
 constexpr const char *
-_alphTypeToName(seqan3::dna3bs const & /**/)
+_alphTypeToName(seqan3::semialphabet_any<6> const & /**/)
 {
     return "dna3bs";
 }
@@ -128,7 +132,7 @@ _alphabetEnumToName(AlphabetEnum const t)
     switch (t)
     {
         case AlphabetEnum::UNDEFINED:   return "UNDEFINED";
-        case AlphabetEnum::DNA3BS:      return _alphTypeToName(seqan3::dna3bs{});
+        case AlphabetEnum::DNA3BS:      return _alphTypeToName(seqan3::semialphabet_any<6>{});
         case AlphabetEnum::DNA4:        return _alphTypeToName(seqan3::dna4{});
         case AlphabetEnum::DNA5:        return _alphTypeToName(seqan3::dna5{});
         case AlphabetEnum::AMINO_ACID:  return _alphTypeToName(seqan3::aa27{});
@@ -145,7 +149,7 @@ _alphabetNameToEnum(std::string const t)
 {
     if ((t == "UNDEFINED") || (t == "auto"))
         return AlphabetEnum::UNDEFINED;
-    else if (t == _alphTypeToName(seqan3::dna3bs{}))
+    else if (t == _alphTypeToName(seqan3::semialphabet_any<6>{}))
         return AlphabetEnum::DNA3BS;
     else if (t == _alphTypeToName(seqan3::dna4{}))
         return AlphabetEnum::DNA4;
@@ -168,7 +172,7 @@ struct _alphabetEnumToType_;
 template <>
 struct _alphabetEnumToType_<AlphabetEnum::DNA3BS>
 {
-    using type = seqan3::dna3bs;
+    using type = seqan3::semialphabet_any<6>;
 };
 
 template <>
@@ -259,17 +263,87 @@ using IndexSpec = seqan3::default_sdsl_index_type;
 template <typename TString>
 using TCDStringSet = std::vector<TString>; //TODO seqan3::concatenated_sequences
 
-template <typename TSpec>
-using TTransAlphModString =
-  decltype(std::declval<TSpec &>() | seqan3::views::translate_join);
+// Translated subject sequences
+// Case: DNA to amino acid translation
+template <typename TOrigSeqs, typename TOrigAlph, typename TTransAlph, typename TRedAlph>
+struct TTransSbjSeqsImpl
+{
+    using type = decltype(std::declval<TOrigSeqs&>() | seqan3::views::translate_join);
+};
 
-template <typename TSpec, typename TAlph>
-using TRedAlphModString =
-  decltype(std::declval<TSpec &>() | seqan3::views::deep{seqan3::views::convert<TAlph>});
+// Case: bisulfite mode
+template <typename TOrigSeqs, typename TSameAlph>
+struct TTransSbjSeqsImpl<TOrigSeqs, TSameAlph, TSameAlph, seqan3::semialphabet_any<6>>
+{
+    using type = decltype(std::declval<TOrigSeqs&>() | views::duplicate);
+};
 
-template <typename TSpec, typename TAlph>
-using TRedNuclAlphModString =
-  decltype(std::declval<TSpec &>() | seqan3::views::dna_n_to_random<TAlph>);
+// Case: no translation
+template <typename TOrigSeqs, typename TSameAlph, typename TRedAlph>
+struct TTransSbjSeqsImpl<TOrigSeqs, TSameAlph, TSameAlph, TRedAlph>
+{
+    using type = decltype(seqan3::views::type_reduce(std::declval<TOrigSeqs &>()));
+};
+
+// Translated query sequences
+// Case: DNA to amino acid translation
+template <typename TOrigSeqs, typename TOrigAlph, typename TTransAlph, typename TRedAlph>
+struct TTransQrySeqsImpl
+{
+    using type = decltype(std::declval<TOrigSeqs&>() | seqan3::views::translate_join);
+};
+
+// Case: nucleotide mode (not bisulfite)
+template <typename TOrigSeqs, typename TRedAlph>
+    requires seqan3::nucleotide_alphabet<TRedAlph>
+struct TTransQrySeqsImpl<TOrigSeqs, seqan3::dna5, seqan3::dna5, TRedAlph>
+{
+    using type = decltype(std::declval<TOrigSeqs&>() | views::add_reverse_complement);
+};
+
+// Case: bisulfite mode
+template <typename TOrigSeqs>
+struct TTransQrySeqsImpl<TOrigSeqs, seqan3::dna5, seqan3::dna5, seqan3::semialphabet_any<6>>
+{
+    using type = decltype(std::declval<TOrigSeqs&>() | views::add_reverse_complement | views::duplicate);
+};
+
+// Case: no translation
+template <typename TOrigSeqs, typename TRedAlph>
+struct TTransQrySeqsImpl<TOrigSeqs, seqan3::aa27, seqan3::aa27, TRedAlph>
+{
+    using type = decltype(seqan3::views::type_reduce(std::declval<TOrigSeqs &>()));
+};
+
+// Reduced sequences
+// Case: reduction of amino acid alphabet
+template <typename TTransSeqs, typename TTransAlph, typename TRedAlph>
+struct TRedSeqsImpl
+{
+    using type = decltype(std::declval<TTransSeqs&>() | seqan3::views::deep{seqan3::views::convert<TRedAlph>});
+};
+
+// Case: no reduction
+template <typename TTransSeqs, typename TSameAlph>
+struct TRedSeqsImpl<TTransSeqs, TSameAlph, TSameAlph> // no reduction
+{
+    using type = decltype(seqan3::views::type_reduce(std::declval<TTransSeqs &>()));
+};
+
+// Case: nucleotide reduction to dna4 (replcae Ns with random A,C,G,T)
+template <typename TTransSeqs>
+struct TRedSeqsImpl<TTransSeqs, seqan3::dna5, seqan3::dna4>
+{
+    using type = decltype(std::declval<TTransSeqs &>() | views::dna_n_to_random<seqan3::dna4>);
+};
+
+// Case: bisulfite mode
+template <typename TTransSeqs>
+struct TRedSeqsImpl<TTransSeqs, seqan3::dna5, seqan3::semialphabet_any<6>>
+{
+    using type = decltype(std::declval<TTransSeqs &>() | views::dna_n_to_random<seqan3::dna4>
+                                                       | views::reduce_to_bisulfite);
+};
 
 // ==========================================================================
 //  The index

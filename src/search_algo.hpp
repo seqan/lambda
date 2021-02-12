@@ -16,7 +16,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 //
 // ==========================================================================
-// lambda.hpp: contains the main progam pipeline
+// search_algo.hpp: functions to set up, perform and evaluate the search
 // ==========================================================================
 
 #pragma once
@@ -36,6 +36,7 @@
 
 #include <seqan/align_extend.h>
 
+#include <seqan3/core/debug_stream.hpp>
 #include <seqan3/range/views/complement.hpp>
 #include <seqan3/range/views/translate_join.hpp>
 #include <seqan3/io/sequence_file/input.hpp>
@@ -43,6 +44,9 @@
 #include <seqan3/alphabet/aminoacid/aa27.hpp>
 
 #include "bisulfite_scoring.hpp"
+#include "evaluate_bisulfite_alignment.hpp"
+#include "view_dna_n_to_random.hpp"
+#include "view_reduce_to_bisulfite.hpp"
 
 // ============================================================================
 // Forwards
@@ -199,19 +203,25 @@ prepareScoring(GlobalDataHolder<c_dbIndexType, c_origSbjAlph, c_transAlph, c_red
         if constexpr (c_redAlph == AlphabetEnum::DNA3BS)
         {
             // Seqan2
-            seqan::setScoreBisulfiteMatrix(globalHolder.scoringSchemeAlign, options.match, options.misMatch);
+            seqan::setScoreBisulfiteMatrix(globalHolder.scoringSchemeAlign, options.match, options.misMatch, bsDirection::fwd);
+            seqan::setScoreBisulfiteMatrix(globalHolder.scoringSchemeAlignBSRev, options.match, options.misMatch, bsDirection::rev);
 
             // Seqan3
             globalHolder.scoringSchemePreScoring.set_bisulfite_scheme(seqan3::match_score{options.match},
-                                                            seqan3::mismatch_score{options.misMatch});
+                                                         seqan3::mismatch_score{options.misMatch});
+            globalHolder.scoringSchemePreScoringBSRev.set_bisulfite_scheme(seqan3::match_score{options.match},
+                                                         seqan3::mismatch_score{options.misMatch}, bsDirection::rev);
         }
         else
         {
             // Seqan2
             globalHolder.scoringSchemeAlign = seqan::seqanScheme(context(globalHolder.outfileBlastTab).scoringScheme);
+            globalHolder.scoringSchemeAlignBSRev = seqan::seqanScheme(context(globalHolder.outfileBlastTab).scoringScheme);
 
             // Seqan3
             globalHolder.scoringSchemePreScoring.set_simple_scheme(seqan3::match_score{options.match},
+                                                         seqan3::mismatch_score{options.misMatch});
+            globalHolder.scoringSchemePreScoringBSRev.set_simple_scheme(seqan3::match_score{options.match},
                                                          seqan3::mismatch_score{options.misMatch});
         }
     }
@@ -243,8 +253,11 @@ prepareScoring(GlobalDataHolder<c_dbIndexType, c_origSbjAlph, c_transAlph, c_red
                                   seqan2_matrix_id);
         seqan::setScoreMatrixById(globalHolder.scoringSchemeAlign,
                                   seqan2_matrix_id);
+        seqan::setScoreMatrixById(globalHolder.scoringSchemeAlignBSRev,
+                                  seqan2_matrix_id);
         // Seqan3
         globalHolder.scoringSchemePreScoring.set_similarity_matrix(seqan3_matrix_id);
+        globalHolder.scoringSchemePreScoringBSRev.set_similarity_matrix(seqan3_matrix_id);
     }
 
     // seqan2
@@ -253,6 +266,9 @@ prepareScoring(GlobalDataHolder<c_dbIndexType, c_origSbjAlph, c_transAlph, c_red
 
     seqan::setScoreGapOpen(globalHolder.scoringSchemeAlign, options.gapOpen + options.gapExtend);
     seqan::setScoreGapExtend(globalHolder.scoringSchemeAlign, options.gapExtend);
+
+    seqan::setScoreGapOpen(globalHolder.scoringSchemeAlignBSRev, options.gapOpen + options.gapExtend);
+    seqan::setScoreGapExtend(globalHolder.scoringSchemeAlignBSRev, options.gapExtend);
 
     if (!seqan::isValid(seqan::context(globalHolder.outfileBlastTab).scoringScheme))
         throw std::runtime_error{"Could not compute Karlin-Altschul-Values for Scoring Scheme.\n"};
@@ -294,10 +310,12 @@ loadDbIndexFromDisk(GlobalDataHolder<c_indexType, c_origSbjAlph, c_transAlph, c_
         throw 88;
     }
 
-    if constexpr (c_origSbjAlph == c_transAlph)
-        globalHolder.transSbjSeqs = globalHolder.indexFile.seqs | seqan3::views::type_reduce;       // no-op view
-    else
+    if constexpr (c_redAlph == AlphabetEnum::DNA3BS)
+        globalHolder.transSbjSeqs = globalHolder.indexFile.seqs | views::duplicate;
+    else if constexpr (c_origSbjAlph != c_transAlph)
         globalHolder.transSbjSeqs = globalHolder.indexFile.seqs | seqan3::views::translate_join;
+    else
+        globalHolder.transSbjSeqs = globalHolder.indexFile.seqs | seqan3::views::type_reduce;       // no-op view
 
     if constexpr (c_transAlph == c_redAlph)
     {
@@ -307,8 +325,17 @@ loadDbIndexFromDisk(GlobalDataHolder<c_indexType, c_origSbjAlph, c_transAlph, c_
     {
         if constexpr (c_transAlph == AlphabetEnum::DNA5) // BLASTN mode
         {
-            globalHolder.redSbjSeqs = globalHolder.transSbjSeqs
-                                    | seqan3::views::dna_n_to_random<_alphabetEnumToType<c_redAlph>>;
+            if constexpr (c_redAlph == AlphabetEnum::DNA3BS) // BLASTN mode
+            {
+                globalHolder.redSbjSeqs = globalHolder.transSbjSeqs
+                                        | views::dna_n_to_random<seqan3::dna4>
+                                        | views::reduce_to_bisulfite;
+            }
+            else
+            {
+                globalHolder.redSbjSeqs = globalHolder.transSbjSeqs
+                                        | views::dna_n_to_random<_alphabetEnumToType<c_redAlph>>;
+            }
         }
         else
         {
@@ -382,7 +409,7 @@ countQuery(GlobalDataHolder<c_indexType, c_origSbjAlph, c_transAlph, c_redAlph, 
 /// THREAD LOCAL STUFF
 
 // --------------------------------------------------------------------------
-// Function generateSeeds()
+// Function seedLooksPromising()
 // --------------------------------------------------------------------------
 
 // perform a fast local alignment score calculation on the seed and see if we
@@ -428,9 +455,13 @@ seedLooksPromising(LocalDataHolder<TGlobalHolder> const & lH,
     int const thresh  = lH.options.preScoringThresh * effectiveLength;
 
     // score the diagonal
+    auto & currentScoringScheme = TGlobalHolder::c_redAlph == AlphabetEnum::DNA3BS && m.subjId % 2 ?
+                                  lH.gH.scoringSchemePreScoringBSRev :  lH.gH.scoringSchemePreScoring;
+
     for (uint64_t i = 0; i < effectiveLength; ++i)
     {
-        s += lH.gH.scoringSchemePreScoring.score(qSeq[i], sSeq[i]);
+        s += currentScoringScheme.score(qSeq[i], sSeq[i]);
+
         if (s < 0)
             s = 0;
         else if (s > maxScore)
@@ -439,7 +470,6 @@ seedLooksPromising(LocalDataHolder<TGlobalHolder> const & lH,
         if (maxScore >= thresh)
             return true;
     }
-
     return false;
 }
 
@@ -507,7 +537,6 @@ search(LocalDataHolder<TGlobalHolder> & lH)
             // results are in cursor_buffer
             lH.cursor_buffer.clear();
             search_impl(lH, lH.redQrySeqs[i] | seqan3::views::slice(seedBegin, seedBegin + lH.options.seedLength));
-
             for (auto & cursor : lH.cursor_buffer)
             {
                 size_t seedLength = lH.options.seedLength;
@@ -966,13 +995,13 @@ iterateMatchesFullSimd(TLocalHolder & lH)
     for (auto it = lH.matches.begin(), itEnd = lH.matches.end(); it != itEnd; ++it)
     {
         // create blastmatch in list without copy or move
-        blastMatches.emplace_back(lH.qryIds [it->qryId / seqan::qNumFrames(TGlobalHolder::blastProgram)],
-                                  lH.gH.indexFile.ids[it->subjId / seqan::sNumFrames(TGlobalHolder::blastProgram)]);
+        blastMatches.emplace_back(lH.qryIds [it->qryId / TGlobalHolder::qryNumFrames],
+                                  lH.gH.indexFile.ids[it->subjId / TGlobalHolder::sbjNumFrames]);
 
         auto & bm = seqan::back(blastMatches);
 
-        bm._n_qId = it->qryId / seqan::qNumFrames(TGlobalHolder::blastProgram);
-        bm._n_sId = it->subjId / seqan::sNumFrames(TGlobalHolder::blastProgram);
+        bm._n_qId = it->qryId / TGlobalHolder::qryNumFrames;
+        bm._n_sId = it->subjId / TGlobalHolder::sbjNumFrames;
 
         bm.qLength = //std::ranges::size(lH.transQrySeqs[it->qryId]);
                     std::ranges::size(lH.qrySeqs[bm._n_qId]);
@@ -1143,12 +1172,12 @@ iterateMatchesFullSerial(TLocalHolder & lH)
                                              std::string_view,
                                              uint32_t>;
 
-    auto const trueQryId = lH.matches[0].qryId / qNumFrames(TGlobalHolder::blastProgram);
+    auto const trueQryId = lH.matches[0].qryId / TGlobalHolder::qryNumFrames;
 
     TBlastRecord record(lH.qryIds[trueQryId]);
     record.qLength = seqan::length(lH.qrySeqs[trueQryId]);
 
-    size_t band = _bandSize(seqan::length(lH.transQrySeqs[lH.matches[0].qryId]), lH);
+    size_t band = _bandSize(lH.transQrySeqs[lH.matches[0].qryId].size(), lH);
 
 #ifdef LAMBDA_MICRO_STATS
     double start = sysTime();
@@ -1158,14 +1187,14 @@ iterateMatchesFullSerial(TLocalHolder & lH)
     for (auto it = lH.matches.begin(), itEnd = lH.matches.end(); it != itEnd; ++it)
     {
         // create blastmatch in list without copy or move
-        record.matches.emplace_back(lH.qryIds [it->qryId / seqan::qNumFrames(TGlobalHolder::blastProgram)],
-                                    lH.gH.indexFile.ids[it->subjId / seqan::sNumFrames(TGlobalHolder::blastProgram)]);
+        record.matches.emplace_back(lH.qryIds [it->qryId / TGlobalHolder::qryNumFrames],
+                                    lH.gH.indexFile.ids[it->subjId / TGlobalHolder::sbjNumFrames]);
 
         auto & bm = record.matches.back();
         auto &  m = *it;
 
-        bm._n_qId = it->qryId / seqan::qNumFrames(TGlobalHolder::blastProgram);
-        bm._n_sId = it->subjId / seqan::sNumFrames(TGlobalHolder::blastProgram);
+        bm._n_qId = it->qryId / TGlobalHolder::qryNumFrames;
+        bm._n_sId = it->subjId / TGlobalHolder::sbjNumFrames;
 
         bm.qLength = //std::ranges::size(lH.transQrySeqs[it->qryId]);
                      std::ranges::size(lH.qrySeqs[bm._n_qId]);
@@ -1176,10 +1205,13 @@ iterateMatchesFullSerial(TLocalHolder & lH)
 
         _setFrames(bm, m, lH);
 
+        auto & currentScoringScheme = TGlobalHolder::c_redAlph == AlphabetEnum::DNA3BS && bm._n_sId % 2 ?
+                                      lH.gH.scoringSchemeAlignBSRev :  lH.gH.scoringSchemeAlign;
+
         // Run extension WITHOUT TRACEBACK
         bm.alignStats.alignmentScore = localAlignmentScore(bm.alignRow0,
                                                            bm.alignRow1,
-                                                           lH.gH.scoringSchemeAlign,
+                                                           currentScoringScheme,
                                                            -band,
                                                            +band);
 
@@ -1195,13 +1227,13 @@ iterateMatchesFullSerial(TLocalHolder & lH)
         // Run extension WITH TRACEBACK
         seqan::localAlignment(bm.alignRow0,
                               bm.alignRow1,
-                              lH.gH.scoringSchemeAlign,
+                              currentScoringScheme,
                               -band,
                               +band);
 
         _expandAlign(bm, lH);
 
-        seqan::computeAlignmentStats(bm.alignStats, bm.alignRow0, bm.alignRow1, lH.gH.scoringSchemeAlign);
+        seqan::computeAlignmentStats(bm.alignStats, bm.alignRow0, bm.alignRow1, currentScoringScheme);
 
         if (bm.alignStats.alignmentIdentity < lH.options.idCutOff)
         {

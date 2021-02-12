@@ -16,7 +16,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 //
 // ==========================================================================
-// options.h: contains the options and argument parser
+// mkindex_options.h: contains the options and argument parser for the indexer
 // ==========================================================================
 
 #pragma once

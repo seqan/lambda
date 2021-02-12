@@ -16,7 +16,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 //
 // ==========================================================================
-// output.hpp: contains routines for file-writing
+// search_output.hpp: contains routines for file-writing
 // ==========================================================================
 
 #pragma once
