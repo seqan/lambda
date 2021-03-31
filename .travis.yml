@@ -15,15 +15,15 @@ matrix:
         packages: ['g++-7', 'cmake', 'cmake-data', 'zlib1g-dev', 'libbz2-dev', 'libboost-dev', 'python', 'python-nose', 'python-jinja2', 'python-pip']
     install: export CXX="g++-7"
     env: CMAKE_ARGS="-DLAMBDA_NATIVE_BUILD=0"
-
-  - os: linux
-    compiler: gcc-8
-    addons:
-      apt:
-        sources: ['ubuntu-toolchain-r-test']
-        packages: ['g++-8', 'cmake', 'cmake-data', 'zlib1g-dev', 'libbz2-dev', 'libboost-dev', 'python', 'python-nose', 'python-jinja2', 'python-pip']
-    install: export CXX="g++-8"
-    env: CMAKE_ARGS="-DLAMBDA_NATIVE_BUILD=1"
+  
+  # - os: linux
+  #   compiler: gcc-8
+  #   addons:
+  #     apt:
+  #       sources: ['ubuntu-toolchain-r-test']
+  #       packages: ['g++-8', 'cmake', 'cmake-data', 'zlib1g-dev', 'libbz2-dev', 'libboost-dev', 'python', 'python-nose', 'python-jinja2', 'python-pip']
+  #   install: export CXX="g++-8"
+  #   env: CMAKE_ARGS="-DLAMBDA_NATIVE_BUILD=1"
 
   - os: linux
     compiler: gcc-9

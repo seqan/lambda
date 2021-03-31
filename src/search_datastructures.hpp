@@ -16,7 +16,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 //
 // ==========================================================================
-// holders.hpp: Data container structs
+// search_datastructures.hpp: Data container structs
 // ==========================================================================
 
 #pragma once
@@ -362,29 +362,11 @@ public:
 
     /* Translated sequence objects, either as modstrings or as references to original strings */
 
-    using TTransQrySeqs   =
-      seqan3::detail::lazy_conditional_t<c_origQryAlph == c_transAlph,
-                         decltype(seqan3::views::type_reduce(std::declval<TQrySeqs &>())),  // no-op view
-                         seqan3::detail::lazy<TTransAlphModString, TQrySeqs> >;             // trans view
+    using TTransQrySeqs = typename TTransQrySeqsImpl<TQrySeqs, TOrigQryAlph, TTransAlph, TRedAlph>::type;
+    using TTransSbjSeqs = typename TTransSbjSeqsImpl<TSbjSeqs, TOrigSbjAlph, TTransAlph, TRedAlph>::type;
 
-    using TTransSbjSeqs   =
-      seqan3::detail::lazy_conditional_t<c_origSbjAlph == c_transAlph,
-                         decltype(seqan3::views::type_reduce(std::declval<TSbjSeqs &>())),  // no-op view
-                         seqan3::detail::lazy<TTransAlphModString, TSbjSeqs> >;             // trans view
-
-    using TRedQrySeqs   =
-     seqan3::detail::lazy_conditional_t<c_transAlph == c_redAlph,
-                        decltype(seqan3::views::type_reduce(std::declval<TTransQrySeqs &>())),   // no-op view
-                        seqan3::detail::lazy_conditional_t<c_transAlph != AlphabetEnum::AMINO_ACID,
-                                        seqan3::detail::lazy<TRedNuclAlphModString, TTransQrySeqs, TRedAlph>,
-                                        seqan3::detail::lazy<TRedAlphModString, TTransQrySeqs, TRedAlph> > >;
-
-    using TRedSbjSeqs   =
-     seqan3::detail::lazy_conditional_t<c_transAlph == c_redAlph,
-                        decltype(seqan3::views::type_reduce(std::declval<TTransSbjSeqs &>())),   // no-op view
-                        seqan3::detail::lazy_conditional_t<c_transAlph != AlphabetEnum::AMINO_ACID,
-                                        seqan3::detail::lazy<TRedNuclAlphModString, TTransSbjSeqs, TRedAlph>,
-                                        seqan3::detail::lazy<TRedAlphModString, TTransSbjSeqs, TRedAlph> > >;
+    using TRedQrySeqs   = typename TRedSeqsImpl<TTransQrySeqs, TTransAlph, TRedAlph>::type;
+    using TRedSbjSeqs   = typename TRedSeqsImpl<TTransSbjSeqs, TTransAlph, TRedAlph>::type;
 
     /* sequence ID strings */
     using TIds          = TCDStringSet<std::string>;
@@ -398,7 +380,7 @@ public:
 
     /* output file */
     // SeqAn3 scoring scheme type for evaluation of seeds after search
-    using TScoreScheme3  = std::conditional_t<seqan3::nucleotide_alphabet<TRedAlph>,
+    using TScoreScheme3  = std::conditional_t<seqan3::nucleotide_alphabet<TTransAlph>,
                                               std::conditional_t<c_redAlph == AlphabetEnum::DNA3BS,
                                                                  bisulfite_scoring_scheme<>,
                                                                  seqan3::nucleotide_scoring_scheme<>>,
@@ -406,7 +388,7 @@ public:
 
     // SeqAn2 scoring scheme for local alignment of extended seeds. This can be adapted for bisulfite scoring.
     using TScoreSchemeAlign  =
-        std::conditional_t<seqan3::nucleotide_alphabet<TRedAlph>,
+        std::conditional_t<seqan3::nucleotide_alphabet<TTransAlph>,
                            std::conditional_t<c_redAlph == AlphabetEnum::DNA3BS,
                                               seqan::Score<int, seqan::ScoreMatrix<seqan::Dna5, seqan::BisulfiteMatrix>>,
                                               seqan::Score<int, seqan::Simple>>,
@@ -414,7 +396,7 @@ public:
 
     // SeqAn2 scoring scheme for blast statistics (does not work with bisulfite scoring scheme)
     using TScoreSchemeStats  =
-        std::conditional_t<seqan3::nucleotide_alphabet<TRedAlph>,
+        std::conditional_t<seqan3::nucleotide_alphabet<TTransAlph>,
                            seqan::Score<int, seqan::Simple>,
                            seqan::Score<int, seqan::ScoreMatrix<seqan::AminoAcid, seqan::ScoreSpecSelectable>>>;
 
@@ -423,6 +405,13 @@ public:
     using TBlastRepFile = seqan::FormattedFile<seqan::BlastReport, seqan::Output, TIOContext>;
     using TBamFile      = seqan::FormattedFile<seqan::Bam, seqan::Output, seqan::BlastTabular>;
 
+    // Number of frames for subject and query sequences
+    static constexpr uint8_t qryNumFrames = (c_redAlph == AlphabetEnum::DNA3BS)  ? 4 :
+                                            seqan::qIsTranslated(blastProgram)   ? 6 :
+                                            seqan::qHasRevComp(blastProgram)     ? 2 : 1;
+    static constexpr uint8_t sbjNumFrames = (c_redAlph == AlphabetEnum::DNA3BS)  ? 2 :
+                                            seqan::sIsTranslated(blastProgram)   ? 6 :
+                                            seqan::sHasRevComp(blastProgram)     ? 2 : 1;
     /* misc types */
     using TPositions    = std::vector<size_t>;
 
@@ -438,7 +427,10 @@ public:
     TBamFile            outfileBam;
 
     TScoreScheme3       scoringSchemePreScoring;
+    TScoreScheme3       scoringSchemePreScoringBSRev;
     TScoreSchemeAlign   scoringSchemeAlign;
+    TScoreSchemeAlign   scoringSchemeAlignBSRev;
+
     seqan3::gap_scheme<int8_t> gapScheme;
 
     StatsHolder         stats{};
@@ -524,7 +516,11 @@ public:
         using TGH = TGlobalHolder;
 
         // trans view
-        if constexpr (TGH::c_origQryAlph == TGH::c_transAlph)
+        if constexpr (TGH::c_redAlph == AlphabetEnum::DNA3BS)
+            transQrySeqs = qrySeqs | views::add_reverse_complement | views::duplicate;
+        else if constexpr (seqan3::nucleotide_alphabet<_alphabetEnumToType<TGH::c_redAlph>>)
+            transQrySeqs = qrySeqs | views::add_reverse_complement;
+        else if constexpr (TGH::c_origQryAlph == TGH::c_transAlph)
             transQrySeqs = qrySeqs | seqan3::views::type_reduce;
         else
             transQrySeqs = qrySeqs | seqan3::views::translate_join;
@@ -534,8 +530,11 @@ public:
             redQrySeqs = transQrySeqs | seqan3::views::type_reduce;
         else if constexpr (TGH::c_transAlph == AlphabetEnum::AMINO_ACID)
             redQrySeqs = transQrySeqs | seqan3::views::deep{seqan3::views::convert<_alphabetEnumToType<TGH::c_redAlph>>};
+        else if constexpr (TGH::c_redAlph == AlphabetEnum::DNA3BS)
+            redQrySeqs = transQrySeqs | views::dna_n_to_random<seqan3::dna4>
+                                      | views::reduce_to_bisulfite;
         else
-            redQrySeqs = transQrySeqs| seqan3::views::dna_n_to_random<_alphabetEnumToType<TGH::c_redAlph>>;
+            redQrySeqs = transQrySeqs| views::dna_n_to_random<_alphabetEnumToType<TGH::c_redAlph>>;
     }
 
 };

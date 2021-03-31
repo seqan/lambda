@@ -21,12 +21,21 @@
 
 #pragma once
 
+#include <seqan/score.h>
+#include <seqan/sequence.h>
+
 #include <range/v3/algorithm/copy.hpp>
 
 #include <seqan3/alignment/scoring/scoring_scheme_base.hpp>
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
 #include <seqan3/range/shortcuts.hpp>
 #include <seqan3/std/algorithm>
+
+enum class bsDirection
+{
+    fwd,
+    rev
+};
 
 template <seqan3::arithmetic score_type = int8_t>
 class bisulfite_scoring_scheme : public seqan3::scoring_scheme_base<bisulfite_scoring_scheme<score_type>, seqan3::dna5, score_type>
@@ -43,15 +52,17 @@ public:
     constexpr bisulfite_scoring_scheme() noexcept {}
 
     template <seqan3::arithmetic score_arg_t>
-    constexpr bisulfite_scoring_scheme(seqan3::match_score<score_arg_t> const ms, seqan3::mismatch_score<score_arg_t> const mms)
+    constexpr bisulfite_scoring_scheme(seqan3::match_score<score_arg_t> const ms,
+        seqan3::mismatch_score<score_arg_t> const mms, bsDirection const dir = bsDirection::fwd)
     {
-        set_bisulfite_scheme(ms, mms);
+        set_bisulfite_scheme(ms, mms, dir);
     }
 
     constexpr bisulfite_scoring_scheme(matrix_type const & _matrix) noexcept {}
 
     template <seqan3::arithmetic score_arg_t>
-    constexpr void set_bisulfite_scheme(seqan3::match_score<score_arg_t> const ms, seqan3::mismatch_score<score_arg_t> const mms)
+    constexpr void set_bisulfite_scheme(seqan3::match_score<score_arg_t> const ms,
+        seqan3::mismatch_score<score_arg_t> const mms, bsDirection const dir = bsDirection::fwd)
     {
         std::conditional_t<std::integral<score_type>, int64_t, double> i_ms = static_cast<score_arg_t>(ms);
         std::conditional_t<std::integral<score_type>, int64_t, double> i_mms = static_cast<score_arg_t>(mms);
@@ -68,8 +79,12 @@ public:
         for (matrix_size_type i = 0; i < matrix_size; ++i)
             for (matrix_size_type j = 0; j < matrix_size; ++j)
                 matrix[i][j] = (i == j) ? static_cast<score_type>(i_ms) : static_cast<score_type>(i_mms);
-        // Explicitly override for C>T
-        matrix[4][1] = static_cast<score_type>(i_ms);
+
+        // Explicitly override for C>T or G>A
+        if (dir == bsDirection::fwd)
+            matrix[4][1] = static_cast<score_type>(i_ms);
+        else
+            matrix[0][2] = static_cast<score_type>(i_ms);
     }
 };
 
@@ -113,16 +128,26 @@ struct ScoringMatrixData_<int, Dna5, BisulfiteMatrix>
 
 template <typename T>
 inline void
-setScoreBisulfiteMatrix(Score<int, ScoreMatrix<Dna5, BisulfiteMatrix> > & sc, T matchScore, T mismatchScore)
+setScoreBisulfiteMatrix(Score<int, ScoreMatrix<Dna5, BisulfiteMatrix> > & sc, T matchScore, T mismatchScore, bsDirection const dir = bsDirection::fwd)
 {
     for (size_t i = 0; i < ValueSize<Dna5>::VALUE; ++i)
     {
         for (size_t j = 0; j < ValueSize<Dna5>::VALUE; ++j)
         {
-            if (((i == j) || (i == 3 && j == 1)) && i != 4)
-                setScore(sc, i, j, matchScore);
+            if (dir == bsDirection::fwd)
+            {
+                if (((i == j) || (i == 3 && j == 1)) && i != 4)
+                    setScore(sc, i, j, matchScore);
+                else
+                    setScore(sc, i, j, mismatchScore);
+            }
             else
-                setScore(sc, i, j, mismatchScore);
+            {
+                if (((i == j) || (i == 0 && j == 2)) && i != 4)
+                    setScore(sc, i, j, matchScore);
+                else
+                    setScore(sc, i, j, mismatchScore);
+            }
         }
     }
 }

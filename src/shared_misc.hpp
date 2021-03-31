@@ -16,7 +16,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 //
 // ==========================================================================
-// store.h: contains types and definitions for storing sequences and indices
+// shared_misc.h: misc stuff for indexer and search
 // ==========================================================================
 
 #pragma once

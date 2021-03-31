@@ -16,7 +16,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 //
 // ==========================================================================
-// lambda.cpp: Main File for the main application
+// mkindex.cpp: Main File for building the index
 // ==========================================================================
 
 #include <initializer_list>
@@ -36,6 +36,7 @@
 #include "mkindex_options.hpp"
 // #include "mkindex_saca.hpp"
 #include "mkindex_algo.hpp"
+#include "view_reduce_to_bisulfite.hpp"
 
 // ==========================================================================
 // Forwards
@@ -182,6 +183,7 @@ void realMain(LambdaIndexerOptions     const & options)
     f.options = options.indexFileOptions;
 
     using TOrigSbjAlph = _alphabetEnumToType<c_origAlph>;
+    using TTransSbjAlph = _alphabetEnumToType<c_transAlph>;
     using TRedSbjAlph = _alphabetEnumToType<c_redAlph>;
 
     {
@@ -207,22 +209,15 @@ void realMain(LambdaIndexerOptions     const & options)
 
     using TSbjSeqs = TCDStringSet<std::vector<TOrigSbjAlph>>;
 
-    using TTransSbjSeqs   =
-      seqan3::detail::lazy_conditional_t<c_origAlph == c_transAlph,
-                         decltype(seqan3::views::type_reduce(std::declval<TSbjSeqs &>())),  // no-op view
-                         seqan3::detail::lazy<TTransAlphModString, TSbjSeqs> >;             // trans view
-
-    using TRedSbjSeqs   =
-     seqan3::detail::lazy_conditional_t<c_transAlph == c_redAlph,
-                        decltype(seqan3::views::type_reduce(std::declval<TTransSbjSeqs &>())),   // no-op view
-                        seqan3::detail::lazy_conditional_t<c_transAlph != AlphabetEnum::AMINO_ACID,
-                                        seqan3::detail::lazy<TRedNuclAlphModString, TTransSbjSeqs, TRedSbjAlph>,
-                                        seqan3::detail::lazy<TRedAlphModString, TTransSbjSeqs, TRedSbjAlph> > >;
+    using TTransSbjSeqs = typename TTransSbjSeqsImpl<TSbjSeqs, TOrigSbjAlph, TTransSbjAlph, TRedSbjAlph>::type;
+    using TRedSbjSeqs   = typename TRedSeqsImpl<TTransSbjSeqs, TTransSbjAlph, TRedSbjAlph>::type;
 
     TTransSbjSeqs       transSbjSeqs;
     TRedSbjSeqs         redSbjSeqs;
 
-    if constexpr (c_origAlph == c_transAlph)
+    if constexpr (c_redAlph == AlphabetEnum::DNA3BS)
+        transSbjSeqs = f.seqs | views::duplicate;
+    else if constexpr (c_origAlph == c_transAlph)
         transSbjSeqs = f.seqs | seqan3::views::type_reduce;     // no-op view
     else
         transSbjSeqs = f.seqs | seqan3::views::translate_join;
@@ -235,8 +230,11 @@ void realMain(LambdaIndexerOptions     const & options)
     {
         if constexpr (c_transAlph == AlphabetEnum::AMINO_ACID)
             redSbjSeqs = transSbjSeqs | seqan3::views::deep{seqan3::views::convert<TRedSbjAlph>};
+        else if constexpr (c_redAlph == AlphabetEnum::DNA3BS)
+            redSbjSeqs = transSbjSeqs | views::dna_n_to_random<seqan3::dna4>
+                                      | views::reduce_to_bisulfite;
         else
-            redSbjSeqs = transSbjSeqs | seqan3::views::dna_n_to_random<TRedSbjAlph>;
+            redSbjSeqs = transSbjSeqs | views::dna_n_to_random<TRedSbjAlph>;
     }
 
     f.index = generateIndex<c_dbIndexType == DbIndexType::BI_FM_INDEX>(redSbjSeqs, options);

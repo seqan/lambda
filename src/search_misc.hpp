@@ -16,7 +16,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 //
 // ==========================================================================
-// match.h: Main File for the match class
+// search_misc.h: misc stuff for search
 // ==========================================================================
 
 #pragma once

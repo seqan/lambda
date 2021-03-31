@@ -1,7 +1,7 @@
 // ==========================================================================
 //                                  lambda
 // ==========================================================================
-// Copyright (c) 2019, Sara Hetzel <hetzel @ molgen.mpg.de>
+// Copyright (c) 2019, Sara Hetzel and MPI für Molekulare Genetik
 // Copyright (c) 2016-2020, Knut Reinert and Freie Universität Berlin
 // All rights reserved.
 //
@@ -17,7 +17,7 @@
 //
 // ==========================================================================
 // view_dna_n_to_random.hpp: View that converts N into random selection of
-// {A,C,G,T} if target alphabet is dna4 or {A,G,T} if target alphabet is dna3bs
+// {A,C,G,T} if target alphabet is dna4
 // ==========================================================================
 
 #pragma once
@@ -29,7 +29,9 @@
 #include <seqan3/core/char_operations/predicate.hpp>
 #include <seqan3/range/views/deep.hpp>
 #include <seqan3/std/ranges>
+#include "view_pos_transform.hpp"
 
+// Definition of the range adaptor object type for views::dna_n_to_random.
 template <seqan3::nucleotide_alphabet TAlph>
 struct dna_n_to_random_fn
 {
@@ -47,16 +49,11 @@ struct dna_n_to_random_fn
 
         std::mt19937 rng(0xDEADBEEF);
 
-        return std::forward<urng_t>(urange) | std::views::transform([rng] (auto const in) mutable
+        return std::forward<urng_t>(urange) | views::pos_transform([rng] (auto && urange, size_t pos) mutable
         {
-            if (seqan3::to_char(in) == 'N')
-            {
-                return seqan3::assign_rank_to(rng() % seqan3::alphabet_size<TAlph>, TAlph{});
-            }
-            else
-            {
-                return static_cast<TAlph>(in);
-            }
+            return (seqan3::to_char(urange[pos]) == 'N') ?
+                    seqan3::assign_rank_to(rng() % seqan3::alphabet_size<TAlph>, TAlph{}) :
+                    static_cast<TAlph>(urange[pos]);
         });
     }
 
@@ -67,10 +64,11 @@ struct dna_n_to_random_fn
     }
 };
 
-namespace seqan3::views
+// A view that converts every ambiguous nucleotide 'N' randomly into a letter of a new alphabet (e.g. seqan3::dna4).
+namespace views
 {
 
 template <typename TAlph = seqan3::dna4>
 inline constexpr auto dna_n_to_random = seqan3::views::deep{dna_n_to_random_fn<TAlph>{}};
 
-} // namespace seqan3::view
+} // namespace views
