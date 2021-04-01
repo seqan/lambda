@@ -46,14 +46,13 @@ struct dna_n_to_random_fn
         static_assert(std::same_as<seqan3::dna5, seqan3::innermost_value_type_t<urng_t>>,
             "The range parameter to dna_n_to_random must be over elements of seqan3::dna5.");
 
-        std::mt19937 rng(0xDEADBEEF);
+        std::shared_ptr<std::mt19937> rng{new std::mt19937{0xDEADBEEF}};
 
-        return std::forward<urng_t>(urange) | views::pos_transform([rng] (auto && urange, size_t pos) mutable
-
+        return std::forward<urng_t>(urange) | std::views::transform([rng] (seqan3::dna5 const c)
         {
-            return (seqan3::to_char(urange[pos]) == 'N') ?
-                    seqan3::assign_rank_to(rng() % 4, seqan3::dna4{}) :
-                    static_cast<seqan3::dna4>(urange[pos]);
+            return (seqan3::to_char(c) == 'N') ?
+                    seqan3::assign_rank_to((*rng)() % 4, seqan3::dna4{}) :
+                    static_cast<seqan3::dna4>(c);
         });
     }
 
