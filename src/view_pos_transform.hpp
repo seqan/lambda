@@ -148,21 +148,28 @@ view_pos_transform(urng_t &&, pos_transform_t, size_transform_t) -> view_pos_tra
 struct pos_transform_fn
 {
 private:
-    static constexpr auto size_default_fn = [] (auto && urange) { return std::ranges::size(urange); };
+    struct default_size_fn
+    {
+        template <typename urng_t>
+        auto operator()(urng_t && urange) const
+        {
+            return std::ranges::size(urange);
+        }
+    };
 
 public:
-    template <typename pos_transform_t, typename size_transform_t = decltype(size_default_fn)>
-    constexpr auto operator()(pos_transform_t pos_transform, size_transform_t size_transform = size_default_fn) const
+    template <typename pos_transform_t, typename size_transform_t = default_size_fn>
+    constexpr auto operator()(pos_transform_t pos_transform, size_transform_t size_transform = default_size_fn{}) const
     {
         return seqan3::detail::adaptor_from_functor{*this, std::move(pos_transform), std::move(size_transform)};
     }
 
     template <std::ranges::range urng_t,
               typename pos_transform_t,
-              typename size_transform_t = decltype(size_default_fn)>
+              typename size_transform_t = default_size_fn>
     constexpr auto operator()(urng_t && urange,
                               pos_transform_t pos_transform,
-                              size_transform_t size_transform = size_default_fn) const
+                              size_transform_t size_transform = default_size_fn{}) const
     {
         static_assert(std::ranges::viewable_range<urng_t>,
                       "The range parameter to views::pos_transform cannot be a temporary of a non-view range.");
