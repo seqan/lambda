@@ -32,16 +32,16 @@
 // Definition of the range adaptor object type for views::reverse_complement_or_not.
 struct reverse_complement_or_not_fn
 {
-    constexpr auto operator()(bool const transform) const
-    {
-        return seqan3::detail::adaptor_from_functor{*this, transform};
-    }
-
 private:
     static auto func_nop(auto && urange, size_t pos) { return urange[pos]; }
     static auto func_revcomp(auto && urange, size_t pos) { return seqan3::complement(urange[std::ranges::size(urange) - pos - 1]); }
 
 public:
+    constexpr auto operator()(bool const transform) const
+    {
+        return seqan3::detail::adaptor_from_functor{*this, transform};
+    }
+
     template <std::ranges::range urng_t>
     constexpr auto operator()(urng_t && urange, bool const transform) const
     {

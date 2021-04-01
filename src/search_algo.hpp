@@ -328,13 +328,13 @@ loadDbIndexFromDisk(GlobalDataHolder<c_indexType, c_origSbjAlph, c_transAlph, c_
             if constexpr (c_redAlph == AlphabetEnum::DNA3BS) // BLASTN mode
             {
                 globalHolder.redSbjSeqs = globalHolder.transSbjSeqs
-                                        | views::dna_n_to_random<seqan3::dna4>
+                                        | views::dna_n_to_random
                                         | views::reduce_to_bisulfite;
             }
             else
             {
                 globalHolder.redSbjSeqs = globalHolder.transSbjSeqs
-                                        | views::dna_n_to_random<_alphabetEnumToType<c_redAlph>>;
+                                        | views::dna_n_to_random;
             }
         }
         else

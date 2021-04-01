@@ -531,10 +531,10 @@ public:
         else if constexpr (TGH::c_transAlph == AlphabetEnum::AMINO_ACID)
             redQrySeqs = transQrySeqs | seqan3::views::deep{seqan3::views::convert<_alphabetEnumToType<TGH::c_redAlph>>};
         else if constexpr (TGH::c_redAlph == AlphabetEnum::DNA3BS)
-            redQrySeqs = transQrySeqs | views::dna_n_to_random<seqan3::dna4>
+            redQrySeqs = transQrySeqs | views::dna_n_to_random
                                       | views::reduce_to_bisulfite;
         else
-            redQrySeqs = transQrySeqs| views::dna_n_to_random<_alphabetEnumToType<TGH::c_redAlph>>;
+            redQrySeqs = transQrySeqs| views::dna_n_to_random;
     }
 
 };
