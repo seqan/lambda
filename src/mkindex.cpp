@@ -231,10 +231,10 @@ void realMain(LambdaIndexerOptions     const & options)
         if constexpr (c_transAlph == AlphabetEnum::AMINO_ACID)
             redSbjSeqs = transSbjSeqs | seqan3::views::deep{seqan3::views::convert<TRedSbjAlph>};
         else if constexpr (c_redAlph == AlphabetEnum::DNA3BS)
-            redSbjSeqs = transSbjSeqs | views::dna_n_to_random<seqan3::dna4>
+            redSbjSeqs = transSbjSeqs | views::dna_n_to_random
                                       | views::reduce_to_bisulfite;
         else
-            redSbjSeqs = transSbjSeqs | views::dna_n_to_random<TRedSbjAlph>;
+            redSbjSeqs = transSbjSeqs | views::dna_n_to_random;
     }
 
     f.index = generateIndex<c_dbIndexType == DbIndexType::BI_FM_INDEX>(redSbjSeqs, options);

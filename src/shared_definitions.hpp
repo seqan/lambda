@@ -334,14 +334,14 @@ struct TRedSeqsImpl<TTransSeqs, TSameAlph, TSameAlph> // no reduction
 template <typename TTransSeqs>
 struct TRedSeqsImpl<TTransSeqs, seqan3::dna5, seqan3::dna4>
 {
-    using type = decltype(std::declval<TTransSeqs &>() | views::dna_n_to_random<seqan3::dna4>);
+    using type = decltype(std::declval<TTransSeqs &>() | views::dna_n_to_random);
 };
 
 // Case: bisulfite mode
 template <typename TTransSeqs>
 struct TRedSeqsImpl<TTransSeqs, seqan3::dna5, seqan3::semialphabet_any<6>>
 {
-    using type = decltype(std::declval<TTransSeqs &>() | views::dna_n_to_random<seqan3::dna4>
+    using type = decltype(std::declval<TTransSeqs &>() | views::dna_n_to_random
                                                        | views::reduce_to_bisulfite);
 };
 
