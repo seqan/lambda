@@ -34,13 +34,13 @@ class view_pos_transform : public ranges::view_base
 
 private:
     // The data members of view_pos_transform.
-    urng_t                              urange;
-    std::shared_ptr<pos_transform_t>    pos_transform = nullptr;
-    std::shared_ptr<size_transform_t>   size_transform = nullptr;
+    urng_t                                        urange;
+    ::ranges::semiregular_box_t<pos_transform_t>  pos_transform;
+    ::ranges::semiregular_box_t<size_transform_t> size_transform;
 
     // Associated types iterator.
-    using reference         = decltype((*pos_transform)(urange, 0));
-    using const_reference   = decltype((*pos_transform)(std::as_const(urange), 0));
+    using reference         = decltype(pos_transform(urange, 0));
+    using const_reference   = decltype(pos_transform(std::as_const(urange), 0));
     using value_type        = seqan3::remove_cvref_t<reference>;
     using size_type         = seqan3::size_type_t<urng_t>;
     using difference_type   = seqan3::difference_type_t<urng_t>;
@@ -71,8 +71,8 @@ public:
     // Construct from another view
     view_pos_transform(urng_t _urange, pos_transform_t _pos_transform, size_transform_t _size_transform)
         : urange{std::move(_urange)},
-          pos_transform{new pos_transform_t{std::move(_pos_transform)}},
-          size_transform{new size_transform_t{std::move(_size_transform)}}
+          pos_transform{std::move(_pos_transform)},
+          size_transform{std::move(_size_transform)}
     {}
 
     // Construct from another range
@@ -112,31 +112,27 @@ public:
     // Returns the number of elements in the view.
     size_type size() noexcept
     {
-        assert(size_transform != nullptr);
-        return (*size_transform)(urange);
+        return size_transform(urange);
     }
 
     size_type size() const noexcept
         requires seqan3::const_iterable_range<urng_t>
     {
-        assert(size_transform != nullptr);
-        return (*size_transform)(urange);
+        return size_transform(urange);
     }
 
     // Element access
     reference operator[](size_type const n)
     {
         assert(n < size());
-        assert(pos_transform != nullptr);
-        return (*pos_transform)(urange, n);
+        return pos_transform(urange, n);
     }
 
     const_reference operator[](size_type const n) const
         requires seqan3::const_iterable_range<urng_t>
     {
         assert(n < size());
-        assert(pos_transform != nullptr);
-        return (*pos_transform)(urange, n);
+        return pos_transform(urange, n);
     }
 };
 
