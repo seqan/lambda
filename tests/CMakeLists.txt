@@ -24,11 +24,19 @@ endforeach()
 foreach(PROG ${PROGS})
     foreach(DI fm bifm)
         foreach(MODE ${MODES})
-            foreach(FF m0 m8 m9 sam bam m9.gz sam.bz2)
-                add_test (NAME test_search_${PROG}_${DI}_${MODE}_${FF}
-                        COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/maintests.sh
-                    "${CMAKE_SOURCE_DIR}" "${CMAKE_BINARY_DIR}" ${PROG} ${DI} ${MODE} "SEARCH" ${FF})
-            endforeach()
+            if(NOT CMAKE_SYSTEM_NAME STREQUAL Darwin)
+                foreach(FF m0 m8 m9 sam bam m9.gz sam.bz2)
+                    add_test (NAME test_search_${PROG}_${DI}_${MODE}_${FF}
+                              COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/maintests.sh
+                              "${CMAKE_SOURCE_DIR}" "${CMAKE_BINARY_DIR}" ${PROG} ${DI} ${MODE} "SEARCH" ${FF})
+                endforeach()
+            else()
+                foreach(FF m0 m8 m9 sam bam sam.bz2)
+                    add_test (NAME test_search_${PROG}_${DI}_${MODE}_${FF}
+                              COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/maintests.sh
+                              "${CMAKE_SOURCE_DIR}" "${CMAKE_BINARY_DIR}" ${PROG} ${DI} ${MODE} "SEARCH" ${FF})
+                endforeach()
+            endif()
         endforeach()
     endforeach()
 endforeach()

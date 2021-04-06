@@ -1,0 +1,156 @@
+name: Lambda CI
+
+on:
+  push:
+  pull_request:
+
+env:
+  CMAKE_VERSION: 3.8.2
+  SEQAN3_NO_VERSION_CHECK: 1
+  TZ: Europe/Berlin
+
+defaults:
+  run:
+    shell: bash -ex {0}
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "gcc9 (c++2a) on Linux"
+            os: ubuntu-20.04
+            requires_toolchain: true
+            requires_ccache: true
+            cxx: "g++-9"
+            cc: "gcc-9"
+            native_build: 1
+            cxx_flags: "-std=c++2a"
+
+          - name: "gcc9 (c++2a) on macOS"
+            os: macos-10.15
+            requires_toolchain: true
+            requires_ccache: true
+            cxx: "g++-9"
+            cc: "gcc-9"
+            native_build: 1
+            cxx_flags: "-std=c++2a"
+
+          - name: "gcc8 on Linux"
+            os: ubuntu-20.04
+            requires_toolchain: true
+            requires_ccache: true
+            cxx: "g++-8"
+            cc: "gcc-8"
+            native_build: 1
+
+          - name: "gcc8 on macOS"
+            os: macos-10.15
+            requires_toolchain: true
+            requires_ccache: true
+            cxx: "g++-8"
+            cc: "gcc-8"
+            native_build: 1
+
+          - name: "gcc7 on Linux"
+            os: ubuntu-20.04
+            requires_toolchain: true
+            requires_ccache: true
+            cxx: "g++-7"
+            cc: "gcc-7"
+            native_build: 1
+
+          - name: "gcc7 on macOS"
+            os: macos-10.15
+            requires_toolchain: true
+            requires_ccache: true
+            cxx: "g++-7"
+            cc: "gcc-7"
+            native_build: 1
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          path: lambda
+          submodules: recursive
+
+      - name: Get cached CMake
+        uses: actions/cache@v2
+        with:
+          path: /tmp/cmake-download
+          key: ${{ runner.os }}-CMake_${{ env.CMAKE_VERSION }}
+
+      - name: Setup CMake
+        run: |
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            OS="Linux"
+          else
+            OS="Darwin"
+          fi
+          mkdir -p /tmp/cmake-download
+          wget --retry-connrefused --waitretry=30 --read-timeout=30 --timeout=30 --tries=20 --no-clobber --quiet --directory-prefix=/tmp/cmake-download/ https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-${OS}-x86_64.tar.gz
+          tar -C /tmp/ -zxf /tmp/cmake-download/cmake-${CMAKE_VERSION}-${OS}-x86_64.tar.gz
+          echo "/tmp/cmake-${CMAKE_VERSION}-${OS}-x86_64/bin" >> $GITHUB_PATH # Only available in subsequent steps!
+
+      - name: Add package source
+        if: matrix.requires_toolchain && runner.os == 'Linux'
+        shell: bash
+        run: sudo add-apt-repository --yes ppa:ubuntu-toolchain-r/ppa && sudo apt-get update
+
+      - name: Install ccache
+        if: matrix.requires_ccache
+        run: |
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            sudo apt-get install --yes ccache
+          else
+            brew install --force-bottle ccache
+          fi
+      - name: Install compiler ${{ matrix.cxx }}
+        if: matrix.requires_toolchain
+        run: |
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            sudo apt-get install --yes ${{ matrix.cxx }}
+          else
+            cxx_macos_name=$(echo "${{ matrix.cxx }}" | sed "s/++-/cc@/g")
+            brew install --force-bottle $cxx_macos_name
+            brew link $cxx_macos_name
+          fi
+      - name: Get cached build
+        if: matrix.requires_ccache
+        uses: actions/cache@v2
+        with:
+          path: .ccache
+          key: ${{ matrix.name }}-ccache-${{ github.ref }}-${{ github.run_number }}
+          # Restoring: From current branch, otherwise from base branch, otherwise from any branch.
+          restore-keys: |
+            ${{ matrix.name }}-ccache-${{ github.ref }}
+            ${{ matrix.name }}-ccache-${{ github.base_ref }}
+            ${{ matrix.name }}-ccache-
+      - name: Configure tests
+        env:
+          CXX: ${{ matrix.cxx }}
+          CC: ${{ matrix.cc }}
+        run: |
+          mkdir build
+          cd build
+          cmake ../lambda -DLAMBDA_COMPILE_THREADS=2 -DLAMBDA_NATIVE_BUILD=${{ matrix.native_build }} -DCMAKE_CXX_FLAGS="${{ matrix.cxx_flags }}"
+      - name: Build tests
+        env:
+          CCACHE_BASEDIR: ${{ github.workspace }}
+          CCACHE_DIR: ${{ github.workspace }}/.ccache
+          CCACHE_COMPRESS: true
+          CCACHE_COMPRESSLEVEL: 6
+          CCACHE_MAXSIZE: 5G
+        run: |
+          ccache -p || true
+          cd build
+          make -k -j2
+      - name: Run tests
+        run: |
+          cd build/tests
+          ctest . -j2 --output-on-failure
