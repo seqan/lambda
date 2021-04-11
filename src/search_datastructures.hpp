@@ -481,8 +481,21 @@ public:
     std::vector<TMatch>                                 matches;
 
     // regarding extension
-    using TAlignRow0 = seqan::Gaps<TSeqInfix0, seqan::ArrayGaps>;
-    using TAlignRow1 = seqan::Gaps<TSeqInfix1, seqan::ArrayGaps>;
+    using TAlignRow0    = seqan::Gaps<TSeqInfix0, seqan::ArrayGaps>;
+    using TAlignRow1    = seqan::Gaps<TSeqInfix1, seqan::ArrayGaps>;
+    using TBlastMatch   = seqan::BlastMatch<TAlignRow0,
+                                            TAlignRow1,
+                                            uint32_t,
+                                            std::string_view,
+                                            std::string_view,
+                                            std::vector<std::string>, // not used
+                                            std::span<uint32_t>>;
+    using TBlastRecord  = seqan::BlastRecord<TBlastMatch,
+                                             std::string_view,
+                                             std::vector<std::string>, // not used
+                                             std::string_view,
+                                             uint32_t>;
+    std::list<TBlastMatch>  blastMatches;
 
     // map from sequence length to band size
     std::unordered_map<uint64_t, int> bandTable;
@@ -507,6 +520,7 @@ public:
         matches.clear();
         qryIds.clear();
         qrySeqs.clear();
+        blastMatches.clear();
 
         // stats explicitly not cleared, because accumulated
     }

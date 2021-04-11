@@ -961,21 +961,8 @@ inline void
 iterateMatchesFullSimd(TLocalHolder & lH)
 {
     using TGlobalHolder = typename TLocalHolder::TGlobalHolder;
-    using TBlastPos     = uint32_t;
-    using TBlastMatch   = seqan::BlastMatch<
-                           typename TLocalHolder::TAlignRow0,
-                           typename TLocalHolder::TAlignRow1,
-                           TBlastPos,
-                           std::string_view,
-                           std::string_view,
-                           std::vector<std::string>, // not used
-                           std::span<uint32_t>>;
+    using TBlastMatch   = typename TLocalHolder::TBlastMatch;
 
-    using TBlastRecord  = seqan::BlastRecord<TBlastMatch,
-                                             std::string_view,
-                                             std::vector<std::string>, // not used
-                                             std::string_view,
-                                             uint32_t>;
     // statistics
 #ifdef LAMBDA_MICRO_STATS
     ++lH.stats.numQueryWithExt;
@@ -988,17 +975,15 @@ iterateMatchesFullSimd(TLocalHolder & lH)
     seqan::StringSet<typename seqan::Source<typename TLocalHolder::TAlignRow0>::Type> depSetH;
     seqan::StringSet<typename seqan::Source<typename TLocalHolder::TAlignRow1>::Type> depSetV;
 
-    // container of blastMatches (possibly from multiple queries
-    decltype(TBlastRecord().matches) blastMatches;
-
     // create blast matches
+    std::list<TBlastMatch> blastMatches;
     for (auto it = lH.matches.begin(), itEnd = lH.matches.end(); it != itEnd; ++it)
     {
         // create blastmatch in list without copy or move
         blastMatches.emplace_back(lH.qryIds [it->qryId / TGlobalHolder::qryNumFrames],
                                   lH.gH.indexFile.ids[it->subjId / TGlobalHolder::sbjNumFrames]);
 
-        auto & bm = seqan::back(blastMatches);
+        TBlastMatch & bm = blastMatches.back();
 
         bm._n_qId = it->qryId / TGlobalHolder::qryNumFrames;
         bm._n_sId = it->subjId / TGlobalHolder::sbjNumFrames;
@@ -1117,35 +1102,8 @@ iterateMatchesFullSimd(TLocalHolder & lH)
     lH.stats.timeExtendTrace += sysTime() - start;
 #endif
 
-    if (seqan::length(blastMatches) == 0)
-        return;
-
-    // devide matches into records (per query) and write
-    for (auto it = blastMatches.begin(), itLast = blastMatches.begin();
-         seqan::length(blastMatches) > 0;
-         /*below*/)
-    {
-        if ((it == blastMatches.end()) || ((it != blastMatches.begin()) && (it->_n_qId != itLast->_n_qId)))
-        {
-            // create a record for each query
-            TBlastRecord record(lH.qryIds[itLast->_n_qId]);
-            record.qLength = seqan::length(lH.qrySeqs[itLast->_n_qId]);
-            // move the matches into the record
-            record.matches.splice(record.matches.begin(),
-                                  blastMatches,
-                                  blastMatches.begin(),
-                                  it);
-            // write to file
-            _writeRecord(record, lH);
-
-            it = blastMatches.begin();
-            itLast = blastMatches.begin();
-        } else
-        {
-            itLast = it;
-            ++it;
-        }
-    }
+    // move the blastMatches into localHolder's cache
+    lH.blastMatches.splice(lH.blastMatches.end(), blastMatches);
 }
 
 #endif // SEQAN_SIMD_ENABLED
@@ -1155,27 +1113,6 @@ inline void
 iterateMatchesFullSerial(TLocalHolder & lH)
 {
     using TGlobalHolder = typename TLocalHolder::TGlobalHolder;
-    using TBlastPos     = uint32_t;
-
-    using TBlastMatch   = seqan::BlastMatch<
-                           typename TLocalHolder::TAlignRow0,
-                           typename TLocalHolder::TAlignRow1,
-                           TBlastPos,
-                           std::string_view,
-                           std::string_view,
-                           std::vector<std::string>, // not used
-                           std::span<uint32_t>>;
-
-    using TBlastRecord  = seqan::BlastRecord<TBlastMatch,
-                                             std::string_view,
-                                             std::vector<std::string>, // not used
-                                             std::string_view,
-                                             uint32_t>;
-
-    auto const trueQryId = lH.matches[0].qryId / TGlobalHolder::qryNumFrames;
-
-    TBlastRecord record(lH.qryIds[trueQryId]);
-    record.qLength = seqan::length(lH.qrySeqs[trueQryId]);
 
     size_t band = _bandSize(lH.transQrySeqs[lH.matches[0].qryId].size(), lH);
 
@@ -1187,10 +1124,10 @@ iterateMatchesFullSerial(TLocalHolder & lH)
     for (auto it = lH.matches.begin(), itEnd = lH.matches.end(); it != itEnd; ++it)
     {
         // create blastmatch in list without copy or move
-        record.matches.emplace_back(lH.qryIds [it->qryId / TGlobalHolder::qryNumFrames],
-                                    lH.gH.indexFile.ids[it->subjId / TGlobalHolder::sbjNumFrames]);
+        lH.blastMatches.emplace_back(lH.qryIds [it->qryId / TGlobalHolder::qryNumFrames],
+                                     lH.gH.indexFile.ids[it->subjId / TGlobalHolder::sbjNumFrames]);
 
-        auto & bm = record.matches.back();
+        auto & bm = lH.blastMatches.back();
         auto &  m = *it;
 
         bm._n_qId = it->qryId / TGlobalHolder::qryNumFrames;
@@ -1220,7 +1157,7 @@ iterateMatchesFullSerial(TLocalHolder & lH)
         if (bm.eValue > lH.options.eCutOff)
         {
             ++lH.stats.hitsFailedExtendEValueTest;
-            record.matches.pop_back();
+            lH.blastMatches.pop_back();
             continue;
         }
 
@@ -1238,7 +1175,7 @@ iterateMatchesFullSerial(TLocalHolder & lH)
         if (bm.alignStats.alignmentIdentity < lH.options.idCutOff)
         {
             ++lH.stats.hitsFailedExtendPercentIdentTest;
-            record.matches.pop_back();
+            lH.blastMatches.pop_back();
             continue;
         }
 
@@ -1252,8 +1189,40 @@ iterateMatchesFullSerial(TLocalHolder & lH)
 #ifdef LAMBDA_MICRO_STATS
     lH.stats.timeExtendTrace += sysTime() - start;
 #endif
+}
 
-    _writeRecord(record, lH);
+template <typename TLocalHolder>
+inline void
+writeRecords(TLocalHolder & lH)
+{
+    using TBlastRecord  = typename TLocalHolder::TBlastRecord;
+
+    // divide matches into records (per query) and write
+    for (auto it = lH.blastMatches.begin(), itLast = lH.blastMatches.begin();
+         seqan::length(lH.blastMatches) > 0;
+         /*below*/)
+    {
+        if ((it == lH.blastMatches.end()) || ((it != lH.blastMatches.begin()) && (it->_n_qId != itLast->_n_qId)))
+        {
+            // create a record for each query
+            TBlastRecord record(lH.qryIds[itLast->_n_qId]);
+            record.qLength = seqan::length(lH.qrySeqs[itLast->_n_qId]);
+            // move the matches into the record
+            record.matches.splice(record.matches.begin(),
+                                  lH.blastMatches,
+                                  lH.blastMatches.begin(),
+                                  it);
+            // write to file
+            _writeRecord(record, lH);
+
+            it = lH.blastMatches.begin();
+            itLast = lH.blastMatches.begin();
+        } else
+        {
+            itLast = it;
+            ++it;
+        }
+    }
 }
 
 template <typename TLocalHolder>
