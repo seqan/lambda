@@ -399,6 +399,10 @@ void realMain(LambdaOptions     const & options)
                 printProgressBar(lastPercent, curPercent);
             }
 
+            // write to disk
+            if (localHolder.blastMatches.size() > 0)
+                writeRecords(localHolder);
+
         } // implicit thread sync here
 
         if ((omp_get_thread_num() == 0) && (options.verbosity >= 1))
