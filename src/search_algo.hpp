@@ -598,6 +598,11 @@ _setFrames(TBlastMatch                          & bm,
         bm.qFrameShift = (m.qryId % 3) + 1;
         if (m.qryId % 6 > 2)
             bm.qFrameShift = -bm.qFrameShift;
+    } else if constexpr (TLocalHolder::TGlobalHolder::c_redAlph == AlphabetEnum::DNA3BS)
+    {
+        bm.qFrameShift = (m.qryId % 2) + 1;
+        if (m.qryId % 4 > 1)
+            bm.qFrameShift = -bm.qFrameShift;
     } else if constexpr (seqan::qHasRevComp(TLocalHolder::TGlobalHolder::blastProgram))
     {
         bm.qFrameShift = 1;
@@ -613,6 +618,9 @@ _setFrames(TBlastMatch                          & bm,
         bm.sFrameShift = (m.subjId % 3) + 1;
         if (m.subjId % 6 > 2)
             bm.sFrameShift = -bm.sFrameShift;
+    } else if constexpr (TLocalHolder::TGlobalHolder::c_redAlph == AlphabetEnum::DNA3BS)
+    {
+        bm.sFrameShift = (m.subjId % 2) + 1;
     } else if constexpr (seqan::sHasRevComp(TLocalHolder::TGlobalHolder::blastProgram))
     {
         bm.sFrameShift = 1;
@@ -770,6 +778,12 @@ _untrueQryId(TBlastMatch const & bm,
             return bm._n_qId * 6 + bm.qFrameShift - 1;
         else
             return bm._n_qId * 6 - bm.qFrameShift + 2;
+    } else if constexpr (TLocalHolder::TGlobalHolder::c_redAlph == AlphabetEnum::DNA3BS)
+    {
+        if (bm.qFrameShift > 0)
+            return bm._n_qId * 4;
+        else
+            return bm._n_qId * 4 + 2;
     } else if constexpr (seqan::qHasRevComp(TLocalHolder::TGlobalHolder::blastProgram))
     {
         if (bm.qFrameShift > 0)
@@ -796,7 +810,8 @@ _untrueSubjId(TBlastMatch const & bm,
             return bm._n_sId * 6 + bm.sFrameShift - 1;
         else
             return bm._n_sId * 6 - bm.sFrameShift + 2;
-    } else if constexpr (seqan::sHasRevComp(TLocalHolder::TGlobalHolder::blastProgram))
+    } else if constexpr (seqan::sHasRevComp(TLocalHolder::TGlobalHolder::blastProgram) ||
+                         TLocalHolder::TGlobalHolder::c_redAlph == AlphabetEnum::DNA3BS)
     {
         if (bm.sFrameShift > 0)
             return bm._n_sId * 2;
@@ -819,7 +834,7 @@ _expandAlign(TBlastMatch & bm,
     auto oldQLen = seqan::length(source(bm.alignRow0));
     auto oldSLen = seqan::length(source(bm.alignRow1));
 
-    // replace source from underneath without triggereng reset
+    // replace source from underneath without triggering reset
     bm.alignRow0._source = lH.transQrySeqs[_untrueQryId(bm, lH)] | seqan3::views::slice(0, std::ranges::size(lH.transQrySeqs[_untrueQryId(bm, lH)]));
     bm.alignRow1._source = lH.gH.transSbjSeqs[_untrueSubjId(bm, lH)] | seqan3::views::slice(0, std::ranges::size(lH.gH.transSbjSeqs[_untrueSubjId(bm, lH)]));
 
@@ -1142,7 +1157,7 @@ iterateMatchesFullSerial(TLocalHolder & lH)
 
         _setFrames(bm, m, lH);
 
-        auto & currentScoringScheme = TGlobalHolder::c_redAlph == AlphabetEnum::DNA3BS && bm._n_sId % 2 ?
+        auto & currentScoringScheme = TGlobalHolder::c_redAlph == AlphabetEnum::DNA3BS && (it->subjId % 2) ?
                                       lH.gH.scoringSchemeAlignBSRev :  lH.gH.scoringSchemeAlign;
 
         // Run extension WITHOUT TRACEBACK
