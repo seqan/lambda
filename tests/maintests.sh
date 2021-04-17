@@ -49,6 +49,13 @@ case "$PROG" in "blastn")
     QALPHIN=nucl
     SALPHIN=nucl
     ;;
+"blastn_bs")
+    QALPHIN=nucl_bs
+    SALPH=nucl_bs
+    SALPHIN=nucl_bs
+    MKINDEX=mkindexn
+    SEARCH=searchn
+    ;;
 esac
 
 MYTMP="$(mktemp -q -d -t "$(basename "$0").XXXXXX" 2>/dev/null || mktemp -q -d)"
@@ -60,7 +67,11 @@ cd "$MYTMP"
 gunzip < "${SRCDIR}/tests/db_${SALPHIN}.fasta.gz" > db.fasta
 [ $? -eq 0 ] || errorout "Could not unzip database file"
 
-${BINDIR}/bin/lambda3 ${MKINDEX} -d db.fasta -i db_${SALPH}_${DI}.fasta.gz.lba --db-index-type ${DI}
+if [ "$PROG" = "blastn_bs" ]; then
+    ${BINDIR}/bin/lambda3 ${MKINDEX} -d db.fasta -i db_${SALPH}_${DI}.fasta.gz.lba --db-index-type ${DI} -r dna3bs
+else
+    ${BINDIR}/bin/lambda3 ${MKINDEX} -d db.fasta -i db_${SALPH}_${DI}.fasta.gz.lba --db-index-type ${DI}
+fi
 [ $? -eq 0 ] || errorout "Could not run the indexer"
 
 [ "$(openssl md5 db_${SALPH}_${DI}.fasta.gz.lba)" = \
