@@ -25,7 +25,11 @@
 #include <dirent.h>
 #include <forward_list>
 #include <locale>
-#include <sys/sysctl.h>
+
+#if defined(__APPLE__)
+    #include <sys/sysctl.h>
+#endif
+
 #include <type_traits>
 #include <unistd.h>
 
