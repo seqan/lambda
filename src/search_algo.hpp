@@ -909,7 +909,8 @@ _performAlignment(TDepSetH & depSetH,
                   TDepSetV & depSetV,
                   TBlastMatches & blastMatches,
                   TLocalHolder & lH,
-                  std::integral_constant<bool, withTrace> const &)
+                  std::integral_constant<bool, withTrace> const &,
+                  bsDirection const dir = bsDirection::fwd)
 {
     using TGlobalHolder = typename TLocalHolder::TGlobalHolder;
     using TAlignConfig  = seqan::AlignConfig2<seqan::LocalAlignment_<>,
@@ -931,7 +932,8 @@ _performAlignment(TDepSetH & depSetH,
     unsigned constexpr sizeBatch = seqan::LENGTH<TSimdAlign>::VALUE;
     unsigned const      fullSize = sizeBatch * ((seqan::length(blastMatches) + sizeBatch - 1) / sizeBatch);
 
-    TSimdScore simdScoringScheme(lH.gH.scoringSchemeAlign);
+    auto const & currentScoringScheme = dir == bsDirection::fwd ? lH.gH.scoringSchemeAlign : lH.gH.scoringSchemeAlignBSRev;
+    TSimdScore simdScoringScheme(currentScoringScheme);
     seqan::StringSet<seqan::String<TTraceSegment> > trace;
 
     // TODO when band is available, create inside block with band
@@ -971,7 +973,7 @@ _performAlignment(TDepSetH & depSetH,
 
 template <typename TLocalHolder>
 inline void
-iterateMatchesFullSimd(TLocalHolder & lH)
+iterateMatchesFullSimd(TLocalHolder & lH, bsDirection const dir = bsDirection::fwd)
 {
     using TGlobalHolder = typename TLocalHolder::TGlobalHolder;
     using TBlastMatch   = typename TLocalHolder::TBlastMatch;
@@ -992,6 +994,12 @@ iterateMatchesFullSimd(TLocalHolder & lH)
     std::list<TBlastMatch> blastMatches;
     for (auto it = lH.matches.begin(), itEnd = lH.matches.end(); it != itEnd; ++it)
     {
+        // In BS-mode, skip those results that have wrong orientation
+        if constexpr (TLocalHolder::TGlobalHolder::c_redAlph == AlphabetEnum::DNA3BS)
+        {
+            if ((dir == bsDirection::fwd && (it->subjId % 2)) || (dir == bsDirection::rev && !(it->subjId % 2)))
+                continue;
+        }
         // create blastmatch in list without copy or move
         blastMatches.emplace_back(lH.qryIds [it->qryId / TGlobalHolder::qryNumFrames],
                                   lH.gH.indexFile.ids[it->subjId / TGlobalHolder::sbjNumFrames]);
@@ -1049,7 +1057,9 @@ iterateMatchesFullSimd(TLocalHolder & lH)
     _setupDepSets(depSetH, depSetV, blastMatches);
 
     // Run extensions WITHOUT ALIGNMENT
-    _performAlignment(depSetH, depSetV, blastMatches, lH, std::false_type());
+    _performAlignment(depSetH, depSetV, blastMatches, lH, std::false_type(), dir);
+
+    auto const & currentScoringScheme = dir == bsDirection::fwd ? lH.gH.scoringSchemeAlign : lH.gH.scoringSchemeAlignBSRev;
 
     // copmute evalues and filter based on evalue
     for (auto it = blastMatches.begin(), itEnd = blastMatches.end(); it != itEnd; /*below*/)
@@ -1081,7 +1091,7 @@ iterateMatchesFullSimd(TLocalHolder & lH)
     _setupDepSets(depSetH, depSetV, blastMatches);
 
     // Run extensions WITH ALIGNMENT
-    _performAlignment(depSetH, depSetV, blastMatches, lH, std::true_type());
+    _performAlignment(depSetH, depSetV, blastMatches, lH, std::true_type(), dir);
 
     // sort by query
     blastMatches.sort([] (auto const & lhs, auto const & rhs)
@@ -1096,7 +1106,7 @@ iterateMatchesFullSimd(TLocalHolder & lH)
 
         _expandAlign(bm, lH);
 
-        seqan::computeAlignmentStats(bm.alignStats, bm.alignRow0, bm.alignRow1, lH.gH.scoringSchemeAlign);
+        seqan::computeAlignmentStats(bm.alignStats, bm.alignRow0, bm.alignRow1, currentScoringScheme);
 
         if (bm.alignStats.alignmentIdentity < lH.options.idCutOff)
         {
@@ -1244,7 +1254,17 @@ iterateMatches(TLocalHolder & lH)
 {
 #ifdef SEQAN_SIMD_ENABLED
     if (lH.options.extensionMode == LambdaOptions::ExtensionMode::FULL_SIMD)
-        iterateMatchesFullSimd(lH);
+    {
+        iterateMatchesFullSimd(lH, bsDirection::fwd);
+        if constexpr (TLocalHolder::TGlobalHolder::c_redAlph == AlphabetEnum::DNA3BS)
+        {
+            iterateMatchesFullSimd(lH, bsDirection::rev);
+            lH.blastMatches.sort([] (auto const & lhs, auto const & rhs)
+            {
+                return lhs._n_qId < rhs._n_qId;
+            });
+        }
+    }
     else
 #endif
 
