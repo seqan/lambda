@@ -86,7 +86,7 @@ fi
 gunzip < "${SRCDIR}/tests/queries_${QALPHIN}.fasta.gz" > queries.fasta
 [ $? -eq 0 ] || errorout "Could not unzip queries.fasta"
 
-${BINDIR}/bin/lambda3 ${SEARCH} -i db_${SALPH}_${DI}.fasta.gz.lba -q queries.fasta -t 1 --version-to-outputfile 0 --seed-offset 7 --seed-length 14 --adaptive-seeding 1 -m $MODE \
+${BINDIR}/bin/lambda3 ${SEARCH} -i db_${SALPH}_${DI}.fasta.gz.lba -q queries.fasta -t 1 --version-to-outputfile 0 -m $MODE \
 -o output_${PROG}_${DI}_${MODE}.${EXTENSION}
 [ $? -eq 0 ] || errorout "Search failed."
 
