@@ -37,8 +37,8 @@
 #include <seqan/align_extend.h>
 
 #include <seqan3/core/debug_stream.hpp>
-#include <seqan3/range/views/complement.hpp>
-#include <seqan3/range/views/translate_join.hpp>
+#include <seqan3/alphabet/views/complement.hpp>
+#include <seqan3/alphabet/views/translate_join.hpp>
 #include <seqan3/io/sequence_file/input.hpp>
 #include <seqan3/search/search.hpp>
 #include <seqan3/alphabet/aminoacid/aa27.hpp>
@@ -234,15 +234,15 @@ prepareScoring(GlobalDataHolder<c_dbIndexType, c_origSbjAlph, c_transAlph, c_red
         {
             case 45:
                 seqan2_matrix_id = seqan::AminoAcidScoreMatrixID::BLOSUM45;
-                seqan3_matrix_id = seqan3::aminoacid_similarity_matrix::BLOSUM45;
+                seqan3_matrix_id = seqan3::aminoacid_similarity_matrix::blosum45;
                 break;
             case 62:
                 seqan2_matrix_id = seqan::AminoAcidScoreMatrixID::BLOSUM62;
-                seqan3_matrix_id = seqan3::aminoacid_similarity_matrix::BLOSUM62;
+                seqan3_matrix_id = seqan3::aminoacid_similarity_matrix::blosum62;
                 break;
             case 80:
                 seqan2_matrix_id = seqan::AminoAcidScoreMatrixID::BLOSUM80;
-                seqan3_matrix_id = seqan3::aminoacid_similarity_matrix::BLOSUM80;
+                seqan3_matrix_id = seqan3::aminoacid_similarity_matrix::blosum80;
                 break;
             default:
                 break;
@@ -272,10 +272,6 @@ prepareScoring(GlobalDataHolder<c_dbIndexType, c_origSbjAlph, c_transAlph, c_red
 
     if (!seqan::isValid(seqan::context(globalHolder.outfileBlastTab).scoringScheme))
         throw std::runtime_error{"Could not compute Karlin-Altschul-Values for Scoring Scheme.\n"};
-
-    // seqan3
-    globalHolder.gapScheme.set_affine(seqan3::gap_score{options.gapExtend},
-                                      seqan3::gap_open_score{options.gapOpen});
 }
 
 // --------------------------------------------------------------------------

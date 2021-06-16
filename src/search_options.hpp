@@ -121,7 +121,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     // this is important for option handling:
     options.nucleotide_mode = (std::string(argv[0]) == "searchn");
 
-    seqan3::argument_parser parser(programName, argc, argv, false);
+    seqan3::argument_parser parser(programName, argc, argv, seqan3::update_notifications::off);
 
     // Set short description, version, and date.
     parser.info.short_description = "the Local Aligner for Massive Biological DatA";
@@ -135,12 +135,12 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     parser.add_option(options.verbosity, 'v', "verbosity", "Display more/less diagnostic output during operation: "
         "0 [only errors]; 1 [default]; 2 [+run-time, options and statistics].",
-        seqan3::option_spec::DEFAULT, seqan3::arithmetic_range_validator{0, 2});
+        seqan3::option_spec::standard, seqan3::arithmetic_range_validator{0, 2});
 
     parser.add_section("Input options");
 
     // TODO Better solution for file extensions
-    parser.add_option(options.queryFile, 'q', "query", "Query sequences.", seqan3::option_spec::REQUIRED,
+    parser.add_option(options.queryFile, 'q', "query", "Query sequences.", seqan3::option_spec::required,
         seqan3::input_file_validator{{"fa", "fq", "fasta", "fastq", "gz"}});
 
     std::string inputAlphabetTmp = "auto";
@@ -154,14 +154,14 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     {
         parser.add_option(inputAlphabetTmp, 'a', "input-alphabet",
             "Alphabet of the query sequences (specify to override auto-detection). Dna sequences will be translated.",
-            seqan3::option_spec::ADVANCED, seqan3::value_list_validator{"auto", "dna5", "aminoacid"});
+            seqan3::option_spec::advanced, seqan3::value_list_validator{"auto", "dna5", "aminoacid"});
 
 #if 0 // TODO: we currently don't support other code, but we should
         parser.add_option(geneticCodeTmp, 'g', "genetic-code",
             "The translation table to use if input is Dna. See "
             "https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi?mode=c"
             " for ids. Default is to use the same table that was used for the index or 1/CANONICAL if the index "
-            "was not translated.", seqan3::option_spec::ADVANCED,
+            "was not translated.", seqan3::option_spec::advanced,
             seqan3::value_list_validator{0, 1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 13, 14, 15, 16, 21, 22, 23, 24, 25});
 #endif
     }
@@ -172,7 +172,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
                       std::string{"The database index (created by the 'lambda "} +
                         (options.nucleotide_mode ? "mkindexn" : "mkindexp") +
                         "' command).",
-                      seqan3::option_spec::REQUIRED,
+                      seqan3::option_spec::required,
                       seqan3::input_file_validator{{"lba", "lta"}});
 
     parser.add_section("Output options");
@@ -183,29 +183,30 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
                       "output",
                       "File to hold reports on hits (.m* are blastall -m* formats; .m8 is tab-seperated "
                       ".m9 is tab-seperated with with comments, .m0 is pairwise format).",
-                      seqan3::option_spec::DEFAULT,
-                      seqan3::output_file_validator{{"m0", "m8", "m9", "bam", "sam", "gz", "bz2"}});
+                      seqan3::option_spec::standard,
+                      seqan3::output_file_validator{seqan3::output_file_open_options::create_new,
+                                                    {"m0", "m8", "m9", "bam", "sam", "gz", "bz2"}});
 
     std::string outputColumnsTmp = "std";
     parser.add_option(outputColumnsTmp, '\0', "output-columns",
         "Print specified column combination and/or order (.m8 and .m9 outputs only); call -oc help for more details.",
-        seqan3::option_spec::ADVANCED);
+        seqan3::option_spec::advanced);
 
     parser.add_option(options.idCutOff, '\0', "percent-identity",
-        "Output only matches above this threshold (checked before e-value check).", seqan3::option_spec::DEFAULT,
+        "Output only matches above this threshold (checked before e-value check).", seqan3::option_spec::standard,
         seqan3::arithmetic_range_validator{0, 100});
 
     parser.add_option(options.eCutOff, 'e', "e-value", "Output only matches that score below this threshold.",
-        seqan3::option_spec::DEFAULT, seqan3::arithmetic_range_validator{0, 100});
+        seqan3::option_spec::standard, seqan3::arithmetic_range_validator{0, 100});
 
     int32_t numMatchesTmp = 256;
     parser.add_option(numMatchesTmp, 'n', "num-matches", "Print at most this number of matches per query.",
-        seqan3::option_spec::DEFAULT, seqan3::arithmetic_range_validator{0, 10000});
+        seqan3::option_spec::standard, seqan3::arithmetic_range_validator{0, 10000});
 
     parser.add_option(options.samWithRefHeader, '\0', "sam-with-refheader",
         "BAM files require all subject names to be written to the header. For SAM this is not required, so Lambda does "
         "not automatically do it to save space (especially for protein database this is a lot!). If you still want "
-        "them with SAM, e.g. for better BAM compatibility, use this option.", seqan3::option_spec::ADVANCED);
+        "them with SAM, e.g. for better BAM compatibility, use this option.", seqan3::option_spec::advanced);
 
     std::string samBamSeqDescr;
     if (options.nucleotide_mode)
@@ -222,32 +223,32 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     std::string samBamSeqDescrTmp = "uniq";
     parser.add_option(samBamSeqDescrTmp, '\0', "sam-bam-seq", samBamSeqDescr + " If set to uniq than the sequence is "
-        "omitted iff it is identical to the previous match's subsequence.", seqan3::option_spec::ADVANCED,
+        "omitted iff it is identical to the previous match's subsequence.", seqan3::option_spec::advanced,
         seqan3::value_list_validator{"always", "uniq", "never"});
 
     std::string samBamTagsTmp = "AS NM ae ai qf";
     parser.add_option(samBamTagsTmp, '\0', "sam-bam-tags",
         "Write the specified optional columns to the SAM/BAM file. Call --sam-bam-tags help for more details.",
-        seqan3::option_spec::ADVANCED);
+        seqan3::option_spec::advanced);
 
     std::string samBamClip = "hard";
     parser.add_option(samBamClip, '\0', "sam-bam-clip",
         "Whether to hard-clip or soft-clip the regions beyond the local match. Soft-clipping retains the full sequence "
-        "in the output file, but obviously uses more space.", seqan3::option_spec::ADVANCED,
+        "in the output file, but obviously uses more space.", seqan3::option_spec::advanced,
         seqan3::value_list_validator{"hard", "soft"});
 
     parser.add_option(options.versionInformationToOutputFile, '\0', "version-to-outputfile",
-        "Write the Lambda program tag and version number to the output file.", seqan3::option_spec::HIDDEN);
+        "Write the Lambda program tag and version number to the output file.", seqan3::option_spec::hidden);
 
     parser.add_section("General Options");
 
 #ifdef _OPENMP
     parser.add_option(options.threads, 't', "threads", "Number of threads to run concurrently.",
-        seqan3::option_spec::ADVANCED,
+        seqan3::option_spec::advanced,
         seqan3::arithmetic_range_validator{1, 1000});
 #else
     parser.add_option(options.threads, 't', "threads",
-        "LAMBDA BUILT WITHOUT OPENMP; setting this option has no effect.", seqan3::option_spec::ADVANCED,
+        "LAMBDA BUILT WITHOUT OPENMP; setting this option has no effect.", seqan3::option_spec::advanced,
         seqan3::arithmetic_range_validator{1, 1});
 #endif
 
@@ -259,21 +260,21 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         options.adaptiveSeeding = true;
 
     parser.add_option(options.adaptiveSeeding, '\0', "adaptive-seeding",
-        "Grow the seed if it has too many hits (low complexity filter).", seqan3::option_spec::ADVANCED);
+        "Grow the seed if it has too many hits (low complexity filter).", seqan3::option_spec::advanced);
 
     unsigned defaultSeedLength = options.nucleotide_mode ? 14 : 10;
 
     options.seedLength = defaultSeedLength;
-    parser.add_option(options.seedLength, '\0', "seed-length", "Length of the seeds.", seqan3::option_spec::ADVANCED,
+    parser.add_option(options.seedLength, '\0', "seed-length", "Length of the seeds.", seqan3::option_spec::advanced,
         seqan3::arithmetic_range_validator{3, 50});
 
     options.seedOffset = options.seedLength;
     parser.add_option(options.seedOffset, '\0', "seed-offset", "Offset for seeding. "
         "If you set 'seed-length', please consider setting this option to the same value.",
-        seqan3::option_spec::DEFAULT, seqan3::arithmetic_range_validator{1, 50});
+        seqan3::option_spec::standard, seqan3::arithmetic_range_validator{1, 50});
 
     parser.add_option(options.maxSeedDist, '\0', "seed-delta",
-        "Maximum seed distance.", seqan3::option_spec::ADVANCED, seqan3::arithmetic_range_validator{0, 5});
+        "Maximum seed distance.", seqan3::option_spec::advanced, seqan3::arithmetic_range_validator{0, 5});
 
     parser.add_section("Miscellaneous Heuristics");
 
@@ -281,10 +282,10 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         "Evaluate score of a region NUM times the size of the seed "
         "before extension (0 -> no pre-scoring, 1 -> evaluate seed, n-> area "
         "around seed, as well; default = 1 if no reduction is used).",
-        seqan3::option_spec::ADVANCED, seqan3::arithmetic_range_validator{1, 10});
+        seqan3::option_spec::advanced, seqan3::arithmetic_range_validator{1, 10});
 
     parser.add_option(options.preScoringThresh, '\0', "pre-scoring-threshold",
-        "Minimum average score per position in pre-scoring region.", seqan3::option_spec::ADVANCED,
+        "Minimum average score per position in pre-scoring region.", seqan3::option_spec::advanced,
         seqan3::arithmetic_range_validator{0, 20});
 
     parser.add_section("Scoring");
@@ -292,15 +293,15 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     if (options.nucleotide_mode)
     {
         parser.add_option(options.match, '\0', "score-match",
-            "Match score [only BLASTN]", seqan3::option_spec::ADVANCED, seqan3::arithmetic_range_validator{-1000, 1000});
+            "Match score [only BLASTN]", seqan3::option_spec::advanced, seqan3::arithmetic_range_validator{-1000, 1000});
 
         parser.add_option(options.misMatch, '\0', "score-mismatch",
-            "Mismatch score [only BLASTN]", seqan3::option_spec::ADVANCED, seqan3::arithmetic_range_validator{-1000, 1000});
+            "Mismatch score [only BLASTN]", seqan3::option_spec::advanced, seqan3::arithmetic_range_validator{-1000, 1000});
     }
     else
     {
         parser.add_option(options.scoringMethod,'s', "scoring-scheme",
-            "Use '45' for Blosum45; '62' for Blosum62 (default); '80' for Blosum80.", seqan3::option_spec::ADVANCED,
+            "Use '45' for Blosum45; '62' for Blosum62 (default); '80' for Blosum80.", seqan3::option_spec::advanced,
             seqan3::value_list_validator{45, 62, 80});
     }
 
@@ -310,7 +311,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         options.gapExtend = -1;
 
     parser.add_option(options.gapExtend, '\0', "score-gap",
-        "Score per gap character.", seqan3::option_spec::ADVANCED, seqan3::arithmetic_range_validator{-1000, 1000});
+        "Score per gap character.", seqan3::option_spec::advanced, seqan3::arithmetic_range_validator{-1000, 1000});
 
     if (options.nucleotide_mode)
         options.gapOpen = -5;
@@ -318,24 +319,24 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         options.gapOpen = -11;
 
     parser.add_option(options.gapOpen, '\0', "score-gap-open",
-        "Additional cost for opening gap.", seqan3::option_spec::ADVANCED, seqan3::arithmetic_range_validator{-1000, 1000});
+        "Additional cost for opening gap.", seqan3::option_spec::advanced, seqan3::arithmetic_range_validator{-1000, 1000});
 
     parser.add_section("Extension");
 
     //TODO this is only used in serial mode right now
     parser.add_option(options.band, 'b', "band", "Size of the DP-band used in extension (-3 means log2 of query length;"
         " -2 means sqrt of query length; -1 means full dp; n means band of size 2n+1)",
-        seqan3::option_spec::ADVANCED, seqan3::arithmetic_range_validator{-3, 1000});
+        seqan3::option_spec::advanced, seqan3::arithmetic_range_validator{-3, 1000});
 
 #ifdef SEQAN_SIMD_ENABLED
     std::string extensionModeTmp = "fullSIMD";
     parser.add_option(extensionModeTmp,'m', "extension-mode",
-        "Choice of extension algorithms.", seqan3::option_spec::ADVANCED,
+        "Choice of extension algorithms.", seqan3::option_spec::advanced,
         seqan3::value_list_validator{"fullSerial", "fullSIMD"});
 #else
     std::string extensionModeTmp = "fullSerial";
     parser.add_option(extensionModeTmp,'m', "extension-mode",
-        "Choice of extension algorithms.", seqan3::option_spec::ADVANCED,
+        "Choice of extension algorithms.", seqan3::option_spec::advanced,
         seqan3::value_list_validator<std::string>{"fullSerial"});
 #endif
 
@@ -363,7 +364,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         else if (inputAlphabetTmp == "aminoacid")
             options.qryOrigAlphabet = AlphabetEnum::AMINO_ACID;
         else
-            throw seqan3::parser_invalid_argument("ERROR: Invalid argument to --input-alphabet\n");
+            throw seqan3::argument_parser_error("ERROR: Invalid argument to --input-alphabet\n");
 
         options.geneticCodeQry = static_cast<seqan3::genetic_code>(geneticCodeTmp);
     }
@@ -434,7 +435,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
             }
             if (!resolved)
             {
-                throw seqan3::parser_invalid_argument(std::string("Unknown column specifier \"") + toCString(str) +
+                throw seqan3::argument_parser_error(std::string("Unknown column specifier \"") + toCString(str) +
                 std::string("\". Please see -oc help for valid options.\n"));
             }
         }
@@ -483,7 +484,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
             {
                 std::cerr << "Unknown column specifier \"" << str
                           << "\". Please see \"--sam-bam-tags help\" for valid options.\n";
-                throw seqan3::parser_invalid_argument(std::string("Unknown column specifier \"") + seqan::toCString(str) +
+                throw seqan3::argument_parser_error(std::string("Unknown column specifier \"") + seqan::toCString(str) +
                     std::string("\". Please see \"--sam-bam-tags help\" for valid options.\n"));
             }
         }

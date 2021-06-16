@@ -30,7 +30,7 @@
 #include <seqan/reduced_aminoacid.h>
 #include <seqan/misc/terminal.h>
 
-#include <seqan3/range/views/async_input_buffer.hpp>
+#include <seqan3/io/views/async_input_buffer.hpp>
 
 #include "shared_definitions.hpp"
 #include "shared_options.hpp"
@@ -136,7 +136,7 @@ argConv0(LambdaOptions & options)
     {
         myPrint(options, 2, "  translated alphabet: not translated\n");
         if ((int)options.geneticCodeQry == 0) // use same geneticCode as Index, but index wasn't translated
-            options.geneticCodeQry = seqan3::genetic_code::CANONICAL;
+            options.geneticCodeQry = seqan3::genetic_code::canonical;
     }
     else
     {

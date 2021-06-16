@@ -23,12 +23,12 @@
 #pragma once
 
 #include <random>
+#include <seqan3/std/ranges>
 
 #include <seqan3/alphabet/nucleotide/concept.hpp>
 #include <seqan3/alphabet/nucleotide/all.hpp>
-#include <seqan3/core/char_operations/predicate.hpp>
-#include <seqan3/range/views/deep.hpp>
-#include <seqan3/std/ranges>
+#include <seqan3/utility/char_operations/predicate.hpp>
+#include <seqan3/utility/views/deep.hpp>
 #include "view_pos_transform.hpp"
 
 // Definition of the range adaptor object type for views::dna_n_to_random.

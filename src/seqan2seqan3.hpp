@@ -1,17 +1,29 @@
 #pragma once
 
+#include <seqan3/std/ranges>
+#include <seqan3/std/span>
+
+#include <seqan3/alphabet/aminoacid/concept.hpp>
 #include <seqan3/alphabet/concept.hpp>
 #include <seqan3/alphabet/gap/all.hpp>
-#include <seqan3/alphabet/aminoacid/concept.hpp>
 #include <seqan3/alphabet/nucleotide/concept.hpp>
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
 #include <seqan3/alphabet/nucleotide/dna3bs.hpp>
-#include <seqan3/alphabet/concept.hpp>
-#include <seqan3/core/type_traits/pre.hpp>
-#include <seqan3/range/views/translate_join.hpp>
-#include <seqan3/range/views/to_rank.hpp>
-#include <seqan3/std/ranges>
-#include <seqan3/std/span>
+#include <seqan3/alphabet/views/to_rank.hpp>
+#include <seqan3/alphabet/views/translate_join.hpp>
+#include <seqan3/utility/type_traits/pre.hpp>
+
+// seqan3 does not alias ranges::cpp20::{take,transform}_view -> std::ranges::{take,transform}_view when using range-v3 implementation
+#if !defined(__cpp_lib_ranges)
+namespace std::ranges
+{
+namespace
+{
+    using ::ranges::cpp20::take_view;
+    using ::ranges::cpp20::transform_view;
+}
+}
+#endif
 
 // Some things needs to be defined before including SeqAn2 headers.
 // This does not make sense, but oh well ¯\_(ツ)_/¯
@@ -67,8 +79,8 @@ template <typename ...ts>
 inline constexpr bool is_new_range<seqan3::detail::view_translate_join<ts...>> = true;
 template <typename ...ts>
 inline constexpr bool is_new_range<seqan3::detail::view_translate_single<ts...>> = true;
-template <typename t, bool b1, bool b2>
-inline constexpr bool is_new_range<seqan3::detail::view_take<t, b1, b2>> = true;
+template <typename t>
+inline constexpr bool is_new_range<std::ranges::take_view<t>> = true;
 
 template <typename t>
 SEQAN3_CONCEPT NonSeqAn2Range = is_new_range<seqan3::remove_cvref_t<t>>;
@@ -402,8 +414,8 @@ struct seqan2_to_rank_outer
 
 template <typename TSimdVecs,
           typename TStrings>
-    requires (!std::integral<decltype(std::declval<TStrings&>()[0][0])>) &&
-             seqan3::alphabet<decltype(std::declval<TStrings&>()[0][0])>
+    requires (!std::integral<seqan3::range_innermost_value_t<TStrings>>) &&
+             seqan3::alphabet<seqan3::range_innermost_value_t<TStrings>>
 inline void
 _createSimdRepImpl(TSimdVecs & simdStr,
                    TStrings const & strings)

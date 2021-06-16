@@ -22,13 +22,14 @@
 
 #pragma once
 
+#include <seqan3/std/ranges>
+
 #include <seqan3/alphabet/composite/semialphabet_any.hpp>
 #include <seqan3/alphabet/nucleotide/concept.hpp>
 #include <seqan3/alphabet/nucleotide/dna4.hpp>
-#include <seqan3/core/type_traits/range.hpp>
-#include <seqan3/range/views/deep.hpp>
-#include <seqan3/range/concept.hpp>
-#include <seqan3/std/ranges>
+#include <seqan3/core/range/type_traits.hpp>
+#include <seqan3/utility/views/deep.hpp>
+#include <seqan3/utility/range/concept.hpp>
 #include "bisulfite_scoring.hpp"
 #include "view_pos_transform.hpp"
 

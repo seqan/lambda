@@ -21,9 +21,10 @@
 
 #pragma once
 
-#include <seqan3/core/type_traits/range.hpp>
-#include <seqan3/range/concept.hpp>
 #include <seqan3/std/ranges>
+
+#include <seqan3/core/range/type_traits.hpp>
+#include <seqan3/utility/range/concept.hpp>
 #include "view_pos_transform.hpp"
 
 // Definition of the range adaptor object type for views::duplicate.

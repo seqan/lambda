@@ -23,12 +23,11 @@
 
 #include <seqan3/alignment/scoring/aminoacid_scoring_scheme.hpp>
 #include <seqan3/alignment/scoring/nucleotide_scoring_scheme.hpp>
-#include <seqan3/alignment/scoring/gap_scheme.hpp>
-#include <seqan3/core/type_traits/lazy.hpp>
-#include <seqan3/range/views/convert.hpp>
-#include <seqan3/range/views/deep.hpp>
-#include <seqan3/range/views/type_reduce.hpp>
-#include <seqan3/range/views/translate_join.hpp>
+#include <seqan3/utility/type_traits/lazy_conditional.hpp>
+#include <seqan3/utility/views/convert.hpp>
+#include <seqan3/utility/views/deep.hpp>
+#include <seqan3/utility/views/type_reduce.hpp>
+#include <seqan3/alphabet/views/translate_join.hpp>
 
 #include <seqan/align_extend.h>
 
@@ -430,8 +429,6 @@ public:
     TScoreScheme3       scoringSchemePreScoringBSRev;
     TScoreSchemeAlign   scoringSchemeAlign;
     TScoreSchemeAlign   scoringSchemeAlignBSRev;
-
-    seqan3::gap_scheme<int8_t> gapScheme;
 
     StatsHolder         stats{};
 

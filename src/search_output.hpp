@@ -365,7 +365,7 @@ myWriteHeader(TGH & globalHolder, TLambdaOptions const & options)
         for (unsigned i = 0; i < globalHolder.indexFile.ids.size(); ++i)
         {
             //TODO replace with assign algo
-            subjIds[i] = globalHolder.indexFile.ids[i] | seqan3::views::take_until(seqan3::is_space)
+            subjIds[i] = globalHolder.indexFile.ids[i] | seqan3::detail::take_until(seqan3::is_space)
                                                        | seqan3::views::to<std::string>;
         }
 
@@ -492,7 +492,7 @@ myWriteRecord(TLH & lH, TRecord const & record)
             if (mIt->qFrameShift < 0)
                 bamR.flag   |= seqan::BAM_FLAG_RC;
             // truncated query name+
-            for (char c : record.qId | seqan3::views::take_until(seqan3::is_space))
+            for (char c : record.qId | seqan3::detail::take_until(seqan3::is_space))
                 seqan::appendValue(bamR.qName, c);
             // reference ID
             bamR.rID        = mIt->_n_sId;

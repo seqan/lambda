@@ -21,15 +21,16 @@
 
 #pragma once
 
-#include <seqan3/core/type_traits/range.hpp>
-#include <seqan3/range/detail/random_access_iterator.hpp>
-#include <seqan3/range/views/detail.hpp>
-#include <seqan3/range/concept.hpp>
 #include <seqan3/std/ranges>
+
+#include <seqan3/core/range/detail/random_access_iterator.hpp>
+#include <seqan3/core/range/type_traits.hpp>
+#include <seqan3/core/range/detail/adaptor_from_functor.hpp>
+#include <seqan3/utility/range/concept.hpp>
 
 // The return type of views::pos_transform
 template <std::ranges::view urng_t, typename pos_transform_t, typename size_transform_t>
-class view_pos_transform : public ranges::view_base
+class view_pos_transform : public std::ranges::view_interface<view_pos_transform<urng_t, pos_transform_t, size_transform_t>> //public ranges::view_base
 {
 
 private:

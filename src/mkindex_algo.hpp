@@ -23,9 +23,9 @@
 
 #include <seqan3/io/sequence_file/input.hpp>
 #include <seqan3/io/detail/misc_input.hpp>
-#include <seqan3/range/views/convert.hpp>
-#include <seqan3/range/views/translate.hpp>
-#include <seqan3/range/views/translate_join.hpp>
+#include <seqan3/utility/views/convert.hpp>
+#include <seqan3/alphabet/views/translate.hpp>
+#include <seqan3/alphabet/views/translate_join.hpp>
 #include <seqan3/std/charconv>
 #include <seqan3/std/concepts>
 
@@ -119,7 +119,7 @@ auto loadSubjSeqsAndIds(LambdaIndexerOptions const & options)
             extractAccIds(id, count);
 
         if (options.truncateIDs)
-            ids.push_back(id | seqan3::views::take_until(seqan3::is_space) | seqan3::views::to<std::string>);
+            ids.push_back(id | seqan3::detail::take_until(seqan3::is_space) | seqan3::views::to<std::string>);
         else
             ids.push_back(std::move(id));
 
@@ -375,7 +375,7 @@ auto parseAndStoreTaxTree(std::vector<bool>          & taxIdIsPresent,
     while (std::ranges::begin(file_view) != std::ranges::end(file_view))
     {
         // read line
-        buf = file_view | seqan3::views::take_line | seqan3::views::to<std::string>;
+        buf = file_view | seqan3::detail::take_line | seqan3::views::to<std::string>;
 
         uint32_t n = 0;
         uint32_t parent = 0;
@@ -568,7 +568,7 @@ auto parseAndStoreTaxTree(std::vector<bool>          & taxIdIsPresent,
     while (std::ranges::begin(file_view2) != std::ranges::end(file_view2))
     {
         // read line
-        buf = file_view2 | seqan3::views::take_line | seqan3::views::to<std::string>;
+        buf = file_view2 | seqan3::detail::take_line | seqan3::views::to<std::string>;
 
         uint32_t taxId = 0;
 

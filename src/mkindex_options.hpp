@@ -61,7 +61,7 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
     // this is important for option handling:
     options.nucleotide_mode = (std::string(argv[0]) == "mkindexn");
 
-    seqan3::argument_parser parser(programName, argc, argv, false);
+    seqan3::argument_parser parser(programName, argc, argv, seqan3::update_notifications::off);
 
     parser.info.short_description = "the Local Aligner for Massive Biological DatA";
 
@@ -73,13 +73,13 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
     sharedSetup(parser);
 
     parser.add_option(options.verbosity, 'v', "verbosity", "Display more/less diagnostic output during operation: "
-        "0 [only errors]; 1 [default]; 2 [+run-time, options and statistics].", seqan3::option_spec::DEFAULT,
+        "0 [only errors]; 1 [default]; 2 [+run-time, options and statistics].", seqan3::option_spec::standard,
         seqan3::arithmetic_range_validator{0, 2});
 
     parser.add_section("Input Options");
 
     // TODO Change file extensions, make more generic
-    parser.add_option(options.dbFile, 'd', "database", "Database sequences.", seqan3::option_spec::REQUIRED,
+    parser.add_option(options.dbFile, 'd', "database", "Database sequences.", seqan3::option_spec::required,
         seqan3::input_file_validator{{"fa", "fq", "fasta", "fastq", "gz"}});
 
     std::vector<std::string> taxExtensions{"accession2taxid", "dat"};
@@ -98,12 +98,12 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
         "An NCBI or UniProt accession-to-taxid mapping file. Download from "
         "ftp://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/ or "
         "ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/idmapping/ .",
-        seqan3::option_spec::DEFAULT, seqan3::input_file_validator(taxExtensions));
+        seqan3::option_spec::standard, seqan3::input_file_validator(taxExtensions));
 
     parser.add_option(options.taxDumpDir,'x', "tax-dump-dir",
         "A directory that contains nodes.dmp and names.dmp; unzipped from "
         "ftp://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump.tar.gz",
-        seqan3::option_spec::DEFAULT,
+        seqan3::option_spec::standard,
         seqan3::input_directory_validator());
 
     parser.add_section("Output Options");
@@ -111,12 +111,12 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
     options.indexFilePath = "»INPUT«.lba";
     parser.add_option(options.indexFilePath, 'i', "index",
         "The output path for the index file.",
-        seqan3::option_spec::DEFAULT,
-        seqan3::output_file_validator{{"lba", "lta"}});
+        seqan3::option_spec::standard,
+        seqan3::output_file_validator{seqan3::output_file_open_options::create_new, {"lba", "lta"}});
 
     std::string dbIndexTypeTmp = "fm";
     parser.add_option(dbIndexTypeTmp, '\0', "db-index-type", "FM-Index oder bidirectional FM-Index.",
-        seqan3::option_spec::ADVANCED, seqan3::value_list_validator{"fm", "bifm"});
+        seqan3::option_spec::advanced, seqan3::value_list_validator{"fm", "bifm"});
 
     parser.add_option(options.truncateIDs, '\0', "truncate-ids",
         "Truncate IDs at first whitespace. This saves a lot of space and is irrelevant for all LAMBDA output formats "
@@ -136,7 +136,7 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
         parser.add_section("Alphabet reduction");
 
         parser.add_option(alphabetReductionTmp, 'r', "alphabet-reduction", "Alphabet Reduction for seeding phase.",
-            seqan3::option_spec::ADVANCED, seqan3::value_list_validator{"none", "dna4", "dna3bs"});
+            seqan3::option_spec::advanced, seqan3::value_list_validator{"none", "dna4", "dna3bs"});
     }
     else
     {
@@ -150,32 +150,32 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
         parser.add_option(inputAlphabetTmp,'a', "input-alphabet",
             "Alphabet of the database sequences (specify to override auto-detection); "
             "if input is Dna, it will be translated.",
-            seqan3::option_spec::ADVANCED, seqan3::value_list_validator{"auto", "dna5", "aminoacid"});
+            seqan3::option_spec::advanced, seqan3::value_list_validator{"auto", "dna5", "aminoacid"});
 
         parser.add_option(geneticCodeTmp, 'g', "genetic-code",
             "The translation table to use if input is Dna. See "
             "https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi?mode=c"
-            " for ids. (default is generic)", seqan3::option_spec::ADVANCED,
+            " for ids. (default is generic)", seqan3::option_spec::advanced,
             seqan3::value_list_validator{0, 1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 13, 14, 15, 16, 21, 22, 23, 24, 25});
 
         parser.add_option(alphabetReductionTmp, 'r', "alphabet-reduction", "Alphabet Reduction for seeding phase.",
-            seqan3::option_spec::ADVANCED, seqan3::value_list_validator{"none", "murphy10", "li10"});
+            seqan3::option_spec::advanced, seqan3::value_list_validator{"none", "murphy10", "li10"});
     }
 
     // TODO: try to get out-of-memory version from SeqAn3/SDSL now; get parallel version later
     parser.add_option(options.algo, '\0', "algorithm",
         "Algorithm for SA construction (also used for FM; see Memory Requirements below!).",
-        seqan3::option_spec::ADVANCED,
+        seqan3::option_spec::advanced,
         seqan3::value_list_validator<std::string>{"default"});
 
 #if 0 // re-add if a parallel algorithm is added
     parser.add_option(options.threads, 't', "threads",
-        "Number of threads to run concurrently (ignored if a == skew7ext).", seqan3::option_spec::ADVANCED,
+        "Number of threads to run concurrently (ignored if a == skew7ext).", seqan3::option_spec::advanced,
         seqan3::arithmetic_range_validator{1, 1000});
 #endif
 
     parser.add_option(options.tmpdir,'\0', "tmp-dir", "temporary directory used by skew, defaults to working directory.",
-        seqan3::option_spec::ADVANCED, seqan3::output_directory_validator());
+        seqan3::option_spec::advanced, seqan3::output_directory_validator());
 
     parser.add_section("Remarks");
     parser.add_line("Please see the wiki (<https://github.com/seqan/lambda/wiki>) for more information on which indexes"
@@ -220,7 +220,7 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
 
     if (std::filesystem::exists(options.indexFilePath))
     {
-        throw seqan3::parser_invalid_argument("ERROR: An output file already exists at " +
+        throw seqan3::argument_parser_error("ERROR: An output file already exists at " +
                                               options.indexFilePath.string() +
                                               "\n       Remove it, or choose a different location.\n");
     }
@@ -229,7 +229,7 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
     {
         if (!options.hasSTaxIds)
         {
-            throw seqan3::parser_invalid_argument("ERROR: There is no point in including a taxonomic tree in the index, if\n"
+            throw seqan3::argument_parser_error("ERROR: There is no point in including a taxonomic tree in the index, if\n"
                                                   "       you don't also include taxonomic IDs for your sequences.\n");
         }
         //TODO check existance of directory
