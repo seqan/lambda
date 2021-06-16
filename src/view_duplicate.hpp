@@ -32,7 +32,7 @@ struct duplicate_fn
     template <std::ranges::range urng_t>
     constexpr auto operator()(urng_t && urange) const
     {
-        static_assert(seqan3::dimension_v<urng_t> == 2,
+        static_assert(seqan3::range_dimension_v<urng_t> == 2,
                       "This adaptor only handles range-of-range (two dimensions) as input.");
         static_assert(std::ranges::viewable_range<urng_t>,
                       "The range parameter to views::duplicate cannot be a temporary of a non-view range.");

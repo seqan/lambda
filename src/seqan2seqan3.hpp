@@ -55,10 +55,10 @@ template <typename t>
 inline constexpr bool is_new_range = false;
 template <typename char_t, typename traits_t>
 inline constexpr bool is_new_range<std::basic_string_view<char_t, traits_t>> = true;
-template <typename t, auto j>
+template <typename t, size_t j>
 inline constexpr bool is_new_range<std::span<t, j>> = true;
 template <typename t>
-inline constexpr bool is_new_range<std::span<t, -1>> = true;
+inline constexpr bool is_new_range<std::span<t, std::dynamic_extent>> = true;
 template <typename ...ts>
 inline constexpr bool is_new_range<ranges::transform_view<ts...>> = true;
 template <typename ...ts>

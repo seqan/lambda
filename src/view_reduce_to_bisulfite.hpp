@@ -64,12 +64,12 @@ public:
             "The range parameter to views::to_bisulfite_semialphabet must model std::ranges::sized_range.");
         static_assert(std::ranges::random_access_range<urng_t>,
             "The range parameter to views::to_bisulfite_semialphabet must model std::ranges::random_access_range.");
-        static_assert(std::is_same_v<std::remove_const_t<seqan3::innermost_value_type_t<urng_t>>, seqan3::dna4>,
+        static_assert(std::is_same_v<std::remove_const_t<seqan3::range_innermost_value_t<urng_t>>, seqan3::dna4>,
             "The range parameter to views::to_bisulfite_semialphabet must be over elements of seqan3::dna4.");
 
-        auto l = &func_fwd<std::ranges::all_view<urng_t> const &>;
+        auto l = &func_fwd<std::views::all_t<urng_t> const &>;
         if (direction == bsDirection::rev)
-            l = &func_rev<std::ranges::all_view<urng_t> const &>;
+            l = &func_rev<std::views::all_t<urng_t> const &>;
         return std::forward<urng_t>(urange) | views::pos_transform(l);
     }
 };
@@ -90,7 +90,7 @@ struct reduce_to_bisulfite_fn
     template <std::ranges::range urng_t>
     constexpr auto operator()(urng_t && urange) const
     {
-        static_assert(seqan3::dimension_v<urng_t> == 2,
+        static_assert(seqan3::range_dimension_v<urng_t> == 2,
                       "This adaptor only handles range-of-range (two dimensions) as input.");
         static_assert(std::ranges::viewable_range<urng_t>,
                       "The range parameter to views::reduce_to_bisulfite cannot be a temporary of a non-view range.");
@@ -107,7 +107,7 @@ struct reduce_to_bisulfite_fn
         static_assert(std::ranges::random_access_range<std::ranges::range_reference_t<urng_t>>,
                       "The inner range of the range parameter to views::reduce_to_bisulfite must model "
                       "std::ranges::random_access_range.");
-        static_assert(std::is_same_v<std::remove_const_t<seqan3::innermost_value_type_t<urng_t>>, seqan3::dna4>,
+        static_assert(std::is_same_v<std::remove_const_t<seqan3::range_innermost_value_t<urng_t>>, seqan3::dna4>,
                       "The range parameter to views::reduce_to_bisulfite must be over a range over elements of "
                       "seqan3::dna4.");
 

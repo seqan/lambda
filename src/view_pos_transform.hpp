@@ -138,7 +138,7 @@ public:
 
 // Template argument deduction for view_pos_transform.
 template <typename urng_t, typename pos_transform_t, typename size_transform_t>
-view_pos_transform(urng_t &&, pos_transform_t, size_transform_t) -> view_pos_transform<std::ranges::all_view<urng_t>, pos_transform_t, size_transform_t>;
+view_pos_transform(urng_t &&, pos_transform_t, size_transform_t) -> view_pos_transform<std::views::all_t<urng_t>, pos_transform_t, size_transform_t>;
 
 // Definition of the range adaptor object type for views::pos_transform.
 struct pos_transform_fn

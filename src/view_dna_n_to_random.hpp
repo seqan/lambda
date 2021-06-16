@@ -43,7 +43,7 @@ struct dna_n_to_random_fn
             "The range parameter to dna_n_to_random must model std::ranges::sized_range.");
         static_assert(std::ranges::random_access_range<urng_t>,
             "The range parameter to dna_n_to_random must model std::ranges::random_access_range.");
-        static_assert(std::same_as<seqan3::dna5, seqan3::innermost_value_type_t<urng_t>>,
+        static_assert(std::same_as<seqan3::dna5, seqan3::range_innermost_value_t<urng_t>>,
             "The range parameter to dna_n_to_random must be over elements of seqan3::dna5.");
 
         std::shared_ptr<std::mt19937> rng{new std::mt19937{0xDEADBEEF}};

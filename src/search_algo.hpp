@@ -40,7 +40,7 @@
 #include <seqan3/range/views/complement.hpp>
 #include <seqan3/range/views/translate_join.hpp>
 #include <seqan3/io/sequence_file/input.hpp>
-#include <seqan3/search/algorithm/search.hpp>
+#include <seqan3/search/search.hpp>
 #include <seqan3/alphabet/aminoacid/aa27.hpp>
 
 #include "bisulfite_scoring.hpp"
@@ -473,22 +473,24 @@ seedLooksPromising(LocalDataHolder<TGlobalHolder> const & lH,
     return false;
 }
 
-/*** THIS ACCESSES seqan3::detail:: IT SHOULD BE REPLACED WITH OFFICIAL INTERFACE ONCE OPTIMISED ***/
 template <typename TGlobalHolder, typename TSeed>
 inline void
 search_impl(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
 {
-    seqan3::detail::search_param max_error{static_cast<uint8_t>(lH.options.maxSeedDist), // total
-                                           static_cast<uint8_t>(lH.options.maxSeedDist), // substitutions
-                                           0,                                            // insertions
-                                           0};                                           // deletions
+    namespace sc = seqan3::search_cfg;
 
-    auto delegate = [&lH] (auto const & it)
-    {
-        lH.cursor_buffer.push_back(it);
-    };
+    seqan3::configuration cfg = sc::hit_all{}
+                              | sc::max_error_total{sc::error_count{static_cast<uint8_t>(lH.options.maxSeedDist)}}
+                              | sc::max_error_substitution{sc::error_count{static_cast<uint8_t>(lH.options.maxSeedDist)}}
+                              | sc::max_error_insertion{sc::error_count{0}}
+                              | sc::max_error_deletion{sc::error_count{0}}
+                              | sc::output_index_cursor{}
+                              | sc::on_result{[&lH] (auto && result)
+                                {
+                                    lH.cursor_buffer.push_back(result.index_cursor());
+                                }};
 
-    seqan3::detail::search_algo<false>(lH.gH.indexFile.index, seed, max_error, delegate);
+    seqan3::search(seed, lH.gH.indexFile.index, cfg);
 }
 
 template <typename TGlobalHolder>

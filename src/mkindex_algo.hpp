@@ -635,7 +635,7 @@ template <bool is_bi,
 auto generateIndex(TStringSet                       & seqs,
                    LambdaIndexerOptions       const & options)
 {
-    using TRedAlph       = seqan3::innermost_value_type_t<TStringSet>;
+    using TRedAlph       = seqan3::range_innermost_value_t<TStringSet>;
 
     constexpr auto is_collection = seqan3::text_layout::collection;
     using TSpec = IndexSpec<seqan3::alphabet_size<TRedAlph>>;

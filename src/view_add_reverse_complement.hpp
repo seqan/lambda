@@ -51,12 +51,12 @@ public:
             "The range parameter to views::reverse_complement_or_not must model std::ranges::sized_range.");
         static_assert(std::ranges::random_access_range<urng_t>,
             "The range parameter to views::reverse_complement_or_not must model std::ranges::random_access_range.");
-        static_assert(seqan3::nucleotide_alphabet<seqan3::innermost_value_type_t<urng_t>>,
+        static_assert(seqan3::nucleotide_alphabet<seqan3::range_innermost_value_t<urng_t>>,
             "The range parameter to views::reverse_complement_or_not must be over elements of seqan3::nucleotide_alphabet.");
 
-        auto l = &func_nop<std::ranges::all_view<urng_t> const &>;
+        auto l = &func_nop<std::views::all_t<urng_t> const &>;
         if (transform)
-            l = &func_revcomp<std::ranges::all_view<urng_t> const &>;
+            l = &func_revcomp<std::views::all_t<urng_t> const &>;
         return std::forward<urng_t>(urange) | views::pos_transform(l);
     }
 };
@@ -76,7 +76,7 @@ struct add_reverse_complement_fn
     template <std::ranges::range urng_t>
     constexpr auto operator()(urng_t && urange) const
     {
-        static_assert(seqan3::dimension_v<urng_t> == 2,
+        static_assert(seqan3::range_dimension_v<urng_t> == 2,
                       "This adaptor only handles range-of-range (two dimensions) as input.");
         static_assert(std::ranges::viewable_range<urng_t>,
                       "The range parameter to views::add_reverse_complement cannot be a temporary of a non-view range.");
@@ -93,7 +93,7 @@ struct add_reverse_complement_fn
         static_assert(std::ranges::random_access_range<std::ranges::range_reference_t<urng_t>>,
                       "The inner range of the range parameter to views::add_reverse_complement must model "
                       "std::ranges::random_access_range.");
-        static_assert(seqan3::nucleotide_alphabet<seqan3::innermost_value_type_t<urng_t>>,
+        static_assert(seqan3::nucleotide_alphabet<seqan3::range_innermost_value_t<urng_t>>,
                       "The range parameter to views::add_reverse_complement must be over elements of seqan3::nucleotide_alphabet.");
 
         return std::forward<urng_t>(urange) | views::pos_transform([] (auto && urange, size_t pos)
