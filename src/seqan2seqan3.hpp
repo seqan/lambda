@@ -32,7 +32,7 @@ namespace seqan
 {
 
 template <std::ranges::input_range T>
-    requires !std::is_lvalue_reference_v<seqan3::reference_t<T>>
+    requires (!std::is_lvalue_reference_v<seqan3::reference_t<T>>)
 inline void const * getObjectId(T const & me)
 {
 //     return 0;
@@ -63,6 +63,18 @@ inline seqan3::gapped<alph_t> gapValueImpl(seqan3::gapped<alph_t> const *)
 namespace seqan
 {
 
+// cpp20 span does not define const_iterator
+#if defined(__cpp_lib_span)
+template <typename TContainer>
+    requires (!requires { typename TContainer::const_iterator; })
+struct Value<Iter<TContainer const, StdIteratorAdaptor> >
+{
+    typedef TContainer const TContainer_;
+    typedef typename TContainer::iterator const TIterator_;
+    typedef typename std::iterator_traits<TIterator_>::value_type Type;
+};
+#endif
+
 template <typename t>
 inline constexpr bool is_new_range = false;
 template <typename char_t, typename traits_t>
@@ -72,9 +84,9 @@ inline constexpr bool is_new_range<std::span<t, j>> = true;
 template <typename t>
 inline constexpr bool is_new_range<std::span<t, std::dynamic_extent>> = true;
 template <typename ...ts>
-inline constexpr bool is_new_range<ranges::transform_view<ts...>> = true;
+inline constexpr bool is_new_range<std::ranges::transform_view<ts...>> = true;
 template <typename ...ts>
-inline constexpr bool is_new_range<ranges::subrange<ts...>> = true;
+inline constexpr bool is_new_range<std::ranges::subrange<ts...>> = true;
 template <typename ...ts>
 inline constexpr bool is_new_range<seqan3::detail::view_translate_join<ts...>> = true;
 template <typename ...ts>
@@ -253,7 +265,7 @@ void copy_range(TSource && in, String<TVal, TSpec> & out)
 // –---------------------------------------------------------------------------
 
 template <typename stream_t, seqan3::alphabet alph_t>
-    requires !std::integral<alph_t>
+    requires (!std::integral<alph_t>)
 inline void write(stream_t & s, alph_t const alph)
 {
     write(s, seqan3::to_char(alph));
@@ -262,14 +274,14 @@ inline void write(stream_t & s, alph_t const alph)
 
 
 template <typename alph_t>
-    requires !std::integral<alph_t> && requires (alph_t & a) { { seqan3::to_char(a) }; }
+    requires (!std::integral<alph_t> && requires (alph_t & a) { { seqan3::to_char(a) }; })
 inline bool operator==(alph_t alph, char c)
 {
     return seqan3::to_char(alph) == c;
 }
 
 template <typename alph_t>
-    requires !std::integral<alph_t> && requires (alph_t & a) { { seqan3::to_char(a) }; }
+    requires (!std::integral<alph_t> && requires (alph_t & a) { { seqan3::to_char(a) }; })
 inline bool operator==(char c, alph_t alph)
 {
     return seqan3::to_char(alph) == c;
@@ -321,21 +333,21 @@ inline auto score(Score<TValue, TSpec> const & scheme,
 }
 
 template <seqan3::alphabet alph_t>
-    requires !std::integral<alph_t>
+    requires (!std::integral<alph_t>)
 char convertImpl(seqan::Convert<char, alph_t>, alph_t const & a)
 {
     return seqan3::to_char(a);
 }
 
 template <std::integral int_t, seqan3::alphabet alph_t>
-    requires !std::integral<alph_t>
+    requires (!std::integral<alph_t>)
 int_t convertImpl(seqan::Convert<int_t, alph_t>, alph_t const & a)
 {
     return seqan3::to_rank(a);
 }
 
 template <seqan3::alphabet alph_t>
-    requires !std::integral<alph_t>
+    requires (!std::integral<alph_t>)
 alph_t convertImpl(seqan::Convert<alph_t, seqan3::gapped<alph_t>>, seqan3::gapped<alph_t> const & a)
 {
 //     return a.template convert_unsafely_to<seqan3::gap>();
@@ -343,7 +355,7 @@ alph_t convertImpl(seqan::Convert<alph_t, seqan3::gapped<alph_t>>, seqan3::gappe
 }
 
 template <seqan3::alphabet alph_t>
-    requires !std::integral<alph_t>
+    requires (!std::integral<alph_t>)
 struct GappedValueType<alph_t>
 {
     using Type = seqan3::gapped<alph_t>;
