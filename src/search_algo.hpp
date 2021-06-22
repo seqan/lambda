@@ -37,10 +37,10 @@
 #include <seqan/align_extend.h>
 
 #include <seqan3/core/debug_stream.hpp>
-#include <seqan3/range/views/complement.hpp>
-#include <seqan3/range/views/translate_join.hpp>
+#include <seqan3/alphabet/views/complement.hpp>
+#include <seqan3/alphabet/views/translate_join.hpp>
 #include <seqan3/io/sequence_file/input.hpp>
-#include <seqan3/search/algorithm/search.hpp>
+#include <seqan3/search/search.hpp>
 #include <seqan3/alphabet/aminoacid/aa27.hpp>
 
 #include "bisulfite_scoring.hpp"
@@ -234,15 +234,15 @@ prepareScoring(GlobalDataHolder<c_dbIndexType, c_origSbjAlph, c_transAlph, c_red
         {
             case 45:
                 seqan2_matrix_id = seqan::AminoAcidScoreMatrixID::BLOSUM45;
-                seqan3_matrix_id = seqan3::aminoacid_similarity_matrix::BLOSUM45;
+                seqan3_matrix_id = seqan3::aminoacid_similarity_matrix::blosum45;
                 break;
             case 62:
                 seqan2_matrix_id = seqan::AminoAcidScoreMatrixID::BLOSUM62;
-                seqan3_matrix_id = seqan3::aminoacid_similarity_matrix::BLOSUM62;
+                seqan3_matrix_id = seqan3::aminoacid_similarity_matrix::blosum62;
                 break;
             case 80:
                 seqan2_matrix_id = seqan::AminoAcidScoreMatrixID::BLOSUM80;
-                seqan3_matrix_id = seqan3::aminoacid_similarity_matrix::BLOSUM80;
+                seqan3_matrix_id = seqan3::aminoacid_similarity_matrix::blosum80;
                 break;
             default:
                 break;
@@ -272,10 +272,6 @@ prepareScoring(GlobalDataHolder<c_dbIndexType, c_origSbjAlph, c_transAlph, c_red
 
     if (!seqan::isValid(seqan::context(globalHolder.outfileBlastTab).scoringScheme))
         throw std::runtime_error{"Could not compute Karlin-Altschul-Values for Scoring Scheme.\n"};
-
-    // seqan3
-    globalHolder.gapScheme.set_affine(seqan3::gap_score{options.gapExtend},
-                                      seqan3::gap_open_score{options.gapOpen});
 }
 
 // --------------------------------------------------------------------------
@@ -473,22 +469,24 @@ seedLooksPromising(LocalDataHolder<TGlobalHolder> const & lH,
     return false;
 }
 
-/*** THIS ACCESSES seqan3::detail:: IT SHOULD BE REPLACED WITH OFFICIAL INTERFACE ONCE OPTIMISED ***/
 template <typename TGlobalHolder, typename TSeed>
 inline void
 search_impl(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
 {
-    seqan3::detail::search_param max_error{static_cast<uint8_t>(lH.options.maxSeedDist), // total
-                                           static_cast<uint8_t>(lH.options.maxSeedDist), // substitutions
-                                           0,                                            // insertions
-                                           0};                                           // deletions
+    namespace sc = seqan3::search_cfg;
 
-    auto delegate = [&lH] (auto const & it)
-    {
-        lH.cursor_buffer.push_back(it);
-    };
+    seqan3::configuration cfg = sc::hit_all{}
+                              | sc::max_error_total{sc::error_count{static_cast<uint8_t>(lH.options.maxSeedDist)}}
+                              | sc::max_error_substitution{sc::error_count{static_cast<uint8_t>(lH.options.maxSeedDist)}}
+                              | sc::max_error_insertion{sc::error_count{0}}
+                              | sc::max_error_deletion{sc::error_count{0}}
+                              | sc::output_index_cursor{}
+                              | sc::on_result{[&lH] (auto && result)
+                                {
+                                    lH.cursor_buffer.push_back(result.index_cursor());
+                                }};
 
-    seqan3::detail::search_algo<false>(lH.gH.indexFile.index, seed, max_error, delegate);
+    seqan3::search(seed, lH.gH.indexFile.index, cfg);
 }
 
 template <typename TGlobalHolder>

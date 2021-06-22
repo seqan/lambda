@@ -28,12 +28,12 @@
 #include <seqan3/alphabet/aminoacid/aa10murphy.hpp>
 #include <seqan3/alphabet/aminoacid/aa10li.hpp>
 #include <seqan3/alphabet/aminoacid/translation_genetic_code.hpp>
+#include <seqan3/alphabet/views/translate_join.hpp>
 #include <seqan3/search/fm_index/fm_index.hpp>
 #include <seqan3/search/fm_index/bi_fm_index.hpp>
-#include <seqan3/range/views/convert.hpp>
-#include <seqan3/range/views/deep.hpp>
-#include <seqan3/range/views/translate_join.hpp>
-#include <seqan3/range/views/type_reduce.hpp>
+#include <seqan3/utility/views/convert.hpp>
+#include <seqan3/utility/views/deep.hpp>
+#include <seqan3/utility/views/type_reduce.hpp>
 
 #include "view_add_reverse_complement.hpp"
 #include "view_dna_n_to_random.hpp"

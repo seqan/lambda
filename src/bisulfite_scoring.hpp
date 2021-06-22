@@ -28,7 +28,6 @@
 
 #include <seqan3/alignment/scoring/scoring_scheme_base.hpp>
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
-#include <seqan3/range/shortcuts.hpp>
 #include <seqan3/std/algorithm>
 
 enum class bsDirection

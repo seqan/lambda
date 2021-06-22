@@ -21,9 +21,10 @@
 
 #pragma once
 
-#include <seqan3/core/type_traits/range.hpp>
-#include <seqan3/range/concept.hpp>
 #include <seqan3/std/ranges>
+
+#include <seqan3/core/range/type_traits.hpp>
+#include <seqan3/utility/range/concept.hpp>
 #include "view_pos_transform.hpp"
 
 // Definition of the range adaptor object type for views::duplicate.
@@ -32,7 +33,7 @@ struct duplicate_fn
     template <std::ranges::range urng_t>
     constexpr auto operator()(urng_t && urange) const
     {
-        static_assert(seqan3::dimension_v<urng_t> == 2,
+        static_assert(seqan3::range_dimension_v<urng_t> == 2,
                       "This adaptor only handles range-of-range (two dimensions) as input.");
         static_assert(std::ranges::viewable_range<urng_t>,
                       "The range parameter to views::duplicate cannot be a temporary of a non-view range.");
