@@ -30,7 +30,7 @@
 
 // The return type of views::pos_transform
 template <std::ranges::view urng_t, typename pos_transform_t, typename size_transform_t>
-class view_pos_transform : public std::ranges::view_interface<view_pos_transform<urng_t, pos_transform_t, size_transform_t>> //public ranges::view_base
+class view_pos_transform : public std::ranges::view_base
 {
 
 private:

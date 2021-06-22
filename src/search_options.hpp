@@ -68,7 +68,7 @@ struct LambdaOptions : public SharedOptions
     bool            versionInformationToOutputFile = true;
     size_t          maximumQueryBlockSize = 10;
 
-    bool            adaptiveSeeding;
+    bool            adaptiveSeeding = true;
 
     unsigned        seedLength  = 0;
     unsigned        maxSeedDist = 1;
@@ -253,11 +253,6 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 #endif
 
     parser.add_section("Seeding / Filtration");
-
-    if (options.nucleotide_mode)
-        options.adaptiveSeeding = false;
-    else
-        options.adaptiveSeeding = true;
 
     parser.add_option(options.adaptiveSeeding, '\0', "adaptive-seeding",
         "Grow the seed if it has too many hits (low complexity filter).", seqan3::option_spec::advanced);
