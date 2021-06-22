@@ -93,6 +93,8 @@ template <typename ...ts>
 inline constexpr bool is_new_range<seqan3::detail::view_translate_single<ts...>> = true;
 template <typename t>
 inline constexpr bool is_new_range<std::ranges::take_view<t>> = true;
+template <typename t, bool b1, bool b2>
+inline constexpr bool is_new_range<seqan3::detail::view_take<t, b1, b2>> = true;
 
 template <typename t>
 SEQAN3_CONCEPT NonSeqAn2Range = is_new_range<seqan3::remove_cvref_t<t>>;
