@@ -11,7 +11,6 @@
 #include <seqan3/alphabet/nucleotide/dna3bs.hpp>
 #include <seqan3/alphabet/views/to_rank.hpp>
 #include <seqan3/alphabet/views/translate_join.hpp>
-#include <seqan3/utility/type_traits/pre.hpp>
 
 // seqan3 does not alias ranges::cpp20::{take,transform}_view -> std::ranges::{take,transform}_view when using range-v3 implementation
 #if !defined(__cpp_lib_ranges)
@@ -32,7 +31,7 @@ namespace seqan
 {
 
 template <std::ranges::input_range T>
-    requires (!std::is_lvalue_reference_v<seqan3::reference_t<T>>)
+    requires (!std::is_lvalue_reference_v<std::ranges::range_reference_t<T>>)
 inline void const * getObjectId(T const & me)
 {
 //     return 0;
@@ -93,41 +92,39 @@ template <typename ...ts>
 inline constexpr bool is_new_range<seqan3::detail::view_translate_single<ts...>> = true;
 template <typename t>
 inline constexpr bool is_new_range<std::ranges::take_view<t>> = true;
-template <typename t, bool b1, bool b2>
-inline constexpr bool is_new_range<seqan3::detail::view_take<t, b1, b2>> = true;
 
 template <typename t>
-SEQAN3_CONCEPT NonSeqAn2Range = is_new_range<seqan3::remove_cvref_t<t>>;
+SEQAN3_CONCEPT NonSeqAn2Range = is_new_range<std::remove_cvref_t<t>>;
 
 template <NonSeqAn2Range T>
 struct Value<T>
 {
-    using Type = seqan3::value_type_t<T>;
+    using Type = std::ranges::range_value_t<T>;
 };
 template <NonSeqAn2Range T>
 struct Value<T const>
 {
-    using Type = seqan3::value_type_t<T const>;
+    using Type = std::ranges::range_value_t<T const>;
 };
 template <NonSeqAn2Range T>
 struct Reference<T>
 {
-    using Type = seqan3::reference_t<T>;
+    using Type = std::ranges::range_reference_t<T>;
 };
 template <NonSeqAn2Range T>
 struct Reference<T const>
 {
-    using Type = seqan3::reference_t<T const>;
+    using Type = std::ranges::range_reference_t<T const>;
 };
 template <NonSeqAn2Range T>
 struct GetValue<T>
 {
-    using Type = seqan3::reference_t<T const>;
+    using Type = std::ranges::range_reference_t<T const>;
 };
 template <NonSeqAn2Range T>
 struct GetValue<T const>
 {
-    using Type = seqan3::reference_t<T const>;
+    using Type = std::ranges::range_reference_t<T const>;
 };
 template <NonSeqAn2Range T>
 struct Position<T>
@@ -188,12 +185,12 @@ struct StdContainerIterator<T const>
 template <NonSeqAn2Range T>
 struct Reference<Iter<T, StdIteratorAdaptor> >
 {
-    using Type = seqan3::reference_t<T>;
+    using Type = std::ranges::range_reference_t<T>;
 };
 template <NonSeqAn2Range T>
 struct Reference<Iter<T const, StdIteratorAdaptor> >
 {
-    using Type = seqan3::reference_t<T const>;
+    using Type = std::ranges::range_reference_t<T const>;
 };
 template <NonSeqAn2Range T>
 struct IsContiguous<T> :
@@ -210,13 +207,13 @@ SEQAN_CONCEPT_IMPL((T), (StlContainerConcept));
 template <NonSeqAn2Range TContainer>
 struct GetValue<Iter<TContainer, StdIteratorAdaptor> >
 {
-    using Type = seqan3::reference_t<TContainer>;
+    using Type = std::ranges::range_reference_t<TContainer>;
 };
 
 template <NonSeqAn2Range TContainer>
 struct GetValue<Iter<TContainer const, StdIteratorAdaptor> >
 {
-    using Type = seqan3::reference_t<TContainer const>;
+    using Type = std::ranges::range_reference_t<TContainer const>;
 };
 
 // –---------------------------------------------------------------------------

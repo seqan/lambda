@@ -34,7 +34,6 @@
 #include <unistd.h>
 
 #include <seqan3/io/sequence_file/input.hpp>
-#include <seqan3/range/views/to_upper.hpp>
 
 // ============================================================================
 // Functions for translation and retranslation
