@@ -549,7 +549,6 @@ search(LocalDataHolder<TGlobalHolder> & lH)
                         cursor.extend_right(lH.redQrySeqs[i][seedBegin + seedLength]);
                         ++seedLength;
                     }
-
                 }
 
                 // locate hits

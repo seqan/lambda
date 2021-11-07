@@ -42,9 +42,9 @@ private:
     // Associated types iterator.
     using reference         = decltype(pos_transform(urange, 0));
     using const_reference   = decltype(pos_transform(std::as_const(urange), 0));
-    using value_type        = seqan3::remove_cvref_t<reference>;
-    using size_type         = seqan3::size_type_t<urng_t>;
-    using difference_type   = seqan3::difference_type_t<urng_t>;
+    using value_type        = std::remove_cvref_t<reference>;
+    using size_type         = std::ranges::range_size_t<urng_t>;
+    using difference_type   = std::ranges::range_difference_t<urng_t>;
     using iterator          = seqan3::detail::random_access_iterator<view_pos_transform>;
     using const_iterator    = seqan3::detail::random_access_iterator<view_pos_transform const>;
 
@@ -78,7 +78,7 @@ public:
 
     // Construct from another range
     template <typename rng_t>
-        requires (!std::same_as<seqan3::remove_cvref_t<rng_t>, view_pos_transform> &&
+        requires (!std::same_as<std::remove_cvref_t<rng_t>, view_pos_transform> &&
                   (std::ranges::viewable_range<rng_t> &&
                   std::constructible_from<urng_t, ranges::ref_view<std::remove_reference_t<rng_t>>>))
     view_pos_transform(rng_t && _urange, pos_transform_t _pos_transform, size_transform_t _size_transform)
