@@ -32,22 +32,6 @@ jobs:
             cc: "gcc-10"
             build_type: Release
 
-          - name: "gcc9 (c++2a)"
-            cxx: "g++-9"
-            cc: "gcc-9"
-            build_type: Release
-            cxx_flags: "-std=c++2a"
-
-          - name: "gcc8"
-            cxx: "g++-8"
-            cc: "gcc-8"
-            build_type: Release
-
-          - name: "gcc7"
-            cxx: "g++-7"
-            cc: "gcc-7"
-            build_type: Release
-
     steps:
       - name: Checkout
         uses: actions/checkout@v2
