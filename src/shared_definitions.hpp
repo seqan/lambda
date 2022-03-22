@@ -28,6 +28,7 @@
 #include <seqan3/alphabet/aminoacid/aa10murphy.hpp>
 #include <seqan3/alphabet/aminoacid/aa10li.hpp>
 #include <seqan3/alphabet/aminoacid/translation_genetic_code.hpp>
+#include <seqan3/alphabet/container/concatenated_sequences.hpp>
 #include <seqan3/alphabet/views/translate_join.hpp>
 #include <seqan3/search/fm_index/fm_index.hpp>
 #include <seqan3/search/fm_index/bi_fm_index.hpp>
@@ -247,10 +248,10 @@ using IndexSpec = seqan3::default_sdsl_index_type;
 //                                 sdsl::isa_sampling<>,
 //                                 sdsl::plain_byte_alphabet>;
 
-/* epr, in experimental branch */
+// /* epr, in experimental branch */
 // template <size_t alph_size>
 // using IndexSpec = sdsl::csa_wt<sdsl::wt_epr<alph_size + 2>, // +1 for sentinels, +1 for collection
-//                                 16,
+//                                 2,
 //                                 1'0000'000,
 //                                 sdsl::sa_order_sa_sampling<>,
 //                                 sdsl::isa_sampling<>,
@@ -261,7 +262,7 @@ using IndexSpec = seqan3::default_sdsl_index_type;
 // ==========================================================================
 
 template <typename TString>
-using TCDStringSet = std::vector<TString>; //TODO seqan3::concatenated_sequences
+using TCDStringSet = seqan3::concatenated_sequences<TString>; //TODO seqan3::concatenated_sequences
 
 // Translated subject sequences
 // Case: DNA to amino acid translation
@@ -385,11 +386,11 @@ struct index_file
 
     TCDStringSet<std::string>                                   ids;
     TCDStringSet<std::vector<_alphabetEnumToType<origAlph>>>    seqs;
-    std::vector<std::vector<uint32_t>>                          sTaxIds; //TODO double check int-width
+    TCDStringSet<std::vector<uint32_t>>                         sTaxIds; //TODO double check int-width
 
     std::vector<uint32_t>                                       taxonParentIDs;
     std::vector<uint8_t>                                        taxonHeights;
-    std::vector<std::string>                                    taxonNames; //TODO TCDStringSet?
+    TCDStringSet<std::string>                                   taxonNames;
 
     using TRedAlph      = _alphabetEnumToType<redAlph>;
     using TIndexSpec    = IndexSpec<seqan3::alphabet_size<TRedAlph>>;

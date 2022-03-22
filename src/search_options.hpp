@@ -32,7 +32,7 @@
 #include <seqan/blast.h>
 
 #include <seqan3/argument_parser/all.hpp>
-#include <seqan3/std/filesystem>
+#include <filesystem>
 
 // ==========================================================================
 // Forwards
@@ -68,6 +68,7 @@ struct LambdaOptions : public SharedOptions
     bool            versionInformationToOutputFile = true;
     size_t          maximumQueryBlockSize = 10;
 
+    bool            seedHalfExact = true;
     bool            adaptiveSeeding = true;
 
     unsigned        seedLength  = 0;
@@ -245,11 +246,11 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 #ifdef _OPENMP
     parser.add_option(options.threads, 't', "threads", "Number of threads to run concurrently.",
         seqan3::option_spec::advanced,
-        seqan3::arithmetic_range_validator{1, 1000});
+        seqan3::arithmetic_range_validator{2, 1000});
 #else
     parser.add_option(options.threads, 't', "threads",
         "LAMBDA BUILT WITHOUT OPENMP; setting this option has no effect.", seqan3::option_spec::advanced,
-        seqan3::arithmetic_range_validator{1, 1});
+        seqan3::arithmetic_range_validator{2, 2});
 #endif
 
     parser.add_section("Seeding / Filtration");
@@ -257,15 +258,18 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     parser.add_option(options.adaptiveSeeding, '\0', "adaptive-seeding",
         "Grow the seed if it has too many hits (low complexity filter).", seqan3::option_spec::advanced);
 
+   parser.add_option(options.seedHalfExact, '\0', "seed-half-exact",
+        "Allow errors only in second half of seed.", seqan3::option_spec::advanced);
+
     unsigned defaultSeedLength = options.nucleotide_mode ? 14 : 10;
 
     options.seedLength = defaultSeedLength;
     parser.add_option(options.seedLength, '\0', "seed-length", "Length of the seeds.", seqan3::option_spec::advanced,
         seqan3::arithmetic_range_validator{3, 50});
 
-    options.seedOffset = options.seedLength;
+    options.seedOffset = options.seedLength / 2;
     parser.add_option(options.seedOffset, '\0', "seed-offset", "Offset for seeding. "
-        "If you set 'seed-length', please consider setting this option to the same value.",
+        "If you set 'seed-length', please consider setting this option to half of that.",
         seqan3::option_spec::standard, seqan3::arithmetic_range_validator{1, 50});
 
     parser.add_option(options.maxSeedDist, '\0', "seed-delta",

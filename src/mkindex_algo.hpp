@@ -26,8 +26,8 @@
 #include <seqan3/utility/views/convert.hpp>
 #include <seqan3/alphabet/views/translate.hpp>
 #include <seqan3/alphabet/views/translate_join.hpp>
-#include <seqan3/std/charconv>
-#include <seqan3/std/concepts>
+#include <charconv>
+#include <concepts>
 
 #include "mkindex_misc.hpp"
 // #include "mkindex_saca.hpp"

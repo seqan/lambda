@@ -1,7 +1,7 @@
 #pragma once
 
-#include <seqan3/std/ranges>
-#include <seqan3/std/span>
+#include <ranges>
+#include <span>
 
 #include <seqan3/alphabet/aminoacid/concept.hpp>
 #include <seqan3/alphabet/concept.hpp>
@@ -94,7 +94,7 @@ template <typename t>
 inline constexpr bool is_new_range<std::ranges::take_view<t>> = true;
 
 template <typename t>
-SEQAN3_CONCEPT NonSeqAn2Range = is_new_range<std::remove_cvref_t<t>>;
+concept NonSeqAn2Range = is_new_range<std::remove_cvref_t<t>>;
 
 template <NonSeqAn2Range T>
 struct Value<T>

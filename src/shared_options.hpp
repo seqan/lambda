@@ -27,7 +27,7 @@
 #include <unistd.h>
 
 #include <seqan3/argument_parser/all.hpp>
-#include <seqan3/std/filesystem>
+#include <filesystem>
 
 #include "shared_definitions.hpp"
 

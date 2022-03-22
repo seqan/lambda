@@ -80,7 +80,7 @@ int searchMain(int const argc, char const ** argv)
     parseCommandLine(options, argc, argv);
 
 #ifdef _OPENMP
-    omp_set_num_threads(options.threads);
+    omp_set_num_threads(options.threads - 1);
 #else
     options.threads = 1;
 #endif
