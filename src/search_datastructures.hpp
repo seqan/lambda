@@ -374,7 +374,30 @@ public:
     /* index */
     using TIndexFile    = index_file<c_dbIndexType, c_origSbjAlph, c_redAlph>;
     using TIndex        = typename TIndexFile::TIndex;
-    using TIndexCursor  = typename TIndex::cursor_type;
+    //!TODO !FIXME fmindex_collection supports multiple cursor per index
+    using TIndexCursor = decltype([]()
+    {
+        if constexpr (c_dbIndexType == DbIndexType::FM_INDEX
+                      || c_dbIndexType == DbIndexType::BI_FM_INDEX)
+        {
+            return std::type_identity<typename TIndex::cursor_type>{};
+        }
+        else if constexpr (c_dbIndexType == DbIndexType::FM_INDEX_SGG)
+        {
+            return std::type_identity<fmindex_collection::ReverseFMIndexCursor<TIndex>>{};
+        }
+        else if constexpr (c_dbIndexType == DbIndexType::BI_FM_INDEX_SGG)
+        {
+            return std::type_identity<fmindex_collection::BiFMIndexCursor<TIndex>>{};
+        }
+        else
+        {
+            []<bool flag = false>()
+            {
+                static_assert(flag, "unsupported DbIndexType");
+            };
+        }
+    }())::type;
 
     /* output file */
     // SeqAn3 scoring scheme type for evaluation of seeds after search

@@ -109,6 +109,8 @@ void argConv0(LambdaIndexerOptions & options)
     {
         case DbIndexType::FM_INDEX:         return argConv1<DbIndexType::FM_INDEX>(options);
         case DbIndexType::BI_FM_INDEX:      return argConv1<DbIndexType::BI_FM_INDEX>(options);
+        case DbIndexType::FM_INDEX_SGG:     return argConv1<DbIndexType::FM_INDEX_SGG>(options);
+        case DbIndexType::BI_FM_INDEX_SGG:  return argConv1<DbIndexType::BI_FM_INDEX_SGG>(options);
         default:                            throw 42;
     }
 }
@@ -206,7 +208,7 @@ void realMain(LambdaIndexerOptions     const & options)
     auto transSbjSeqs = f.seqs | sbjTransView<c_origAlph, c_transAlph, c_redAlph>;
     auto redSbjSeqs = transSbjSeqs | redView<c_transAlph, c_redAlph>;
 
-    f.index = generateIndex<c_dbIndexType == DbIndexType::BI_FM_INDEX>(redSbjSeqs, options);
+    f.index = generateIndex<c_dbIndexType>(redSbjSeqs, options);
 
     myPrint(options, 1, "Writing Index to disk...");
     double s = sysTime();

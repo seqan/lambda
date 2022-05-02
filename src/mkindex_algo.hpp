@@ -34,6 +34,9 @@
 #include "shared_misc.hpp"
 #include "shared_options.hpp"
 
+#include <fmindex-collection/fmindex-collection.h>
+#include <fmindex-collection/occtable/all.h>
+
 // --------------------------------------------------------------------------
 // Function loadSubj()
 // --------------------------------------------------------------------------
@@ -630,34 +633,87 @@ auto parseAndStoreTaxTree(std::vector<bool>          & taxIdIsPresent,
 }
 
 
-template <bool is_bi,
+template <DbIndexType index_t,
           typename TStringSet>
 auto generateIndex(TStringSet                       & seqs,
                    LambdaIndexerOptions       const & options)
 {
     using TRedAlph       = seqan3::range_innermost_value_t<TStringSet>;
 
-    constexpr auto is_collection = seqan3::text_layout::collection;
-    using TSpec = IndexSpec<seqan3::alphabet_size<TRedAlph>>;
-    using TIndex = std::conditional_t<is_bi,
-                                      seqan3::bi_fm_index<TRedAlph, is_collection, TSpec>,
-                                      seqan3::fm_index<TRedAlph, is_collection, TSpec>>;
+    using TIndex = decltype([]()
+    {
+        if constexpr (index_t == DbIndexType::FM_INDEX)
+        {
+            constexpr auto is_collection = seqan3::text_layout::collection;
+            using TSpec = IndexSpec<seqan3::alphabet_size<TRedAlph>>;
+            return std::type_identity<seqan3::fm_index<TRedAlph, is_collection, TSpec>>{};
+        }
+        else if constexpr (index_t == DbIndexType::BI_FM_INDEX)
+        {
+            constexpr auto is_collection = seqan3::text_layout::collection;
+            using TSpec = IndexSpec<seqan3::alphabet_size<TRedAlph>>;
+            return std::type_identity<seqan3::bi_fm_index<TRedAlph, is_collection, TSpec>>{};
+        }
+        else if constexpr (index_t == DbIndexType::FM_INDEX_SGG)
+        {
+            //!TODO which OccTable should we use?
+            using TOccTable = fmindex_collection::occtable::interleavedEPR32V2::OccTable<TRedAlph::alphabet_size+1>;
+            return std::type_identity<fmindex_collection::ReverseFMIndex<TOccTable>>{};
+        }
+        else if constexpr (index_t == DbIndexType::BI_FM_INDEX_SGG)
+        {
+            //!TODO which OccTable should we use?
+            using TOccTable = fmindex_collection::occtable::interleavedEPR32V2::OccTable<TRedAlph::alphabet_size+1>;
+            return std::type_identity<fmindex_collection::BiFMIndex<TOccTable>>{};
+        }
+        else
+        {
+            []<bool flag = false>()
+            {
+                static_assert(flag, "unsupported DbIndexType");
+            };
+        }
+    }())::type;
 
     myPrint(options, 1, "Generating Index...");
     double s = sysTime();
 
-    TIndex index;
+    TIndex index = [&]() {
+        if constexpr (index_t == DbIndexType::BI_FM_INDEX)
+        {
+            // WORKAROUND https://github.com/seqan/seqan3/pull/1519
+            std::vector<std::vector<TRedAlph>> tmp = seqs | seqan3::views::to<std::vector<std::vector<TRedAlph>>>;
+            return TIndex{tmp};
+        }
+        else if constexpr (index_t == DbIndexType::FM_INDEX)
+        {
+            return TIndex{seqs};
+        }
+        else if constexpr (index_t == DbIndexType::BI_FM_INDEX_SGG || index_t == DbIndexType::FM_INDEX_SGG)
+        {
+            //!TODO: needs better apporach (or do it inside the index?), the '0' is sentienal for inbetween and ending sequences
+            std::vector<std::vector<uint8_t>> tmp;
+            for (auto a : seqs | seqan3::views::to<std::vector<std::vector<TRedAlph>>>)
+            {
+                std::vector<uint8_t> v2;
+                for (auto b : a)
+                {
+                    v2.emplace_back(b.to_rank()+1);
+                }
+                tmp.emplace_back(std::move(v2));
+            }
+            return TIndex{tmp, 16};
 
-    if constexpr (is_bi)
-    {
-        // WORKAROUND https://github.com/seqan/seqan3/pull/1519
-        std::vector<std::vector<TRedAlph>> tmp = seqs | seqan3::views::to<std::vector<std::vector<TRedAlph>>>;
-        index = TIndex{tmp};
-    }
-    else
-    {
-        index = TIndex{seqs};
-    }
+        }
+        else
+        {
+            []<bool flag = false>()
+            {
+                static_assert(flag, "unsupported DbIndexType");
+            };
+
+        }
+    }();
 
     double e = sysTime() - s;
     myPrint(options, 1, " done.\n");

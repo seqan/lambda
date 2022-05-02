@@ -41,6 +41,9 @@
 #include "view_duplicate.hpp"
 #include "view_reduce_to_bisulfite.hpp"
 
+#include <fmindex-collection/fmindex-collection.h>
+#include <fmindex-collection/occtable/all.h>
+
 // ==========================================================================
 //  DbIndexType
 // ==========================================================================
@@ -48,7 +51,9 @@
 enum class DbIndexType : uint8_t
 {
     FM_INDEX,
-    BI_FM_INDEX
+    BI_FM_INDEX,
+    FM_INDEX_SGG, // !TODO fm index, written by SimonGG included in the fmindex_collection
+    BI_FM_INDEX_SGG, // !TODO fm index, written by SimonGG included in the fmindex_collection
 };
 
 inline std::string
@@ -56,8 +61,10 @@ _indexEnumToName(DbIndexType const t)
 {
     switch (t)
     {
-        case DbIndexType::FM_INDEX:      return "fm_index";
-        case DbIndexType::BI_FM_INDEX:   return "bi_fm_index";
+        case DbIndexType::FM_INDEX:        return "fm_index";
+        case DbIndexType::BI_FM_INDEX:     return "bi_fm_index";
+        case DbIndexType::FM_INDEX_SGG:    return "fm_index_sgg";
+        case DbIndexType::BI_FM_INDEX_SGG: return "bi_fm_index_sgg";
     }
 
     throw std::runtime_error("Error: unknown index type");
@@ -71,6 +78,10 @@ _indexNameToEnum(std::string const t)
         return DbIndexType::BI_FM_INDEX;
     else if (t == "fm_index")
         return DbIndexType::FM_INDEX;
+    else if (t == "fm_index_sgg")
+        return DbIndexType::FM_INDEX_SGG;
+    else if (t == "bi_fm_index_sgg")
+        return DbIndexType::BI_FM_INDEX_SGG;
 
     throw std::runtime_error("Error: unknown index type");
     return DbIndexType::FM_INDEX;
@@ -314,7 +325,7 @@ struct index_file_options
 {
     uint64_t indexGeneration{0}; // bump this on incompatible changes
 
-    DbIndexType indexType{};
+    DbIndexType indexType{DbIndexType::BI_FM_INDEX};
 
     AlphabetEnum origAlph{};
     AlphabetEnum transAlph{};
@@ -354,11 +365,46 @@ struct index_file
 
     using TRedAlph      = _alphabetEnumToType<redAlph>;
     using TIndexSpec    = IndexSpec<seqan3::alphabet_size<TRedAlph>>;
-    using TIndex        = std::conditional_t<dbIndexType == DbIndexType::BI_FM_INDEX,
-        seqan3::bi_fm_index<TRedAlph, seqan3::text_layout::collection, TIndexSpec>,
-        seqan3::fm_index<TRedAlph, seqan3::text_layout::collection, TIndexSpec>>;
 
-    TIndex index;
+    using TIndex = decltype([]()
+    {
+        if constexpr (dbIndexType == DbIndexType::FM_INDEX)
+        {
+            constexpr auto is_collection = seqan3::text_layout::collection;
+            using TSpec = IndexSpec<seqan3::alphabet_size<TRedAlph>>;
+            return std::type_identity<seqan3::fm_index<TRedAlph, is_collection, TSpec>>{};
+        }
+        else if constexpr (dbIndexType == DbIndexType::BI_FM_INDEX)
+        {
+            constexpr auto is_collection = seqan3::text_layout::collection;
+            using TSpec = IndexSpec<seqan3::alphabet_size<TRedAlph>>;
+            return std::type_identity<seqan3::bi_fm_index<TRedAlph, is_collection, TSpec>>{};
+        }
+        else if constexpr (dbIndexType == DbIndexType::FM_INDEX_SGG)
+        {
+            //!TODO which OccTable should we use?
+            using TOccTable = fmindex_collection::occtable::interleavedEPR32V2::OccTable<TRedAlph::alphabet_size+1>;
+            return std::type_identity<fmindex_collection::ReverseFMIndex<TOccTable>>{};
+        }
+        else if constexpr (dbIndexType == DbIndexType::BI_FM_INDEX_SGG)
+        {
+            //!TODO which OccTable should we use?
+            using TOccTable = fmindex_collection::occtable::interleavedEPR32V2::OccTable<TRedAlph::alphabet_size+1>;
+            return std::type_identity<fmindex_collection::BiFMIndex<TOccTable>>{};
+        }
+        else
+        {
+            []<bool flag = false>()
+            {
+                static_assert(flag, "unsupported DbIndexType");
+            };
+        }
+    }())::type;
+
+    //!TODO special c'tor that supports 'default' initialization to deserialize
+    TIndex index = []() { if constexpr (dbIndexType == DbIndexType::BI_FM_INDEX_SGG
+                                        || dbIndexType == DbIndexType::FM_INDEX_SGG) return TIndex{fmindex_collection::cereal_tag{}};
+                          else return TIndex{}; }();
 
     template <typename TArchive>
     void serialize(TArchive & archive)
