@@ -21,7 +21,7 @@
 
 #pragma once
 
-#include <seqan3/std/ranges>
+#include <ranges>
 
 #include <seqan3/core/range/detail/random_access_iterator.hpp>
 #include <seqan3/core/range/type_traits.hpp>

@@ -360,12 +360,11 @@ public:
     using TSbjSeqs = TCDStringSet<std::vector<TOrigSbjAlph>>;
 
     /* Translated sequence objects, either as modstrings or as references to original strings */
+    using TTransQrySeqs = decltype(std::declval<TQrySeqs &>() | qryTransView<c_origQryAlph, c_transAlph, c_redAlph>);
+    using TTransSbjSeqs = decltype(std::declval<TSbjSeqs &>() | sbjTransView<c_origSbjAlph, c_transAlph, c_redAlph>);
 
-    using TTransQrySeqs = typename TTransQrySeqsImpl<TQrySeqs, TOrigQryAlph, TTransAlph, TRedAlph>::type;
-    using TTransSbjSeqs = typename TTransSbjSeqsImpl<TSbjSeqs, TOrigSbjAlph, TTransAlph, TRedAlph>::type;
-
-    using TRedQrySeqs   = typename TRedSeqsImpl<TTransQrySeqs, TTransAlph, TRedAlph>::type;
-    using TRedSbjSeqs   = typename TRedSeqsImpl<TTransSbjSeqs, TTransAlph, TRedAlph>::type;
+    using TRedQrySeqs   = decltype(std::declval<TTransQrySeqs &>() | redView<c_transAlph, c_redAlph>);
+    using TRedSbjSeqs   = decltype(std::declval<TTransSbjSeqs &>() | redView<c_transAlph, c_redAlph>);
 
     /* sequence ID strings */
     using TIds          = TCDStringSet<std::string>;
@@ -418,8 +417,8 @@ public:
     TIndexFile          indexFile;
 
     // origin sbjSeqs in indexFile
-    TTransSbjSeqs       transSbjSeqs;
-    TRedSbjSeqs         redSbjSeqs;
+    TTransSbjSeqs       transSbjSeqs = indexFile.seqs | sbjTransView<c_origSbjAlph, c_transAlph, c_redAlph>;
+    TRedSbjSeqs         redSbjSeqs = transSbjSeqs | redView<c_transAlph, c_redAlph>;
 
     TBlastTabFile       outfileBlastTab;
     TBlastRepFile       outfileBlastRep;
@@ -468,14 +467,20 @@ public:
     // query data
     typename TGlobalHolder::TQryIds         qryIds;
     typename TGlobalHolder::TQrySeqs        qrySeqs;
-    typename TGlobalHolder::TTransQrySeqs   transQrySeqs;
-    typename TGlobalHolder::TRedQrySeqs     redQrySeqs;
+    typename TGlobalHolder::TTransQrySeqs   transQrySeqs = qrySeqs | qryTransView<TGlobalHolder::c_origQryAlph,
+                                                                                  TGlobalHolder::c_transAlph,
+                                                                                  TGlobalHolder::c_redAlph>;
+    typename TGlobalHolder::TRedQrySeqs     redQrySeqs = transQrySeqs | redView<TGlobalHolder::c_transAlph,
+                                                                                TGlobalHolder::c_redAlph>;
     size_t                                  queryCount = 0;
 
     // regarding seeding
-    std::vector<typename TGlobalHolder::TIndexCursor>   cursor_buffer;
-    std::vector<std::pair<size_t, size_t>>              matches_buffer;
-    std::vector<TMatch>                                 matches;
+    std::vector<typename TGlobalHolder::TIndexCursor>                    cursor_buffer;
+    std::vector<std::pair<typename TGlobalHolder::TIndexCursor, size_t>> cursor_tmp_buffer;
+    std::vector<std::pair<typename TGlobalHolder::TIndexCursor, size_t>> cursor_tmp_buffer2;
+    std::vector<size_t>                                                  offset_modifier_buffer;
+    std::vector<std::pair<size_t, size_t>>                               matches_buffer;
+    std::vector<TMatch>                                                  matches;
 
     // regarding extension
     using TAlignRow0    = seqan::Gaps<TSeqInfix0, seqan::ArrayGaps>;
@@ -524,28 +529,10 @@ public:
 
     void resetViews()
     {
-        using TGH = TGlobalHolder;
-
-        // trans view
-        if constexpr (TGH::c_redAlph == AlphabetEnum::DNA3BS)
-            transQrySeqs = qrySeqs | views::add_reverse_complement | views::duplicate;
-        else if constexpr (seqan3::nucleotide_alphabet<_alphabetEnumToType<TGH::c_redAlph>>)
-            transQrySeqs = qrySeqs | views::add_reverse_complement;
-        else if constexpr (TGH::c_origQryAlph == TGH::c_transAlph)
-            transQrySeqs = qrySeqs | seqan3::views::type_reduce;
-        else
-            transQrySeqs = qrySeqs | seqan3::views::translate_join;
-
-        // reduced view
-        if constexpr (TGH::c_transAlph == TGH::c_redAlph)
-            redQrySeqs = transQrySeqs | seqan3::views::type_reduce;
-        else if constexpr (TGH::c_transAlph == AlphabetEnum::AMINO_ACID)
-            redQrySeqs = transQrySeqs | seqan3::views::deep{seqan3::views::convert<_alphabetEnumToType<TGH::c_redAlph>>};
-        else if constexpr (TGH::c_redAlph == AlphabetEnum::DNA3BS)
-            redQrySeqs = transQrySeqs | views::dna_n_to_random
-                                      | views::reduce_to_bisulfite;
-        else
-            redQrySeqs = transQrySeqs| views::dna_n_to_random;
+        transQrySeqs = qrySeqs | qryTransView<TGlobalHolder::c_origQryAlph,
+                                              TGlobalHolder::c_transAlph,
+                                              TGlobalHolder::c_redAlph>;
+        redQrySeqs = transQrySeqs | redView<TGlobalHolder::c_transAlph, TGlobalHolder::c_redAlph>;
     }
 
 };

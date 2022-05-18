@@ -1,6 +1,6 @@
 [submodule "seqan"]
 	path = submodules/seqan
-	url = git://github.com/seqan/seqan.git
+	url = ../../seqan/seqan.git
 [submodule "submodules/seqan3"]
 	path = submodules/seqan3
-	url = git://github.com/seqan/seqan3.git
+	url = ../../seqan/seqan3.git

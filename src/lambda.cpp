@@ -65,37 +65,13 @@ int main(int argc, char const ** argv)
 
     --until; // undo the "+ 1" above
 
-    // TODO change return values
     if ((std::string(argv[until]) == "searchp") || (std::string(argv[until]) == "searchn"))
     {
-
-        try
-        {
-            searchMain(argc - until, argv + until);
-        }
-        catch (std::exception const & ext)
-        {
-            std::cerr << ext.what() << "\n";
-            return -1;
-        }
-
-
+        return searchMain(argc - until, argv + until);
     }
-    else
-
-    if ((std::string(argv[until]) == "mkindexp") || (std::string(argv[until]) == "mkindexn"))
+    else if ((std::string(argv[until]) == "mkindexp") || (std::string(argv[until]) == "mkindexn"))
     {
-    #if 1
-        try
-        {
-            mkindexMain(argc - until, argv + until);
-        }
-        catch (std::exception const & ext)
-        {
-            std::cerr << ext.what() << "\n";
-            return -1;
-        }
-    #endif
+       return mkindexMain(argc - until, argv + until);
     }
     else
     {

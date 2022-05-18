@@ -23,7 +23,7 @@
 #pragma once
 
 #include <random>
-#include <seqan3/std/ranges>
+#include <ranges>
 
 #include <seqan3/alphabet/nucleotide/concept.hpp>
 #include <seqan3/alphabet/nucleotide/all.hpp>

@@ -49,21 +49,6 @@
 #include "view_reduce_to_bisulfite.hpp"
 
 // ============================================================================
-// Forwards
-// ============================================================================
-
-// template <typename TRedAlph_,
-//           typename TIndexSpec_,
-//           typename TFileFormat,
-//           seqan::BlastProgram p,
-//           BlastTabularSpec h>
-// class GlobalDataHolder;
-//
-// template <typename TGlobalHolder_,
-//           typename TScoreExtension>
-// class LocalDataHolder;
-
-// ============================================================================
 // Classes, structs, enums
 // ============================================================================
 
@@ -97,29 +82,6 @@ struct Comp :
 // ============================================================================
 // Functions
 // ============================================================================
-
-// --------------------------------------------------------------------------
-// Function readIndexOption()
-// --------------------------------------------------------------------------
-
-// inline void
-// readIndexOption(std::string            & optionString,
-//                 std::string      const & optionIdentifier,
-//                 LambdaOptions    const & options)
-// {
-//     std::ifstream f{(options.indexDir + "/option:" + optionIdentifier).c_str(),
-//                     std::ios_base::in | std::ios_base::binary};
-//     if (f.is_open())
-//     {
-//         auto fit = directionIterator(f, Input());
-//         readLine(optionString, fit);
-//         f.close();
-//     }
-//     else
-//     {
-//         throw IndexException("Expected option specifier:\n" + options.indexDir + "/option:" + optionIdentifier);
-//     }
-// }
 
 // --------------------------------------------------------------------------
 // Function readIndexOptions()
@@ -306,39 +268,8 @@ loadDbIndexFromDisk(GlobalDataHolder<c_indexType, c_origSbjAlph, c_transAlph, c_
         throw 88;
     }
 
-    if constexpr (c_redAlph == AlphabetEnum::DNA3BS)
-        globalHolder.transSbjSeqs = globalHolder.indexFile.seqs | views::duplicate;
-    else if constexpr (c_origSbjAlph != c_transAlph)
-        globalHolder.transSbjSeqs = globalHolder.indexFile.seqs | seqan3::views::translate_join;
-    else
-        globalHolder.transSbjSeqs = globalHolder.indexFile.seqs | seqan3::views::type_reduce;       // no-op view
-
-    if constexpr (c_transAlph == c_redAlph)
-    {
-        globalHolder.redSbjSeqs = globalHolder.transSbjSeqs | seqan3::views::type_reduce;           // no-op view
-    }
-    else
-    {
-        if constexpr (c_transAlph == AlphabetEnum::DNA5) // BLASTN mode
-        {
-            if constexpr (c_redAlph == AlphabetEnum::DNA3BS) // BLASTN mode
-            {
-                globalHolder.redSbjSeqs = globalHolder.transSbjSeqs
-                                        | views::dna_n_to_random
-                                        | views::reduce_to_bisulfite;
-            }
-            else
-            {
-                globalHolder.redSbjSeqs = globalHolder.transSbjSeqs
-                                        | views::dna_n_to_random;
-            }
-        }
-        else
-        {
-            globalHolder.redSbjSeqs = globalHolder.transSbjSeqs
-                                    | seqan3::views::deep{seqan3::views::convert<_alphabetEnumToType<c_redAlph>>};
-        }
-    }
+    globalHolder.transSbjSeqs = globalHolder.indexFile.seqs | sbjTransView<c_origSbjAlph, c_transAlph, c_redAlph>;
+    globalHolder.redSbjSeqs =   globalHolder.transSbjSeqs | redView<c_transAlph, c_redAlph>;
 
     double finish = sysTime() - start;
     myPrint(options, 1, " done.\n");
@@ -489,6 +420,61 @@ search_impl(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
     seqan3::search(seed, lH.gH.indexFile.index, cfg);
 }
 
+template <typename TGlobalHolder, typename TSeed>
+inline void
+searchHalfExactImpl(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
+{
+    using alph_t = std::ranges::range_value_t<TSeed>;
+
+    lH.cursor_tmp_buffer.clear();
+    lH.cursor_tmp_buffer2.clear();
+    size_t const seedFirstHalfLength = lH.options.seedLength / 2;
+    size_t const seedSecondHalfLength = lH.options.seedLength - seedFirstHalfLength;
+
+    lH.cursor_tmp_buffer.emplace_back(lH.gH.indexFile.index.cursor(), 0);
+    auto & c = lH.cursor_tmp_buffer.back().first;
+
+    // extend by half exactly
+    for (size_t i = 0; i < seedFirstHalfLength; ++i)
+    {
+        if (!c.extend_right(seed[i]))
+            return;
+    }
+
+    // manual backtracking
+    for (size_t i = 0; i < seedSecondHalfLength; ++i)
+    {
+        auto seed_at_i = seed[seedFirstHalfLength + i];
+
+        for (auto & [ cursor, error_count ] : lH.cursor_tmp_buffer)
+        {
+            if (error_count < lH.options.maxSeedDist)
+            {
+                for (size_t r = 0; r < seqan3::alphabet_size<alph_t>; ++r)
+                {
+                    alph_t cur_letter = seqan3::assign_rank_to(r, alph_t{});
+
+                    lH.cursor_tmp_buffer2.emplace_back(cursor, error_count + (cur_letter != seed_at_i));
+                    if (!lH.cursor_tmp_buffer2.back().first.extend_right(cur_letter))
+                        lH.cursor_tmp_buffer2.pop_back();
+                }
+            }
+            else
+            {
+                lH.cursor_tmp_buffer2.emplace_back(cursor, error_count);
+                if (!lH.cursor_tmp_buffer2.back().first.extend_right(seed_at_i))
+                    lH.cursor_tmp_buffer2.pop_back();
+            }
+        }
+        lH.cursor_tmp_buffer.clear();
+        std::swap(lH.cursor_tmp_buffer, lH.cursor_tmp_buffer2);
+    }
+
+    lH.cursor_buffer.reserve(lH.cursor_buffer.size() + lH.cursor_tmp_buffer.size());
+    std::ranges::copy(lH.cursor_tmp_buffer | std::views::elements<0>, std::back_inserter(lH.cursor_buffer));
+    lH.cursor_tmp_buffer.clear();
+}
+
 template <typename TGlobalHolder>
 inline void
 search(LocalDataHolder<TGlobalHolder> & lH)
@@ -496,25 +482,41 @@ search(LocalDataHolder<TGlobalHolder> & lH)
     using TTransAlph = typename TGlobalHolder::TTransAlph;
     using TMatch = typename TGlobalHolder::TMatch;
 
-#if 0 // official search interface currently slow
-    seqan3::configuration const cfg =
-        seqan3::search_cfg::max_error{seqan3::search_cfg::substitution{static_cast<uint8_t>(lH.options.maxSeedDist)}};
+    /* The flag changes seeding to take into account how successful previous seeding operations were.
+     * It basically changes the "heuristicFactor" below to be evidence-based (although the formula is also
+     * slightly different).
+     * This makes seeding more robust to different kinds of datasets and options, but due to multi-threading
+     * it also makes the results becoming non-deterministic (i.e. repeated runs of the program may produce
+     * slightly different amounts of results).
+     */
+#ifdef LAMBDA_NONDETERMINISTIC_SEEDS
+    [[maybe_unused]] size_t const hitPerFinalHit = (double)lH.stats.hitsAfterSeeding / std::max<double>(lH.stats.hitsFinal, 1.0);
 #endif
 
-    /* Adaptive seeding uses a very simple heuristic right now.
-     * We define the desiredHits threshold here that is vaguely tied to lH.options.maxMatches but not strongly
-     * because we don't know how many of the current hits will lead to valid matches later on.
-     * Also lH.options.maxMatches is per-read, while desiredHits is per cursor (and there are multiple cursors
-     * per seed and multiple seeds per read).
-     * A strategy that takes into account the previously found hits for the current read did not improve results.
+    size_t hitsThisSeq = 0;                     // hits per untranslated sequence (multiple frames counted together)
+    size_t needlesSum = 0;                      // cumulative size of all frames of a sequence
+    size_t needlesPos = 0;                      // current position in the cumulative length
+    constexpr size_t heuristicFactor = 10;      // a vague approximation of the success rate of seeds
+
+    /* These values are used to track how many hits we already have per untranslated sequence,
+     * how many seeds we still have after the current one, and based on that, how many hits we
+     * expect that the current seed needs to have.
+     * With this information, the current seed can be elongated to get better (but fewer) hits.
      */
-    size_t const heuristicFactor = 5;
-    size_t const desiredHits = lH.options.maxMatches * heuristicFactor;
 
     for (size_t i = 0; i < std::ranges::size(lH.redQrySeqs); ++i)
     {
         if (lH.redQrySeqs[i].size() < lH.options.seedLength)
             continue;
+
+        if (i % TGlobalHolder::qryNumFrames == 0) // reset on every "real" new read
+        {
+            hitsThisSeq = 0;
+            needlesSum = 0;
+            needlesPos = 0;
+            for (size_t j = 0; j < TGlobalHolder::qryNumFrames; ++j)
+                needlesSum += lH.redQrySeqs[i + j].size();
+        }
 
         for (size_t seedBegin = 0; /* below */; seedBegin += lH.options.seedOffset)
         {
@@ -527,14 +529,16 @@ search(LocalDataHolder<TGlobalHolder> & lH)
             if (seedBegin > (lH.redQrySeqs[i].size() - lH.options.seedLength))
                 break;
 
-#if 0 // official search interface currently slow
-            auto results = seqan3::search(lH.redQrySeqs[i] | seqan3::views::slice(seedBegin, seedBegin + lH.options.seedLength),
-                                          lH.gH.indexFile.index,
-                                          cfg);
-#endif
             // results are in cursor_buffer
             lH.cursor_buffer.clear();
-            search_impl(lH, lH.redQrySeqs[i] | seqan3::views::slice(seedBegin, seedBegin + lH.options.seedLength));
+            if (lH.options.seedHalfExact)
+                searchHalfExactImpl(lH, lH.redQrySeqs[i] | seqan3::views::slice(seedBegin, seedBegin + lH.options.seedLength));
+            else
+                search_impl(lH, lH.redQrySeqs[i] | seqan3::views::slice(seedBegin, seedBegin + lH.options.seedLength));
+
+            if (lH.options.adaptiveSeeding)
+                lH.offset_modifier_buffer.clear();
+
             for (auto & cursor : lH.cursor_buffer)
             {
                 size_t seedLength = lH.options.seedLength;
@@ -542,21 +546,55 @@ search(LocalDataHolder<TGlobalHolder> & lH)
                 // elongate seeds
                 if (lH.options.adaptiveSeeding)
                 {
+#ifdef LAMBDA_NONDETERMINISTIC_SEEDS
+                    size_t desiredOccs = hitsThisSeq >= lH.options.maxMatches * hitPerFinalHit
+                                       ? 1
+                                       : (lH.options.maxMatches * hitPerFinalHit - hitsThisSeq) /
+                                std::max<size_t>((needlesSum - needlesPos - seedBegin) / lH.options.seedOffset, 1ul);
+
+#else // lambda2 mode BUT NOT QUIET
+                    // desiredOccs == the number of seed hits we estimate that we need to reach lH.options.maxMatches
+                    // hitsThisSeq >= lH.options.maxMatches → if we have more than we need already, only look for one
+                    // (lH.options.maxMatches - hitsThisSeq) * heuristicFactor → total desired hits
+                    // ((needlesSum - needlesPos - seedBegin) / lH.options.seedOffset → number of remaining seeds
+                    // dividing the last two yields desired hits FOR THE CURRENT SEED
+                    size_t desiredOccs = hitsThisSeq >= lH.options.maxMatches
+                                       ? 1
+                                       : (lH.options.maxMatches - hitsThisSeq) * heuristicFactor /
+                                std::max<size_t>((needlesSum - needlesPos - seedBegin) / lH.options.seedOffset, 1ul);
+#endif
+
+                    if (desiredOccs == 0)
+                        desiredOccs = 1;
+
                     // This aborts when we fall under the threshold
-                    while ((seedBegin + seedLength < lH.redQrySeqs[i].size()) &&
-                           (cursor.count() > desiredHits))
+                    auto old_cursor = cursor;
+                    size_t old_count = cursor.count();
+                    while (seedBegin + seedLength < lH.redQrySeqs[i].size())
                     {
-                        cursor.extend_right(lH.redQrySeqs[i][seedBegin + seedLength]);
+                        if (!cursor.extend_right(lH.redQrySeqs[i][seedBegin + seedLength]))
+                            break;
+
+                        size_t new_count = cursor.count();
+
+                        if (new_count < desiredOccs && new_count < old_count) // we always continue to extend if we don't loose anything
+                        {
+                            // revert last extension
+                            cursor = old_cursor;
+                            break;
+                        }
+
                         ++seedLength;
+                        old_count = new_count;
+                        old_cursor = cursor;
                     }
                 }
 
+                // discard over-abundant seeds (typically seeds at end of sequence that couldn't be elongated)
+                if (cursor.count() > heuristicFactor * lH.options.maxMatches)
+                    continue;
+
                 // locate hits
-#if 0 // use this if SeqAn3 gets out-parameter interface for locate
-                lH.matches_buffer.clear();
-                cursor.locate(lH.matches_buffer);
-                for (auto [ subjNo, subjOffset ] : lH.matches_buffer)
-#endif
                 for (auto [ subjNo, subjOffset ] : cursor.lazy_locate())
                 {
                     TMatch m {static_cast<typename TMatch::TQId>(i),
@@ -569,12 +607,22 @@ search(LocalDataHolder<TGlobalHolder> & lH)
                     ++lH.stats.hitsAfterSeeding;
 
                     if (!seedLooksPromising(lH, m))
+                    {
                         ++lH.stats.hitsFailedPreExtendTest;
+                    }
                     else
+                    {
                         lH.matches.push_back(m);
+                        ++hitsThisSeq;
+#ifdef LAMBDA_MICRO_STATS
+                        lH.stats.seedLengths.push_back(seedLength);
+#endif
+                    }
                 }
             }
         }
+
+        needlesPos += lH.redQrySeqs[i].size();
     }
 }
 
@@ -639,6 +687,8 @@ inline void
 _writeRecord(TBlastRecord & record,
              TLocalHolder & lH)
 {
+    auto const & const_gH = lH.gH;
+
     if (record.matches.size() > 0)
     {
         ++lH.stats.qrysWithHit;
@@ -702,7 +752,7 @@ _writeRecord(TBlastRecord & record,
             record.lcaTaxId = 0;
             for (auto const & bm : record.matches)
             {
-                if ((lH.gH.indexFile.sTaxIds[bm._n_sId].size() > 0) && (lH.gH.indexFile.taxonParentIDs[lH.gH.indexFile.sTaxIds[bm._n_sId][0]] != 0))
+                if ((lH.gH.indexFile.sTaxIds[bm._n_sId].size() > 0) && (const_gH.indexFile.taxonParentIDs[lH.gH.indexFile.sTaxIds[bm._n_sId][0]] != 0))
                 {
                     record.lcaTaxId = lH.gH.indexFile.sTaxIds[bm._n_sId][0];
                     break;
@@ -712,13 +762,13 @@ _writeRecord(TBlastRecord & record,
             if (record.lcaTaxId != 0)
                 for (auto const & bm : record.matches)
                     for (uint32_t const sTaxId : lH.gH.indexFile.sTaxIds[bm._n_sId])
-                        if (lH.gH.indexFile.taxonParentIDs[sTaxId] != 0) // TODO do we want to skip unassigned subjects
-                            record.lcaTaxId = computeLCA(lH.gH.indexFile.taxonParentIDs,
-                                                         lH.gH.indexFile.taxonHeights,
+                        if (const_gH.indexFile.taxonParentIDs[sTaxId] != 0) // TODO do we want to skip unassigned subjects
+                            record.lcaTaxId = computeLCA(const_gH.indexFile.taxonParentIDs,
+                                                         const_gH.indexFile.taxonHeights,
                                                          sTaxId,
                                                          record.lcaTaxId);
 
-            record.lcaId = lH.gH.indexFile.taxonNames[record.lcaTaxId];
+            record.lcaId = const_gH.indexFile.taxonNames[record.lcaTaxId];
         }
 
         myWriteRecord(lH, record);
@@ -977,6 +1027,8 @@ iterateMatchesFullSimd(TLocalHolder & lH, bsDirection const dir = bsDirection::f
     using TGlobalHolder = typename TLocalHolder::TGlobalHolder;
     using TBlastMatch   = typename TLocalHolder::TBlastMatch;
 
+    auto const & const_gH = lH.gH;
+
     // statistics
 #ifdef LAMBDA_MICRO_STATS
     ++lH.stats.numQueryWithExt;
@@ -1001,7 +1053,7 @@ iterateMatchesFullSimd(TLocalHolder & lH, bsDirection const dir = bsDirection::f
         }
         // create blastmatch in list without copy or move
         blastMatches.emplace_back(lH.qryIds [it->qryId / TGlobalHolder::qryNumFrames],
-                                  lH.gH.indexFile.ids[it->subjId / TGlobalHolder::sbjNumFrames]);
+                                  const_gH.indexFile.ids[it->subjId / TGlobalHolder::sbjNumFrames]);
 
         TBlastMatch & bm = blastMatches.back();
 
@@ -1142,12 +1194,14 @@ iterateMatchesFullSerial(TLocalHolder & lH)
     double start = sysTime();
 #endif
 
+    auto const & const_gH = lH.gH;
+
     // create blast matches
     for (auto it = lH.matches.begin(), itEnd = lH.matches.end(); it != itEnd; ++it)
     {
         // create blastmatch in list without copy or move
         lH.blastMatches.emplace_back(lH.qryIds [it->qryId / TGlobalHolder::qryNumFrames],
-                                     lH.gH.indexFile.ids[it->subjId / TGlobalHolder::sbjNumFrames]);
+                                     const_gH.indexFile.ids[it->subjId / TGlobalHolder::sbjNumFrames]);
 
         auto & bm = lH.blastMatches.back();
         auto &  m = *it;

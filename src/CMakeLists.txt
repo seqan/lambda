@@ -23,6 +23,55 @@ set (MINIMUM_SEQAN_VERSION "2.3.1")
 set (MINIMUM_SEQAN3_VERSION "3.0.0")
 
 # ----------------------------------------------------------------------------
+# App-Level Configuration
+# ----------------------------------------------------------------------------
+
+message ("\n${ColourBold}Build configuration${ColourReset}")
+
+message (STATUS "LAMBDA version is: ${SEQAN_APP_VERSION}")
+
+option (LAMBDA_NATIVE_BUILD             "Architecture-specific optimizations, i.e. g++ -march=native."                              ON)
+option (LAMBDA_MULTIOPT_BUILD           "Build and install multiple binaries with different optimisation levels + a dispatcher."    OFF)
+option (LAMBDA_STATIC_BUILD             "Include all libraries in the binaries."                                                    OFF)
+
+if (LAMBDA_NATIVE_BUILD)
+    add_definitions (-DLAMBDA_NATIVE_BUILD=1)
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
+    if (CMAKE_CXX_COMPILER_ID MATCHES "Intel")
+        set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -xHOST -ipo -no-prec-div -fp-model fast=2")
+    endif (CMAKE_CXX_COMPILER_ID MATCHES "Intel")
+endif (LAMBDA_NATIVE_BUILD)
+
+if (LAMBDA_STATIC_BUILD)
+    add_definitions (-DLAMBDA_STATIC_BUILD=1)
+    set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+    # apple does not support fully static builds, but at least libgcc and libstdc++
+    if (APPLE)
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++")
+        message (WARNING "WARNING: Builds on Mac are never fully static.")
+    else (APPLE)
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
+    endif (APPLE)
+    # on linux cmake adds -rdynamic automatically which clang can't handle in static builds
+    if (CMAKE_SYSTEM_NAME MATCHES "Linux")
+        SET(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS "")
+    endif (CMAKE_SYSTEM_NAME MATCHES "Linux")
+endif (LAMBDA_STATIC_BUILD)
+
+
+message(STATUS "The following options are selected for the build:")
+message(   "     LAMBDA_NATIVE_BUILD             ${LAMBDA_NATIVE_BUILD}")
+message(   "     LAMBDA_MULTIOPT_BUILD           ${LAMBDA_MULTIOPT_BUILD}")
+message(   "     LAMBDA_STATIC_BUILD             ${LAMBDA_STATIC_BUILD}")
+message(STATUS "Run 'cmake -LH' to get a comment on each option.")
+message(STATUS "Remove CMakeCache.txt and re-run cmake with -DOPTIONNAME=ON|OFF to change an option.")
+
+# deactivate the version check on broken seqan releases
+if (SEQAN_VERSION_STRING VERSION_LESS "2.3.2")
+    add_definitions (-DSEQAN_DISABLE_VERSION_CHECK="YES")
+endif ()
+
+# ----------------------------------------------------------------------------
 # Dependencies (continued)
 # ----------------------------------------------------------------------------
 
@@ -63,55 +112,6 @@ endif ()
 message(STATUS "The requirements were met.")
 
 # ----------------------------------------------------------------------------
-# App-Level Configuration
-# ----------------------------------------------------------------------------
-
-message ("\n${ColourBold}Build configuration${ColourReset}")
-
-message (STATUS "LAMBDA version is: ${SEQAN_APP_VERSION}")
-
-option (LAMBDA_NATIVE_BUILD             "Architecture-specific optimizations, i.e. g++ -march=native."                              ON)
-option (LAMBDA_MULTIOPT_BUILD           "Build and install multiple binaries with different optimisation levels + a dispatcher."    OFF)
-option (LAMBDA_STATIC_BUILD             "Include all libraries in the binaries."                                                    OFF)
-
-if (LAMBDA_NATIVE_BUILD)
-    add_definitions (-DLAMBDA_NATIVE_BUILD=1)
-    set (SEQAN_CXX_FLAGS "${SEQAN_CXX_FLAGS} -march=native")
-    if (CMAKE_CXX_COMPILER_ID MATCHES "Intel")
-        set (SEQAN_CXX_FLAGS "${SEQAN_CXX_FLAGS} -xHOST -ipo -no-prec-div -fp-model fast=2")
-    endif (CMAKE_CXX_COMPILER_ID MATCHES "Intel")
-endif (LAMBDA_NATIVE_BUILD)
-
-if (LAMBDA_STATIC_BUILD)
-    add_definitions (-DLAMBDA_STATIC_BUILD=1)
-    set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
-    # apple does not support fully static builds, but at least libgcc and libstdc++
-    if (APPLE)
-        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++")
-        message (WARNING "WARNING: Builds on Mac are never fully static.")
-    else (APPLE)
-        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
-    endif (APPLE)
-    # on linux cmake adds -rdynamic automatically which clang can't handle in static builds
-    if (CMAKE_SYSTEM_NAME MATCHES "Linux")
-        SET(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS "")
-    endif (CMAKE_SYSTEM_NAME MATCHES "Linux")
-endif (LAMBDA_STATIC_BUILD)
-
-
-message(STATUS "The following options are selected for the build:")
-message(   "     LAMBDA_NATIVE_BUILD             ${LAMBDA_NATIVE_BUILD}")
-message(   "     LAMBDA_MULTIOPT_BUILD           ${LAMBDA_MULTIOPT_BUILD}")
-message(   "     LAMBDA_STATIC_BUILD             ${LAMBDA_STATIC_BUILD}")
-message(STATUS "Run 'cmake -LH' to get a comment on each option.")
-message(STATUS "Remove CMakeCache.txt and re-run cmake with -DOPTIONNAME=ON|OFF to change an option.")
-
-# deactivate the version check on broken seqan releases
-if (SEQAN_VERSION_STRING VERSION_LESS "2.3.2")
-    add_definitions (-DSEQAN_DISABLE_VERSION_CHECK="YES")
-endif ()
-
-# ----------------------------------------------------------------------------
 # Compiler specifics
 # ----------------------------------------------------------------------------
 
@@ -148,9 +148,6 @@ endif ()
 # Build Setup
 # ----------------------------------------------------------------------------
 
-# Enable global exception handler for all seqan apps.
-set (SEQAN_DEFINITIONS ${SEQAN_DEFINITIONS} -DSEQAN_GLOBAL_EXCEPTION_HANDLER=1)
-
 # Add include directories.
 include_directories (${SEQAN_INCLUDE_DIRS})
 
@@ -175,7 +172,7 @@ target_link_libraries (lambda3 ${SEQAN_LIBRARIES} seqan3::seqan3)
 
 if (LAMBDA_MULTIOPT_BUILD)
     add_executable (lambda3-sse4 ${LAMBDA_SOURCE_FILES})
-    target_link_libraries (lambda3-sse4 ${SEQAN_LIBRARIES})
+    target_link_libraries (lambda3-sse4 ${SEQAN_LIBRARIES} seqan3::seqan3)
     set_target_properties (lambda3-sse4 PROPERTIES COMPILE_FLAGS "-mmmx -msse -msse2 -msse3 -mssse3 -msse4 -mpopcnt")
 endif ()
 

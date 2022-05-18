@@ -22,7 +22,7 @@
 
 #pragma once
 
-#include <seqan3/std/ranges>
+#include <ranges>
 
 #include <seqan3/alphabet/nucleotide/concept.hpp>
 #include <seqan3/core/range/type_traits.hpp>
@@ -71,11 +71,17 @@ inline constexpr auto reverse_complement_or_not = seqan3::views::deep{reverse_co
 
 } // namespace views
 
-// Definition of the range adaptor object type for views::add_reverse_complement.
-struct add_reverse_complement_fn
+class add_reverse_complement_fn : public seqan3::detail::adaptor_base<add_reverse_complement_fn>
 {
+private:
+    //!\brief Type of the CRTP-base.
+    using base_type = seqan3::detail::adaptor_base<add_reverse_complement_fn>;
+
+    //!\brief Befriend the base class so it can call impl().
+    friend base_type;
+
     template <std::ranges::range urng_t>
-    constexpr auto operator()(urng_t && urange) const
+    static auto impl(urng_t && urange)
     {
         static_assert(seqan3::range_dimension_v<urng_t> == 2,
                       "This adaptor only handles range-of-range (two dimensions) as input.");
@@ -103,11 +109,26 @@ struct add_reverse_complement_fn
         }, [] (auto && urange) { return std::ranges::size(urange) * 2; });
     }
 
-    template <std::ranges::range urng_t>
-    constexpr friend auto operator|(urng_t && urange, add_reverse_complement_fn const & me)
-    {
-        return me(std::forward<urng_t>(urange));
-    }
+public:
+    /*!\name Constructors, destructor and assignment
+     * \{
+     */
+    //!\brief Defaulted.
+    constexpr add_reverse_complement_fn()                                                       = default;
+    //!\brief Defaulted.
+    constexpr add_reverse_complement_fn(add_reverse_complement_fn const &)             noexcept = default;
+    //!\brief Defaulted.
+    constexpr add_reverse_complement_fn(add_reverse_complement_fn &&)                  noexcept = default;
+    //!\brief Defaulted.
+    constexpr add_reverse_complement_fn & operator=(add_reverse_complement_fn const &) noexcept = default;
+    //!\brief Defaulted.
+    constexpr add_reverse_complement_fn & operator=(add_reverse_complement_fn &&)      noexcept = default;
+    //!\brief Defaulted.
+    ~add_reverse_complement_fn()                                                       noexcept = default;
+
+    //!\brief Inherit the base type's constructors.
+    using base_type::base_type;
+    //!\}
 };
 
 // A view that reverse complements every second inner range in a range-of-ranges.
