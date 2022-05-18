@@ -268,39 +268,8 @@ loadDbIndexFromDisk(GlobalDataHolder<c_indexType, c_origSbjAlph, c_transAlph, c_
         throw 88;
     }
 
-    if constexpr (c_redAlph == AlphabetEnum::DNA3BS)
-        globalHolder.transSbjSeqs = globalHolder.indexFile.seqs | views::duplicate;
-    else if constexpr (c_origSbjAlph != c_transAlph)
-        globalHolder.transSbjSeqs = globalHolder.indexFile.seqs | seqan3::views::translate_join;
-    else
-        globalHolder.transSbjSeqs = globalHolder.indexFile.seqs | seqan3::views::type_reduce;       // no-op view
-
-    if constexpr (c_transAlph == c_redAlph)
-    {
-        globalHolder.redSbjSeqs = globalHolder.transSbjSeqs | seqan3::views::type_reduce;           // no-op view
-    }
-    else
-    {
-        if constexpr (c_transAlph == AlphabetEnum::DNA5) // BLASTN mode
-        {
-            if constexpr (c_redAlph == AlphabetEnum::DNA3BS) // BLASTN mode
-            {
-                globalHolder.redSbjSeqs = globalHolder.transSbjSeqs
-                                        | views::dna_n_to_random
-                                        | views::reduce_to_bisulfite;
-            }
-            else
-            {
-                globalHolder.redSbjSeqs = globalHolder.transSbjSeqs
-                                        | views::dna_n_to_random;
-            }
-        }
-        else
-        {
-            globalHolder.redSbjSeqs = globalHolder.transSbjSeqs
-                                    | seqan3::views::deep{seqan3::views::convert<_alphabetEnumToType<c_redAlph>>};
-        }
-    }
+    globalHolder.transSbjSeqs = globalHolder.indexFile.seqs | sbjTransView<c_origSbjAlph, c_transAlph, c_redAlph>;
+    globalHolder.redSbjSeqs =   globalHolder.transSbjSeqs | redView<c_transAlph, c_redAlph>;
 
     double finish = sysTime() - start;
     myPrint(options, 1, " done.\n");

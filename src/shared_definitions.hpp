@@ -264,87 +264,47 @@ using IndexSpec = seqan3::default_sdsl_index_type;
 template <typename TString>
 using TCDStringSet = seqan3::concatenated_sequences<TString>; //TODO seqan3::concatenated_sequences
 
-// Translated subject sequences
-// Case: DNA to amino acid translation
-template <typename TOrigSeqs, typename TOrigAlph, typename TTransAlph, typename TRedAlph>
-struct TTransSbjSeqsImpl
+template <AlphabetEnum  c_origSbjAlph,
+          AlphabetEnum  c_transAlph,
+          AlphabetEnum  c_redAlph>
+inline constexpr auto sbjTransView = [] ()
 {
-    using type = decltype(std::declval<TOrigSeqs&>() | seqan3::views::translate_join);
-};
+    if constexpr (c_redAlph == AlphabetEnum::DNA3BS)
+        return views::duplicate;
+    else if constexpr (c_origSbjAlph != c_transAlph)
+        return seqan3::views::translate_join;
+    else
+        return seqan3::views::type_reduce;
+} ();
 
-// Case: bisulfite mode
-template <typename TOrigSeqs, typename TSameAlph>
-struct TTransSbjSeqsImpl<TOrigSeqs, TSameAlph, TSameAlph, seqan3::semialphabet_any<6>>
+template <AlphabetEnum  c_origQryAlph,
+          AlphabetEnum  c_transAlph,
+          AlphabetEnum  c_redAlph>
+constexpr auto qryTransView = [] ()
 {
-    using type = decltype(std::declval<TOrigSeqs&>() | views::duplicate);
-};
+    if constexpr (c_redAlph == AlphabetEnum::DNA3BS)
+        return views::add_reverse_complement | views::duplicate;
+    else if constexpr (seqan3::nucleotide_alphabet<_alphabetEnumToType<c_redAlph>>)
+        return views::add_reverse_complement;
+    else if constexpr (c_origQryAlph == c_transAlph)
+        return seqan3::views::type_reduce;
+    else
+        return seqan3::views::translate_join;
+} ();
 
-// Case: no translation
-template <typename TOrigSeqs, typename TSameAlph, typename TRedAlph>
-struct TTransSbjSeqsImpl<TOrigSeqs, TSameAlph, TSameAlph, TRedAlph>
+template <AlphabetEnum  c_transAlph,
+          AlphabetEnum  c_redAlph>
+constexpr auto redView = [] ()
 {
-    using type = decltype(seqan3::views::type_reduce(std::declval<TOrigSeqs &>()));
-};
-
-// Translated query sequences
-// Case: DNA to amino acid translation
-template <typename TOrigSeqs, typename TOrigAlph, typename TTransAlph, typename TRedAlph>
-struct TTransQrySeqsImpl
-{
-    using type = decltype(std::declval<TOrigSeqs&>() | seqan3::views::translate_join);
-};
-
-// Case: nucleotide mode (not bisulfite)
-template <typename TOrigSeqs, typename TRedAlph>
-    requires seqan3::nucleotide_alphabet<TRedAlph>
-struct TTransQrySeqsImpl<TOrigSeqs, seqan3::dna5, seqan3::dna5, TRedAlph>
-{
-    using type = decltype(std::declval<TOrigSeqs&>() | views::add_reverse_complement);
-};
-
-// Case: bisulfite mode
-template <typename TOrigSeqs>
-struct TTransQrySeqsImpl<TOrigSeqs, seqan3::dna5, seqan3::dna5, seqan3::semialphabet_any<6>>
-{
-    using type = decltype(std::declval<TOrigSeqs&>() | views::add_reverse_complement | views::duplicate);
-};
-
-// Case: no translation
-template <typename TOrigSeqs, typename TRedAlph>
-struct TTransQrySeqsImpl<TOrigSeqs, seqan3::aa27, seqan3::aa27, TRedAlph>
-{
-    using type = decltype(seqan3::views::type_reduce(std::declval<TOrigSeqs &>()));
-};
-
-// Reduced sequences
-// Case: reduction of amino acid alphabet
-template <typename TTransSeqs, typename TTransAlph, typename TRedAlph>
-struct TRedSeqsImpl
-{
-    using type = decltype(std::declval<TTransSeqs&>() | seqan3::views::deep{seqan3::views::convert<TRedAlph>});
-};
-
-// Case: no reduction
-template <typename TTransSeqs, typename TSameAlph>
-struct TRedSeqsImpl<TTransSeqs, TSameAlph, TSameAlph> // no reduction
-{
-    using type = decltype(seqan3::views::type_reduce(std::declval<TTransSeqs &>()));
-};
-
-// Case: nucleotide reduction to dna4 (replcae Ns with random A,C,G,T)
-template <typename TTransSeqs>
-struct TRedSeqsImpl<TTransSeqs, seqan3::dna5, seqan3::dna4>
-{
-    using type = decltype(std::declval<TTransSeqs &>() | views::dna_n_to_random);
-};
-
-// Case: bisulfite mode
-template <typename TTransSeqs>
-struct TRedSeqsImpl<TTransSeqs, seqan3::dna5, seqan3::semialphabet_any<6>>
-{
-    using type = decltype(std::declval<TTransSeqs &>() | views::dna_n_to_random
-                                                       | views::reduce_to_bisulfite);
-};
+    if constexpr (c_transAlph == c_redAlph)
+        return seqan3::views::type_reduce;
+    else if constexpr (c_transAlph == AlphabetEnum::AMINO_ACID)
+        return seqan3::views::deep{seqan3::views::convert<_alphabetEnumToType<c_redAlph>>};
+    else if constexpr (c_redAlph == AlphabetEnum::DNA3BS)
+        return views::dna_n_to_random | views::reduce_to_bisulfite;
+    else
+        return views::dna_n_to_random;
+} ();
 
 // ==========================================================================
 //  The index

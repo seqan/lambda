@@ -182,15 +182,11 @@ void realMain(LambdaIndexerOptions     const & options)
     index_file<c_dbIndexType, c_origAlph, c_redAlph> f;
     f.options = options.indexFileOptions;
 
-    using TOrigSbjAlph = _alphabetEnumToType<c_origAlph>;
-    using TTransSbjAlph = _alphabetEnumToType<c_transAlph>;
-    using TRedSbjAlph = _alphabetEnumToType<c_redAlph>;
-
     {
         std::unordered_map<std::string, uint64_t> accToIdRank;
 
         // ids get saved to disk again immediately and are not kept in memory
-        std::tie(f.ids, f.seqs, accToIdRank) = loadSubjSeqsAndIds<TOrigSbjAlph>(options);
+        std::tie(f.ids, f.seqs, accToIdRank) = loadSubjSeqsAndIds<_alphabetEnumToType<c_origAlph>>(options);
 
         if (options.hasSTaxIds)
         {
@@ -207,35 +203,8 @@ void realMain(LambdaIndexerOptions     const & options)
     // see if final sequence set actually fits into index
 //     checkIndexSize(translatedSeqs, options, seqan::BlastProgramSelector<p>());
 
-    using TSbjSeqs = TCDStringSet<std::vector<TOrigSbjAlph>>;
-
-    using TTransSbjSeqs = typename TTransSbjSeqsImpl<TSbjSeqs, TOrigSbjAlph, TTransSbjAlph, TRedSbjAlph>::type;
-    using TRedSbjSeqs   = typename TRedSeqsImpl<TTransSbjSeqs, TTransSbjAlph, TRedSbjAlph>::type;
-
-    TTransSbjSeqs       transSbjSeqs;
-    TRedSbjSeqs         redSbjSeqs;
-
-    if constexpr (c_redAlph == AlphabetEnum::DNA3BS)
-        transSbjSeqs = f.seqs | views::duplicate;
-    else if constexpr (c_origAlph == c_transAlph)
-        transSbjSeqs = f.seqs | seqan3::views::type_reduce;     // no-op view
-    else
-        transSbjSeqs = f.seqs | seqan3::views::translate_join;
-
-    if constexpr (c_transAlph == c_redAlph)
-    {
-        redSbjSeqs = transSbjSeqs | seqan3::views::type_reduce; // no-op view
-    }
-    else
-    {
-        if constexpr (c_transAlph == AlphabetEnum::AMINO_ACID)
-            redSbjSeqs = transSbjSeqs | seqan3::views::deep{seqan3::views::convert<TRedSbjAlph>};
-        else if constexpr (c_redAlph == AlphabetEnum::DNA3BS)
-            redSbjSeqs = transSbjSeqs | views::dna_n_to_random
-                                      | views::reduce_to_bisulfite;
-        else
-            redSbjSeqs = transSbjSeqs | views::dna_n_to_random;
-    }
+    auto transSbjSeqs = f.seqs | sbjTransView<c_origAlph, c_transAlph, c_redAlph>;
+    auto redSbjSeqs = transSbjSeqs | redView<c_transAlph, c_redAlph>;
 
     f.index = generateIndex<c_dbIndexType == DbIndexType::BI_FM_INDEX>(redSbjSeqs, options);
 
