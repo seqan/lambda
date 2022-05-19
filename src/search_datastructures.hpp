@@ -390,6 +390,15 @@ public:
         {
             return std::type_identity<fmindex_collection::BiFMIndexCursor<TIndex>>{};
         }
+        else if constexpr (c_dbIndexType == DbIndexType::FM_INDEX_SGG_V6)
+        {
+            return std::type_identity<fmindex_collection::ReverseFMIndexCursor<TIndex>>{};
+        }
+        else if constexpr (c_dbIndexType == DbIndexType::BI_FM_INDEX_SGG_V6)
+        {
+            return std::type_identity<fmindex_collection::BiFMIndexCursor<TIndex>>{};
+        }
+
         else
         {
             []<bool flag = false>()

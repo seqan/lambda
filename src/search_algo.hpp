@@ -48,7 +48,7 @@
 #include "view_dna_n_to_random.hpp"
 #include "view_reduce_to_bisulfite.hpp"
 
-
+#include <fmindex-collection/DenseCSA.h>
 #include <fmindex-collection/search/all.h>
 #include <fmindex-collection/locate.h>
 #include <search_schemes/generator/all.h>
@@ -430,10 +430,12 @@ search_impl(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
 
         seqan3::search(seed, lH.gH.indexFile.index, cfg);
     }
-    else if constexpr (c_indexType == DbIndexType::FM_INDEX_SGG)
+    else if constexpr (c_indexType == DbIndexType::FM_INDEX_SGG
+                        || c_indexType == DbIndexType::FM_INDEX_SGG_V6)
     {
         thread_local static auto queries = std::vector<std::vector<uint8_t>>{{}};
         queries.back().resize(seed.size());
+
         for (size_t i{0}; i < seed.size(); ++i)
         {
             //!TODO reversing the text, since we are using ReverseFMIndex (shouldn't this be something included in the search function?)
@@ -451,7 +453,8 @@ search_impl(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
         );
     }
 
-    else if constexpr (c_indexType == DbIndexType::BI_FM_INDEX_SGG)
+    else if constexpr (c_indexType == DbIndexType::BI_FM_INDEX_SGG
+                        || c_indexType == DbIndexType::BI_FM_INDEX_SGG_V6)
     {
         //!TODO !FIXME This whole thing is not more than a big hack.
         //Each search needs a search schemes in the same size of the query, to minimize recumpatioton i am using a global variable
@@ -555,12 +558,14 @@ searchHalfExactImpl_SGG(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
 
     auto extendRight = [&](auto& cursor, auto c) {
         auto newCursor = [&]() {
-            if constexpr (c_indexType == DbIndexType::FM_INDEX_SGG)
+            if constexpr (c_indexType == DbIndexType::FM_INDEX_SGG
+                          || c_indexType == DbIndexType::FM_INDEX_SGG_V6)
             {
                 //!TODO since it is a reversed index, we need to extend to the left (this seem confusing, I should rethink naming)
                 return cursor.extendLeft(c.to_rank()+1);
             }
-            else if constexpr (c_indexType == DbIndexType::BI_FM_INDEX_SGG)
+            else if constexpr (c_indexType == DbIndexType::BI_FM_INDEX_SGG
+                               || c_indexType == DbIndexType::BI_FM_INDEX_SGG_V6)
             {
                 return cursor.extendRight(c.to_rank()+1);
             }
@@ -757,21 +762,19 @@ search(LocalDataHolder<TGlobalHolder> & lH)
                             if (!cursor.extend_right(lH.redQrySeqs[i][seedBegin + seedLength]))
                                 break;
                         }
-                        else if constexpr (c_indexType == DbIndexType::FM_INDEX_SGG)
+                        else if constexpr (c_indexType == DbIndexType::FM_INDEX_SGG
+                                           || c_indexType == DbIndexType::FM_INDEX_SGG_V6)
                         {
                             //!TODO since it is a reversed index, we need to extend to the left (this seem confusing, I should rethink naming)
-//                            cursor = cursor.extendLeft((lH.redQrySeqs[i][seedBegin + seedLength]).to_rank()+1);
-
                             auto newCursor = cursor.extendLeft((lH.redQrySeqs[i][seedBegin + seedLength]).to_rank()+1);
                             if (newCursor.empty()) {
                                 break;
                             }
                             cursor = newCursor;
                         }
-                        else if constexpr (c_indexType == DbIndexType::BI_FM_INDEX_SGG)
+                        else if constexpr (c_indexType == DbIndexType::BI_FM_INDEX_SGG
+                                           || c_indexType == DbIndexType::BI_FM_INDEX_SGG_V6)
                         {
-                            //cursor = cursor.extendRight((lH.redQrySeqs[i][seedBegin + seedLength]).to_rank()+1);
-
                             auto newCursor = cursor.extendRight((lH.redQrySeqs[i][seedBegin + seedLength]).to_rank()+1);
                             if (newCursor.empty()) {
                                 break;
@@ -818,26 +821,30 @@ search(LocalDataHolder<TGlobalHolder> & lH)
                                   static_cast<typename TMatch::TPos>(subjOffset),
                                   static_cast<typename TMatch::TPos>(subjOffset + seedLength)};
 
-                    ++lH.stats.hitsAfterSeeding;
+                        ++lH.stats.hitsAfterSeeding;
 
-                    if (!seedLooksPromising(lH, m))
-                    {
-                        ++lH.stats.hitsFailedPreExtendTest;
-                    }
-                    else
-                    {
-                        lH.matches.push_back(m);
-                        ++hitsThisSeq;
+                        if (!seedLooksPromising(lH, m))
+                        {
+                            ++lH.stats.hitsFailedPreExtendTest;
+                        }
+                        else
+                        {
+                            lH.matches.push_back(m);
+                            ++hitsThisSeq;
 #ifdef LAMBDA_MICRO_STATS
                             lH.stats.seedLengths.push_back(seedLength);
 #endif
+                        }
                     }
                 }
-                else if (c_indexType == DbIndexType::BI_FM_INDEX_SGG
-                         || c_indexType == DbIndexType::FM_INDEX_SGG)
+                else if (c_indexType == DbIndexType::FM_INDEX_SGG
+                         || c_indexType == DbIndexType::BI_FM_INDEX_SGG
+                         || c_indexType == DbIndexType::FM_INDEX_SGG_V6
+                         || c_indexType == DbIndexType::BI_FM_INDEX_SGG_V6)
                 {
                     for (auto [subjNo, subjOffset] : fmindex_collection::LocateLinear{lH.gH.indexFile.index, cursor}) {
-                        if (c_indexType == DbIndexType::FM_INDEX_SGG) {
+                        if (c_indexType == DbIndexType::FM_INDEX_SGG
+                            || c_indexType == DbIndexType::FM_INDEX_SGG_V6) {
                             subjOffset -= seedLength;
                         }
                         TMatch m {static_cast<typename TMatch::TQId>(i),
@@ -850,12 +857,13 @@ search(LocalDataHolder<TGlobalHolder> & lH)
                         ++lH.stats.hitsAfterSeeding;
 
                         if (!seedLooksPromising(lH, m))
+                        {
                             ++lH.stats.hitsFailedPreExtendTest;
+                        }
                         else
                         {
                             lH.matches.push_back(m);
                             ++hitsThisSeq;
-//                             ++hitsThisSeed;
 #ifdef LAMBDA_MICRO_STATS
                             lH.stats.seedLengths.push_back(seedLength);
 #endif

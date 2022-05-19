@@ -224,6 +224,8 @@ argConv0(LambdaOptions & options)
         case DbIndexType::BI_FM_INDEX:     return argConv1<DbIndexType::BI_FM_INDEX>(options);
         case DbIndexType::FM_INDEX_SGG:    return argConv1<DbIndexType::FM_INDEX_SGG>(options);
         case DbIndexType::BI_FM_INDEX_SGG: return argConv1<DbIndexType::BI_FM_INDEX_SGG>(options);
+        case DbIndexType::FM_INDEX_SGG_V6:    return argConv1<DbIndexType::FM_INDEX_SGG_V6>(options);
+        case DbIndexType::BI_FM_INDEX_SGG_V6: return argConv1<DbIndexType::BI_FM_INDEX_SGG_V6>(options);
         default: throw 52;
     }
 }

@@ -116,7 +116,7 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
 
     std::string dbIndexTypeTmp = "fm";
     parser.add_option(dbIndexTypeTmp, '\0', "db-index-type", "FM-Index oder bidirectional FM-Index.",
-        seqan3::option_spec::advanced, seqan3::value_list_validator{"fm", "bifm", "fm_sgg", "bifm_sgg"});
+        seqan3::option_spec::advanced, seqan3::value_list_validator{"fm", "bifm", "fm_sgg", "bifm_sgg", "fm_sgg_v6", "bifm_sgg_v6"});
 
     parser.add_option(options.truncateIDs, '\0', "truncate-ids",
         "Truncate IDs at first whitespace. This saves a lot of space and is irrelevant for all LAMBDA output formats "
@@ -195,6 +195,10 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
         options.indexFileOptions.indexType = DbIndexType::FM_INDEX_SGG;
     else if (dbIndexTypeTmp == "bifm_sgg")
         options.indexFileOptions.indexType = DbIndexType::BI_FM_INDEX_SGG;
+    else if (dbIndexTypeTmp == "fm_sgg_v6")
+        options.indexFileOptions.indexType = DbIndexType::FM_INDEX_SGG_V6;
+    else if (dbIndexTypeTmp == "bifm_sgg_v6")
+        options.indexFileOptions.indexType = DbIndexType::BI_FM_INDEX_SGG_V6;
     else
         throw seqan3::argument_parser_error("ERROR: Unknown index type \"" + dbIndexTypeTmp + "\"");
 

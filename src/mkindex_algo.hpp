@@ -666,6 +666,18 @@ auto generateIndex(TStringSet                       & seqs,
             using TOccTable = fmindex_collection::occtable::interleavedEPR32V2::OccTable<TRedAlph::alphabet_size+1>;
             return std::type_identity<fmindex_collection::BiFMIndex<TOccTable>>{};
         }
+        else if constexpr (index_t == DbIndexType::FM_INDEX_SGG_V6)
+        {
+            //!TODO which OccTable should we use?
+            using TOccTable = fmindex_collection::occtable::eprV6::OccTable<TRedAlph::alphabet_size+1>;
+            return std::type_identity<fmindex_collection::ReverseFMIndex<TOccTable, fmindex_collection::DenseCSA>>{};
+        }
+        else if constexpr (index_t == DbIndexType::BI_FM_INDEX_SGG_V6)
+        {
+            //!TODO which OccTable should we use?
+            using TOccTable = fmindex_collection::occtable::eprV6::OccTable<TRedAlph::alphabet_size+1>;
+            return std::type_identity<fmindex_collection::BiFMIndex<TOccTable, fmindex_collection::DenseCSA>>{};
+        }
         else
         {
             []<bool flag = false>()
@@ -689,7 +701,11 @@ auto generateIndex(TStringSet                       & seqs,
         {
             return TIndex{seqs};
         }
-        else if constexpr (index_t == DbIndexType::BI_FM_INDEX_SGG || index_t == DbIndexType::FM_INDEX_SGG)
+        else if constexpr (index_t == DbIndexType::FM_INDEX_SGG
+                        || index_t == DbIndexType::BI_FM_INDEX_SGG
+                        || index_t == DbIndexType::FM_INDEX_SGG_V6
+                        || index_t == DbIndexType::BI_FM_INDEX_SGG_V6)
+
         {
             //!TODO: needs better apporach (or do it inside the index?), the '0' is sentienal for inbetween and ending sequences
             std::vector<std::vector<uint8_t>> tmp;

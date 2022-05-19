@@ -43,6 +43,8 @@
 
 #include <fmindex-collection/fmindex-collection.h>
 #include <fmindex-collection/occtable/all.h>
+#include <fmindex-collection/DenseCSA.h>
+
 
 // ==========================================================================
 //  DbIndexType
@@ -54,6 +56,9 @@ enum class DbIndexType : uint8_t
     BI_FM_INDEX,
     FM_INDEX_SGG, // !TODO fm index, written by SimonGG included in the fmindex_collection
     BI_FM_INDEX_SGG, // !TODO fm index, written by SimonGG included in the fmindex_collection
+    FM_INDEX_SGG_V6, // !TODO fm index, written by SimonGG included in the fmindex_collection
+    BI_FM_INDEX_SGG_V6, // !TODO fm index, written by SimonGG included in the fmindex_collection
+
 };
 
 inline std::string
@@ -65,6 +70,9 @@ _indexEnumToName(DbIndexType const t)
         case DbIndexType::BI_FM_INDEX:     return "bi_fm_index";
         case DbIndexType::FM_INDEX_SGG:    return "fm_index_sgg";
         case DbIndexType::BI_FM_INDEX_SGG: return "bi_fm_index_sgg";
+        case DbIndexType::FM_INDEX_SGG_V6:    return "fm_index_sgg_v6";
+        case DbIndexType::BI_FM_INDEX_SGG_V6: return "bi_fm_index_sgg_v6";
+
     }
 
     throw std::runtime_error("Error: unknown index type");
@@ -82,6 +90,10 @@ _indexNameToEnum(std::string const t)
         return DbIndexType::FM_INDEX_SGG;
     else if (t == "bi_fm_index_sgg")
         return DbIndexType::BI_FM_INDEX_SGG;
+    else if (t == "fm_index_sgg_v6")
+        return DbIndexType::FM_INDEX_SGG_V6;
+    else if (t == "bi_fm_index_sgg_v6")
+        return DbIndexType::BI_FM_INDEX_SGG_V6;
 
     throw std::runtime_error("Error: unknown index type");
     return DbIndexType::FM_INDEX;
@@ -392,6 +404,19 @@ struct index_file
             using TOccTable = fmindex_collection::occtable::interleavedEPR32V2::OccTable<TRedAlph::alphabet_size+1>;
             return std::type_identity<fmindex_collection::BiFMIndex<TOccTable>>{};
         }
+        else if constexpr (dbIndexType == DbIndexType::FM_INDEX_SGG_V6)
+        {
+            //!TODO which OccTable should we use?
+            using TOccTable = fmindex_collection::occtable::eprV6::OccTable<TRedAlph::alphabet_size+1>;
+            return std::type_identity<fmindex_collection::ReverseFMIndex<TOccTable, fmindex_collection::DenseCSA>>{};
+        }
+        else if constexpr (dbIndexType == DbIndexType::BI_FM_INDEX_SGG_V6)
+        {
+            //!TODO which OccTable should we use?
+            using TOccTable = fmindex_collection::occtable::eprV6::OccTable<TRedAlph::alphabet_size+1>;
+            return std::type_identity<fmindex_collection::BiFMIndex<TOccTable, fmindex_collection::DenseCSA>>{};
+        }
+
         else
         {
             []<bool flag = false>()
@@ -402,8 +427,11 @@ struct index_file
     }())::type;
 
     //!TODO special c'tor that supports 'default' initialization to deserialize
-    TIndex index = []() { if constexpr (dbIndexType == DbIndexType::BI_FM_INDEX_SGG
-                                        || dbIndexType == DbIndexType::FM_INDEX_SGG) return TIndex{fmindex_collection::cereal_tag{}};
+    TIndex index = []() { if constexpr (dbIndexType == DbIndexType::FM_INDEX_SGG
+                                        || dbIndexType == DbIndexType::BI_FM_INDEX_SGG
+                                        || dbIndexType == DbIndexType::FM_INDEX_SGG_V6
+                                        || dbIndexType == DbIndexType::BI_FM_INDEX_SGG_V6
+                                        ) return TIndex{fmindex_collection::cereal_tag{}};
                           else return TIndex{}; }();
 
     template <typename TArchive>
