@@ -788,7 +788,6 @@ search(LocalDataHolder<TGlobalHolder> & lH)
                                 static_assert(flag, "unsupported DbIndexType");
                             };
                         }
-                        ++seedLength;
 
                         size_t new_count = cursor.count();
 
@@ -798,6 +797,7 @@ search(LocalDataHolder<TGlobalHolder> & lH)
                             cursor = old_cursor;
                             break;
                         }
+                        ++seedLength;
 
                         old_count = new_count;
                         old_cursor = cursor;
