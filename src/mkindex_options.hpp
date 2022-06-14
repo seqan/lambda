@@ -191,14 +191,6 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
         options.indexFileOptions.indexType = DbIndexType::FM_INDEX;
     else if (dbIndexTypeTmp == "bifm")
         options.indexFileOptions.indexType = DbIndexType::BI_FM_INDEX;
-    else if (dbIndexTypeTmp == "fm_sgg")
-        options.indexFileOptions.indexType = DbIndexType::FM_INDEX_SGG;
-    else if (dbIndexTypeTmp == "bifm_sgg")
-        options.indexFileOptions.indexType = DbIndexType::BI_FM_INDEX_SGG;
-    else if (dbIndexTypeTmp == "fm_sgg_v6")
-        options.indexFileOptions.indexType = DbIndexType::FM_INDEX_SGG_V6;
-    else if (dbIndexTypeTmp == "bifm_sgg_v6")
-        options.indexFileOptions.indexType = DbIndexType::BI_FM_INDEX_SGG_V6;
     else
         throw seqan3::argument_parser_error("ERROR: Unknown index type \"" + dbIndexTypeTmp + "\"");
 

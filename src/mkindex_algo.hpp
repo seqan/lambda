@@ -21,21 +21,22 @@
 
 #pragma once
 
+#include <charconv>
+#include <concepts>
+
+#include <fmindex-collection/fmindex-collection.h>
+#include <fmindex-collection/occtable/all.h>
+
 #include <seqan3/io/sequence_file/input.hpp>
 #include <seqan3/io/detail/misc_input.hpp>
 #include <seqan3/utility/views/convert.hpp>
 #include <seqan3/alphabet/views/translate.hpp>
 #include <seqan3/alphabet/views/translate_join.hpp>
-#include <charconv>
-#include <concepts>
 
 #include "mkindex_misc.hpp"
 // #include "mkindex_saca.hpp"
 #include "shared_misc.hpp"
 #include "shared_options.hpp"
-
-#include <fmindex-collection/fmindex-collection.h>
-#include <fmindex-collection/occtable/all.h>
 
 // --------------------------------------------------------------------------
 // Function loadSubj()
@@ -644,39 +645,15 @@ auto generateIndex(TStringSet                       & seqs,
     {
         if constexpr (index_t == DbIndexType::FM_INDEX)
         {
-            constexpr auto is_collection = seqan3::text_layout::collection;
-            using TSpec = IndexSpec<seqan3::alphabet_size<TRedAlph>>;
-            return std::type_identity<seqan3::fm_index<TRedAlph, is_collection, TSpec>>{};
-        }
-        else if constexpr (index_t == DbIndexType::BI_FM_INDEX)
-        {
-            constexpr auto is_collection = seqan3::text_layout::collection;
-            using TSpec = IndexSpec<seqan3::alphabet_size<TRedAlph>>;
-            return std::type_identity<seqan3::bi_fm_index<TRedAlph, is_collection, TSpec>>{};
-        }
-        else if constexpr (index_t == DbIndexType::FM_INDEX_SGG)
-        {
-            //!TODO which OccTable should we use?
+            //!TODO which OccTable should we use? this should be in sync with shared_definitions.hpp
             using TOccTable = fmindex_collection::occtable::interleavedEPR32V2::OccTable<TRedAlph::alphabet_size+1>;
             return std::type_identity<fmindex_collection::ReverseFMIndex<TOccTable>>{};
         }
-        else if constexpr (index_t == DbIndexType::BI_FM_INDEX_SGG)
+        else if constexpr (index_t == DbIndexType::BI_FM_INDEX)
         {
-            //!TODO which OccTable should we use?
+            //!TODO which OccTable should we use? this should be in sync with shared_definitions.hpp
             using TOccTable = fmindex_collection::occtable::interleavedEPR32V2::OccTable<TRedAlph::alphabet_size+1>;
             return std::type_identity<fmindex_collection::BiFMIndex<TOccTable>>{};
-        }
-        else if constexpr (index_t == DbIndexType::FM_INDEX_SGG_V6)
-        {
-            //!TODO which OccTable should we use?
-            using TOccTable = fmindex_collection::occtable::eprV6::OccTable<TRedAlph::alphabet_size+1>;
-            return std::type_identity<fmindex_collection::ReverseFMIndex<TOccTable, fmindex_collection::DenseCSA>>{};
-        }
-        else if constexpr (index_t == DbIndexType::BI_FM_INDEX_SGG_V6)
-        {
-            //!TODO which OccTable should we use?
-            using TOccTable = fmindex_collection::occtable::eprV6::OccTable<TRedAlph::alphabet_size+1>;
-            return std::type_identity<fmindex_collection::BiFMIndex<TOccTable, fmindex_collection::DenseCSA>>{};
         }
         else
         {
@@ -691,44 +668,18 @@ auto generateIndex(TStringSet                       & seqs,
     double s = sysTime();
 
     TIndex index = [&]() {
-        if constexpr (index_t == DbIndexType::BI_FM_INDEX)
+        //!TODO: needs better apporach (or do it inside the index?), the '0' is sentienal for inbetween and ending sequences
+        std::vector<std::vector<uint8_t>> tmp;
+        for (auto a : seqs | seqan3::views::to<std::vector<std::vector<TRedAlph>>>)
         {
-            // WORKAROUND https://github.com/seqan/seqan3/pull/1519
-            std::vector<std::vector<TRedAlph>> tmp = seqs | seqan3::views::to<std::vector<std::vector<TRedAlph>>>;
-            return TIndex{tmp};
-        }
-        else if constexpr (index_t == DbIndexType::FM_INDEX)
-        {
-            return TIndex{seqs};
-        }
-        else if constexpr (index_t == DbIndexType::FM_INDEX_SGG
-                        || index_t == DbIndexType::BI_FM_INDEX_SGG
-                        || index_t == DbIndexType::FM_INDEX_SGG_V6
-                        || index_t == DbIndexType::BI_FM_INDEX_SGG_V6)
-
-        {
-            //!TODO: needs better apporach (or do it inside the index?), the '0' is sentienal for inbetween and ending sequences
-            std::vector<std::vector<uint8_t>> tmp;
-            for (auto a : seqs | seqan3::views::to<std::vector<std::vector<TRedAlph>>>)
+            std::vector<uint8_t> v2;
+            for (auto b : a)
             {
-                std::vector<uint8_t> v2;
-                for (auto b : a)
-                {
-                    v2.emplace_back(b.to_rank()+1);
-                }
-                tmp.emplace_back(std::move(v2));
+                v2.emplace_back(b.to_rank()+1);
             }
-            return TIndex{tmp, 16};
-
+            tmp.emplace_back(std::move(v2));
         }
-        else
-        {
-            []<bool flag = false>()
-            {
-                static_assert(flag, "unsupported DbIndexType");
-            };
-
-        }
+        return TIndex{tmp, 16};
     }();
 
     double e = sysTime() - s;

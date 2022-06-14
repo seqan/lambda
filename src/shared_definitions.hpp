@@ -21,6 +21,16 @@
 
 #pragma once
 
+#include <cereal/archives/binary.hpp>
+#include <cereal/archives/json.hpp>
+#include <cereal/details/traits.hpp>
+#include <cereal/types/array.hpp>
+#include <cereal/types/vector.hpp>
+
+#include <fmindex-collection/fmindex-collection.h>
+#include <fmindex-collection/occtable/all.h>
+#include <fmindex-collection/DenseCSA.h>
+
 #include <seqan3/alphabet/nucleotide/dna3bs.hpp>
 #include <seqan3/alphabet/nucleotide/dna4.hpp>
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
@@ -30,8 +40,6 @@
 #include <seqan3/alphabet/aminoacid/translation_genetic_code.hpp>
 #include <seqan3/alphabet/container/concatenated_sequences.hpp>
 #include <seqan3/alphabet/views/translate_join.hpp>
-#include <seqan3/search/fm_index/fm_index.hpp>
-#include <seqan3/search/fm_index/bi_fm_index.hpp>
 #include <seqan3/utility/views/convert.hpp>
 #include <seqan3/utility/views/deep.hpp>
 #include <seqan3/utility/views/type_reduce.hpp>
@@ -41,11 +49,6 @@
 #include "view_duplicate.hpp"
 #include "view_reduce_to_bisulfite.hpp"
 
-#include <fmindex-collection/fmindex-collection.h>
-#include <fmindex-collection/occtable/all.h>
-#include <fmindex-collection/DenseCSA.h>
-
-
 // ==========================================================================
 //  DbIndexType
 // ==========================================================================
@@ -54,11 +57,6 @@ enum class DbIndexType : uint8_t
 {
     FM_INDEX,
     BI_FM_INDEX,
-    FM_INDEX_SGG, // !TODO fm index, written by SimonGG included in the fmindex_collection
-    BI_FM_INDEX_SGG, // !TODO fm index, written by SimonGG included in the fmindex_collection
-    FM_INDEX_SGG_V6, // !TODO fm index, written by SimonGG included in the fmindex_collection
-    BI_FM_INDEX_SGG_V6, // !TODO fm index, written by SimonGG included in the fmindex_collection
-
 };
 
 inline std::string
@@ -68,11 +66,6 @@ _indexEnumToName(DbIndexType const t)
     {
         case DbIndexType::FM_INDEX:        return "fm_index";
         case DbIndexType::BI_FM_INDEX:     return "bi_fm_index";
-        case DbIndexType::FM_INDEX_SGG:    return "fm_index_sgg";
-        case DbIndexType::BI_FM_INDEX_SGG: return "bi_fm_index_sgg";
-        case DbIndexType::FM_INDEX_SGG_V6:    return "fm_index_sgg_v6";
-        case DbIndexType::BI_FM_INDEX_SGG_V6: return "bi_fm_index_sgg_v6";
-
     }
 
     throw std::runtime_error("Error: unknown index type");
@@ -86,14 +79,6 @@ _indexNameToEnum(std::string const t)
         return DbIndexType::BI_FM_INDEX;
     else if (t == "fm_index")
         return DbIndexType::FM_INDEX;
-    else if (t == "fm_index_sgg")
-        return DbIndexType::FM_INDEX_SGG;
-    else if (t == "bi_fm_index_sgg")
-        return DbIndexType::BI_FM_INDEX_SGG;
-    else if (t == "fm_index_sgg_v6")
-        return DbIndexType::FM_INDEX_SGG_V6;
-    else if (t == "bi_fm_index_sgg_v6")
-        return DbIndexType::BI_FM_INDEX_SGG_V6;
 
     throw std::runtime_error("Error: unknown index type");
     return DbIndexType::FM_INDEX;
@@ -244,8 +229,8 @@ inline constexpr uint64_t currentIndexGeneration = 0;
 // ==========================================================================
 
 /* default */
-template <size_t>
-using IndexSpec = seqan3::default_sdsl_index_type;
+//template <size_t>
+//using IndexSpec = seqan3::default_sdsl_index_type;
 
 /* default, spelled out */
 // template <size_t>
@@ -376,47 +361,20 @@ struct index_file
     TCDStringSet<std::string>                                   taxonNames;
 
     using TRedAlph      = _alphabetEnumToType<redAlph>;
-    using TIndexSpec    = IndexSpec<seqan3::alphabet_size<TRedAlph>>;
+    //using TIndexSpec    = IndexSpec<seqan3::alphabet_size<TRedAlph>>;
 
     using TIndex = decltype([]()
     {
         if constexpr (dbIndexType == DbIndexType::FM_INDEX)
         {
-            constexpr auto is_collection = seqan3::text_layout::collection;
-            using TSpec = IndexSpec<seqan3::alphabet_size<TRedAlph>>;
-            return std::type_identity<seqan3::fm_index<TRedAlph, is_collection, TSpec>>{};
-        }
-        else if constexpr (dbIndexType == DbIndexType::BI_FM_INDEX)
-        {
-            constexpr auto is_collection = seqan3::text_layout::collection;
-            using TSpec = IndexSpec<seqan3::alphabet_size<TRedAlph>>;
-            return std::type_identity<seqan3::bi_fm_index<TRedAlph, is_collection, TSpec>>{};
-        }
-        else if constexpr (dbIndexType == DbIndexType::FM_INDEX_SGG)
-        {
-            //!TODO which OccTable should we use?
             using TOccTable = fmindex_collection::occtable::interleavedEPR32V2::OccTable<TRedAlph::alphabet_size+1>;
             return std::type_identity<fmindex_collection::ReverseFMIndex<TOccTable>>{};
         }
-        else if constexpr (dbIndexType == DbIndexType::BI_FM_INDEX_SGG)
+        else if constexpr (dbIndexType == DbIndexType::BI_FM_INDEX)
         {
-            //!TODO which OccTable should we use?
             using TOccTable = fmindex_collection::occtable::interleavedEPR32V2::OccTable<TRedAlph::alphabet_size+1>;
             return std::type_identity<fmindex_collection::BiFMIndex<TOccTable>>{};
         }
-        else if constexpr (dbIndexType == DbIndexType::FM_INDEX_SGG_V6)
-        {
-            //!TODO which OccTable should we use?
-            using TOccTable = fmindex_collection::occtable::eprV6::OccTable<TRedAlph::alphabet_size+1>;
-            return std::type_identity<fmindex_collection::ReverseFMIndex<TOccTable, fmindex_collection::DenseCSA>>{};
-        }
-        else if constexpr (dbIndexType == DbIndexType::BI_FM_INDEX_SGG_V6)
-        {
-            //!TODO which OccTable should we use?
-            using TOccTable = fmindex_collection::occtable::eprV6::OccTable<TRedAlph::alphabet_size+1>;
-            return std::type_identity<fmindex_collection::BiFMIndex<TOccTable, fmindex_collection::DenseCSA>>{};
-        }
-
         else
         {
             []<bool flag = false>()
@@ -426,13 +384,8 @@ struct index_file
         }
     }())::type;
 
-    //!TODO special c'tor that supports 'default' initialization to deserialize
-    TIndex index = []() { if constexpr (dbIndexType == DbIndexType::FM_INDEX_SGG
-                                        || dbIndexType == DbIndexType::BI_FM_INDEX_SGG
-                                        || dbIndexType == DbIndexType::FM_INDEX_SGG_V6
-                                        || dbIndexType == DbIndexType::BI_FM_INDEX_SGG_V6
-                                        ) return TIndex{fmindex_collection::cereal_tag{}};
-                          else return TIndex{}; }();
+    // Special c'tor that supports 'default' initialization to allow deserialize
+    TIndex index{fmindex_collection::cereal_tag{}};
 
     template <typename TArchive>
     void serialize(TArchive & archive)
