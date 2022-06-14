@@ -483,24 +483,7 @@ searchHalfExactImpl(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
 {
 
     auto extendRight = [&](auto& cursor, auto c) {
-        auto newCursor = [&]() {
-            if constexpr (c_indexType == DbIndexType::FM_INDEX)
-            {
-                //!TODO since it is a reversed index, we need to extend to the left (this seem confusing, I should rethink naming)
-                return cursor.extendLeft(c.to_rank()+1);
-            }
-            else if constexpr (c_indexType == DbIndexType::BI_FM_INDEX)
-            {
-                return cursor.extendRight(c.to_rank()+1);
-            }
-            else
-            {
-                []<bool flag = false>()
-                {
-                    static_assert(flag, "unsupported DbIndexType");
-                };
-            }
-        }();
+        auto newCursor = cursor.extendRight(c.to_rank()+1);
         if (newCursor.empty()) {
             return false;
         }
@@ -521,8 +504,11 @@ searchHalfExactImpl(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
     // extend by half exactly
     for (size_t i = 0; i < seedFirstHalfLength; ++i)
     {
-        if (!extendRight(c, seed[i]))
+        auto newCursor = c.extendRight(seed[i].to_rank()+1);
+        if (newCursor.empty()) {
             return;
+        }
+        c = newCursor;
     }
 
 
@@ -655,47 +641,24 @@ search(LocalDataHolder<TGlobalHolder> & lH)
                         desiredOccs = 1;
 
                     // This aborts when we fall under the threshold
-                    auto old_cursor = cursor;
                     size_t old_count = cursor.count();
                     while (seedBegin + seedLength < lH.redQrySeqs[i].size())
                     {
-                        if constexpr (c_indexType == DbIndexType::FM_INDEX)
-                        {
-                            //!TODO since it is a reversed index, we need to extend to the left (this seem confusing, I should rethink naming)
-                            auto newCursor = cursor.extendLeft((lH.redQrySeqs[i][seedBegin + seedLength]).to_rank()+1);
-                            if (newCursor.empty()) {
-                                break;
-                            }
-                            cursor = newCursor;
-                        }
-                        else if constexpr (c_indexType == DbIndexType::BI_FM_INDEX)
-                        {
-                            auto newCursor = cursor.extendRight((lH.redQrySeqs[i][seedBegin + seedLength]).to_rank()+1);
-                            if (newCursor.empty()) {
-                                break;
-                            }
-                            cursor = newCursor;
-                        }
-                        else
-                        {
-                            []<bool flag = false>()
-                            {
-                                static_assert(flag, "unsupported DbIndexType");
-                            };
+                        auto newCursor = cursor.extendRight((lH.redQrySeqs[i][seedBegin + seedLength]).to_rank()+1);
+                        if (newCursor.empty()) {
+                            break;
                         }
 
-                        size_t new_count = cursor.count();
+                        size_t new_count = newCursor.count();
 
                         if (new_count < desiredOccs && new_count < old_count) // we always continue to extend if we don't loose anything
                         {
                             // revert last extension
-                            cursor = old_cursor;
                             break;
                         }
                         ++seedLength;
-
+                        cursor = newCursor;
                         old_count = new_count;
-                        old_cursor = cursor;
                     }
                 }
 

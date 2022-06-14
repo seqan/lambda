@@ -228,42 +228,22 @@ inline constexpr uint64_t currentIndexGeneration = 0;
 //  Index specs TODO experiment with these
 // ==========================================================================
 
-/* default */
-//template <size_t>
-//using IndexSpec = seqan3::default_sdsl_index_type;
+template <DbIndexType dbIndexType, size_t AlphabetSize>
+struct IndexSpec;
 
-/* default, spelled out */
-// template <size_t>
-// using IndexSpec = sdsl::csa_wt<sdsl::wt_blcd<sdsl::bit_vector,
-//                                               sdsl::rank_support_v<>,
-//                                               sdsl::select_support_scan<>,
-//                                               sdsl::select_support_scan<0> >,
-//                                 16,
-//                                 10000000,
-//                                 sdsl::sa_order_sa_sampling<>,
-//                                 sdsl::isa_sampling<>,
-//                                 sdsl::plain_byte_alphabet>;
+template <size_t AlphabetSize>
+using TOccTable = fmindex_collection::occtable::interleavedEPR32V2::OccTable<AlphabetSize+1>;
 
-/* huffman, doesn't satisfy concept at the moment */
-// template <size_t>
-// using IndexSpec = sdsl::csa_wt<sdsl::wt_huff<sdsl::bit_vector,
-//                                               sdsl::rank_support_v<>,
-//                                               sdsl::select_support_scan<>,
-//                                               sdsl::select_support_scan<0> >,
-//                                 16,
-//                                 10000000,
-//                                 sdsl::sa_order_sa_sampling<>,
-//                                 sdsl::isa_sampling<>,
-//                                 sdsl::plain_byte_alphabet>;
+template <size_t AlphabetSize>
+struct IndexSpec<DbIndexType::FM_INDEX, AlphabetSize> {
+    using index_type = fmindex_collection::ReverseFMIndex<TOccTable<AlphabetSize>>;
+};
 
-// /* epr, in experimental branch */
-// template <size_t alph_size>
-// using IndexSpec = sdsl::csa_wt<sdsl::wt_epr<alph_size + 2>, // +1 for sentinels, +1 for collection
-//                                 2,
-//                                 1'0000'000,
-//                                 sdsl::sa_order_sa_sampling<>,
-//                                 sdsl::isa_sampling<>,
-//                                 sdsl::plain_byte_alphabet>;
+template <size_t AlphabetSize>
+struct IndexSpec<DbIndexType::BI_FM_INDEX, AlphabetSize> {
+    using index_type = fmindex_collection::BiFMIndex<TOccTable<AlphabetSize>>;
+};
+
 
 // ==========================================================================
 //  Misc. aliases
@@ -361,28 +341,8 @@ struct index_file
     TCDStringSet<std::string>                                   taxonNames;
 
     using TRedAlph      = _alphabetEnumToType<redAlph>;
-    //using TIndexSpec    = IndexSpec<seqan3::alphabet_size<TRedAlph>>;
-
-    using TIndex = decltype([]()
-    {
-        if constexpr (dbIndexType == DbIndexType::FM_INDEX)
-        {
-            using TOccTable = fmindex_collection::occtable::interleavedEPR32V2::OccTable<TRedAlph::alphabet_size+1>;
-            return std::type_identity<fmindex_collection::ReverseFMIndex<TOccTable>>{};
-        }
-        else if constexpr (dbIndexType == DbIndexType::BI_FM_INDEX)
-        {
-            using TOccTable = fmindex_collection::occtable::interleavedEPR32V2::OccTable<TRedAlph::alphabet_size+1>;
-            return std::type_identity<fmindex_collection::BiFMIndex<TOccTable>>{};
-        }
-        else
-        {
-            []<bool flag = false>()
-            {
-                static_assert(flag, "unsupported DbIndexType");
-            };
-        }
-    }())::type;
+    using TIndexSpec    = IndexSpec<dbIndexType, seqan3::alphabet_size<TRedAlph>>;
+    using TIndex        = typename TIndexSpec::index_type;
 
     // Special c'tor that supports 'default' initialization to allow deserialize
     TIndex index{fmindex_collection::cereal_tag{}};

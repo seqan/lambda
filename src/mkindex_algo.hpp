@@ -37,6 +37,7 @@
 // #include "mkindex_saca.hpp"
 #include "shared_misc.hpp"
 #include "shared_options.hpp"
+#include "shared_definitions.hpp"
 
 // --------------------------------------------------------------------------
 // Function loadSubj()
@@ -640,29 +641,9 @@ auto generateIndex(TStringSet                       & seqs,
                    LambdaIndexerOptions       const & options)
 {
     using TRedAlph       = seqan3::range_innermost_value_t<TStringSet>;
+    using TIndexSpec     = IndexSpec<index_t, seqan3::alphabet_size<TRedAlph>>;
+    using TIndex         = typename TIndexSpec::index_type;
 
-    using TIndex = decltype([]()
-    {
-        if constexpr (index_t == DbIndexType::FM_INDEX)
-        {
-            //!TODO which OccTable should we use? this should be in sync with shared_definitions.hpp
-            using TOccTable = fmindex_collection::occtable::interleavedEPR32V2::OccTable<TRedAlph::alphabet_size+1>;
-            return std::type_identity<fmindex_collection::ReverseFMIndex<TOccTable>>{};
-        }
-        else if constexpr (index_t == DbIndexType::BI_FM_INDEX)
-        {
-            //!TODO which OccTable should we use? this should be in sync with shared_definitions.hpp
-            using TOccTable = fmindex_collection::occtable::interleavedEPR32V2::OccTable<TRedAlph::alphabet_size+1>;
-            return std::type_identity<fmindex_collection::BiFMIndex<TOccTable>>{};
-        }
-        else
-        {
-            []<bool flag = false>()
-            {
-                static_assert(flag, "unsupported DbIndexType");
-            };
-        }
-    }())::type;
 
     myPrint(options, 1, "Generating Index...");
     double s = sysTime();
@@ -673,6 +654,7 @@ auto generateIndex(TStringSet                       & seqs,
         for (auto a : seqs | seqan3::views::to<std::vector<std::vector<TRedAlph>>>)
         {
             std::vector<uint8_t> v2;
+            v2.reserve(b.size());
             for (auto b : a)
             {
                 v2.emplace_back(b.to_rank()+1);
