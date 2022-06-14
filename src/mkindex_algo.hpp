@@ -649,12 +649,12 @@ auto generateIndex(TStringSet                       & seqs,
     double s = sysTime();
 
     TIndex index = [&]() {
-        //!TODO: needs better apporach (or do it inside the index?), the '0' is sentienal for inbetween and ending sequences
+        //!TODO: needs better approach (or do it inside the index?), the '0' is sentinel for in-between and ending sequences
         std::vector<std::vector<uint8_t>> tmp;
         for (auto a : seqs | seqan3::views::to<std::vector<std::vector<TRedAlph>>>)
         {
             std::vector<uint8_t> v2;
-            v2.reserve(b.size());
+            v2.reserve(a.size());
             for (auto b : a)
             {
                 v2.emplace_back(b.to_rank()+1);

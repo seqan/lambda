@@ -21,7 +21,10 @@
 
 #pragma once
 
-#include <fmindex-collection/search/SelectCursor.h>
+#include <fmindex-collection/search/all.h>
+#include <search_schemes/generator/all.h>
+#include <search_schemes/expand.h>
+
 #include <seqan3/alignment/scoring/aminoacid_scoring_scheme.hpp>
 #include <seqan3/alignment/scoring/nucleotide_scoring_scheme.hpp>
 #include <seqan3/utility/type_traits/lazy_conditional.hpp>
@@ -506,6 +509,10 @@ public:
     // regarding the gathering of stats
     StatsHolder         stats{};
 
+    // search work space
+    std::vector<std::vector<uint8_t>> queries;
+    search_schemes::Scheme searchScheme;
+
     LocalDataHolder() = delete;
     LocalDataHolder(LocalDataHolder const &) = delete;
     LocalDataHolder(LocalDataHolder &&) = delete;
@@ -513,7 +520,9 @@ public:
     LocalDataHolder & operator=(LocalDataHolder &&) = delete;
 
     LocalDataHolder(LambdaOptions const & _options, TGlobalHolder & _gH) :
-        options{_options}, gH{_gH}, stats{}
+        options{_options}, gH{_gH}, stats{},
+        queries{std::vector<uint8_t>(options.seedLength)},  // always one query with fixed length
+        searchScheme{search_schemes::expand(search_schemes::generator::pigeon_opt(0, options.maxSeedDist), options.seedLength)} // fixed search scheme
     {}
 
     void reset()

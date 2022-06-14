@@ -413,20 +413,21 @@ inline void
 search_impl(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
 {
 
+    assert(lH.queries.size() == 1);
+    assert(lH.queries[0].size() == seed.size());
+
     if constexpr (c_indexType == DbIndexType::FM_INDEX)
     {
-        thread_local static auto queries = std::vector<std::vector<uint8_t>>{{}};
-        queries.back().resize(seed.size());
 
+        // prepare query for fmindex_collection, by shifting by one and reversing the string
         for (size_t i{0}; i < seed.size(); ++i)
         {
-            //!TODO reversing the text, since we are using ReverseFMIndex (shouldn't this be something included in the search function?)
-            queries[0][seed.size()-i-1] = seed[i].to_rank()+1;
+            lH.queries[0][seed.size()-i-1] = seed[i].to_rank()+1;
         }
 
         fmindex_collection::search_backtracking::search(
             lH.gH.indexFile.index,
-            queries,
+            lH.queries,
             lH.options.maxSeedDist,
             [&](size_t /*queryId*/, auto cursor, size_t /*errors*/)
             {
@@ -437,29 +438,16 @@ search_impl(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
 
     else if constexpr (c_indexType == DbIndexType::BI_FM_INDEX)
     {
-        //!TODO !FIXME This whole thing is not more than a big hack.
-        //Each search needs a search schemes in the same size of the query, to minimize recumpatioton i am using a global variable
-        using SS = decltype(search_schemes::expand(search_schemes::generator::pigeon_opt(0, lH.options.maxSeedDist), seed.size()));
-        thread_local static std::unordered_map<int8_t, std::tuple<SS, std::vector<std::vector<uint8_t>>>> map;
-        auto it = map.find(seed.size());
-        if (it == map.end())
-        {
-            auto refQueries = std::vector<std::vector<uint8_t>>{std::vector<uint8_t>(seed.size())};
-            auto searchScheme = search_schemes::expand(search_schemes::generator::pigeon_opt(0, lH.options.maxSeedDist), seed.size());
-            map[seed.size()] = {searchScheme, refQueries};
-            it = map.find(seed.size());
-        }
-        //!TODO !FIXME similar to the creation of the index, the +1 probably should be moved into the search function itself, so no copies are required
-        auto [search_scheme, queries] = it->second;
+        // prepare query for fmindex_collection, by shifting by one value
         for (size_t i{0}; i < seed.size(); ++i)
         {
-            queries[0][i] = seed[i].to_rank()+1;
+            lH.queries[0][i] = seed[i].to_rank()+1;
         }
 
         fmindex_collection::search_pseudo::search</*editdistance=*/false>(
             lH.gH.indexFile.index,
-            queries,
-            search_scheme,
+            lH.queries,
+            lH.searchScheme,
             [&](size_t /*queryId*/, auto cursor, size_t /*errors*/)
             {
                 lH.cursor_buffer.push_back(cursor);
