@@ -220,9 +220,9 @@ argConv0(LambdaOptions & options)
 
     switch (options.indexFileOptions.indexType)
     {
-        case DbIndexType::FM_INDEX:    return argConv1<DbIndexType::FM_INDEX>(options);
-        case DbIndexType::BI_FM_INDEX: return argConv1<DbIndexType::BI_FM_INDEX>(options);
-        default:                       throw 52;
+        case DbIndexType::FM_INDEX:     return argConv1<DbIndexType::FM_INDEX>(options);
+        case DbIndexType::BI_FM_INDEX:  return argConv1<DbIndexType::BI_FM_INDEX>(options);
+        default: throw 52;
     }
 }
 
@@ -384,7 +384,7 @@ void realMain(LambdaOptions     const & options)
         #ifdef LAMBDA_MICRO_STATS
             double buf = sysTime();
         #endif
-            search<c_indexType>(localHolder); //TODO seed refining if iterateMatches gives 0 results
+            search(localHolder); //TODO seed refining if iterateMatches gives 0 results
         #ifdef LAMBDA_MICRO_STATS
             localHolder.stats.timeSearch += sysTime() - buf;
         #endif

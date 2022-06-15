@@ -116,7 +116,7 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
 
     std::string dbIndexTypeTmp = "fm";
     parser.add_option(dbIndexTypeTmp, '\0', "db-index-type", "FM-Index oder bidirectional FM-Index.",
-        seqan3::option_spec::advanced, seqan3::value_list_validator{"fm", "bifm", "fm_sgg", "bifm_sgg", "fm_sgg_v6", "bifm_sgg_v6"});
+        seqan3::option_spec::advanced, seqan3::value_list_validator{"fm", "bifm"});
 
     parser.add_option(options.truncateIDs, '\0', "truncate-ids",
         "Truncate IDs at first whitespace. This saves a lot of space and is irrelevant for all LAMBDA output formats "
@@ -187,12 +187,12 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
     parser.parse();
 
     // set db index type
-    if (dbIndexTypeTmp == "fm")
-        options.indexFileOptions.indexType = DbIndexType::FM_INDEX;
-    else if (dbIndexTypeTmp == "bifm")
+    if (dbIndexTypeTmp == "bifm")
         options.indexFileOptions.indexType = DbIndexType::BI_FM_INDEX;
+    else if (dbIndexTypeTmp == "fm")
+        options.indexFileOptions.indexType = DbIndexType::FM_INDEX;
     else
-        throw seqan3::argument_parser_error("ERROR: Unknown index type \"" + dbIndexTypeTmp + "\"");
+        options.indexFileOptions.indexType = DbIndexType::FM_INDEX;
 
     // set options for protein alphabet, genetic code and alphabet reduction
     if (!options.nucleotide_mode)

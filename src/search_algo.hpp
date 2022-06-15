@@ -412,13 +412,11 @@ template <DbIndexType   c_indexType,
 inline void
 search_impl(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
 {
-
     assert(lH.queries.size() == 1);
     assert(lH.queries[0].size() == seed.size());
 
     if constexpr (c_indexType == DbIndexType::FM_INDEX)
     {
-
         // prepare query for fmindex_collection, by shifting by one and reversing the string
         for (size_t i{0}; i < seed.size(); ++i)
         {
@@ -435,7 +433,6 @@ search_impl(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
             }
         );
     }
-
     else if constexpr (c_indexType == DbIndexType::BI_FM_INDEX)
     {
         // prepare query for fmindex_collection, by shifting by one value
@@ -454,25 +451,19 @@ search_impl(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
             }
         );
     }
-    else
-    {
-        []<bool flag = false>()
-        {
-            static_assert(flag, "unsupported DbIndexType");
-        };
-    }
 }
 
-template <DbIndexType   c_indexType,
-          typename      TGlobalHolder,
+template <typename      TGlobalHolder,
           typename      TSeed>
 inline void
 searchHalfExactImpl(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
 {
 
-    auto extendRight = [&](auto& cursor, auto c) {
+    auto extendRight = [&](auto & cursor, auto c)
+    {
         auto newCursor = cursor.extendRight(c.to_rank()+1);
-        if (newCursor.empty()) {
+        if (newCursor.empty())
+        {
             return false;
         }
         cursor = newCursor;
@@ -493,7 +484,8 @@ searchHalfExactImpl(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
     for (size_t i = 0; i < seedFirstHalfLength; ++i)
     {
         auto newCursor = c.extendRight(seed[i].to_rank()+1);
-        if (newCursor.empty()) {
+        if (newCursor.empty())
+        {
             return;
         }
         c = newCursor;
@@ -535,13 +527,14 @@ searchHalfExactImpl(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
 }
 
 
-template <DbIndexType   c_indexType,
-          typename      TGlobalHolder>
+template <typename TGlobalHolder>
 inline void
 search(LocalDataHolder<TGlobalHolder> & lH)
 {
     using TTransAlph = typename TGlobalHolder::TTransAlph;
     using TMatch = typename TGlobalHolder::TMatch;
+
+    constexpr auto dbIndexType = TGlobalHolder::c_dbIndexType;
 
     /* The flag changes seeding to take into account how successful previous seeding operations were.
      * It basically changes the "heuristicFactor" below to be evidence-based (although the formula is also
@@ -593,9 +586,9 @@ search(LocalDataHolder<TGlobalHolder> & lH)
             // results are in cursor_buffer
             lH.cursor_buffer.clear();
             if (lH.options.seedHalfExact)
-                searchHalfExactImpl<c_indexType>(lH, lH.redQrySeqs[i] | seqan3::views::slice(seedBegin, seedBegin + lH.options.seedLength));
+                searchHalfExactImpl(lH, lH.redQrySeqs[i] | seqan3::views::slice(seedBegin, seedBegin + lH.options.seedLength));
             else
-                search_impl<c_indexType>(lH, lH.redQrySeqs[i] | seqan3::views::slice(seedBegin, seedBegin + lH.options.seedLength));
+                search_impl<dbIndexType>(lH, lH.redQrySeqs[i] | seqan3::views::slice(seedBegin, seedBegin + lH.options.seedLength));
 
             if (lH.options.adaptiveSeeding)
                 lH.offset_modifier_buffer.clear();
@@ -629,24 +622,24 @@ search(LocalDataHolder<TGlobalHolder> & lH)
                         desiredOccs = 1;
 
                     // This aborts when we fall under the threshold
+                    auto old_cursor = cursor;
                     size_t old_count = cursor.count();
                     while (seedBegin + seedLength < lH.redQrySeqs[i].size())
                     {
-                        auto newCursor = cursor.extendRight((lH.redQrySeqs[i][seedBegin + seedLength]).to_rank()+1);
-                        if (newCursor.empty()) {
-                            break;
-                        }
+                        cursor = cursor.extendRight((lH.redQrySeqs[i][seedBegin + seedLength]).to_rank()+1);
 
-                        size_t new_count = newCursor.count();
+                        size_t new_count = cursor.count();
 
                         if (new_count < desiredOccs && new_count < old_count) // we always continue to extend if we don't loose anything
                         {
                             // revert last extension
+                            cursor = old_cursor;
                             break;
                         }
+
                         ++seedLength;
-                        cursor = newCursor;
                         old_count = new_count;
+                        old_cursor = cursor;
                     }
                 }
 
@@ -655,9 +648,11 @@ search(LocalDataHolder<TGlobalHolder> & lH)
                     continue;
 
                 // locate hits
-                for (auto [subjNo, subjOffset] : fmindex_collection::LocateLinear{lH.gH.indexFile.index, cursor}) {
+                for (auto [subjNo, subjOffset] : fmindex_collection::LocateLinear{lH.gH.indexFile.index, cursor})
+                {
                     // !TODO Should this be handled by the cursor?
-                    if (c_indexType == DbIndexType::FM_INDEX) {
+                    if (dbIndexType == DbIndexType::FM_INDEX)
+                    {
                         subjOffset -= seedLength;
                     }
                     TMatch m {static_cast<typename TMatch::TQId>(i),

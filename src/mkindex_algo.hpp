@@ -635,15 +635,16 @@ auto parseAndStoreTaxTree(std::vector<bool>          & taxIdIsPresent,
 }
 
 
-template <DbIndexType index_t,
+template <bool is_bi,
           typename TStringSet>
 auto generateIndex(TStringSet                       & seqs,
                    LambdaIndexerOptions       const & options)
 {
     using TRedAlph       = seqan3::range_innermost_value_t<TStringSet>;
-    using TIndexSpec     = IndexSpec<index_t, seqan3::alphabet_size<TRedAlph>>;
-    using TIndex         = typename TIndexSpec::index_type;
-
+    using TIndexSpec     = IndexSpec<seqan3::alphabet_size<TRedAlph>>;
+    using TIndex         = std::conditional_t<is_bi,
+                                             fmindex_collection::BiFMIndex<TIndexSpec>,
+                                             fmindex_collection::ReverseFMIndex<TIndexSpec>>;
 
     myPrint(options, 1, "Generating Index...");
     double s = sysTime();

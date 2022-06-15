@@ -56,7 +56,7 @@
 enum class DbIndexType : uint8_t
 {
     FM_INDEX,
-    BI_FM_INDEX,
+    BI_FM_INDEX
 };
 
 inline std::string
@@ -64,8 +64,8 @@ _indexEnumToName(DbIndexType const t)
 {
     switch (t)
     {
-        case DbIndexType::FM_INDEX:        return "fm_index";
-        case DbIndexType::BI_FM_INDEX:     return "bi_fm_index";
+        case DbIndexType::FM_INDEX:      return "fm_index";
+        case DbIndexType::BI_FM_INDEX:   return "bi_fm_index";
     }
 
     throw std::runtime_error("Error: unknown index type");
@@ -228,22 +228,8 @@ inline constexpr uint64_t currentIndexGeneration = 0;
 //  Index specs TODO experiment with these
 // ==========================================================================
 
-template <DbIndexType dbIndexType, size_t AlphabetSize>
-struct IndexSpec;
-
 template <size_t AlphabetSize>
-using TOccTable = fmindex_collection::occtable::interleavedEPR32V2::OccTable<AlphabetSize+1>;
-
-template <size_t AlphabetSize>
-struct IndexSpec<DbIndexType::FM_INDEX, AlphabetSize> {
-    using index_type = fmindex_collection::ReverseFMIndex<TOccTable<AlphabetSize>>;
-};
-
-template <size_t AlphabetSize>
-struct IndexSpec<DbIndexType::BI_FM_INDEX, AlphabetSize> {
-    using index_type = fmindex_collection::BiFMIndex<TOccTable<AlphabetSize>>;
-};
-
+using IndexSpec = fmindex_collection::occtable::interleavedEPR32V2::OccTable<AlphabetSize+1>;
 
 // ==========================================================================
 //  Misc. aliases
@@ -302,7 +288,7 @@ struct index_file_options
 {
     uint64_t indexGeneration{0}; // bump this on incompatible changes
 
-    DbIndexType indexType{DbIndexType::BI_FM_INDEX};
+    DbIndexType indexType;
 
     AlphabetEnum origAlph{};
     AlphabetEnum transAlph{};
@@ -341,8 +327,11 @@ struct index_file
     TCDStringSet<std::string>                                   taxonNames;
 
     using TRedAlph      = _alphabetEnumToType<redAlph>;
-    using TIndexSpec    = IndexSpec<dbIndexType, seqan3::alphabet_size<TRedAlph>>;
-    using TIndex        = typename TIndexSpec::index_type;
+    using TIndexSpec    = IndexSpec<seqan3::alphabet_size<TRedAlph>>;
+    using TIndex        = std::conditional_t<dbIndexType == DbIndexType::BI_FM_INDEX,
+        fmindex_collection::BiFMIndex<TIndexSpec>,
+        fmindex_collection::ReverseFMIndex<TIndexSpec>>;
+
 
     // Special c'tor that supports 'default' initialization to allow deserialize
     TIndex index{fmindex_collection::cereal_tag{}};
