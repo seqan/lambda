@@ -523,8 +523,6 @@ search(LocalDataHolder<TGlobalHolder> & lH)
     using TTransAlph = typename TGlobalHolder::TTransAlph;
     using TMatch = typename TGlobalHolder::TMatch;
 
-    constexpr auto dbIndexType = TGlobalHolder::c_dbIndexType;
-
     /* The flag changes seeding to take into account how successful previous seeding operations were.
      * It basically changes the "heuristicFactor" below to be evidence-based (although the formula is also
      * slightly different).
@@ -639,11 +637,6 @@ search(LocalDataHolder<TGlobalHolder> & lH)
                 // locate hits
                 for (auto [subjNo, subjOffset] : fmindex_collection::LocateLinear{lH.gH.indexFile.index, cursor})
                 {
-                    // !TODO Should this be handled by the cursor?
-                    if (dbIndexType == DbIndexType::FM_INDEX)
-                    {
-                        subjOffset -= seedLength;
-                    }
                     TMatch m {static_cast<typename TMatch::TQId>(i),
                               static_cast<typename TMatch::TSId>(subjNo),
                               static_cast<typename TMatch::TPos>(seedBegin),
