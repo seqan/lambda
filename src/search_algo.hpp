@@ -406,8 +406,7 @@ seedLooksPromising(LocalDataHolder<TGlobalHolder> const & lH,
     return false;
 }
 
-template <DbIndexType   c_indexType,
-          typename      TGlobalHolder,
+template <typename      TGlobalHolder,
           typename      TSeed>
 inline void
 search_impl(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
@@ -415,37 +414,27 @@ search_impl(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
     assert(lH.queries.size() == 1);
     assert(lH.queries[0].size() == seed.size());
 
-    if constexpr (c_indexType == DbIndexType::FM_INDEX)
+    if constexpr (TGlobalHolder::c_dbIndexType == DbIndexType::FM_INDEX)
     {
-        // prepare query for fmindex_collection, by shifting by one and reversing the string
-        for (size_t i{0}; i < seed.size(); ++i)
-        {
-            lH.queries[0][seed.size()-i-1] = seed[i].to_rank()+1;
-        }
-
+        //!TODO a reversed FMIndex is used, so the query need to be reversed, so we search from left to right
+        //      This is a conceptual TODO for fmindex_collection library
         fmindex_collection::search_backtracking::search(
             lH.gH.indexFile.index,
-            lH.queries,
+            seed | std::views::reverse | seqan3::views::to_rank | fmindex_collection::add_sentinel,
             lH.options.maxSeedDist,
-            [&](size_t /*queryId*/, auto cursor, size_t /*errors*/)
+            [&](auto cursor, size_t /*errors*/)
             {
                 lH.cursor_buffer.push_back(cursor);
             }
         );
     }
-    else if constexpr (c_indexType == DbIndexType::BI_FM_INDEX)
+    else if constexpr (TGlobalHolder::c_dbIndexType == DbIndexType::BI_FM_INDEX)
     {
-        // prepare query for fmindex_collection, by shifting by one value
-        for (size_t i{0}; i < seed.size(); ++i)
-        {
-            lH.queries[0][i] = seed[i].to_rank()+1;
-        }
-
         fmindex_collection::search_pseudo::search</*editdistance=*/false>(
             lH.gH.indexFile.index,
-            lH.queries,
+            seed | seqan3::views::to_rank | fmindex_collection::add_sentinel,
             lH.searchScheme,
-            [&](size_t /*queryId*/, auto cursor, size_t /*errors*/)
+            [&](auto cursor, size_t /*errors*/)
             {
                 lH.cursor_buffer.push_back(cursor);
             }
@@ -588,7 +577,7 @@ search(LocalDataHolder<TGlobalHolder> & lH)
             if (lH.options.seedHalfExact)
                 searchHalfExactImpl(lH, lH.redQrySeqs[i] | seqan3::views::slice(seedBegin, seedBegin + lH.options.seedLength));
             else
-                search_impl<dbIndexType>(lH, lH.redQrySeqs[i] | seqan3::views::slice(seedBegin, seedBegin + lH.options.seedLength));
+                search_impl(lH, lH.redQrySeqs[i] | seqan3::views::slice(seedBegin, seedBegin + lH.options.seedLength));
 
             if (lH.options.adaptiveSeeding)
                 lH.offset_modifier_buffer.clear();

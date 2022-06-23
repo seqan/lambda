@@ -509,8 +509,7 @@ public:
     // regarding the gathering of stats
     StatsHolder         stats{};
 
-    // search work space
-    std::vector<std::vector<uint8_t>> queries;
+    // currently used search scheme
     search_schemes::Scheme searchScheme;
 
     LocalDataHolder() = delete;
@@ -521,7 +520,6 @@ public:
 
     LocalDataHolder(LambdaOptions const & _options, TGlobalHolder & _gH) :
         options{_options}, gH{_gH}, stats{},
-        queries{std::vector<uint8_t>(options.seedLength)},  // always one query with fixed length
         searchScheme{search_schemes::expand(search_schemes::generator::pigeon_opt(0, options.maxSeedDist), options.seedLength)} // fixed search scheme
     {}
 

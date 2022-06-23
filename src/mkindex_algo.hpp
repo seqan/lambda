@@ -32,6 +32,7 @@
 #include <seqan3/utility/views/convert.hpp>
 #include <seqan3/alphabet/views/translate.hpp>
 #include <seqan3/alphabet/views/translate_join.hpp>
+#include <seqan3/alphabet/views/to_rank.hpp>
 
 #include "mkindex_misc.hpp"
 // #include "mkindex_saca.hpp"
@@ -649,21 +650,8 @@ auto generateIndex(TStringSet                       & seqs,
     myPrint(options, 1, "Generating Index...");
     double s = sysTime();
 
-    TIndex index = [&]() {
-        //!TODO: needs better approach (or do it inside the index?), the '0' is sentinel for in-between and ending sequences
-        std::vector<std::vector<uint8_t>> tmp;
-        for (auto a : seqs | seqan3::views::to<std::vector<std::vector<TRedAlph>>>)
-        {
-            std::vector<uint8_t> v2;
-            v2.reserve(a.size());
-            for (auto b : a)
-            {
-                v2.emplace_back(b.to_rank()+1);
-            }
-            tmp.emplace_back(std::move(v2));
-        }
-        return TIndex{tmp, 16};
-    }();
+    TIndex index{seqs | std::views::transform([] (auto const& seq) { return seq | seqan3::views::to_rank; })
+            | fmindex_collection::add_sentinels, 16};
 
     double e = sysTime() - s;
     myPrint(options, 1, " done.\n");
