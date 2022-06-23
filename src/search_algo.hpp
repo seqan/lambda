@@ -442,8 +442,7 @@ search_impl(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
     }
 }
 
-template <typename      TGlobalHolder,
-          typename      TSeed>
+template <typename TGlobalHolder, typename TSeed>
 inline void
 searchHalfExactImpl(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
 {
@@ -635,7 +634,7 @@ search(LocalDataHolder<TGlobalHolder> & lH)
                     continue;
 
                 // locate hits
-                for (auto [subjNo, subjOffset] : fmindex_collection::LocateLinear{lH.gH.indexFile.index, cursor})
+                for (auto [ subjNo, subjOffset ] : fmindex_collection::LocateLinear{lH.gH.indexFile.index, cursor})
                 {
                     TMatch m {static_cast<typename TMatch::TQId>(i),
                               static_cast<typename TMatch::TSId>(subjNo),
@@ -657,7 +656,6 @@ search(LocalDataHolder<TGlobalHolder> & lH)
 #ifdef LAMBDA_MICRO_STATS
                         lH.stats.seedLengths.push_back(seedLength);
 #endif
-
                     }
                 }
             }

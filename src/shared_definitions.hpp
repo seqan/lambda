@@ -288,7 +288,7 @@ struct index_file_options
 {
     uint64_t indexGeneration{0}; // bump this on incompatible changes
 
-    DbIndexType indexType;
+    DbIndexType indexType{};
 
     AlphabetEnum origAlph{};
     AlphabetEnum transAlph{};

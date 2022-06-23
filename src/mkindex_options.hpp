@@ -189,8 +189,6 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
     // set db index type
     if (dbIndexTypeTmp == "bifm")
         options.indexFileOptions.indexType = DbIndexType::BI_FM_INDEX;
-    else if (dbIndexTypeTmp == "fm")
-        options.indexFileOptions.indexType = DbIndexType::FM_INDEX;
     else
         options.indexFileOptions.indexType = DbIndexType::FM_INDEX;
 
