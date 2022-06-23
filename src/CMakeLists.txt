@@ -168,7 +168,6 @@ set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN_CXX_FLAGS} -Wall -pedantic")
 set (LAMBDA_SOURCE_FILES lambda.cpp  search.cpp mkindex.cpp)
 
 add_executable (lambda3 ${LAMBDA_SOURCE_FILES})
-# !TODO !FIXME ugly hack to get fmindex-collection included
 target_link_libraries (lambda3 ${SEQAN_LIBRARIES} seqan3::seqan3 fmindex-collection)
 
 if (LAMBDA_MULTIOPT_BUILD)
