@@ -650,9 +650,8 @@ auto generateIndex(TStringSet                       & seqs,
     myPrint(options, 1, "Generating Index...");
     double s = sysTime();
 
-    // creates the index with sampling rate of 5
-    TIndex index{seqs | std::views::transform([] (auto const& seq) { return seq | seqan3::views::to_rank; })
-            | fmindex_collection::add_sentinels, 5};
+    TIndex index{seqs | seqan3::views::to_rank | fmindex_collection::add_sentinels, 5};
+
 
     double e = sysTime() - s;
     myPrint(options, 1, " done.\n");
