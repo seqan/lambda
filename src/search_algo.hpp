@@ -436,72 +436,58 @@ template <typename TGlobalHolder, typename TSeed>
 inline void
 searchHalfExactImpl(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
 {
+    using TIndexCursor = typename TGlobalHolder::TIndexCursor;
 
-    auto extendRight = [&](auto & cursor, auto c)
-    {
-        auto newCursor = cursor.extendRight(c.to_rank()+1);
-        if (newCursor.empty())
-        {
-            return false;
-        }
-        cursor = newCursor;
-        return true;
-    };
+    auto cursor = TIndexCursor{lH.gH.indexFile.index};
 
-    using alph_t = std::ranges::range_value_t<TSeed>;
-
-    lH.cursor_tmp_buffer.clear();
-    lH.cursor_tmp_buffer2.clear();
+    // extend by first half exactly
     size_t const seedFirstHalfLength = lH.options.seedLength / 2;
-    size_t const seedSecondHalfLength = lH.options.seedLength - seedFirstHalfLength;
-
-    lH.cursor_tmp_buffer.emplace_back(lH.gH.indexFile.index, 0);
-    auto & c = lH.cursor_tmp_buffer.back().first;
-
-    // extend by half exactly
     for (size_t i = 0; i < seedFirstHalfLength; ++i)
     {
-        auto newCursor = c.extendRight(seed[i].to_rank()+1);
-        if (newCursor.empty())
+        cursor = cursor.extendRight(seed[i].to_rank()+1);
+        if (cursor.empty())
+            return;
+    }
+
+
+    // Function which implements naive backtracking
+    std::function<void(TIndexCursor, size_t, size_t)> backtrackingStep;
+    backtrackingStep = [&backtrackingStep, &lH, &seed](TIndexCursor cursor, size_t errorsLeft, size_t i)
+    {
+        // check if end of seed is reached (report as results)
+        if (i == lH.options.seedLength)
         {
+            lH.cursor_buffer.emplace_back(cursor);
             return;
         }
-        c = newCursor;
-    }
 
-
-    // manual backtracking
-    for (size_t i = 0; i < seedSecondHalfLength; ++i)
-    {
-        auto seed_at_i = seed[seedFirstHalfLength + i];
-
-        for (auto & [ cursor, error_count ] : lH.cursor_tmp_buffer)
+        // are errors allowed? if yes extend with errors
+        if (errorsLeft > 0)
         {
-            if (error_count < lH.options.maxSeedDist)
+            auto newCursors = cursor.extendRight();
+            for (size_t r{1}; r < newCursors.size(); ++r)
             {
-                for (size_t r = 0; r < seqan3::alphabet_size<alph_t>; ++r)
+                if (!newCursors[r].empty())
                 {
-                    alph_t cur_letter = seqan3::assign_rank_to(r, alph_t{});
-
-                    lH.cursor_tmp_buffer2.emplace_back(cursor, error_count + (cur_letter != seed_at_i));
-                    if (!extendRight(lH.cursor_tmp_buffer2.back().first, cur_letter))
-                        lH.cursor_tmp_buffer2.pop_back();
+                    auto errorOccured = static_cast<int>(r) != (seed[i].to_rank()+1);
+                    backtrackingStep(newCursors[r], errorsLeft - errorOccured, i+1);
                 }
             }
-            else
-            {
-                lH.cursor_tmp_buffer2.emplace_back(cursor, error_count);
-                if (!extendRight(lH.cursor_tmp_buffer2.back().first, seed_at_i))
-                    lH.cursor_tmp_buffer2.pop_back();
-            }
         }
-        lH.cursor_tmp_buffer.clear();
-        std::swap(lH.cursor_tmp_buffer, lH.cursor_tmp_buffer2);
-    }
 
-    lH.cursor_buffer.reserve(lH.cursor_buffer.size() + lH.cursor_tmp_buffer.size());
-    std::ranges::copy(lH.cursor_tmp_buffer | std::views::elements<0>, std::back_inserter(lH.cursor_buffer));
-    lH.cursor_tmp_buffer.clear();
+        // no errors allowed, extend the rest of the seed
+        else
+        {
+            for (;i < lH.options.seedLength; ++i)
+            {
+                cursor = cursor.extendRight(seed[i].to_rank() + 1);
+                if (cursor.empty())
+                    return;
+            }
+            lH.cursor_buffer.emplace_back(cursor);
+        }
+    };
+    backtrackingStep(cursor, lH.options.maxSeedDist, seedFirstHalfLength);
 }
 
 template <typename TGlobalHolder>

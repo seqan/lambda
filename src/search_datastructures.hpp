@@ -478,8 +478,6 @@ public:
 
     // regarding seeding
     std::vector<typename TGlobalHolder::TIndexCursor>                    cursor_buffer;
-    std::vector<std::pair<typename TGlobalHolder::TIndexCursor, size_t>> cursor_tmp_buffer;
-    std::vector<std::pair<typename TGlobalHolder::TIndexCursor, size_t>> cursor_tmp_buffer2;
     std::vector<size_t>                                                  offset_modifier_buffer;
     std::vector<std::pair<size_t, size_t>>                               matches_buffer;
     std::vector<TMatch>                                                  matches;
