@@ -411,9 +411,6 @@ template <typename      TGlobalHolder,
 inline void
 search_impl(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
 {
-    assert(lH.queries.size() == 1);
-    assert(lH.queries[0].size() == seed.size());
-
     if constexpr (TGlobalHolder::c_dbIndexType == DbIndexType::FM_INDEX)
     {
         //!TODO a reversed FMIndex is used, so the query need to be reversed, so we search from left to right
