@@ -74,11 +74,10 @@ else
 fi
 [ $? -eq 0 ] || errorout "Could not run the indexer"
 
-[ "$(openssl md5 db_${SALPH}_${DI}.fasta.gz.lba)" = \
-"$(zgrep "(db_${SALPH}_${DI}.fasta.gz.lba)" "${SRCDIR}/tests/index_test_outfile.md5sums.gz")" ] || errorout "MD5 mismatch of index file"
-
 # INDEXER tests end here
 if [ "$TOOL" = "MKINDEX" ]; then
+    [ "$(openssl md5 db_${SALPH}_${DI}.fasta.gz.lba)" = \
+    "$(zgrep "(db_${SALPH}_${DI}.fasta.gz.lba)" "${SRCDIR}/tests/index_test_outfile.md5sums.gz")" ] || errorout "MD5 mismatch of index file"
     rm -r "${MYTMP}"
     exit 0
 fi
