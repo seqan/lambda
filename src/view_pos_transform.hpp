@@ -35,13 +35,13 @@ class view_pos_transform : public std::ranges::view_base
 
 private:
     // The data members of view_pos_transform.
-    urng_t                                        urange;
-    ::ranges::semiregular_box_t<pos_transform_t>  pos_transform;
-    ::ranges::semiregular_box_t<size_transform_t> size_transform;
+    std::optional<urng_t>           urange;
+    std::optional<pos_transform_t>  pos_transform;
+    std::optional<size_transform_t> size_transform;
 
     // Associated types iterator.
-    using reference         = decltype(pos_transform(urange, 0));
-    using const_reference   = decltype(pos_transform(std::as_const(urange), 0));
+    using reference         = decltype((*pos_transform)(*urange, 0));
+    using const_reference   = decltype((*pos_transform)(std::as_const(*urange), 0));
     using value_type        = std::remove_cvref_t<reference>;
     using size_type         = std::ranges::range_size_t<urng_t>;
     using difference_type   = std::ranges::range_difference_t<urng_t>;
@@ -62,7 +62,7 @@ public:
                   "The range parameter to views::pos_transform must model std::ranges::sized_range.");
 
     // Constructors, destructor and assignment
-    view_pos_transform()                                                     noexcept = default; //!< Defaulted.
+    view_pos_transform() noexcept                                                     = default; //!< Defaulted.
     constexpr view_pos_transform(view_pos_transform const & rhs)             noexcept = default; //!< Defaulted.
     constexpr view_pos_transform(view_pos_transform && rhs)                  noexcept = default; //!< Defaulted.
     constexpr view_pos_transform & operator=(view_pos_transform const & rhs) noexcept = default; //!< Defaulted.
@@ -80,7 +80,7 @@ public:
     template <typename rng_t>
         requires (!std::same_as<std::remove_cvref_t<rng_t>, view_pos_transform> &&
                   (std::ranges::viewable_range<rng_t> &&
-                  std::constructible_from<urng_t, ranges::ref_view<std::remove_reference_t<rng_t>>>))
+                  std::constructible_from<urng_t, std::ranges::ref_view<std::remove_reference_t<rng_t>>>))
     view_pos_transform(rng_t && _urange, pos_transform_t _pos_transform, size_transform_t _size_transform)
      : view_pos_transform{std::views::all(std::forward<rng_t>(_urange)),
                           std::move(_pos_transform),
@@ -113,27 +113,27 @@ public:
     // Returns the number of elements in the view.
     size_type size() noexcept
     {
-        return size_transform(urange);
+        return (*size_transform)(*urange);
     }
 
     size_type size() const noexcept
         requires seqan3::const_iterable_range<urng_t>
     {
-        return size_transform(urange);
+        return (*size_transform)(*urange);
     }
 
     // Element access
     reference operator[](size_type const n)
     {
         assert(n < size());
-        return pos_transform(urange, n);
+        return (*pos_transform)(*urange, n);
     }
 
     const_reference operator[](size_type const n) const
         requires seqan3::const_iterable_range<urng_t>
     {
         assert(n < size());
-        return pos_transform(urange, n);
+        return (*pos_transform)(*urange, n);
     }
 };
 

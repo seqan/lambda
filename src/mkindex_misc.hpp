@@ -57,11 +57,11 @@ _readMappingFileUniProt(TInputView                                            & 
     while (std::ranges::begin(fiv) != std::ranges::end(fiv))
     {
         // read accession number
-        acc = fiv | std::views::take_while(!seqan3::is_blank) | seqan3::views::to<std::string>; //TODO and_consume
+        acc = fiv | std::views::take_while(!seqan3::is_blank) | seqan3::ranges::to<std::string>(); //TODO and_consume
         // skip whitespace
         seqan3::detail::consume(fiv | std::views::take_while(!seqan3::is_alnum));
         // read accession number
-        nextColumn = fiv | std::views::take_while(!seqan3::is_blank) | seqan3::views::to<std::string>; //TODO and_consume
+        nextColumn = fiv | std::views::take_while(!seqan3::is_blank) | seqan3::ranges::to<std::string>(); //TODO and_consume
 
         if ((nextColumn == "NCBI_TaxID") && (accToIdRank.count(acc) == 1))
         {
@@ -69,7 +69,7 @@ _readMappingFileUniProt(TInputView                                            & 
             // skip whitespace
             seqan3::detail::consume(fiv | std::views::take_while(!seqan3::is_alnum));
             // read tax id
-            nextColumn = fiv | std::views::take_while(!seqan3::is_space) | seqan3::views::to<std::string>; //TODO and_consume
+            nextColumn = fiv | std::views::take_while(!seqan3::is_space) | seqan3::ranges::to<std::string>(); //TODO and_consume
 
             uint32_t idNum = 0;
             auto [p, ec] = std::from_chars(nextColumn.data(), nextColumn.data() + nextColumn.size(), idNum);
@@ -107,7 +107,7 @@ _readMappingFileNCBI(TInputView                                            & fiv
     while (std::ranges::begin(fiv) != std::ranges::end(fiv))
     {
         // read accession number
-        buf = fiv | std::views::take_while(!seqan3::is_blank) | seqan3::views::to<std::string>; //TODO and_consume
+        buf = fiv | std::views::take_while(!seqan3::is_blank) | seqan3::ranges::to<std::string>(); //TODO and_consume
         // we have a sequence with this ID in our database
         if (accToIdRank.count(buf) == 1)
         {
@@ -119,7 +119,7 @@ _readMappingFileNCBI(TInputView                                            & fiv
             // skip whitespace
             seqan3::detail::consume(fiv | std::views::take_while(!seqan3::is_alnum));
             // read tax id
-            buf = fiv | std::views::take_while(!seqan3::is_blank) | seqan3::views::to<std::string>; //TODO and_consume
+            buf = fiv | std::views::take_while(!seqan3::is_blank) | seqan3::ranges::to<std::string>(); //TODO and_consume
 
             uint32_t idNum = 0;
             auto [p, ec] = std::from_chars(buf.data(), buf.data() + buf.size(), idNum);

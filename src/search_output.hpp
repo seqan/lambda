@@ -366,7 +366,7 @@ myWriteHeader(TGH & globalHolder, TLambdaOptions const & options)
         {
             //TODO replace with assign algo
             subjIds[i] = globalHolder.indexFile.ids[i] | seqan3::detail::take_until(seqan3::is_space)
-                                                       | seqan3::views::to<std::string>;
+                                                       | seqan3::ranges::to<std::string>();
         }
 
         typedef seqan::BamHeaderRecord::TTag   TTag;

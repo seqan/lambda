@@ -119,7 +119,7 @@ auto loadSubjSeqsAndIds(LambdaIndexerOptions const & options)
             extractAccIds(id, count);
 
         if (options.truncateIDs)
-            ids.push_back(id | seqan3::detail::take_until(seqan3::is_space) | seqan3::views::to<std::string>);
+            ids.push_back(id | seqan3::detail::take_until(seqan3::is_space) | seqan3::ranges::to<std::string>());
         else
             ids.push_back(std::move(id));
 
@@ -375,7 +375,7 @@ auto parseAndStoreTaxTree(std::vector<bool>          & taxIdIsPresent,
     while (std::ranges::begin(file_view) != std::ranges::end(file_view))
     {
         // read line
-        buf = file_view | std::views::take_while(not_eol) | seqan3::views::to<std::string>;
+        buf = file_view | std::views::take_while(not_eol) | seqan3::ranges::to<std::string>();
 
         uint32_t n = 0;
         uint32_t parent = 0;
@@ -568,7 +568,7 @@ auto parseAndStoreTaxTree(std::vector<bool>          & taxIdIsPresent,
     while (std::ranges::begin(file_view2) != std::ranges::end(file_view2))
     {
         // read line
-        buf = file_view2 | std::views::take_while(not_eol) | seqan3::views::to<std::string>;
+        buf = file_view2 | std::views::take_while(not_eol) | seqan3::ranges::to<std::string>();
 
         uint32_t taxId = 0;
 
@@ -651,7 +651,7 @@ auto generateIndex(TStringSet                       & seqs,
     if constexpr (is_bi)
     {
         // WORKAROUND https://github.com/seqan/seqan3/pull/1519
-        std::vector<std::vector<TRedAlph>> tmp = seqs | seqan3::views::to<std::vector<std::vector<TRedAlph>>>;
+        std::vector<std::vector<TRedAlph>> tmp = seqs | seqan3::ranges::to<std::vector<std::vector<TRedAlph>>>();
         index = TIndex{tmp};
     }
     else
