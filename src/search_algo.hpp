@@ -406,8 +406,7 @@ seedLooksPromising(LocalDataHolder<TGlobalHolder> const & lH,
     return false;
 }
 
-template <typename      TGlobalHolder,
-          typename      TSeed>
+template <typename TGlobalHolder, typename TSeed>
 inline void
 search_impl(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
 {
@@ -510,7 +509,6 @@ searchHalfExactImpl(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
     std::ranges::copy(lH.cursor_tmp_buffer | std::views::elements<0>, std::back_inserter(lH.cursor_buffer));
     lH.cursor_tmp_buffer.clear();
 }
-
 
 template <typename TGlobalHolder>
 inline void

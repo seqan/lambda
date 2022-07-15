@@ -6,4 +6,4 @@
 	url = ../../seqan/seqan3.git
 [submodule "submodules/fmindex-collection"]
 	path = submodules/fmindex-collection
-	url = https://github.com/SGSSGene/fmindex-collection.git
+	url = ../../SGSSGene/fmindex-collection.git
