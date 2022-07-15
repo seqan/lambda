@@ -24,8 +24,6 @@
 #include <seqan/score.h>
 #include <seqan/sequence.h>
 
-#include <range/v3/algorithm/copy.hpp>
-
 #include <seqan3/alignment/scoring/scoring_scheme_base.hpp>
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
 #include <algorithm>
