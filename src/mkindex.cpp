@@ -93,7 +93,7 @@ int mkindexMain(int const argc, char const ** argv)
         std::cerr << "\n\nERROR: The following unspecified exception was thrown:\n"
                   <<     "       \"" << e.what() << "\"\n"
                   <<     "       If the problem persists, report an issue at https://github.com/seqan/lambda/issues "
-                  << "and include this output, as well as the output of `lambda2 --version`, thanks!\n";
+                  << "and include this output, as well as the output of `lambda3 --version`, thanks!\n";
         return -1;
     }
 #else

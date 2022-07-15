@@ -100,14 +100,14 @@ int searchMain(int const argc, char const ** argv)
                   <<     "       \"" << e.what() << "\"\n"
                   <<     "       Make sure the directory exists and is readable; recreate the index and try again.\n"
                   <<     "       If the problem persists, report an issue at https://github.com/seqan/lambda/issues "
-                  << "and include this output, as well as the output of `lambda2 --version`, thanks!\n";
+                  << "and include this output, as well as the output of `lambda3 --version`, thanks!\n";
         return -1;
     } catch (std::exception const & e)
     {
         std::cerr << "\n\nERROR: The following unspecified exception was thrown:\n"
                   <<     "       \"" << e.what() << "\"\n"
                   <<     "       If the problem persists, report an issue at https://github.com/seqan/lambda/issues "
-                  << "and include this output, as well as the output of `lambda2 --version`, thanks!\n";
+                  << "and include this output, as well as the output of `lambda3 --version`, thanks!\n";
         return -1;
     }
 #else

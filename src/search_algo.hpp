@@ -520,9 +520,10 @@ search(LocalDataHolder<TGlobalHolder> & lH)
 
         for (size_t seedBegin = 0; /* below */; seedBegin += lH.options.seedOffset)
         {
-            // skip proteine 'X' or Dna 'N'
-            while ((seedBegin <= (lH.redQrySeqs[i].size() - lH.options.seedLength)) &&
-                   (lH.transQrySeqs[i][seedBegin] == seqan3::assign_char_to('`', TTransAlph{}))) // assume that '°' gets converted to UNKNOWN
+            // skip proteine 'X' or Dna 'N', skip letter if next letter is the same
+            while ((seedBegin < (lH.redQrySeqs[i].size() - lH.options.seedLength)) &&
+                   ((lH.transQrySeqs[i][seedBegin] == seqan3::assign_char_to('`', TTransAlph{})) || // assume that '°' gets converted to UNKNOWN
+                    (lH.transQrySeqs[i][seedBegin] == lH.transQrySeqs[i][seedBegin + 1] )))
                 ++seedBegin;
 
             // termination criterium
