@@ -282,23 +282,17 @@ loadDbIndexFromDisk(GlobalDataHolder<c_indexType, c_origSbjAlph, c_transAlph, c_
     myPrint(options, 2, "Runtime: ", finish, "s \n\n");
 
     // this is actually part of prepareScoring(), but the values are just available now
-    if constexpr (c_origSbjAlph != c_transAlph)
+    // TODO actually this should be for all modes where total size of redSbjSeqs != origSeqs
+    if constexpr (c_redAlph == AlphabetEnum::DNA3BS)
     {
-        // last value has sum of lengths
-        // seqan::context(globalHolder.outfileBlastTab).dbTotalLength  = globalHolder.indexFile.origSeqLengths.back();
-        // seqan::context(globalHolder.outfileBlastTab).dbNumberOfSeqs = globalHolder.indexFile.origSeqLengths.size() - 1;
-        seqan::context(globalHolder.outfileBlastTab).dbTotalLength  =
-            std::accumulate(globalHolder.indexFile.seqs.begin(), globalHolder.indexFile.seqs.end(), 0,
-                [](size_t sum, auto const & a)
-                {
-                    return sum + std::ranges::size(a);
-                });
-        seqan::context(globalHolder.outfileBlastTab).dbNumberOfSeqs = std::ranges::size(globalHolder.indexFile.seqs);
-    } else
+        auto sizes = globalHolder.redSbjSeqs | std::views::transform(std::ranges::size);
+        seqan::context(globalHolder.outfileBlastTab).dbTotalLength  = std::accumulate(sizes.begin(), sizes.end(), 0ull);
+        seqan::context(globalHolder.outfileBlastTab).dbNumberOfSeqs = globalHolder.redSbjSeqs.size();
+    }
+    else
     {
-        seqan::context(globalHolder.outfileBlastTab).dbTotalLength  =
-            std::ranges::distance(globalHolder.redSbjSeqs | std::views::join);
-        seqan::context(globalHolder.outfileBlastTab).dbNumberOfSeqs = std::ranges::size(globalHolder.redSbjSeqs);
+        seqan::context(globalHolder.outfileBlastTab).dbTotalLength  = globalHolder.indexFile.seqs.concat_size();
+        seqan::context(globalHolder.outfileBlastTab).dbNumberOfSeqs = globalHolder.indexFile.seqs.size();
     }
 
     seqan::context(globalHolder.outfileBlastTab).dbName = options.indexFilePath;
@@ -730,23 +724,30 @@ _writeRecord(TBlastRecord & record,
         // sort and remove duplicates -> STL, yeah!
         auto const before = record.matches.size();
 
+        // sort matches, using an inverted bitScore to have the highest score first
         record.matches.sort([] (auto const & m1, auto const & m2)
         {
+            auto const score1 = -m1.bitScore;
+            auto const score2 = -m2.bitScore;
             return std::tie(m1._n_sId,
                             m1.qStart,
                             m1.qEnd,
                             m1.sStart,
                             m1.sEnd,
                             m1.qFrameShift,
-                            m1.sFrameShift) <
+                            m1.sFrameShift,
+                            score1) <
                     std::tie(m2._n_sId,
                             m2.qStart,
                             m2.qEnd,
                             m2.sStart,
                             m2.sEnd,
                             m2.qFrameShift,
-                            m2.sFrameShift);
+                            m2.sFrameShift,
+                            score2);
         });
+
+        // removes duplicates and keeping the ones with the greatest score
         record.matches.unique([] (auto const & m1, auto const & m2)
         {
             return std::tie(m1._n_sId,
