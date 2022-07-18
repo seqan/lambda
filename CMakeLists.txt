@@ -54,6 +54,7 @@ endif ()
 # ----------------------------------------------------------------------------
 
 add_subdirectory(src)
+add_subdirectory(submodules/fmindex-collection)
 
 # ----------------------------------------------------------------------------
 # Warn if cmake build type is not "Release"

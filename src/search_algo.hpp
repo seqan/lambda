@@ -48,6 +48,12 @@
 #include "view_dna_n_to_random.hpp"
 #include "view_reduce_to_bisulfite.hpp"
 
+#include <fmindex-collection/DenseCSA.h>
+#include <fmindex-collection/search/all.h>
+#include <fmindex-collection/locate.h>
+#include <search_schemes/generator/all.h>
+#include <search_schemes/expand.h>
+
 // ============================================================================
 // Classes, structs, enums
 // ============================================================================
@@ -398,26 +404,50 @@ template <typename TGlobalHolder, typename TSeed>
 inline void
 search_impl(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
 {
-    namespace sc = seqan3::search_cfg;
-
-    seqan3::configuration cfg = sc::hit_all{}
-                              | sc::max_error_total{sc::error_count{static_cast<uint8_t>(lH.options.maxSeedDist)}}
-                              | sc::max_error_substitution{sc::error_count{static_cast<uint8_t>(lH.options.maxSeedDist)}}
-                              | sc::max_error_insertion{sc::error_count{0}}
-                              | sc::max_error_deletion{sc::error_count{0}}
-                              | sc::output_index_cursor{}
-                              | sc::on_result{[&lH] (auto && result)
-                                {
-                                    lH.cursor_buffer.push_back(result.index_cursor());
-                                }};
-
-    seqan3::search(seed, lH.gH.indexFile.index, cfg);
+    if constexpr (TGlobalHolder::c_dbIndexType == DbIndexType::FM_INDEX)
+    {
+        //!TODO a reversed FMIndex is used, so the query need to be reversed, so we search from left to right
+        //      This is a conceptual TODO for fmindex_collection library
+        fmindex_collection::search_backtracking::search(
+            lH.gH.indexFile.index,
+            seed | std::views::reverse | seqan3::views::to_rank | fmindex_collection::add_sentinel,
+            lH.options.maxSeedDist,
+            [&](auto cursor, size_t /*errors*/)
+            {
+                lH.cursor_buffer.push_back(cursor);
+            }
+        );
+    }
+    else if constexpr (TGlobalHolder::c_dbIndexType == DbIndexType::BI_FM_INDEX)
+    {
+        fmindex_collection::search_pseudo::search</*editdistance=*/false>(
+            lH.gH.indexFile.index,
+            seed | seqan3::views::to_rank | fmindex_collection::add_sentinel,
+            lH.searchScheme,
+            [&](auto cursor, size_t /*errors*/)
+            {
+                lH.cursor_buffer.push_back(cursor);
+            }
+        );
+    }
 }
 
 template <typename TGlobalHolder, typename TSeed>
 inline void
 searchHalfExactImpl(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
 {
+
+    auto extendRight = [&](auto & cursor, auto c)
+    {
+        auto newCursor = cursor.extendRight(c.to_rank()+1);
+        if (newCursor.empty())
+        {
+            return false;
+        }
+        cursor = newCursor;
+        return true;
+    };
+
     using alph_t = std::ranges::range_value_t<TSeed>;
 
     lH.cursor_tmp_buffer.clear();
@@ -425,15 +455,20 @@ searchHalfExactImpl(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
     size_t const seedFirstHalfLength = lH.options.seedLength / 2;
     size_t const seedSecondHalfLength = lH.options.seedLength - seedFirstHalfLength;
 
-    lH.cursor_tmp_buffer.emplace_back(lH.gH.indexFile.index.cursor(), 0);
+    lH.cursor_tmp_buffer.emplace_back(lH.gH.indexFile.index, 0);
     auto & c = lH.cursor_tmp_buffer.back().first;
 
     // extend by half exactly
     for (size_t i = 0; i < seedFirstHalfLength; ++i)
     {
-        if (!c.extend_right(seed[i]))
+        auto newCursor = c.extendRight(seed[i].to_rank()+1);
+        if (newCursor.empty())
+        {
             return;
+        }
+        c = newCursor;
     }
+
 
     // manual backtracking
     for (size_t i = 0; i < seedSecondHalfLength; ++i)
@@ -449,14 +484,14 @@ searchHalfExactImpl(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
                     alph_t cur_letter = seqan3::assign_rank_to(r, alph_t{});
 
                     lH.cursor_tmp_buffer2.emplace_back(cursor, error_count + (cur_letter != seed_at_i));
-                    if (!lH.cursor_tmp_buffer2.back().first.extend_right(cur_letter))
+                    if (!extendRight(lH.cursor_tmp_buffer2.back().first, cur_letter))
                         lH.cursor_tmp_buffer2.pop_back();
                 }
             }
             else
             {
                 lH.cursor_tmp_buffer2.emplace_back(cursor, error_count);
-                if (!lH.cursor_tmp_buffer2.back().first.extend_right(seed_at_i))
+                if (!extendRight(lH.cursor_tmp_buffer2.back().first, seed_at_i))
                     lH.cursor_tmp_buffer2.pop_back();
             }
         }
@@ -567,8 +602,7 @@ search(LocalDataHolder<TGlobalHolder> & lH)
                     size_t old_count = cursor.count();
                     while (seedBegin + seedLength < lH.redQrySeqs[i].size())
                     {
-                        if (!cursor.extend_right(lH.redQrySeqs[i][seedBegin + seedLength]))
-                            break;
+                        cursor = cursor.extendRight((lH.redQrySeqs[i][seedBegin + seedLength]).to_rank()+1);
 
                         size_t new_count = cursor.count();
 
@@ -590,7 +624,7 @@ search(LocalDataHolder<TGlobalHolder> & lH)
                     continue;
 
                 // locate hits
-                for (auto [ subjNo, subjOffset ] : cursor.lazy_locate())
+                for (auto [ subjNo, subjOffset ] : fmindex_collection::LocateLinear{lH.gH.indexFile.index, cursor})
                 {
                     TMatch m {static_cast<typename TMatch::TQId>(i),
                               static_cast<typename TMatch::TSId>(subjNo),

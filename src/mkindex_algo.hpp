@@ -21,18 +21,24 @@
 
 #pragma once
 
+#include <charconv>
+#include <concepts>
+
+#include <fmindex-collection/fmindex-collection.h>
+#include <fmindex-collection/occtable/all.h>
+
 #include <seqan3/io/sequence_file/input.hpp>
 #include <seqan3/io/detail/misc_input.hpp>
 #include <seqan3/utility/views/convert.hpp>
 #include <seqan3/alphabet/views/translate.hpp>
 #include <seqan3/alphabet/views/translate_join.hpp>
-#include <charconv>
-#include <concepts>
+#include <seqan3/alphabet/views/to_rank.hpp>
 
 #include "mkindex_misc.hpp"
 // #include "mkindex_saca.hpp"
 #include "shared_misc.hpp"
 #include "shared_options.hpp"
+#include "shared_definitions.hpp"
 
 // --------------------------------------------------------------------------
 // Function loadSubj()
@@ -636,28 +642,15 @@ auto generateIndex(TStringSet                       & seqs,
                    LambdaIndexerOptions       const & options)
 {
     using TRedAlph       = seqan3::range_innermost_value_t<TStringSet>;
-
-    constexpr auto is_collection = seqan3::text_layout::collection;
-    using TSpec = IndexSpec<seqan3::alphabet_size<TRedAlph>>;
-    using TIndex = std::conditional_t<is_bi,
-                                      seqan3::bi_fm_index<TRedAlph, is_collection, TSpec>,
-                                      seqan3::fm_index<TRedAlph, is_collection, TSpec>>;
+    using TIndexSpec     = IndexSpec<seqan3::alphabet_size<TRedAlph>>;
+    using TIndex         = std::conditional_t<is_bi,
+                                             fmindex_collection::BiFMIndex<TIndexSpec>,
+                                             fmindex_collection::ReverseFMIndex<TIndexSpec>>;
 
     myPrint(options, 1, "Generating Index...");
     double s = sysTime();
 
-    TIndex index;
-
-    if constexpr (is_bi)
-    {
-        // WORKAROUND https://github.com/seqan/seqan3/pull/1519
-        std::vector<std::vector<TRedAlph>> tmp = seqs | seqan3::ranges::to<std::vector<std::vector<TRedAlph>>>();
-        index = TIndex{tmp};
-    }
-    else
-    {
-        index = TIndex{seqs};
-    }
+    TIndex index{seqs | seqan3::views::to_rank | fmindex_collection::add_sentinels, 5};
 
     double e = sysTime() - s;
     myPrint(options, 1, " done.\n");

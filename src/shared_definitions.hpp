@@ -21,6 +21,16 @@
 
 #pragma once
 
+#include <cereal/archives/binary.hpp>
+#include <cereal/archives/json.hpp>
+#include <cereal/details/traits.hpp>
+#include <cereal/types/array.hpp>
+#include <cereal/types/vector.hpp>
+
+#include <fmindex-collection/fmindex-collection.h>
+#include <fmindex-collection/occtable/all.h>
+#include <fmindex-collection/DenseCSA.h>
+
 #include <seqan3/alphabet/nucleotide/dna3bs.hpp>
 #include <seqan3/alphabet/nucleotide/dna4.hpp>
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
@@ -30,8 +40,6 @@
 #include <seqan3/alphabet/aminoacid/translation_genetic_code.hpp>
 #include <seqan3/alphabet/container/concatenated_sequences.hpp>
 #include <seqan3/alphabet/views/translate_join.hpp>
-#include <seqan3/search/fm_index/fm_index.hpp>
-#include <seqan3/search/fm_index/bi_fm_index.hpp>
 #include <seqan3/utility/views/convert.hpp>
 #include <seqan3/utility/views/deep.hpp>
 #include <seqan3/utility/views/type_reduce.hpp>
@@ -220,42 +228,8 @@ inline constexpr uint64_t currentIndexGeneration = 0;
 //  Index specs TODO experiment with these
 // ==========================================================================
 
-/* default */
-template <size_t>
-using IndexSpec = seqan3::default_sdsl_index_type;
-
-/* default, spelled out */
-// template <size_t>
-// using IndexSpec = sdsl::csa_wt<sdsl::wt_blcd<sdsl::bit_vector,
-//                                               sdsl::rank_support_v<>,
-//                                               sdsl::select_support_scan<>,
-//                                               sdsl::select_support_scan<0> >,
-//                                 16,
-//                                 10000000,
-//                                 sdsl::sa_order_sa_sampling<>,
-//                                 sdsl::isa_sampling<>,
-//                                 sdsl::plain_byte_alphabet>;
-
-/* huffman, doesn't satisfy concept at the moment */
-// template <size_t>
-// using IndexSpec = sdsl::csa_wt<sdsl::wt_huff<sdsl::bit_vector,
-//                                               sdsl::rank_support_v<>,
-//                                               sdsl::select_support_scan<>,
-//                                               sdsl::select_support_scan<0> >,
-//                                 16,
-//                                 10000000,
-//                                 sdsl::sa_order_sa_sampling<>,
-//                                 sdsl::isa_sampling<>,
-//                                 sdsl::plain_byte_alphabet>;
-
-// /* epr, in experimental branch */
-// template <size_t alph_size>
-// using IndexSpec = sdsl::csa_wt<sdsl::wt_epr<alph_size + 2>, // +1 for sentinels, +1 for collection
-//                                 2,
-//                                 1'0000'000,
-//                                 sdsl::sa_order_sa_sampling<>,
-//                                 sdsl::isa_sampling<>,
-//                                 sdsl::plain_byte_alphabet>;
+template <size_t AlphabetSize>
+using IndexSpec = fmindex_collection::occtable::interleavedEPR32V2::OccTable<AlphabetSize+1>;
 
 // ==========================================================================
 //  Misc. aliases
@@ -355,10 +329,12 @@ struct index_file
     using TRedAlph      = _alphabetEnumToType<redAlph>;
     using TIndexSpec    = IndexSpec<seqan3::alphabet_size<TRedAlph>>;
     using TIndex        = std::conditional_t<dbIndexType == DbIndexType::BI_FM_INDEX,
-        seqan3::bi_fm_index<TRedAlph, seqan3::text_layout::collection, TIndexSpec>,
-        seqan3::fm_index<TRedAlph, seqan3::text_layout::collection, TIndexSpec>>;
+        fmindex_collection::BiFMIndex<TIndexSpec>,
+        fmindex_collection::ReverseFMIndex<TIndexSpec>>;
 
-    TIndex index;
+
+    // Special c'tor that supports 'default' initialization to allow deserialize
+    TIndex index{fmindex_collection::cereal_tag{}};
 
     template <typename TArchive>
     void serialize(TArchive & archive)
