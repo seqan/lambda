@@ -690,23 +690,30 @@ _writeRecord(TBlastRecord & record,
         // sort and remove duplicates -> STL, yeah!
         auto const before = record.matches.size();
 
+        // sort matches, using an inverted bitScore to have the highest score first
         record.matches.sort([] (auto const & m1, auto const & m2)
         {
+            auto const score1 = -m1.bitScore;
+            auto const score2 = -m2.bitScore;
             return std::tie(m1._n_sId,
                             m1.qStart,
                             m1.qEnd,
                             m1.sStart,
                             m1.sEnd,
                             m1.qFrameShift,
-                            m1.sFrameShift) <
+                            m1.sFrameShift,
+                            score1) <
                     std::tie(m2._n_sId,
                             m2.qStart,
                             m2.qEnd,
                             m2.sStart,
                             m2.sEnd,
                             m2.qFrameShift,
-                            m2.sFrameShift);
+                            m2.sFrameShift,
+                            score2);
         });
+
+        // removes duplicates and keeping the ones with the greatest score
         record.matches.unique([] (auto const & m1, auto const & m2)
         {
             return std::tie(m1._n_sId,
