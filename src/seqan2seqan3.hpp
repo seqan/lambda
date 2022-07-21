@@ -360,9 +360,6 @@ struct GappedValueType<alph_t>
     using Type = seqan3::gapped<alph_t>;
 };
 
-
-#ifdef SEQAN_SIMD_ENABLED
-
 // default is invalid; only used for alphabets that are scored with matrixes
 template <typename seqan3_alph_t>
 inline constexpr std::array<uint8_t, 1> seqan3rank_to_seqan2rank{};
@@ -434,6 +431,5 @@ _createSimdRepImpl(TSimdVecs & simdStr,
     using TModT   = seqan::ModifiedString<TStrings const, seqan::ModView<seqan2_to_rank_outer<TStrings const>>>;
     _createSimdRepImpl(simdStr, TModT(strings));
 }
-#endif // SEQAN_SIMD_ENABLED
 
 } // namespace seqan

@@ -92,20 +92,6 @@ struct LambdaOptions : public SharedOptions
     bool            computeLCA  = false;
     seqan3::genetic_code geneticCodeQry;
 
-    enum class ExtensionMode : uint8_t
-    {
-        AUTO,
-        XDROP,
-        FULL_SERIAL,
-        FULL_SIMD
-    };
-    // ExtensionMode   extensionMode = ExtensionMode::AUTO;
-#ifdef SEQAN_SIMD_ENABLED
-    ExtensionMode   extensionMode = ExtensionMode::FULL_SIMD;
-#else
-    ExtensionMode   extensionMode = ExtensionMode::FULL_SERIAL;
-#endif
-
     int32_t         preScoring = 2; // 0 = off, 1 = seed, 2 = region
     double          preScoringThresh    = 2.0;
 };
@@ -327,18 +313,6 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         " -2 means sqrt of query length; -1 means full dp; n means band of size 2n+1)",
         seqan3::option_spec::advanced, seqan3::arithmetic_range_validator{-3, 1000});
 
-#ifdef SEQAN_SIMD_ENABLED
-    std::string extensionModeTmp = "fullSIMD";
-    parser.add_option(extensionModeTmp,'m', "extension-mode",
-        "Choice of extension algorithms.", seqan3::option_spec::advanced,
-        seqan3::value_list_validator{"fullSerial", "fullSIMD"});
-#else
-    std::string extensionModeTmp = "fullSerial";
-    parser.add_option(extensionModeTmp,'m', "extension-mode",
-        "Choice of extension algorithms.", seqan3::option_spec::advanced,
-        seqan3::value_list_validator<std::string>{"fullSerial"});
-#endif
-
 #if 0 //TODO make new guide
     parser.add_section("Tuning");
     parser.add_line("Tuning the seeding parameters and (de)activating alphabet "
@@ -501,18 +475,6 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     // set samBamHardClip
     options.samBamHardClip = (samBamClip == "hard");
-
-    // Set options depending on extension mode
-    if (extensionModeTmp == "fullSIMD")
-    {
-        options.extensionMode = LambdaOptions::ExtensionMode::FULL_SIMD;
-        options.maximumQueryBlockSize = 10;
-    }
-    else if (extensionModeTmp == "fullSerial")
-    {
-        options.extensionMode = LambdaOptions::ExtensionMode::FULL_SERIAL;
-        options.maximumQueryBlockSize = 1;
-    }
 }
 
 // --------------------------------------------------------------------------
@@ -585,31 +547,7 @@ printOptions(LambdaOptions const & options)
                                                     : std::to_string(options.misMatch)) << "\n"
               << "  score-gap:                " << options.gapExtend << "\n"
               << "  score-gap-open:           " << options.gapOpen << "\n"
-              << " EXTENSION\n";
-    switch (options.extensionMode)
-    {
-        case LambdaOptions::ExtensionMode::AUTO:
-            std::cout
-              << "  extensionMode:            auto (depends on query length)\n"
-              << "  band:                     " << bandStr << "\n"
-              << "  [depending on the automatically chosen mode x-drop or band might get disabled.\n";
-              break;
-        case LambdaOptions::ExtensionMode::XDROP:
-            std::cout
-              << "  extensionMode:            individual\n"
-              << "  band:                     " << bandStr << "\n";
-            break;
-        case LambdaOptions::ExtensionMode::FULL_SERIAL:
-            std::cout
-              << "  extensionMode:            batch, but serialized\n"
-              << "  band:                     " << bandStr << "\n";
-            break;
-        case LambdaOptions::ExtensionMode::FULL_SIMD:
-            std::cout
-              << "  band:                     not used\n";
-            break;
-    }
-    std::cout << " BUILD OPTIONS:\n"
+              << " BUILD OPTIONS:\n"
               << "  cmake_build_type:         " << std::string(CMAKE_BUILD_TYPE) << "\n"
               << "  native_build:             "
     #if defined(LAMBDA_NATIVE_BUILD)
@@ -624,9 +562,9 @@ printOptions(LambdaOptions const & options)
               << "off\n"
     #endif
               << "  seqan_simd:               "
-    #if defined(SEQAN_SIMD_ENABLED) && defined(__AVX2__)
+    #if defined(__AVX2__)
               << "avx2\n"
-    #elif defined(SEQAN_SIMD_ENABLED) && defined(__SSE4_2__)
+    #elif defined(__SSE4_2__)
               << "sse4\n"
     #else
               << "off\n"
