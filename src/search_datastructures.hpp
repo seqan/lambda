@@ -287,13 +287,11 @@ void printStats(StatsHolder const & stats, LambdaOptions const & options)
                     << " stddev:      " << seedLengthStdDev << "\n"
                     << " max:         " << seedLengthMax << "\n\n";
         }
-    #ifdef SEQAN_SIMD_ENABLED
         if (stats.numQueryWithExt > 0)
             std::cout << "Number of Extensions stats:\n"
                     << " # queries with Extensions:    " << stats.numQueryWithExt << "\n"
                     << " avg # extensions without Ali: " << stats.numExtScore / stats.numQueryWithExt << "\n"
                     << " avg # extensions with    Ali: " << stats.numExtAli / stats.numQueryWithExt << "\n\n";
-    #endif
     #endif
     }
 

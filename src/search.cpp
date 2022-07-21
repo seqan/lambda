@@ -42,6 +42,10 @@
 #include "search_misc.hpp"
 #include "search_algo.hpp"
 
+#ifndef SEQAN_SIMD_ENABLED
+#error "Lambda must be built with at least SSE4 support. Add -march=native to your compiler flags."
+#endif
+
 // forwards
 
 void argConv0(LambdaOptions & options);

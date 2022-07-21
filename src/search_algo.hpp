@@ -953,8 +953,6 @@ _expandAlign(TBlastMatch & bm,
     seqan::setEndPosition(bm.alignRow1, bm.sEnd);
 }
 
-#ifdef SEQAN_SIMD_ENABLED
-
 template <typename TDepSetH,
           typename TDepSetV,
           typename TBlastMatches>
@@ -1216,93 +1214,6 @@ iterateMatchesFullSimd(TLocalHolder & lH, bsDirection const dir = bsDirection::f
     lH.blastMatches.splice(lH.blastMatches.end(), blastMatches);
 }
 
-#endif // SEQAN_SIMD_ENABLED
-
-template <typename TLocalHolder>
-inline void
-iterateMatchesFullSerial(TLocalHolder & lH)
-{
-    using TGlobalHolder = typename TLocalHolder::TGlobalHolder;
-
-    size_t band = _bandSize(lH.transQrySeqs[lH.matches[0].qryId].size(), lH);
-
-#ifdef LAMBDA_MICRO_STATS
-    double start = sysTime();
-#endif
-
-    auto const & const_gH = lH.gH;
-
-    // create blast matches
-    for (auto it = lH.matches.begin(), itEnd = lH.matches.end(); it != itEnd; ++it)
-    {
-        // create blastmatch in list without copy or move
-        lH.blastMatches.emplace_back(lH.qryIds [it->qryId / TGlobalHolder::qryNumFrames],
-                                     const_gH.indexFile.ids[it->subjId / TGlobalHolder::sbjNumFrames]);
-
-        auto & bm = lH.blastMatches.back();
-        auto &  m = *it;
-
-        bm._n_qId = it->qryId / TGlobalHolder::qryNumFrames;
-        bm._n_sId = it->subjId / TGlobalHolder::sbjNumFrames;
-
-        bm.qLength = //std::ranges::size(lH.transQrySeqs[it->qryId]);
-                     std::ranges::size(lH.qrySeqs[bm._n_qId]);
-        bm.sLength = //std::ranges::size(lH.gH.transSbjSeqs[it->subjId]);
-                     std::ranges::size(lH.gH.indexFile.seqs[bm._n_sId]);
-
-        _setupAlignInfix(bm, *it, lH);
-
-        _setFrames(bm, m, lH);
-
-        auto & currentScoringScheme = TGlobalHolder::c_redAlph == AlphabetEnum::DNA3BS && (it->subjId % 2) ?
-                                      lH.gH.scoringSchemeAlignBSRev :  lH.gH.scoringSchemeAlign;
-
-        // Run extension WITHOUT TRACEBACK
-        bm.alignStats.alignmentScore = localAlignmentScore(bm.alignRow0,
-                                                           bm.alignRow1,
-                                                           currentScoringScheme,
-                                                           -band,
-                                                           +band);
-
-        computeEValueThreadSafe(bm, bm.qLength, seqan::context(lH.gH.outfileBlastTab));
-
-        if (bm.eValue > lH.options.eCutOff)
-        {
-            ++lH.stats.hitsFailedExtendEValueTest;
-            lH.blastMatches.pop_back();
-            continue;
-        }
-
-        // Run extension WITH TRACEBACK
-        seqan::localAlignment(bm.alignRow0,
-                              bm.alignRow1,
-                              currentScoringScheme,
-                              -band,
-                              +band);
-
-        _expandAlign(bm, lH);
-
-        seqan::computeAlignmentStats(bm.alignStats, bm.alignRow0, bm.alignRow1, currentScoringScheme);
-
-        if (bm.alignStats.alignmentIdentity < lH.options.idCutOff)
-        {
-            ++lH.stats.hitsFailedExtendPercentIdentTest;
-            lH.blastMatches.pop_back();
-            continue;
-        }
-
-        seqan::computeBitScore(bm, seqan::context(lH.gH.outfileBlastTab));
-
-        if (lH.options.hasSTaxIds)
-            bm.sTaxIds = lH.gH.indexFile.sTaxIds[bm._n_sId];
-
-    }
-
-#ifdef LAMBDA_MICRO_STATS
-    lH.stats.timeExtendTrace += sysTime() - start;
-#endif
-}
-
 template <typename TLocalHolder>
 inline void
 writeRecords(TLocalHolder & lH)
@@ -1341,22 +1252,13 @@ template <typename TLocalHolder>
 inline void
 iterateMatches(TLocalHolder & lH)
 {
-#ifdef SEQAN_SIMD_ENABLED
-    if (lH.options.extensionMode == LambdaOptions::ExtensionMode::FULL_SIMD)
+    iterateMatchesFullSimd(lH, bsDirection::fwd);
+    if constexpr (TLocalHolder::TGlobalHolder::c_redAlph == AlphabetEnum::DNA3BS)
     {
-        iterateMatchesFullSimd(lH, bsDirection::fwd);
-        if constexpr (TLocalHolder::TGlobalHolder::c_redAlph == AlphabetEnum::DNA3BS)
+        iterateMatchesFullSimd(lH, bsDirection::rev);
+        lH.blastMatches.sort([] (auto const & lhs, auto const & rhs)
         {
-            iterateMatchesFullSimd(lH, bsDirection::rev);
-            lH.blastMatches.sort([] (auto const & lhs, auto const & rhs)
-            {
-                return lhs._n_qId < rhs._n_qId;
-            });
-        }
+            return lhs._n_qId < rhs._n_qId;
+        });
     }
-    else
-#endif
-
-    iterateMatchesFullSerial(lH);
-
 }

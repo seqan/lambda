@@ -7,15 +7,14 @@ errorout()
     exit 1
 }
 
-[ $# -ne 7 ] && exit 1
+[ $# -ne 6 ] && exit 1
 
 SRCDIR=$1
 BINDIR=$2
 PROG=$3
 DI=$4
-MODE=$5
-TOOL=$6
-EXTENSION=$7
+TOOL=$5
+EXTENSION=$6
 
 # check existence of commands
 which openssl gunzip mktemp diff cat zcat zgrep > /dev/null
@@ -85,11 +84,11 @@ fi
 gunzip < "${SRCDIR}/tests/queries_${QALPHIN}.fasta.gz" > queries.fasta
 [ $? -eq 0 ] || errorout "Could not unzip queries.fasta"
 
-${BINDIR}/bin/lambda3 ${SEARCH} -i db_${SALPH}_${DI}.fasta.gz.lba -q queries.fasta -t 2 --version-to-outputfile 0 -m $MODE \
--o output_${PROG}_${DI}_${MODE}.${EXTENSION}
+${BINDIR}/bin/lambda3 ${SEARCH} -i db_${SALPH}_${DI}.fasta.gz.lba -q queries.fasta -t 2 --version-to-outputfile 0 \
+-o output_${PROG}_${DI}_fullSIMD.${EXTENSION}
 [ $? -eq 0 ] || errorout "Search failed."
 
-[ "$(openssl md5 output_${PROG}_${DI}_${MODE}.${EXTENSION})" = \
-"$(zgrep "(output_${PROG}_${DI}_${MODE}.${EXTENSION})" "${SRCDIR}/tests/search_test_outfile.md5sums.gz")" ] || errorout "MD5 mismatch of output file"
+[ "$(openssl md5 output_${PROG}_${DI}_fullSIMD.${EXTENSION})" = \
+"$(zgrep "(output_${PROG}_${DI}_fullSIMD.${EXTENSION})" "${SRCDIR}/tests/search_test_outfile.md5sums.gz")" ] || errorout "MD5 mismatch of output file"
 
 rm -r "${MYTMP}"
