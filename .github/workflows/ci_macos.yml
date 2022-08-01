@@ -5,7 +5,7 @@ on:
   pull_request:
 
 env:
-  CMAKE_VERSION: 3.8.2
+  CMAKE_VERSION: 3.10.0
   SEQAN3_NO_VERSION_CHECK: 1
   TZ: Europe/Berlin
 
@@ -16,7 +16,7 @@ defaults:
 jobs:
   build:
     name: ${{ matrix.name }}
-    runs-on: macos-10.15
+    runs-on: macos-11
     timeout-minutes: 120
     strategy:
       fail-fast: false
@@ -87,7 +87,7 @@ jobs:
         run: |
           ccache -p || true
           cd build
-          make -k -j3
+          make -k -j3 cli_test
           ccache -s || true
 
       - name: Run tests
@@ -98,5 +98,5 @@ jobs:
           CCACHE_COMPRESSLEVEL: 6
           CCACHE_MAXSIZE: 500M
         run: |
-          cd build/tests
+          cd build
           ctest . -j3 --output-on-failure

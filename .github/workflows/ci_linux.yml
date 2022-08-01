@@ -5,7 +5,7 @@ on:
   pull_request:
 
 env:
-  CMAKE_VERSION: 3.8.2
+  CMAKE_VERSION: 3.10.0
   SEQAN3_NO_VERSION_CHECK: 1
   TZ: Europe/Berlin
 
@@ -88,10 +88,10 @@ jobs:
         run: |
           ccache -p || true
           cd build
-          make -k -j2
+          make -k -j2 cli_test
           ccache -s || true
 
       - name: Run tests
         run: |
-          cd build/tests
+          cd build
           ctest . -j2 --output-on-failure
