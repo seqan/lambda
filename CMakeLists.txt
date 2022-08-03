@@ -69,4 +69,7 @@ endif ()
 # ----------------------------------------------------------------------------
 
 message ("\n${ColourBold}Setting up unit tests${ColourReset}")
-add_subdirectory(tests)
+
+enable_testing ()
+add_subdirectory (test EXCLUDE_FROM_ALL)
+
