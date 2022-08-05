@@ -350,7 +350,7 @@ seedLooksPromising(LocalDataHolder<TGlobalHolder> const & lH,
     int64_t effectiveQBegin = m.qryStart;
     int64_t effectiveSBegin = m.subjStart;
     uint64_t actualLength = m.qryEnd - m.qryStart;
-    uint64_t effectiveLength = std::max(static_cast<uint64_t>(lH.options.seedLength * lH.options.preScoring),
+    uint64_t effectiveLength = std::max(static_cast<uint64_t>(lH.searchOpts.seedLength * lH.options.preScoring),
                                         actualLength);
 
     if (effectiveLength > actualLength)
@@ -411,7 +411,7 @@ search_impl(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
         fmindex_collection::search_backtracking_with_buffers::search(
             lH.gH.indexFile.index,
             seed | std::views::reverse | seqan3::views::to_rank | fmindex_collection::add_sentinel,
-            lH.options.maxSeedDist,
+            lH.searchOpts.maxSeedDist,
             lH.cursor_tmp_buffer,
             lH.cursor_tmp_buffer2,
             [&](auto cursor, size_t /*errors*/)
@@ -454,8 +454,8 @@ searchHalfExactImpl(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
 
     lH.cursor_tmp_buffer.clear();
     lH.cursor_tmp_buffer2.clear();
-    size_t const seedFirstHalfLength = lH.options.seedLength / 2;
-    size_t const seedSecondHalfLength = lH.options.seedLength - seedFirstHalfLength;
+    size_t const seedFirstHalfLength = lH.searchOpts.seedLength / 2;
+    size_t const seedSecondHalfLength = lH.searchOpts.seedLength - seedFirstHalfLength;
 
     lH.cursor_tmp_buffer.emplace_back(lH.gH.indexFile.index, 0);
     auto & c = lH.cursor_tmp_buffer.back().first;
@@ -479,7 +479,7 @@ searchHalfExactImpl(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
 
         for (auto & [ cursor, error_count ] : lH.cursor_tmp_buffer)
         {
-            if (error_count < lH.options.maxSeedDist)
+            if (error_count < lH.searchOpts.maxSeedDist)
             {
                 for (size_t r = 0; r < seqan3::alphabet_size<alph_t>; ++r)
                 {
@@ -537,7 +537,7 @@ search(LocalDataHolder<TGlobalHolder> & lH)
 
     for (size_t i = 0; i < std::ranges::size(lH.redQrySeqs); ++i)
     {
-        if (lH.redQrySeqs[i].size() < lH.options.seedLength)
+        if (lH.redQrySeqs[i].size() < lH.searchOpts.seedLength)
             continue;
 
         if (i % TGlobalHolder::qryNumFrames == 0) // reset on every "real" new read
@@ -549,31 +549,31 @@ search(LocalDataHolder<TGlobalHolder> & lH)
                 needlesSum += lH.redQrySeqs[i + j].size();
         }
 
-        for (size_t seedBegin = 0; /* below */; seedBegin += lH.options.seedOffset)
+        for (size_t seedBegin = 0; /* below */; seedBegin += lH.searchOpts.seedOffset)
         {
             // skip proteine 'X' or Dna 'N', skip letter if next letter is the same
-            while ((seedBegin < (lH.redQrySeqs[i].size() - lH.options.seedLength)) &&
+            while ((seedBegin < (lH.redQrySeqs[i].size() - lH.searchOpts.seedLength)) &&
                    ((lH.transQrySeqs[i][seedBegin] == seqan3::assign_char_to('`', TTransAlph{})) || // assume that '°' gets converted to UNKNOWN
                     (lH.transQrySeqs[i][seedBegin] == lH.transQrySeqs[i][seedBegin + 1] )))
                 ++seedBegin;
 
             // termination criterium
-            if (seedBegin > (lH.redQrySeqs[i].size() - lH.options.seedLength))
+            if (seedBegin > (lH.redQrySeqs[i].size() - lH.searchOpts.seedLength))
                 break;
 
             // results are in cursor_buffer
             lH.cursor_buffer.clear();
-            if (lH.options.seedHalfExact)
-                searchHalfExactImpl(lH, lH.redQrySeqs[i] | seqan3::views::slice(seedBegin, seedBegin + lH.options.seedLength));
+            if (lH.options.seedHalfExact && lH.searchOpts.maxSeedDist != 0)
+                searchHalfExactImpl(lH, lH.redQrySeqs[i] | seqan3::views::slice(seedBegin, seedBegin + lH.searchOpts.seedLength));
             else
-                search_impl(lH, lH.redQrySeqs[i] | seqan3::views::slice(seedBegin, seedBegin + lH.options.seedLength));
+                search_impl(lH, lH.redQrySeqs[i] | seqan3::views::slice(seedBegin, seedBegin + lH.searchOpts.seedLength));
 
             if (lH.options.adaptiveSeeding)
                 lH.offset_modifier_buffer.clear();
 
             for (auto & cursor : lH.cursor_buffer)
             {
-                size_t seedLength = lH.options.seedLength;
+                size_t seedLength = lH.searchOpts.seedLength;
 
                 // elongate seeds
                 if (lH.options.adaptiveSeeding)
@@ -582,18 +582,18 @@ search(LocalDataHolder<TGlobalHolder> & lH)
                     size_t desiredOccs = hitsThisSeq >= lH.options.maxMatches * hitPerFinalHit
                                        ? 1
                                        : (lH.options.maxMatches * hitPerFinalHit - hitsThisSeq) /
-                                std::max<size_t>((needlesSum - needlesPos - seedBegin) / lH.options.seedOffset, 1ul);
+                                std::max<size_t>((needlesSum - needlesPos - seedBegin) / lH.searchOpts.seedOffset, 1ul);
 
 #else // lambda2 mode BUT NOT QUIET
                     // desiredOccs == the number of seed hits we estimate that we need to reach lH.options.maxMatches
                     // hitsThisSeq >= lH.options.maxMatches → if we have more than we need already, only look for one
                     // (lH.options.maxMatches - hitsThisSeq) * heuristicFactor → total desired hits
-                    // ((needlesSum - needlesPos - seedBegin) / lH.options.seedOffset → number of remaining seeds
+                    // ((needlesSum - needlesPos - seedBegin) / lH.searchOpts.seedOffset → number of remaining seeds
                     // dividing the last two yields desired hits FOR THE CURRENT SEED
                     size_t desiredOccs = hitsThisSeq >= lH.options.maxMatches
                                        ? 1
                                        : (lH.options.maxMatches - hitsThisSeq) * heuristicFactor /
-                                std::max<size_t>((needlesSum - needlesPos - seedBegin) / lH.options.seedOffset, 1ul);
+                                std::max<size_t>((needlesSum - needlesPos - seedBegin) / lH.searchOpts.seedOffset, 1ul);
 #endif
 
                     if (desiredOccs == 0)
@@ -1262,5 +1262,81 @@ iterateMatches(TLocalHolder & lH)
         {
             return lhs._n_qId < rhs._n_qId;
         });
+    }
+}
+
+//-----------------------------------------------------------------------
+// iterativeSearch
+//-----------------------------------------------------------------------
+
+void iterativeSearchPre(auto & lH)
+{
+    switch(lH.iterativeSearch)
+    {
+        case IterativeSearchMode::PHASE1:
+            lH.successfulQueries.clear();
+            lH.successfulQueries.resize(lH.qryIds.size());
+            for (auto const & bm : lH.blastMatches)
+            {
+                assert(bm._n_qId < lH.successfulQueries.size());
+                lH.successfulQueries[bm._n_qId] = true;
+            }
+            break;
+        default:
+            break;
+    }
+}
+
+void iterativeSearchPost(auto & lH)
+{
+    switch(lH.iterativeSearch)
+    {
+        case IterativeSearchMode::PHASE1:
+        {
+            /* remove those queries from set that are already successful */
+            size_t successfulCount = std::accumulate(lH.successfulQueries.begin(),
+                                                     lH.successfulQueries.end(),
+                                                     0ull);
+
+            if (successfulCount != lH.qryIds.size() && successfulCount != 0)
+            {
+                size_t index = 0;
+                [[maybe_unused]] auto subr1 =
+                    std::ranges::remove_if(lH.qryIds,
+                                           [&] (size_t pos) { return lH.successfulQueries[pos] == true; },
+                                           [&] (auto &&) { return index++; }); // converts element to index
+                assert(subr1.size() == successfulCount);
+
+                index = 0;
+                [[maybe_unused]] auto subr2 =
+                    std::ranges::remove_if(lH.qrySeqs,
+                                           [&] (size_t pos) { return lH.successfulQueries[pos] == true; },
+                                           [&] (auto &&) { return index++; });
+                assert(subr2.size() == successfulCount);
+            }
+
+            lH.qryIds.resize(lH.qryIds.size() - successfulCount);
+            lH.qrySeqs.resize(lH.qrySeqs.size() - successfulCount);
+
+            /* only switch to PHASE2 if there are any left */
+            if (!lH.qryIds.empty())
+            {
+                lH.iterativeSearch = IterativeSearchMode::PHASE2;
+                lH.searchOpts = lH.options.searchOpts; // default
+                lH.searchScheme = lH.searchScheme1;
+
+                // clear some caches (since we will not reset all of the holder)
+                lH.matches.clear();
+                lH.blastMatches.clear();
+            }
+            break;
+        }
+        case IterativeSearchMode::PHASE2:
+            lH.iterativeSearch = IterativeSearchMode::PHASE1;
+            lH.searchOpts = lH.options.searchOpts0; // alternative scores
+            lH.searchScheme = lH.searchScheme0;
+            break;
+        default:
+            break;
     }
 }

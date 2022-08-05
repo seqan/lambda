@@ -365,24 +365,27 @@ void realMain(LambdaOptions     const & options)
 
         while (true)
         {
-            localHolder.reset();
-
-            // load records until batch is full or file at end
-            for (auto & [ id, seq ] : file_view)
+            if (localHolder.iterativeSearch != IterativeSearchMode::PHASE2)
             {
-                localHolder.qryIds.push_back(std::move(id));
-                localHolder.qrySeqs.push_back(std::move(seq));
+                localHolder.reset();
 
-                if (++localHolder.queryCount == globalHolder.records_per_batch)
+                // load records until batch is full or file at end
+                for (auto & [ id, seq ] : file_view)
+                {
+                    localHolder.qryIds.push_back(std::move(id));
+                    localHolder.qrySeqs.push_back(std::move(seq));
+
+                    if (++localHolder.queryCount == globalHolder.records_per_batch)
+                        break;
+                }
+
+                if (localHolder.queryCount == 0) // no more records in file
                     break;
+
+                globalHolder.queryCount += localHolder.queryCount; // atomic can be written from multiple threads
             }
 
-            if (localHolder.queryCount == 0) // no more records in file
-                break;
-
-            globalHolder.queryCount += localHolder.queryCount; // atomic can be written from multiple threads
-
-            localHolder.resetViews(); // views reset after sequences have been loaders
+            localHolder.resetViews(); // views reset after sequences have been loaded
 
             // seed
         #ifdef LAMBDA_MICRO_STATS
@@ -403,9 +406,15 @@ void realMain(LambdaOptions     const & options)
                 printProgressBar(lastPercent, curPercent);
             }
 
+            // Check which queries are already successfull
+            iterativeSearchPre(localHolder);
+
             // write to disk
             if (localHolder.blastMatches.size() > 0)
                 writeRecords(localHolder);
+
+            // prepare second phase if necessary
+            iterativeSearchPost(localHolder);
 
         } // implicit thread sync here
 
