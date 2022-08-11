@@ -452,6 +452,50 @@ searchHalfExactImpl(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
 
     // Function which implements naive backtracking
     std::function<void(TIndexCursor, size_t, size_t)> backtrackingStep;
+    #if 0 // if activated, this only does a recursive call on an error
+    backtrackingStep = [&backtrackingStep, &lH, &seed](TIndexCursor cursor, size_t errorsLeft, size_t i)
+    {
+        // check if end of seed is reached (report as results)
+        if (i == lH.options.seedLength)
+        {
+            lH.cursor_buffer.emplace_back(cursor);
+            return;
+        }
+
+        // No errors allowed? performe exact search
+        if (errorsLeft == 0)
+        {
+            for (;i < lH.options.seedLength; ++i)
+            {
+                cursor = cursor.extendRight(seed[i].to_rank() + 1);
+                if (cursor.empty())
+                    return;
+            }
+            lH.cursor_buffer.emplace_back(cursor);
+        }
+        else
+        {
+            // only branches on error, stays iterative on no errors
+            for (; i < lH.options.seedLength and !cursor.empty(); ++i)
+            {
+                auto curRank    = seed[i].to_rank() + 1ul;
+                auto newCursors = cursor.extendRight();
+                for (size_t r{1}; r < newCursors.size(); ++r)
+                {
+                    if (!newCursors[r].empty() and curRank != r)
+                    {
+                        backtrackingStep(newCursors[r], errorsLeft - 1, i+1);
+                    }
+                }
+                cursor = newCursors[curRank];
+            }
+            if (!cursor.empty())
+            {
+                lH.cursor_buffer.emplace_back(cursor);
+            }
+        }
+    };
+    #else // else case, does a recursion on every step (original PR had this)
     backtrackingStep = [&backtrackingStep, &lH, &seed](TIndexCursor cursor, size_t errorsLeft, size_t i)
     {
         // check if end of seed is reached (report as results)
@@ -487,6 +531,8 @@ searchHalfExactImpl(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
             lH.cursor_buffer.emplace_back(cursor);
         }
     };
+    #endif
+
     backtrackingStep(cursor, lH.options.maxSeedDist, seedFirstHalfLength);
 }
 
