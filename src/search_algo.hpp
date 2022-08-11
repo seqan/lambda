@@ -408,10 +408,12 @@ search_impl(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
     {
         //!TODO a reversed FMIndex is used, so the query need to be reversed, so we search from left to right
         //      This is a conceptual TODO for fmindex_collection library
-        fmindex_collection::search_backtracking::search(
+        fmindex_collection::search_backtracking_with_buffers::search(
             lH.gH.indexFile.index,
             seed | std::views::reverse | seqan3::views::to_rank | fmindex_collection::add_sentinel,
             lH.options.maxSeedDist,
+            lH.cursor_tmp_buffer,
+            lH.cursor_tmp_buffer2,
             [&](auto cursor, size_t /*errors*/)
             {
                 lH.cursor_buffer.push_back(cursor);
