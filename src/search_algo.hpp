@@ -422,8 +422,10 @@ search_impl(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
     }
     else if constexpr (TGlobalHolder::c_dbIndexType == DbIndexType::BI_FM_INDEX)
     {
-        if (lH.options.maxSeedDist == 0) {
-            [&]() {
+        if (lH.options.maxSeedDist == 0)
+        {
+            [&]()
+            {
                 using cursor_t = TGlobalHolder::TIndexCursor;
 
                 auto query = seed | seqan3::views::to_rank | fmindex_collection::add_sentinel;
@@ -440,7 +442,9 @@ search_impl(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
                 }
                 lH.cursor_buffer.push_back(cur);
             }();
-        } else if (lH.options.maxSeedDist == 1) {
+        }
+        else if (lH.options.maxSeedDist == 1)
+        {
             fmindex_collection::search_one_error::search(
                 lH.gH.indexFile.index,
                 seed | seqan3::views::to_rank | fmindex_collection::add_sentinel,
@@ -449,7 +453,9 @@ search_impl(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
                     lH.cursor_buffer.push_back(cursor);
                 }
             );
-        } else {
+        }
+        else
+        {
             fmindex_collection::search_pseudo::search</*editdistance=*/false>(
                 lH.gH.indexFile.index,
                 seed | seqan3::views::to_rank | fmindex_collection::add_sentinel,
