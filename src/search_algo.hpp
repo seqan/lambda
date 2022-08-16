@@ -422,7 +422,7 @@ search_impl(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
     }
     else if constexpr (TGlobalHolder::c_dbIndexType == DbIndexType::BI_FM_INDEX)
     {
-        if (lH.options.maxSeedDist == 0)
+        if (lH.searchOpts.maxSeedDist == 0)
         {
             [&]()
             {
@@ -443,7 +443,7 @@ search_impl(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
                 lH.cursor_buffer.push_back(cur);
             }();
         }
-        else if (lH.options.maxSeedDist == 1)
+        else if (lH.searchOpts.maxSeedDist == 1)
         {
             fmindex_collection::search_one_error::search(
                 lH.gH.indexFile.index,
