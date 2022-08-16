@@ -422,15 +422,44 @@ search_impl(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
     }
     else if constexpr (TGlobalHolder::c_dbIndexType == DbIndexType::BI_FM_INDEX)
     {
-        fmindex_collection::search_pseudo::search</*editdistance=*/false>(
-            lH.gH.indexFile.index,
-            seed | seqan3::views::to_rank | fmindex_collection::add_sentinel,
-            lH.searchScheme,
-            [&](auto cursor, size_t /*errors*/)
-            {
-                lH.cursor_buffer.push_back(cursor);
-            }
-        );
+        if (lH.options.maxSeedDist == 0) {
+            [&]() {
+                using cursor_t = TGlobalHolder::TIndexCursor;
+
+                auto query = seed | seqan3::views::to_rank | fmindex_collection::add_sentinel;
+
+                auto cur = cursor_t{lH.gH.indexFile.index};
+                for (size_t i{0}; i < query.size(); ++i)
+                {
+                    auto r = query[query.size() - i - 1];
+                    cur = cur.extendLeft(r);
+                    if (cur.empty())
+                    {
+                        return;
+                    }
+                }
+                lH.cursor_buffer.push_back(cur);
+            }();
+        } else if (lH.options.maxSeedDist == 1) {
+            fmindex_collection::search_one_error::search(
+                lH.gH.indexFile.index,
+                seed | seqan3::views::to_rank | fmindex_collection::add_sentinel,
+                [&](auto cursor, size_t /*errors*/)
+                {
+                    lH.cursor_buffer.push_back(cursor);
+                }
+            );
+        } else {
+            fmindex_collection::search_pseudo::search</*editdistance=*/false>(
+                lH.gH.indexFile.index,
+                seed | seqan3::views::to_rank | fmindex_collection::add_sentinel,
+                lH.searchScheme,
+                [&](auto cursor, size_t /*errors*/)
+                {
+                    lH.cursor_buffer.push_back(cursor);
+                }
+            );
+        }
     }
 }
 
