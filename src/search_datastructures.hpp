@@ -322,6 +322,13 @@ struct QueryFileTraits : std::conditional_t<c_origQryAlph == AlphabetEnum::DNA5,
     using quality_container_container       = TCDStringSet<_quality_container>;
 };
 
+enum class IterativeSearchMode
+{
+    OFF,
+    PHASE1,
+    PHASE2
+};
+
 // ----------------------------------------------------------------------------
 // struct GlobalDataHolder  -- one object per program
 // ----------------------------------------------------------------------------
@@ -475,6 +482,7 @@ public:
     typename TGlobalHolder::TRedQrySeqs     redQrySeqs = transQrySeqs | redView<TGlobalHolder::c_transAlph,
                                                                                 TGlobalHolder::c_redAlph>;
     size_t                                  queryCount = 0;
+    std::vector<int>                        successfulQueries; // vector<bool> -.-
 
     // regarding seeding
     std::vector<typename TGlobalHolder::TIndexCursor>                    cursor_buffer;
@@ -483,6 +491,9 @@ public:
     std::vector<size_t>                                                  offset_modifier_buffer;
     std::vector<std::pair<size_t, size_t>>                               matches_buffer;
     std::vector<TMatch>                                                  matches;
+    // allows local override of options for iterative search
+    IterativeSearchMode       iterativeSearch = IterativeSearchMode::OFF;
+    LambdaOptions::SearchOpts searchOpts;
 
     // regarding extension
     using TAlignRow0    = seqan::Gaps<TSeqInfix0, seqan::ArrayGaps>;
@@ -508,7 +519,9 @@ public:
     StatsHolder         stats{};
 
     // currently used search scheme
-    search_schemes::Scheme searchScheme;
+    search_schemes::Scheme searchScheme0;   // iterative phase 1 scheme
+    search_schemes::Scheme searchScheme1;   // iterative phase 2 scheme
+    search_schemes::Scheme searchScheme;    // the one currently in use
 
     LocalDataHolder() = delete;
     LocalDataHolder(LocalDataHolder const &) = delete;
@@ -517,9 +530,18 @@ public:
     LocalDataHolder & operator=(LocalDataHolder &&) = delete;
 
     LocalDataHolder(LambdaOptions const & _options, TGlobalHolder & _gH) :
-        options{_options}, gH{_gH}, stats{},
-        searchScheme{search_schemes::expand(search_schemes::generator::pigeon_opt(0, options.maxSeedDist), options.seedLength)} // fixed search scheme
-    {}
+        options{_options}, gH{_gH}, searchOpts{options.searchOpts}, stats{},
+        searchScheme0{search_schemes::expand(search_schemes::generator::pigeon_opt(0, options.searchOpts0.maxSeedDist), options.searchOpts0.seedLength)},
+        searchScheme1{search_schemes::expand(search_schemes::generator::pigeon_opt(0, options.searchOpts.maxSeedDist), options.searchOpts.seedLength)},
+        searchScheme{searchScheme1}
+    {
+        if (_options.iterativeSearch)
+        {
+            iterativeSearch = IterativeSearchMode::PHASE1;
+            searchOpts = options.searchOpts0;
+            searchScheme = searchScheme0;
+        }
+    }
 
     void reset()
     {

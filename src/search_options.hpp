@@ -71,10 +71,15 @@ struct LambdaOptions : public SharedOptions
     bool            seedHalfExact = true;
     bool            adaptiveSeeding = true;
 
-    unsigned        seedLength  = 0;
-    unsigned        maxSeedDist = 1;
+    struct SearchOpts
+    {
+        size_t      seedLength  = 0;
+        size_t      maxSeedDist = 1;
+        size_t      seedOffset  = 0;
+    };
 
-    unsigned        seedOffset      = 0;
+    SearchOpts      searchOpts0;
+    SearchOpts      searchOpts;
 
     // 0 = manual, positive X = blosumX, negative Y = pamY
     int32_t         scoringMethod   = 62;
@@ -94,6 +99,8 @@ struct LambdaOptions : public SharedOptions
 
     int32_t         preScoring = 2; // 0 = off, 1 = seed, 2 = region
     double          preScoringThresh    = 2.0;
+
+    bool            iterativeSearch = false;
 };
 
 void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
@@ -249,16 +256,33 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     unsigned defaultSeedLength = options.nucleotide_mode ? 14 : 10;
 
-    options.seedLength = defaultSeedLength;
-    parser.add_option(options.seedLength, '\0', "seed-length", "Length of the seeds.", seqan3::option_spec::advanced,
+    options.searchOpts.seedLength = defaultSeedLength;
+    parser.add_option(options.searchOpts.seedLength, '\0', "seed-length", "Length of the seeds.", seqan3::option_spec::advanced,
         seqan3::arithmetic_range_validator{3, 50});
 
-    options.seedOffset = options.seedLength / 2;
-    parser.add_option(options.seedOffset, '\0', "seed-offset", "Offset for seeding. "
+    options.searchOpts.seedOffset = options.searchOpts.seedLength / 2;
+    parser.add_option(options.searchOpts.seedOffset, '\0', "seed-offset", "Offset for seeding. "
         "If you set 'seed-length', please consider setting this option to half of that.",
         seqan3::option_spec::standard, seqan3::arithmetic_range_validator{1, 50});
 
-    parser.add_option(options.maxSeedDist, '\0', "seed-delta",
+    parser.add_option(options.searchOpts.maxSeedDist, '\0', "seed-delta",
+        "Maximum seed distance.", seqan3::option_spec::advanced, seqan3::arithmetic_range_validator{0, 5});
+
+    /* iterative search parameters */
+    parser.add_option(options.iterativeSearch, '\0', "search0",
+        "If (cheaper) pre-search yield results, skip regular search.", seqan3::option_spec::advanced);
+
+    options.searchOpts0.seedLength = options.searchOpts.seedLength;
+    parser.add_option(options.searchOpts0.seedLength, '\0', "seed-length0", "Length of the seeds.", seqan3::option_spec::advanced,
+        seqan3::arithmetic_range_validator{3, 50});
+
+    options.searchOpts0.seedOffset = options.searchOpts.seedOffset;
+    parser.add_option(options.searchOpts0.seedOffset, '\0', "seed-offset0", "Offset for seeding. "
+        "If you set 'seed-length', please consider setting this option to half of that.",
+        seqan3::option_spec::standard, seqan3::arithmetic_range_validator{1, 50});
+
+    options.searchOpts0.maxSeedDist = 0; // <- this is different from normal
+    parser.add_option(options.searchOpts0.maxSeedDist, '\0', "seed-delta0",
         "Maximum seed distance.", seqan3::option_spec::advanced, seqan3::arithmetic_range_validator{0, 5});
 
     parser.add_section("Miscellaneous Heuristics");
@@ -518,12 +542,18 @@ printOptions(LambdaOptions const & options)
               << "  nucleotide_mode:          " << options.nucleotide_mode << "\n"
               << "  original alphabet (query):" << _alphabetEnumToName(options.qryOrigAlphabet) << "\n"
               << " SEEDING\n"
-              << "  seed length:              " << uint(options.seedLength) << "\n"
-              << "  seed offset:              " << uint(options.seedOffset) << "\n"
-              << "  seed delta:               " << uint(options.maxSeedDist) << "\n"
+              << "  seed length:              " << options.searchOpts.seedLength << "\n"
+              << "  seed offset:              " << options.searchOpts.seedOffset << "\n"
+              << "  seed delta:               " << options.searchOpts.maxSeedDist << "\n"
               << "  adaptive seeding:         " << (options.adaptiveSeeding
                                                     ? std::string("on")
                                                     : std::string("off")) << "\n"
+              << "  pre-search:               " << (options.iterativeSearch
+                                                    ? std::string("on")
+                                                    : std::string("off")) << "\n"
+              << "  seed length0:             " << options.searchOpts0.seedLength << "\n"
+              << "  seed offset0:             " << options.searchOpts0.seedOffset << "\n"
+              << "  seed delta0:              " << options.searchOpts0.maxSeedDist << "\n"
               << " MISCELLANEOUS HEURISTICS\n"
               << "  pre-scoring:              " << (options.preScoring
                                                     ? std::string("on")
@@ -531,7 +561,7 @@ printOptions(LambdaOptions const & options)
               << "  pre-scoring-region:       " << (options.preScoring
                                                     ? std::to_string(
                                                         options.preScoring *
-                                                        options.seedLength)
+                                                        options.searchOpts.seedLength)
                                                     : std::string("n/a")) << "\n"
               << "  pre-scoring-threshold:    " << (options.preScoring
                                                     ? std::to_string(
