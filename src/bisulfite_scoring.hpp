@@ -110,14 +110,16 @@ struct ScoringMatrixData_<int, Dna5, BisulfiteMatrix>
 
     static inline int const * getData()
     {
+        // clang-format off
         static int const _data[TAB_SIZE] =
         {
-            0, -1, -1, -1, -1,
-            -1, 0, -1, -1, -1,
-            -1, -1, 0, -1, -1,
-            -1, 0, -1, 0, -1,
+             0, -1, -1, -1, -1,
+            -1,  0, -1, -1, -1,
+            -1, -1,  0, -1, -1,
+            -1,  0, -1,  0, -1,
             -1, -1, -1, -1, -1
         };
+        // clang-format on
         return _data;
     }
 

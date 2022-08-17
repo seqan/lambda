@@ -367,6 +367,7 @@ inline constexpr std::array<uint8_t, 1> seqan3rank_to_seqan2rank{};
 // aa27 are not:
 template <>
 inline constexpr std::array<uint8_t, 27> seqan3rank_to_seqan2rank<seqan3::aa27> =
+// clang-format off
 //A  B  C  D  E  F  G  H  I  J  K   L   M   N   O   P   Q   R   S   T   U   V   W   X   Y   Z   *       <- seqan3
 { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 25, 23, 24, 26 };
 //A  B  C  D  E  F  G  H  I  J  K   L   M   N   O   P   Q   R   S   T   U   V   W   Y   Z   X   *       <- seqan2
@@ -378,6 +379,7 @@ inline constexpr std::array<uint8_t, 5> seqan3rank_to_seqan2rank<seqan3::dna5> =
 { 0, 1, 2, 4, 3 };
 //A  C  G  T  N       <- seqan2
 //         ↑  ↑
+// clang-format on
 
 // –---------------------------------------------------------------------------
 // SIMD Support

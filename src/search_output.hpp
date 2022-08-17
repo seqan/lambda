@@ -48,6 +48,7 @@ struct SamBamExtraTags
         LCA_TAX_ID
     };
 
+    // clang-format off
     static constexpr const std::array<std::pair<const char*, const char*>, 14> keyDescPairs
     {
         {
@@ -69,6 +70,7 @@ struct SamBamExtraTags
             { "lt", "lowest common ancestor taxonomy ID" },             //  LCA_TAX_ID,
         }
     };
+    // clang-format on
 
 };
 

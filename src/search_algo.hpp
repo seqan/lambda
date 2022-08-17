@@ -619,7 +619,8 @@ search(LocalDataHolder<TGlobalHolder> & lH)
                                        : (lH.options.maxMatches * hitPerFinalHit - hitsThisSeq) /
                                 std::max<size_t>((needlesSum - needlesPos - seedBegin) / lH.searchOpts.seedOffset, 1ul);
 
-#else // lambda2 mode BUT NOT QUIET
+#else
+                    // lambda2 mode BUT NOT QUIET
                     // desiredOccs == the number of seed hits we estimate that we need to reach lH.options.maxMatches
                     // hitsThisSeq >= lH.options.maxMatches → if we have more than we need already, only look for one
                     // (lH.options.maxMatches - hitsThisSeq) * heuristicFactor → total desired hits
@@ -764,8 +765,8 @@ _writeRecord(TBlastRecord & record,
         // sort matches, using an inverted bitScore to have the highest score first
         record.matches.sort([] (auto const & m1, auto const & m2)
         {
-            auto const score1 = -m1.bitScore;
-            auto const score2 = -m2.bitScore;
+            // bitscores explicitly switched so larger scores are sorted first
+            // clang-format off
             return std::tie(m1._n_sId,
                             m1.qStart,
                             m1.qEnd,
@@ -773,7 +774,7 @@ _writeRecord(TBlastRecord & record,
                             m1.sEnd,
                             m1.qFrameShift,
                             m1.sFrameShift,
-                            score1) <
+                            m2.bitScore) <
                     std::tie(m2._n_sId,
                             m2.qStart,
                             m2.qEnd,
@@ -781,7 +782,8 @@ _writeRecord(TBlastRecord & record,
                             m2.sEnd,
                             m2.qFrameShift,
                             m2.sFrameShift,
-                            score2);
+                            m1.bitScore);
+            // clang-format on
         });
 
         // removes duplicates and keeping the ones with the greatest score

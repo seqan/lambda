@@ -359,13 +359,14 @@ public:
     using TRedAlph       = _alphabetEnumToType<c_redAlph>;
     using TMatch         = Match;
 
+    // clang-format off
     static constexpr seqan::BlastProgram blastProgram =
         (c_transAlph != AlphabetEnum::AMINO_ACID)                                       ? seqan::BlastProgram::BLASTN  :
         (c_origQryAlph == AlphabetEnum::AMINO_ACID && c_origSbjAlph == c_origQryAlph)   ? seqan::BlastProgram::BLASTP  :
         (c_origQryAlph == AlphabetEnum::AMINO_ACID && c_origSbjAlph != c_origQryAlph)   ? seqan::BlastProgram::TBLASTN :
         (c_origQryAlph != AlphabetEnum::AMINO_ACID && c_origSbjAlph == c_origQryAlph)   ? seqan::BlastProgram::TBLASTX :
       /*(c_origQryAlph != AlphabetEnum::AMINO_ACID && c_origSbjAlph != c_origQryAlph) ?*/ seqan::BlastProgram::BLASTX;
-
+    // clang-format on
 
     using TQueryFile    = seqan3::sequence_file_input<QueryFileTraits<c_origQryAlph>,
                                                       seqan3::fields<seqan3::field::id, seqan3::field::seq>>;
@@ -419,12 +420,15 @@ public:
     using TBamFile      = seqan::FormattedFile<seqan::Bam, seqan::Output, seqan::BlastTabular>;
 
     // Number of frames for subject and query sequences
+    // clang-format off
     static constexpr uint8_t qryNumFrames = (c_redAlph == AlphabetEnum::DNA3BS)  ? 4 :
                                             seqan::qIsTranslated(blastProgram)   ? 6 :
                                             seqan::qHasRevComp(blastProgram)     ? 2 : 1;
     static constexpr uint8_t sbjNumFrames = (c_redAlph == AlphabetEnum::DNA3BS)  ? 2 :
                                             seqan::sIsTranslated(blastProgram)   ? 6 :
                                             seqan::sHasRevComp(blastProgram)     ? 2 : 1;
+    // clang-format on
+
     /* misc types */
     using TPositions    = std::vector<size_t>;
 
