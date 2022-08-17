@@ -90,7 +90,8 @@ struct LambdaOptions : public SharedOptions
     int32_t         misMatch        = -3; // only for manual
 
     int32_t         band        = -3;
-    double          eCutOff     = 1e-04;
+    int32_t         minBitScore = -1;
+    double          maxEValue   = 1e-04;
     int32_t         idCutOff    = 0;
     uint64_t        maxMatches  = 256;
 
@@ -190,8 +191,11 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         "Output only matches above this threshold (checked before e-value check).", seqan3::option_spec::standard,
         seqan3::arithmetic_range_validator{0, 100});
 
-    parser.add_option(options.eCutOff, 'e', "e-value", "Output only matches that score below this threshold.",
-        seqan3::option_spec::standard, seqan3::arithmetic_range_validator{0, 100});
+    parser.add_option(options.minBitScore, '\0', "bit-score", "Output only matches that score >= this threshold (-1 means no check).",
+        seqan3::option_spec::standard, seqan3::arithmetic_range_validator{-1, 1000});
+
+    parser.add_option(options.maxEValue, 'e', "e-value", "Output only matches that score below this threshold (-1 means no check).",
+        seqan3::option_spec::standard, seqan3::arithmetic_range_validator{-1, 100});
 
     int32_t numMatchesTmp = 256;
     parser.add_option(numMatchesTmp, 'n', "num-matches", "Print at most this number of matches per query.",
@@ -524,8 +528,9 @@ printOptions(LambdaOptions const & options)
               << "  index file:               " << options.indexFilePath << "\n"
               << " OUTPUT (file)\n"
               << "  output file:              " << options.output << "\n"
+              << "  maximum e-value:          " << options.maxEValue << "\n"
+              << "  minimum bit-score:        " << options.minBitScore << "\n"
               << "  minimum % identity:       " << options.idCutOff << "\n"
-              << "  maximum e-value:          " << options.eCutOff << "\n"
               << "  max #matches per query:   " << options.maxMatches << "\n"
               << "  include subj names in sam:" << options.samWithRefHeader << "\n"
               << "  include seq in sam/bam:   " << options.samBamSeq << "\n"
