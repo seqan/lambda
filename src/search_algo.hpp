@@ -2431,17 +2431,28 @@ iterateMatchesFullSimd(TLocalHolder & lH)
     {
         TBlastMatch & bm = *it;
 
-        computeEValueThreadSafe(bm,
-                                qIsTranslated(TGlobalHolder::blastProgram)
-                                    ? lH.gH.untransQrySeqLengths[bm._n_qId]
-                                    : length(lH.gH.qrySeqs[_untrueQryId(bm, lH)]),
-                                context(lH.gH.outfile));
-
-        if (bm.eValue > lH.options.eCutOff)
+        if (lH.options.minBitScore >= 0)
         {
-            ++lH.stats.hitsFailedExtendEValueTest;
-            it = blastMatches.erase(it);
-            continue;
+            seqan::computeBitScore(bm, seqan::context(lH.gH.outfileBlastTab));
+
+            if (bm.bitScore < lH.options.minBitScore)
+            {
+                ++lH.stats.hitsFailedExtendBitScoreTest;
+                it = blastMatches.erase(it);
+                continue;
+            }
+        }
+
+        if (lH.options.maxEValue >= 0)
+        {
+            computeEValueThreadSafe(bm, bm.qLength, seqan::context(lH.gH.outfileBlastTab));
+
+            if (bm.eValue > lH.options.maxEValue)
+            {
+                ++lH.stats.hitsFailedExtendEValueTest;
+                it = blastMatches.erase(it);
+                continue;
+            }
         }
 
         ++it;
@@ -2484,9 +2495,12 @@ iterateMatchesFullSimd(TLocalHolder & lH)
             continue;
         }
 
-        computeBitScore(bm, context(lH.gH.outfile));
+        // not computed previously
+        if (lH.options.minBitScore < 0)
+            seqan::computeBitScore(bm, seqan::context(lH.gH.outfileBlastTab));
 
-        // evalue computed previously
+        if (lH.options.maxEValue < 0)
+            computeEValueThreadSafe(bm, bm.qLength, seqan::context(lH.gH.outfileBlastTab));
 
         ++it;
     }

@@ -95,8 +95,8 @@ struct LambdaOptions : public SharedOptions
     int             misMatch        = 0; // only for manual
 
     int             xDropOff    = 0;
-    int             band        = -1;
-    double          eCutOff     = 0;
+    int32_t         minBitScore = -1;
+    double          maxEValue   = 1e-04;
     int             idCutOff    = 0;
     unsigned long   maxMatches  = 500;
 
@@ -903,8 +903,9 @@ printOptions(LambdaOptions const & options)
               << "  db index type:            " << _indexEnumToName(options.dbIndexType) << "\n"
               << " OUTPUT (file)\n"
               << "  output file:              " << options.output << "\n"
+              << "  maximum e-value:          " << options.maxEValue << "\n"
+              << "  minimum bit-score:        " << options.minBitScore << "\n"
               << "  minimum % identity:       " << options.idCutOff << "\n"
-              << "  maximum e-value:          " << options.eCutOff << "\n"
               << "  max #matches per query:   " << options.maxMatches << "\n"
               << "  include subj names in sam:" << options.samWithRefHeader << "\n"
               << "  include seq in sam/bam:   " << options.samBamSeq << "\n"

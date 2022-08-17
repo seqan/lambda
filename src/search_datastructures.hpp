@@ -111,6 +111,7 @@ struct StatsHolder
 
 // post-extension
     uint64_t hitsFailedExtendPercentIdentTest;
+    uint64_t hitsFailedExtendBitScoreTest;
     uint64_t hitsFailedExtendEValueTest;
     uint64_t hitsAbundant;
     uint64_t hitsDuplicate;
@@ -150,6 +151,7 @@ struct StatsHolder
         hitsPutativeAbundant = 0;
 
         hitsFailedExtendPercentIdentTest = 0;
+        hitsFailedExtendBitScoreTest = 0;
         hitsFailedExtendEValueTest = 0;
         hitsAbundant = 0;
         hitsDuplicate = 0;
@@ -183,6 +185,7 @@ struct StatsHolder
         hitsPutativeAbundant += rhs.hitsPutativeAbundant;
 
         hitsFailedExtendPercentIdentTest += rhs.hitsFailedExtendPercentIdentTest;
+        hitsFailedExtendBitScoreTest += rhs.hitsFailedExtendBitScoreTest;
         hitsFailedExtendEValueTest += rhs.hitsFailedExtendEValueTest;
         hitsAbundant += rhs.hitsAbundant;
         hitsDuplicate += rhs.hitsDuplicate;
@@ -253,12 +256,15 @@ void printStats(StatsHolder const & stats, LambdaOptions const & options)
             std::cout << "\n - failed pre-extend test   " << R
                       << stats.hitsFailedPreExtendTest  << RR
                       << (rem -= stats.hitsFailedPreExtendTest);
-        std::cout << "\n - failed %-identity test   " << R
-                  << stats.hitsFailedExtendPercentIdentTest << RR
-                  << (rem -= stats.hitsFailedExtendPercentIdentTest);
         std::cout << "\n - failed e-value test      " << R
                   << stats.hitsFailedExtendEValueTest << RR
                   << (rem -= stats.hitsFailedExtendEValueTest);
+        std::cout << "\n - failed bitScore test     " << R
+                  << stats.hitsFailedExtendBitScoreTest << RR
+                  << (rem -= stats.hitsFailedExtendBitScoreTest);
+        std::cout << "\n - failed %-identity test   " << R
+                  << stats.hitsFailedExtendPercentIdentTest << RR
+                  << (rem -= stats.hitsFailedExtendPercentIdentTest);
         std::cout << "\n - duplicates               " << R
                   << stats.hitsDuplicate              << RR
                   << (rem -= stats.hitsDuplicate);
