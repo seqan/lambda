@@ -21,8 +21,8 @@
 
 #pragma once
 
+#include <seqan3/core/range/detail/misc.hpp> // seqan3::detail::consume
 #include <seqan3/utility/char_operations/predicate.hpp>
-#include <seqan3/core/range/detail/misc.hpp>         // seqan3::detail::consume
 
 inline constexpr auto not_eol = !(seqan3::is_char<'\r'> || seqan3::is_char<'\n'>);
 
@@ -39,13 +39,11 @@ bool setEnv(std::string const & key, std::string const & value)
 // function _readMappingFileNCBI
 // ----------------------------------------------------------------------------
 
-template <typename TInputView,
-          typename TStaxIDs>
-void
-_readMappingFileUniProt(TInputView                                            & fiv,
-                        TStaxIDs                                              & sTaxIds,
-                        std::vector<bool>                                     & taxIdIsPresent,
-                        std::unordered_map<std::string, uint64_t>       const & accToIdRank)
+template <typename TInputView, typename TStaxIDs>
+void _readMappingFileUniProt(TInputView &                                      fiv,
+                             TStaxIDs &                                        sTaxIds,
+                             std::vector<bool> &                               taxIdIsPresent,
+                             std::unordered_map<std::string, uint64_t> const & accToIdRank)
 {
     // skip line with headers
     seqan3::detail::consume(fiv | std::views::take_while(not_eol));
@@ -61,7 +59,8 @@ _readMappingFileUniProt(TInputView                                            & 
         // skip whitespace
         seqan3::detail::consume(fiv | std::views::take_while(!seqan3::is_alnum));
         // read accession number
-        nextColumn = fiv | std::views::take_while(!seqan3::is_blank) | seqan3::ranges::to<std::string>(); //TODO and_consume
+        nextColumn =
+          fiv | std::views::take_while(!seqan3::is_blank) | seqan3::ranges::to<std::string>(); //TODO and_consume
 
         if ((nextColumn == "NCBI_TaxID") && (accToIdRank.count(acc) == 1))
         {
@@ -69,16 +68,17 @@ _readMappingFileUniProt(TInputView                                            & 
             // skip whitespace
             seqan3::detail::consume(fiv | std::views::take_while(!seqan3::is_alnum));
             // read tax id
-            nextColumn = fiv | std::views::take_while(!seqan3::is_space) | seqan3::ranges::to<std::string>(); //TODO and_consume
+            nextColumn =
+              fiv | std::views::take_while(!seqan3::is_space) | seqan3::ranges::to<std::string>(); //TODO and_consume
 
             uint32_t idNum = 0;
-            auto [p, ec] = std::from_chars(nextColumn.data(), nextColumn.data() + nextColumn.size(), idNum);
+            auto [p, ec]   = std::from_chars(nextColumn.data(), nextColumn.data() + nextColumn.size(), idNum);
             (void)p;
             if (ec != std::errc{})
             {
                 throw std::runtime_error(
-                    std::string("Error: Expected taxonomical ID, but got something I couldn't read: ") +
-                    nextColumn + "\n");
+                  std::string("Error: Expected taxonomical ID, but got something I couldn't read: ") + nextColumn +
+                  "\n");
             }
 
             sTaxIdV.push_back(idNum);
@@ -91,13 +91,11 @@ _readMappingFileUniProt(TInputView                                            & 
     }
 }
 
-template <typename TInputView,
-          typename TStaxIDs>
-void
-_readMappingFileNCBI(TInputView                                            & fiv,
-                     TStaxIDs                                              & sTaxIds,
-                     std::vector<bool>                                     & taxIdIsPresent,
-                     std::unordered_map<std::string, uint64_t>       const & accToIdRank)
+template <typename TInputView, typename TStaxIDs>
+void _readMappingFileNCBI(TInputView &                                      fiv,
+                          TStaxIDs &                                        sTaxIds,
+                          std::vector<bool> &                               taxIdIsPresent,
+                          std::unordered_map<std::string, uint64_t> const & accToIdRank)
 {
     // skip line with headers
     seqan3::detail::consume(fiv | std::views::take_while(not_eol));
@@ -119,16 +117,16 @@ _readMappingFileNCBI(TInputView                                            & fiv
             // skip whitespace
             seqan3::detail::consume(fiv | std::views::take_while(!seqan3::is_alnum));
             // read tax id
-            buf = fiv | std::views::take_while(!seqan3::is_blank) | seqan3::ranges::to<std::string>(); //TODO and_consume
+            buf =
+              fiv | std::views::take_while(!seqan3::is_blank) | seqan3::ranges::to<std::string>(); //TODO and_consume
 
             uint32_t idNum = 0;
-            auto [p, ec] = std::from_chars(buf.data(), buf.data() + buf.size(), idNum);
+            auto [p, ec]   = std::from_chars(buf.data(), buf.data() + buf.size(), idNum);
             (void)p;
             if (ec != std::errc{})
             {
                 throw std::runtime_error(
-                    std::string("Error: Expected taxonomical ID, but got something I couldn't read: ") +
-                    buf + "\n");
+                  std::string("Error: Expected taxonomical ID, but got something I couldn't read: ") + buf + "\n");
             }
             sTaxIdV.push_back(idNum);
             if (taxIdIsPresent.size() < idNum + 1)

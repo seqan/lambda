@@ -25,8 +25,8 @@
 #include <random>
 #include <ranges>
 
-#include <seqan3/alphabet/nucleotide/concept.hpp>
 #include <seqan3/alphabet/nucleotide/all.hpp>
+#include <seqan3/alphabet/nucleotide/concept.hpp>
 #include <seqan3/utility/char_operations/predicate.hpp>
 #include <seqan3/utility/views/deep.hpp>
 #include "view_pos_transform.hpp"
@@ -38,22 +38,23 @@ struct dna_n_to_random_fn
     constexpr auto operator()(urng_t && urange) const
     {
         static_assert(std::ranges::viewable_range<urng_t>,
-            "The range parameter to dna_n_to_random cannot be a temporary of a non-view range.");
+                      "The range parameter to dna_n_to_random cannot be a temporary of a non-view range.");
         static_assert(std::ranges::sized_range<urng_t>,
-            "The range parameter to dna_n_to_random must model std::ranges::sized_range.");
+                      "The range parameter to dna_n_to_random must model std::ranges::sized_range.");
         static_assert(std::ranges::random_access_range<urng_t>,
-            "The range parameter to dna_n_to_random must model std::ranges::random_access_range.");
+                      "The range parameter to dna_n_to_random must model std::ranges::random_access_range.");
         static_assert(std::same_as<seqan3::dna5, seqan3::range_innermost_value_t<urng_t>>,
-            "The range parameter to dna_n_to_random must be over elements of seqan3::dna5.");
+                      "The range parameter to dna_n_to_random must be over elements of seqan3::dna5.");
 
         std::shared_ptr<std::mt19937> rng{new std::mt19937{0xDEADBEEF}};
 
-        return std::forward<urng_t>(urange) | std::views::transform([rng] (seqan3::dna5 const c)
-        {
-            return (seqan3::to_char(c) == 'N') ?
-                    seqan3::assign_rank_to((*rng)() % 4, seqan3::dna4{}) :
-                    static_cast<seqan3::dna4>(c);
-        });
+        return std::forward<urng_t>(urange) | std::views::transform(
+                                                [rng](seqan3::dna5 const c)
+                                                {
+                                                    return (seqan3::to_char(c) == 'N')
+                                                             ? seqan3::assign_rank_to((*rng)() % 4, seqan3::dna4{})
+                                                             : static_cast<seqan3::dna4>(c);
+                                                });
     }
 
     template <std::ranges::range urng_t>

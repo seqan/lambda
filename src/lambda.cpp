@@ -21,8 +21,8 @@
 
 #include <seqan3/argument_parser/all.hpp>
 
-#include "search.hpp"
 #include "mkindex.hpp"
+#include "search.hpp"
 #include "shared_options.hpp"
 
 void parseCommandLineMain(int argc, char const ** argv);
@@ -32,7 +32,7 @@ int main(int argc, char const ** argv)
     if (std::string(CMAKE_BUILD_TYPE) != "Release")
         std::cerr << "WARNING: This binary is not built in release mode and will be much slower than it should be!\n";
 
-    int until = argc;
+    int  until    = argc;
     bool skipNext = false;
     for (int i = 1; i < argc; ++i)
     {
@@ -45,7 +45,8 @@ int main(int argc, char const ** argv)
             if (skipNext)
             {
                 skipNext = false;
-            } else
+            }
+            else
             {
                 until = i + 1;
                 break;
@@ -71,7 +72,7 @@ int main(int argc, char const ** argv)
     }
     else if ((std::string(argv[until]) == "mkindexp") || (std::string(argv[until]) == "mkindexn"))
     {
-       return mkindexMain(argc - until, argv + until);
+        return mkindexMain(argc - until, argv + until);
     }
     else
     {
@@ -92,15 +93,18 @@ void parseCommandLineMain(int argc, char const ** argv)
     sharedSetup(parser);
 
     std::string command{};
-    parser.add_positional_option(command, "The sub-program to execute. See below.",
-        seqan3::value_list_validator{"searchp", "searchn", "mkindexp", "mkindexn"});
+    parser.add_positional_option(command,
+                                 "The sub-program to execute. See below.",
+                                 seqan3::value_list_validator{"searchp", "searchn", "mkindexp", "mkindexn"});
 
     parser.info.description.push_back("Available commands");
-    parser.info.description.push_back("\\fBsearchp  \\fP– Perform a protein search (BLASTP, BLASTX, TBLASTN, TBLASTX).");
+    parser.info.description.push_back(
+      "\\fBsearchp  \\fP– Perform a protein search (BLASTP, BLASTX, TBLASTN, TBLASTX).");
     parser.info.description.push_back("\\fBsearchn  \\fP– Perform a nucleotide search (BLASTN, MEGABLAST).");
     parser.info.description.push_back("\\fBmkindexp \\fP– Create an index for protein searches.");
     parser.info.description.push_back("\\fBmkindexn \\fP– Create an index for nucleotide searches.");
-    parser.info.description.push_back("To view the help page for a specific command, simply run 'lambda command --help'.");
+    parser.info.description.push_back(
+      "To view the help page for a specific command, simply run 'lambda command --help'.");
 
     parser.parse();
 }

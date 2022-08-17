@@ -23,6 +23,8 @@
 
 #include <vector>
 
+#include <seqan/blast.h>
+
 // ============================================================================
 // Exceptions
 // ============================================================================
@@ -37,34 +39,35 @@ struct QueryException : public std::runtime_error
     using std::runtime_error::runtime_error;
 };
 
-
 // ============================================================================
 // Alignment-related
 // ============================================================================
 
 template <typename TLocalHolder>
-inline int
-_bandSize(uint64_t const seqLength, TLocalHolder & lH)
+inline int _bandSize(uint64_t const seqLength, TLocalHolder & lH)
 {
     switch (lH.options.band)
     {
-        case -3: case -2:
-        {
-            int ret = 0;
-            auto fit = lH.bandTable.find(seqLength);
-            if (fit != lH.bandTable.end())
+        case -3:
+        case -2:
             {
-                ret = fit->second;
-            } else
-            {
-                if (lH.options.band == -3)
-                    ret = ceil(std::log2(seqLength));
+                int  ret = 0;
+                auto fit = lH.bandTable.find(seqLength);
+                if (fit != lH.bandTable.end())
+                {
+                    ret = fit->second;
+                }
                 else
-                    ret = floor(sqrt(seqLength));
+                {
+                    if (lH.options.band == -3)
+                        ret = ceil(std::log2(seqLength));
+                    else
+                        ret = floor(sqrt(seqLength));
+                }
+                lH.bandTable[seqLength] = ret;
+                return ret;
             }
-            lH.bandTable[seqLength] = ret;
-            return ret;
-        } break;
+            break;
         case -1:
             return std::numeric_limits<int>::max();
         default:
@@ -76,20 +79,15 @@ _bandSize(uint64_t const seqLength, TLocalHolder & lH)
 // Function computeEValueThreadSafe
 // ----------------------------------------------------------------------------
 
-template <typename TBlastMatch,
-          typename TScore,
-          seqan::BlastProgram p,
-          seqan::BlastTabularSpec h>
-inline double
-computeEValueThreadSafe(TBlastMatch & match,
-                        uint64_t ql,
-                        seqan::BlastIOContext<TScore, p, h> & context)
+template <typename TBlastMatch, typename TScore, seqan::BlastProgram p, seqan::BlastTabularSpec h>
+inline double computeEValueThreadSafe(TBlastMatch & match, uint64_t ql, seqan::BlastIOContext<TScore, p, h> & context)
 {
 #if defined(__FreeBSD__)
     // && version < 11 && defined(STDLIB_LLVM) because of https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=192320
     // || version >= 11 && defined(STDLIB_GNU) because of https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=215709
     static std::vector<std::unordered_map<uint64_t, uint64_t>> _cachedLengthAdjustmentsArray(omp_get_num_threads());
-    std::unordered_map<uint64_t, uint64_t> & _cachedLengthAdjustments = _cachedLengthAdjustmentsArray[omp_get_thread_num()];
+    std::unordered_map<uint64_t, uint64_t> &                   _cachedLengthAdjustments =
+      _cachedLengthAdjustmentsArray[omp_get_thread_num()];
 #else
     static thread_local std::unordered_map<uint64_t, uint64_t> _cachedLengthAdjustments;
 #endif
@@ -102,10 +100,8 @@ computeEValueThreadSafe(TBlastMatch & match,
 
     uint64_t adj = _cachedLengthAdjustments[ql];
 
-    match.eValue = _computeEValue(match.alignStats.alignmentScore,
-                                  ql - adj,
-                                  context.dbTotalLength - adj,
-                                  context.scoringScheme);
+    match.eValue =
+      _computeEValue(match.alignStats.alignmentScore, ql - adj, context.dbTotalLength - adj, context.scoringScheme);
     return match.eValue;
 }
 
@@ -126,7 +122,7 @@ T computeLCA(std::vector<T> const & taxParents, std::vector<T2> const & taxHeigh
     for (auto i = taxHeights[n2]; i > taxHeights[n1]; --i)
         n2 = taxParents[n2];
 
-    while ((n1 != 0) && ( n2 != 0))
+    while ((n1 != 0) && (n2 != 0))
     {
         // common ancestor
         if (n1 == n2)

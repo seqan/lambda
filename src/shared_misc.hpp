@@ -25,43 +25,40 @@
 #include <dirent.h>
 #include <forward_list>
 #include <locale>
-
-#if defined(__APPLE__)
-    #include <sys/sysctl.h>
-#endif
-
 #include <type_traits>
 #include <unistd.h>
 
+#if defined(__APPLE__)
+#    include <sys/sysctl.h>
+#endif
+
 #include <seqan3/io/sequence_file/input.hpp>
+
+#include "shared_options.hpp"
 
 // ============================================================================
 // Functions for translation and retranslation
 // ============================================================================
 
 template <typename TPos>
-inline bool
-inRange(TPos const i, TPos const beg, TPos const end)
+inline bool inRange(TPos const i, TPos const beg, TPos const end)
 {
     return ((i >= beg) && (i < end));
 }
 
-inline int64_t
-intervalOverlap(uint64_t const s1, uint64_t const e1,
-                uint64_t const s2, uint64_t const e2)
+inline int64_t intervalOverlap(uint64_t const s1, uint64_t const e1, uint64_t const s2, uint64_t const e2)
 {
     return std::min(e1, e2) - std::max(s1, s2);
 }
 
-inline void
-printProgressBar(uint64_t & lastPercent, uint64_t curPerc)
+inline void printProgressBar(uint64_t & lastPercent, uint64_t curPerc)
 {
     //round down to even
     curPerc = curPerc & ~1;
-//     #pragma omp critical(stdout)
+    //     #pragma omp critical(stdout)
     if ((curPerc > lastPercent) && (curPerc <= 100))
     {
-        for (uint64_t i = lastPercent + 2; i <= curPerc; i+=2)
+        for (uint64_t i = lastPercent + 2; i <= curPerc; i += 2)
         {
             if (i == 100)
                 std::cout << "|" << std::flush;
@@ -76,7 +73,7 @@ printProgressBar(uint64_t & lastPercent, uint64_t curPerc)
 
 struct alphabet_detection_traits : seqan3::sequence_file_input_default_traits_dna
 {
-    using sequence_alphabet = char;
+    using sequence_alphabet       = char;
     using sequence_legal_alphabet = char;
 
     template <typename alph>
@@ -105,8 +102,8 @@ inline AlphabetEnum detectSeqFileAlphabet(std::string const & path)
     else if (all_valid<seqan3::dna15>(seq))
     {
         std::cerr << "\nWARNING: You query file was detected as non-standard DNA, but it could be AminoAcid, too.\n"
-                    "To explicitly read as AminoAcid, add '--query-alphabet aminoacid'.\n"
-                    "To ignore and disable this warning, add '--query-alphabet dna5'.\n";
+                     "To explicitly read as AminoAcid, add '--query-alphabet aminoacid'.\n"
+                     "To ignore and disable this warning, add '--query-alphabet dna5'.\n";
         return AlphabetEnum::DNA5;
     }
     else if (all_valid<seqan3::aa27>(seq))
@@ -125,26 +122,20 @@ inline AlphabetEnum detectSeqFileAlphabet(std::string const & path)
 // ----------------------------------------------------------------------------
 
 template <typename T>
-inline void
-myPrintImpl(SharedOptions const & /**/,
-            T const & first)
+inline void myPrintImpl(SharedOptions const & /**/, T const & first)
 {
     std::cout << first;
 }
 
-template <typename T, typename ... Args>
-inline void
-myPrintImpl(SharedOptions const & options,
-            T const & first,
-            Args const & ... args)
+template <typename T, typename... Args>
+inline void myPrintImpl(SharedOptions const & options, T const & first, Args const &... args)
 {
     myPrintImpl(options, first);
     myPrintImpl(options, args...);
 }
 
 template <typename... Args>
-inline void
-myPrint(SharedOptions const & options, const int verbose, Args const &... args)
+inline void myPrint(SharedOptions const & options, int const verbose, Args const &... args)
 {
     if (options.verbosity >= verbose)
     {
@@ -159,11 +150,12 @@ myPrint(SharedOptions const & options, const int verbose, Args const &... args)
 
 inline double sysTime()
 {
-//     return std::time(NULL);
+    //     return std::time(NULL);
     return static_cast<double>(
-        std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::system_clock::now().time_since_epoch()).count()) / 1000;
-//     return std::chrono::system_clock::now().time_since_epoch().count() / 1000;
+             std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch())
+               .count()) /
+           1000;
+    //     return std::chrono::system_clock::now().time_since_epoch().count() / 1000;
 }
 
 // ----------------------------------------------------------------------------
@@ -184,11 +176,11 @@ inline uint64_t fileSize(char const * fileName)
 
 inline uint64_t dirSize(char const * dirName)
 {
-    DIR *d;
-    struct dirent *de;
-    struct stat buf;
-    int exists;
-    uint64_t total_size;
+    DIR *           d;
+    struct dirent * de;
+    struct stat     buf;
+    int             exists;
+    uint64_t        total_size;
 
     d = opendir(dirName);
     if (d == NULL)
@@ -199,12 +191,13 @@ inline uint64_t dirSize(char const * dirName)
     for (de = readdir(d); de != NULL; de = readdir(d))
     {
         std::string curPath = dirName + std::string{"/"} + de->d_name;
-        exists = stat(curPath.c_str(), &buf);
+        exists              = stat(curPath.c_str(), &buf);
         if (exists < 0)
         {
             closedir(d);
             throw std::runtime_error{"Could not read index directory.\n"};
-        } else
+        }
+        else
         {
             total_size += buf.st_size;
         }
@@ -221,14 +214,14 @@ inline uint64_t getTotalSystemMemory()
 {
 #if defined(__APPLE__)
     uint64_t mem;
-    size_t len = sizeof(mem);
+    size_t   len = sizeof(mem);
     sysctlbyname("hw.memsize", &mem, &len, NULL, 0);
     return mem;
 #elif defined(__unix__)
-    long pages = sysconf(_SC_PHYS_PAGES);
+    long pages     = sysconf(_SC_PHYS_PAGES);
     long page_size = sysconf(_SC_PAGE_SIZE);
     return pages * page_size;
 #else
-#   error "no way to get phys pages"
+#    error "no way to get phys pages"
 #endif
 }

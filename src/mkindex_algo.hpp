@@ -27,18 +27,18 @@
 #include <fmindex-collection/fmindex-collection.h>
 #include <fmindex-collection/occtable/all.h>
 
-#include <seqan3/io/sequence_file/input.hpp>
-#include <seqan3/io/detail/misc_input.hpp>
-#include <seqan3/utility/views/convert.hpp>
+#include <seqan3/alphabet/views/to_rank.hpp>
 #include <seqan3/alphabet/views/translate.hpp>
 #include <seqan3/alphabet/views/translate_join.hpp>
-#include <seqan3/alphabet/views/to_rank.hpp>
+#include <seqan3/io/detail/misc_input.hpp>
+#include <seqan3/io/sequence_file/input.hpp>
+#include <seqan3/utility/views/convert.hpp>
 
 #include "mkindex_misc.hpp"
 // #include "mkindex_saca.hpp"
+#include "shared_definitions.hpp"
 #include "shared_misc.hpp"
 #include "shared_options.hpp"
-#include "shared_definitions.hpp"
 
 // --------------------------------------------------------------------------
 // Function loadSubj()
@@ -47,9 +47,9 @@
 template <typename TOrigAlph>
 auto loadSubjSeqsAndIds(LambdaIndexerOptions const & options)
 {
-    using TIDs          = TCDStringSet<std::string>;
-    using TOrigSeqs     = TCDStringSet<std::vector<TOrigAlph>>;
-    using TAccToIdRank  = std::unordered_map<std::string, uint64_t>;
+    using TIDs         = TCDStringSet<std::string>;
+    using TOrigSeqs    = TCDStringSet<std::vector<TOrigAlph>>;
+    using TAccToIdRank = std::unordered_map<std::string, uint64_t>;
 
     std::tuple<TIDs, TOrigSeqs, TAccToIdRank> ret;
 
@@ -59,7 +59,7 @@ auto loadSubjSeqsAndIds(LambdaIndexerOptions const & options)
 
     // Make sure we have enough RAM to load the file
     auto ram = getTotalSystemMemory();
-    auto fS = fileSize(options.dbFile.c_str());
+    auto fS  = fileSize(options.dbFile.c_str());
 
     if (fS >= ram)
         std::cerr << "WARNING: Your sequence file is already larger than your physical memory!\n"
@@ -71,23 +71,25 @@ auto loadSubjSeqsAndIds(LambdaIndexerOptions const & options)
     // https://www.ncbi.nlm.nih.gov/Sequin/acc.html
     // https://www.ncbi.nlm.nih.gov/refseq/about/
     // TODO: make sure these don't trigger twice on one ID
-    std::regex const accRegEx{"[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2}|" // UNIPROT
-                              "[A-Z][0-9]{5}|[A-Z]{2}[0-9]{6}|"                                       // NCBI nucl
-                              "[A-Z]{3}[0-9]{5}|"                                                     // NCBI prot
-                              "[A-Z]{4}[0-9]{8,10}|"                                                  // NCBI wgs
-                              "[A-Z]{5}[0-9]{7}|"                                                     // NCBI mga
-                              "(NC|AC|NG|NT|NW|NZ|NM|NR|XM|XR|NP|AP|XP|YP|ZP)_[0-9]+|"                // RefSeq
-                              "UPI[A-F0-9]{10}"};                                                     // UniParc
+    std::regex const accRegEx{
+      "[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2}|" // UNIPROT
+      "[A-Z][0-9]{5}|[A-Z]{2}[0-9]{6}|"                                       // NCBI nucl
+      "[A-Z]{3}[0-9]{5}|"                                                     // NCBI prot
+      "[A-Z]{4}[0-9]{8,10}|"                                                  // NCBI wgs
+      "[A-Z]{5}[0-9]{7}|"                                                     // NCBI mga
+      "(NC|AC|NG|NT|NW|NZ|NM|NR|XM|XR|NP|AP|XP|YP|ZP)_[0-9]+|"                // RefSeq
+      "UPI[A-F0-9]{10}"};                                                     // UniParc
 
-    uint64_t noAcc = 0;
+    uint64_t noAcc    = 0;
     uint64_t multiAcc = 0;
 
     // lambda that extracts accession numbers and saves them in the map
-    auto extractAccIds = [&accToIdRank, &accRegEx, &noAcc, &multiAcc] (auto && id, uint64_t const rank)
+    auto extractAccIds = [&accToIdRank, &accRegEx, &noAcc, &multiAcc](auto && id, uint64_t const rank)
     {
-
-        std::conditional_t<(bool)std::constructible_from<std::string const &, decltype(id)>, std::string const &, std::string>
-        buf{id};
+        std::conditional_t<(bool)std::constructible_from<std::string const &, decltype(id)>,
+                           std::string const &,
+                           std::string>
+          buf{id};
 
         uint64_t count = 0;
         for (auto it = std::sregex_iterator(buf.begin(), buf.end(), accRegEx), itEnd = std::sregex_iterator();
@@ -95,7 +97,7 @@ auto loadSubjSeqsAndIds(LambdaIndexerOptions const & options)
              ++it, ++count)
         {
             assert(accToIdRank.count(it->str()) == 0);
-//                              "An accession number appeared twice in the file, but they should be unique.");
+            //                              "An accession number appeared twice in the file, but they should be unique.");
 
             // TODO store acc outside as well
             accToIdRank[it->str()] = rank;
@@ -103,9 +105,14 @@ auto loadSubjSeqsAndIds(LambdaIndexerOptions const & options)
 
         switch (count)
         {
-            case 0: ++noAcc; break;
-            case 1: break;
-            default: ++multiAcc; break;
+            case 0:
+                ++noAcc;
+                break;
+            case 1:
+                break;
+            default:
+                ++multiAcc;
+                break;
         }
     };
 
@@ -115,11 +122,11 @@ auto loadSubjSeqsAndIds(LambdaIndexerOptions const & options)
     using seq_traits = std::conditional_t<seqan3::nucleotide_alphabet<TOrigAlph>,
                                           seqan3::sequence_file_input_default_traits_dna,
                                           seqan3::sequence_file_input_default_traits_aa>;
-    seqan3::sequence_file_input<seq_traits, seqan3::fields<seqan3::field::id, seqan3::field::seq>>
-        infile{options.dbFile};
+    seqan3::sequence_file_input<seq_traits, seqan3::fields<seqan3::field::id, seqan3::field::seq>> infile{
+      options.dbFile};
 
     size_t count = 0;
-    for (auto & [ id, seq ] : infile)
+    for (auto & [id, seq] : infile)
     {
         if (options.hasSTaxIds)
             extractAccIds(id, count);
@@ -133,8 +140,7 @@ auto loadSubjSeqsAndIds(LambdaIndexerOptions const & options)
         ++count;
     }
 
-
-    myPrint(options, 1,  " done.\n");
+    myPrint(options, 1, " done.\n");
     double finish = sysTime() - start;
     myPrint(options, 2, "Runtime: ", finish, "s \n");
 
@@ -152,17 +158,33 @@ auto loadSubjSeqsAndIds(LambdaIndexerOptions const & options)
         }
         else if (std::ranges::size(s) == 0ul)
         {
-            throw std::runtime_error("ERROR: Unexpectedly encountered a sequence of length 0 in the file."
-                                     "Remove the entry and try again. Aborting.\n");
+            throw std::runtime_error(
+              "ERROR: Unexpectedly encountered a sequence of length 0 in the file."
+              "Remove the entry and try again. Aborting.\n");
         }
     }
-    myPrint(options, 2, "Number of sequences read: ", std::ranges::size(originalSeqs),
-            "\nLongest sequence read: ", maxLen, "\n");
+    myPrint(options,
+            2,
+            "Number of sequences read: ",
+            std::ranges::size(originalSeqs),
+            "\nLongest sequence read: ",
+            maxLen,
+            "\n");
 
     if (options.hasSTaxIds)
     {
-        myPrint(options, 2, "Subjects without acc numbers:             ", noAcc, '/', std::ranges::size(ids), "\n",
-                            "Subjects with more than one acc number:   ", multiAcc, '/', std::ranges::size(ids), "\n");
+        myPrint(options,
+                2,
+                "Subjects without acc numbers:             ",
+                noAcc,
+                '/',
+                std::ranges::size(ids),
+                "\n",
+                "Subjects with more than one acc number:   ",
+                multiAcc,
+                '/',
+                std::ranges::size(ids),
+                "\n");
     }
 
     myPrint(options, 2, "\n");
@@ -175,9 +197,7 @@ auto loadSubjSeqsAndIds(LambdaIndexerOptions const & options)
 // --------------------------------------------------------------------------
 
 template <typename TRedAlph>
-void
-checkIndexSize(TCDStringSet<std::vector<TRedAlph>> const & seqs,
-               LambdaIndexerOptions const & options)
+void checkIndexSize(TCDStringSet<std::vector<TRedAlph>> const & seqs, LambdaIndexerOptions const & options)
 {
 #if 0 // TODO: new index should handle arbitrary sizes, but we want the RAM check again
     myPrint(options, 1, "Checking parameters of to-be-built index...");
@@ -212,11 +232,11 @@ checkIndexSize(TCDStringSet<std::vector<TRedAlph>> const & seqs,
         err += " present in file, but only ";
         err += std::to_string(maxLenSeq);
         err += " supported by index.\n";
-        #ifndef LAMBDA_LONG_PROTEIN_SUBJ_SEQS
+#    ifndef LAMBDA_LONG_PROTEIN_SUBJ_SEQS
         if (p != BlastProgram::BLASTN)
             err += "You can recompile Lambda and add -DLAMBDA_LONG_PROTEIN_SUBJ_SEQS=1 to activate\n"
                    "support for longer protein sequences.\n";
-        #endif
+#    endif
 
         throw std::invalid_argument(err);
     }
@@ -255,17 +275,17 @@ checkIndexSize(TCDStringSet<std::vector<TRedAlph>> const & seqs,
 // Function mapAndDumpTaxIDs()
 // --------------------------------------------------------------------------
 
-auto mapTaxIDs(std::unordered_map<std::string, uint64_t>       const & accToIdRank,
-               uint64_t                                        const   numSubjects,
-               LambdaIndexerOptions                            const & options)
+auto mapTaxIDs(std::unordered_map<std::string, uint64_t> const & accToIdRank,
+               uint64_t const                                    numSubjects,
+               LambdaIndexerOptions const &                      options)
 {
-    using TTaxIds        = std::vector<std::vector<uint32_t>>;// not concat because we resize inbetween
+    using TTaxIds        = std::vector<std::vector<uint32_t>>; // not concat because we resize inbetween
     using TTaxIdsPresent = std::vector<bool>;
 
     std::tuple<TTaxIds, TTaxIdsPresent> ret;
 
-    auto & sTaxIds          = std::get<0>(ret);
-    auto & taxIdIsPresent   = std::get<1>(ret);
+    auto & sTaxIds        = std::get<0>(ret);
+    auto & taxIdIsPresent = std::get<1>(ret);
 
     taxIdIsPresent.reserve(2'000'000);
     sTaxIds.resize(numSubjects);
@@ -282,11 +302,9 @@ auto mapTaxIDs(std::unordered_map<std::string, uint64_t>       const & accToIdRa
     auto vstream = seqan3::detail::make_secondary_istream(fin);
 
     // TODO: use seqan3::views::istreambuf instead, it's faster
-    auto file_view = std::ranges::subrange<std::istreambuf_iterator<char>, std::istreambuf_iterator<char>>
-    {
-        std::istreambuf_iterator<char>{*vstream},
-        std::istreambuf_iterator<char>{}
-    };
+    auto file_view = std::ranges::subrange<std::istreambuf_iterator<char>, std::istreambuf_iterator<char>>{
+      std::istreambuf_iterator<char>{*vstream},
+      std::istreambuf_iterator<char>{}};
 
     myPrint(options, 1, "Parsing acc-to-tax-map file... ");
 
@@ -295,10 +313,12 @@ auto mapTaxIDs(std::unordered_map<std::string, uint64_t>       const & accToIdRa
     if (std::regex_match(options.accToTaxMapFile, std::regex{R"raw(.*\.accession2taxid(\.(gz|bgzf|bz2))?)raw"}))
     {
         _readMappingFileNCBI(file_view, sTaxIds, taxIdIsPresent, accToIdRank);
-    } else if (std::regex_match(options.accToTaxMapFile, std::regex{R"raw(.*\.dat(\.(gz|bgzf|bz2))?)raw"}))
+    }
+    else if (std::regex_match(options.accToTaxMapFile, std::regex{R"raw(.*\.dat(\.(gz|bgzf|bz2))?)raw"}))
     {
         _readMappingFileUniProt(file_view, sTaxIds, taxIdIsPresent, accToIdRank);
-    } else
+    }
+    else
     {
         throw std::invalid_argument("ERROR: extension of acc-to-tax-map file not handled.\n");
     }
@@ -325,11 +345,25 @@ auto mapTaxIDs(std::unordered_map<std::string, uint64_t>       const & accToIdRa
             ++multi;
     }
 
-    myPrint(options, 2, "Subjects without tax IDs:             ", nomap, '/', numSubjects, "\n",
-                        "Subjects with more than one tax ID:   ", multi, '/', numSubjects, "\n\n");
+    myPrint(options,
+            2,
+            "Subjects without tax IDs:             ",
+            nomap,
+            '/',
+            numSubjects,
+            "\n",
+            "Subjects with more than one tax ID:   ",
+            multi,
+            '/',
+            numSubjects,
+            "\n\n");
     if ((nomap > 0) && ((numSubjects / nomap) < 5))
-        myPrint(options, 1, "WARNING: ", double(nomap) * 100 / numSubjects, "% of subjects have no taxID.\n"
-                            "         Maybe you specified the wrong map file?\n\n");
+        myPrint(options,
+                1,
+                "WARNING: ",
+                double(nomap) * 100 / numSubjects,
+                "% of subjects have no taxID.\n"
+                "         Maybe you specified the wrong map file?\n\n");
 
     return ret;
 }
@@ -338,18 +372,17 @@ auto mapTaxIDs(std::unordered_map<std::string, uint64_t>       const & accToIdRa
 // Function mapAndDumpTaxIDs()
 // --------------------------------------------------------------------------
 
-auto parseAndStoreTaxTree(std::vector<bool>          & taxIdIsPresent,
-                          LambdaIndexerOptions const & options)
+auto parseAndStoreTaxTree(std::vector<bool> & taxIdIsPresent, LambdaIndexerOptions const & options)
 {
-    using TTaxonParentIDs   = std::vector<uint32_t>; // ever position has the index of its parent node
-    using TTaxonHeights     = std::vector<uint8_t>;
-    using TTaxonNames       = std::vector<std::string>;
+    using TTaxonParentIDs = std::vector<uint32_t>; // ever position has the index of its parent node
+    using TTaxonHeights   = std::vector<uint8_t>;
+    using TTaxonNames     = std::vector<std::string>;
 
     std::tuple<TTaxonParentIDs, TTaxonHeights, TTaxonNames> ret;
 
-    auto & taxonParentIDs   = std::get<0>(ret);
-    auto & taxonHeights     = std::get<1>(ret);
-    auto & taxonNames       = std::get<2>(ret);
+    auto & taxonParentIDs = std::get<0>(ret);
+    auto & taxonHeights   = std::get<1>(ret);
+    auto & taxonNames     = std::get<2>(ret);
 
     taxonParentIDs.reserve(2'000'000); // reserve 2million to save reallocs
 
@@ -365,17 +398,15 @@ auto parseAndStoreTaxTree(std::vector<bool>          & taxIdIsPresent,
     auto vstream = seqan3::detail::make_secondary_istream(fin);
 
     // TODO: use seqan3::views::istreambuf instead, it's faster
-    auto file_view = std::ranges::subrange<std::istreambuf_iterator<char>, std::istreambuf_iterator<char>>
-    {
-        std::istreambuf_iterator<char>{*vstream},
-        std::istreambuf_iterator<char>{}
-    };
+    auto file_view = std::ranges::subrange<std::istreambuf_iterator<char>, std::istreambuf_iterator<char>>{
+      std::istreambuf_iterator<char>{*vstream},
+      std::istreambuf_iterator<char>{}};
 
     myPrint(options, 1, "Parsing nodes.dmp... ");
 
     double start = sysTime();
 
-    std::string buf;
+    std::string      buf;
     std::regex const numRegEx{"\\b\\d+\\b"};
 
     while (std::ranges::begin(file_view) != std::ranges::end(file_view))
@@ -383,14 +414,14 @@ auto parseAndStoreTaxTree(std::vector<bool>          & taxIdIsPresent,
         // read line
         buf = file_view | std::views::take_while(not_eol) | seqan3::ranges::to<std::string>();
 
-        uint32_t n = 0;
+        uint32_t n      = 0;
         uint32_t parent = 0;
-        unsigned i = 0;
+        unsigned i      = 0;
         for (auto it = std::sregex_iterator(buf.begin(), buf.end(), numRegEx), itEnd = std::sregex_iterator();
              (it != itEnd) && (i < 2);
              ++it, ++i)
         {
-            std::string strbuf = it->str();
+            std::string            strbuf = it->str();
             std::from_chars_result res;
 
             if (i == 0)
@@ -401,12 +432,11 @@ auto parseAndStoreTaxTree(std::vector<bool>          & taxIdIsPresent,
             if (res.ec != std::errc{})
             {
                 throw std::runtime_error{
-                    std::string{"Error: Expected taxonomical ID, but got something I couldn't read: "} +
-                                strbuf + "\n"};
+                  std::string{"Error: Expected taxonomical ID, but got something I couldn't read: "} + strbuf + "\n"};
             }
         }
         if (std::ranges::size(taxonParentIDs) <= n)
-            taxonParentIDs.resize(n +1, 0);
+            taxonParentIDs.resize(n + 1, 0);
         taxonParentIDs[n] = parent;
     }
     // also resize these, since we get new, possibly higher cardinality nodes
@@ -418,7 +448,7 @@ auto parseAndStoreTaxTree(std::vector<bool>          & taxIdIsPresent,
     if (options.verbosity >= 2)
     {
         uint32_t heightMax = 0;
-        uint32_t numNodes = 0;
+        uint32_t numNodes  = 0;
         for (uint32_t i = 0; i < std::ranges::size(taxonParentIDs); ++i)
         {
             if (taxonParentIDs[i] > 0)
@@ -454,14 +484,15 @@ auto parseAndStoreTaxTree(std::vector<bool>          & taxIdIsPresent,
             uint32_t curPar = i;
             do
             {
-                curPar = taxonParentIDs[curPar];
+                curPar                         = taxonParentIDs[curPar];
                 taxIdIsPresentOrParent[curPar] = true;
-            } while (curPar > 1);
+            }
+            while (curPar > 1);
         }
     }
 
     // set unpresent nodes to 0
-//     SEQAN_OMP_PRAGMA(parallel for)
+    //     SEQAN_OMP_PRAGMA(parallel for)
     for (uint32_t i = 0; i < std::ranges::size(taxonParentIDs); ++i)
         if (!taxIdIsPresentOrParent[i])
             taxonParentIDs[i] = 0;
@@ -488,13 +519,13 @@ auto parseAndStoreTaxTree(std::vector<bool>          & taxIdIsPresent,
     }
 
     // remove nodes that are now disconnected
-//     SEQAN_OMP_PRAGMA(parallel for)
+    //     SEQAN_OMP_PRAGMA(parallel for)
     for (uint32_t i = 0; i < std::ranges::size(taxonParentIDs); ++i)
     {
         // those intermediate nodes that themselve represent sequences may not be skipped
         if ((inDegrees[i] == 1) && (!taxIdIsPresent[i]))
         {
-            taxonParentIDs[i] = 0;
+            taxonParentIDs[i]         = 0;
             taxIdIsPresentOrParent[i] = false;
         }
     }
@@ -503,7 +534,7 @@ auto parseAndStoreTaxTree(std::vector<bool>          & taxIdIsPresent,
 
     {
         uint32_t heightMax = 0;
-        uint32_t numNodes = 0;
+        uint32_t numNodes  = 0;
         for (uint32_t i = 0; i < std::ranges::size(taxonParentIDs); ++i)
         {
             if (taxonParentIDs[i] > 0)
@@ -516,7 +547,7 @@ auto parseAndStoreTaxTree(std::vector<bool>          & taxIdIsPresent,
                 ++height;
             }
             taxonHeights[i] = height;
-            heightMax = std::max(heightMax, height);
+            heightMax       = std::max(heightMax, height);
         }
 
         myPrint(options, 1, "done.\n");
@@ -526,8 +557,8 @@ auto parseAndStoreTaxTree(std::vector<bool>          & taxIdIsPresent,
         myPrint(options, 2, "Maximum Tree Height: ", heightMax, "\n\n");
     }
 
-    // DEBUG
-    #ifndef NDEBUG
+// DEBUG
+#ifndef NDEBUG
     for (uint32_t i = 0; i < std::ranges::size(taxonParentIDs); ++i)
     {
         if (!taxIdIsPresentOrParent[i] && (taxonParentIDs[i] != 0))
@@ -544,7 +575,7 @@ auto parseAndStoreTaxTree(std::vector<bool>          & taxIdIsPresent,
         if (!taxIdIsPresent[i] && taxIdIsPresentOrParent[i] && (inDegrees[i] == 1))
             std::cerr << "WARNING: TaxID " << i << " should have disappeared, but didn't.\n";
     }
-    #endif
+#endif
 
     /** read the names **/
     taxonNames.resize(std::ranges::size(taxonParentIDs));
@@ -558,18 +589,16 @@ auto parseAndStoreTaxTree(std::vector<bool>          & taxIdIsPresent,
     // transparent decompressor
     auto vstream2 = seqan3::detail::make_secondary_istream(fin2);
 
-    auto file_view2 = std::ranges::subrange<std::istreambuf_iterator<char>, std::istreambuf_iterator<char>>
-    {
-        std::istreambuf_iterator<char>{*vstream2},
-        std::istreambuf_iterator<char>{}
-    };
+    auto file_view2 = std::ranges::subrange<std::istreambuf_iterator<char>, std::istreambuf_iterator<char>>{
+      std::istreambuf_iterator<char>{*vstream2},
+      std::istreambuf_iterator<char>{}};
 
     myPrint(options, 1, "Parsing names.dmp... ");
 
     start = sysTime();
 
     std::regex const wordRegEx{R"([\w.,\"<> ]+)"};
-    std::string name;
+    std::string      name;
 
     while (std::ranges::begin(file_view2) != std::ranges::end(file_view2))
     {
@@ -582,9 +611,10 @@ auto parseAndStoreTaxTree(std::vector<bool>          & taxIdIsPresent,
         if (itWord == std::sregex_iterator())
         {
             throw std::runtime_error("Error: Expected taxonomical ID in first column, but couldn't find it.\n");
-        } else
+        }
+        else
         {
-            std::string strbuf = itWord->str();
+            std::string            strbuf = itWord->str();
             std::from_chars_result res;
 
             res = std::from_chars(strbuf.data(), strbuf.data() + strbuf.size(), taxId);
@@ -592,8 +622,8 @@ auto parseAndStoreTaxTree(std::vector<bool>          & taxIdIsPresent,
             if (res.ec != std::errc{})
             {
                 throw std::runtime_error{
-                    std::string{"Error: Expected taxonomical ID in first column, but got something I couldn't read: "} +
-                                strbuf + "\n"};
+                  std::string{"Error: Expected taxonomical ID in first column, but got something I couldn't read: "} +
+                  strbuf + "\n"};
             }
 
             if (taxId >= std::ranges::size(taxonNames))
@@ -635,17 +665,13 @@ auto parseAndStoreTaxTree(std::vector<bool>          & taxIdIsPresent,
     return ret;
 }
 
-
-template <bool is_bi,
-          typename TStringSet>
-auto generateIndex(TStringSet                       & seqs,
-                   LambdaIndexerOptions       const & options)
+template <bool is_bi, typename TStringSet>
+auto generateIndex(TStringSet & seqs, LambdaIndexerOptions const & options)
 {
-    using TRedAlph       = seqan3::range_innermost_value_t<TStringSet>;
-    using TIndexSpec     = IndexSpec<seqan3::alphabet_size<TRedAlph>>;
-    using TIndex         = std::conditional_t<is_bi,
-                                             fmindex_collection::BiFMIndex<TIndexSpec>,
-                                             fmindex_collection::ReverseFMIndex<TIndexSpec>>;
+    using TRedAlph   = seqan3::range_innermost_value_t<TStringSet>;
+    using TIndexSpec = IndexSpec<seqan3::alphabet_size<TRedAlph>>;
+    using TIndex     = std::
+      conditional_t<is_bi, fmindex_collection::BiFMIndex<TIndexSpec>, fmindex_collection::ReverseFMIndex<TIndexSpec>>;
 
     myPrint(options, 1, "Generating Index...");
     double s = sysTime();
