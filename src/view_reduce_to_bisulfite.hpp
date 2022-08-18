@@ -28,8 +28,8 @@
 #include <seqan3/alphabet/nucleotide/concept.hpp>
 #include <seqan3/alphabet/nucleotide/dna4.hpp>
 #include <seqan3/core/range/type_traits.hpp>
-#include <seqan3/utility/views/deep.hpp>
 #include <seqan3/utility/range/concept.hpp>
+#include <seqan3/utility/views/deep.hpp>
 #include "bisulfite_scoring.hpp"
 #include "view_pos_transform.hpp"
 
@@ -52,21 +52,29 @@ private:
     static constexpr std::array<uint8_t, 4> dna4_to_rank_bs_fwd = {0, 1, 2, 1};
     static constexpr std::array<uint8_t, 4> dna4_to_rank_bs_rev = {3, 4, 3, 5};
 
-    static auto func_fwd(auto && urange, size_t pos) { return seqan3::assign_rank_to(dna4_to_rank_bs_fwd[seqan3::to_rank(urange[pos])], seqan3::semialphabet_any<6>{}); }
-    static auto func_rev(auto && urange, size_t pos) { return seqan3::assign_rank_to(dna4_to_rank_bs_rev[seqan3::to_rank(urange[pos])], seqan3::semialphabet_any<6>{}); }
+    static auto func_fwd(auto && urange, size_t pos)
+    {
+        return seqan3::assign_rank_to(dna4_to_rank_bs_fwd[seqan3::to_rank(urange[pos])], seqan3::semialphabet_any<6>{});
+    }
+    static auto func_rev(auto && urange, size_t pos)
+    {
+        return seqan3::assign_rank_to(dna4_to_rank_bs_rev[seqan3::to_rank(urange[pos])], seqan3::semialphabet_any<6>{});
+    }
 
 public:
     template <std::ranges::range urng_t>
     constexpr auto operator()(urng_t && urange, bsDirection const direction) const
     {
-        static_assert(std::ranges::viewable_range<urng_t>,
-            "The range parameter to views::to_bisulfite_semialphabet cannot be a temporary of a non-view range.");
+        static_assert(
+          std::ranges::viewable_range<urng_t>,
+          "The range parameter to views::to_bisulfite_semialphabet cannot be a temporary of a non-view range.");
         static_assert(std::ranges::sized_range<urng_t>,
-            "The range parameter to views::to_bisulfite_semialphabet must model std::ranges::sized_range.");
-        static_assert(std::ranges::random_access_range<urng_t>,
-            "The range parameter to views::to_bisulfite_semialphabet must model std::ranges::random_access_range.");
+                      "The range parameter to views::to_bisulfite_semialphabet must model std::ranges::sized_range.");
+        static_assert(
+          std::ranges::random_access_range<urng_t>,
+          "The range parameter to views::to_bisulfite_semialphabet must model std::ranges::random_access_range.");
         static_assert(std::is_same_v<std::remove_const_t<seqan3::range_innermost_value_t<urng_t>>, seqan3::dna4>,
-            "The range parameter to views::to_bisulfite_semialphabet must be over elements of seqan3::dna4.");
+                      "The range parameter to views::to_bisulfite_semialphabet must be over elements of seqan3::dna4.");
 
         auto l = &func_fwd<std::views::all_t<urng_t> const &>;
         if (direction == bsDirection::rev)
@@ -112,10 +120,9 @@ struct reduce_to_bisulfite_fn
                       "The range parameter to views::reduce_to_bisulfite must be over a range over elements of "
                       "seqan3::dna4.");
 
-        return std::forward<urng_t>(urange) | views::pos_transform([] (auto && urange, size_t pos)
-        {
-            return urange[pos] | views::to_bisulfite_semialphabet((bsDirection) (pos % 2));
-        });
+        return std::forward<urng_t>(urange) |
+               views::pos_transform([](auto && urange, size_t pos)
+                                    { return urange[pos] | views::to_bisulfite_semialphabet((bsDirection)(pos % 2)); });
     }
 
     template <std::ranges::range urng_t>

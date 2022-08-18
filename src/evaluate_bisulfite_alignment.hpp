@@ -23,25 +23,23 @@
 namespace seqan
 {
 
-template <typename TSource0, typename TGapsSpec0,
-          typename TSource1, typename TGapsSpec1,
-          typename TScoreVal>
-TScoreVal computeAlignmentStats(AlignmentStats & stats,
-                                Gaps<TSource0, TGapsSpec0> const & row0,
-                                Gaps<TSource1, TGapsSpec1> const & row1,
+template <typename TSource0, typename TGapsSpec0, typename TSource1, typename TGapsSpec1, typename TScoreVal>
+TScoreVal computeAlignmentStats(AlignmentStats &                                             stats,
+                                Gaps<TSource0, TGapsSpec0> const &                           row0,
+                                Gaps<TSource1, TGapsSpec1> const &                           row1,
                                 Score<TScoreVal, ScoreMatrix<Dna5, BisulfiteMatrix>> const & scoringScheme)
 {
     clear(stats);
 
     typedef typename Iterator<Gaps<TSource0, TGapsSpec0> const, Standard>::Type TGapsIter0;
     typedef typename Iterator<Gaps<TSource1, TGapsSpec1> const, Standard>::Type TGapsIter1;
-    typedef typename Value<TSource0>::Type TAlphabet;
+    typedef typename Value<TSource0>::Type                                      TAlphabet;
 
     // Get iterators.
-    TGapsIter0 it0      = begin(row0);
-    TGapsIter0 itEnd0   = end(row0);
-    TGapsIter1 it1      = begin(row1);
-    TGapsIter1 itEnd1   = end(row1);
+    TGapsIter0 it0    = begin(row0);
+    TGapsIter0 itEnd0 = end(row0);
+    TGapsIter1 it1    = begin(row1);
+    TGapsIter1 itEnd1 = end(row1);
 
     // State whether we have already opened a gap.
     bool isGapOpen0 = false, isGapOpen1 = false;
@@ -91,12 +89,12 @@ TScoreVal computeAlignmentStats(AlignmentStats & stats,
         if (!isGap(it0) && !isGap(it1))
         {
             // Compute the alignment score and register in stats.
-            TAlphabet c0 = convert<TAlphabet>(*it0);
-            TAlphabet c1 = convert<TAlphabet>(*it1);
+            TAlphabet c0       = convert<TAlphabet>(*it0);
+            TAlphabet c1       = convert<TAlphabet>(*it1);
             TScoreVal scoreVal = score(scoringScheme, c0, c1);
             stats.alignmentScore += scoreVal;
             // Register other statistics.
-            bool isMatch = score(scoringScheme, c0, c1) == score(scoringScheme, c0, c0);
+            bool isMatch    = score(scoringScheme, c0, c1) == score(scoringScheme, c0, c0);
             bool isPositive = (scoreVal > 0);
             stats.numMatches += isMatch;
             stats.numMismatches += !isMatch;
@@ -111,10 +109,9 @@ TScoreVal computeAlignmentStats(AlignmentStats & stats,
 
     // Finally, compute the alignment similarity from the various counts
     stats.alignmentLength = length(row0);
-    stats.alignmentSimilarity = 100.0 * static_cast<float>(stats.numPositiveScores)
-                                / static_cast<float>(stats.alignmentLength);
-    stats.alignmentIdentity = 100.0 * static_cast<float>(stats.numMatches)
-                              / static_cast<float>(stats.alignmentLength);
+    stats.alignmentSimilarity =
+      100.0 * static_cast<float>(stats.numPositiveScores) / static_cast<float>(stats.alignmentLength);
+    stats.alignmentIdentity = 100.0 * static_cast<float>(stats.numMatches) / static_cast<float>(stats.alignmentLength);
 
     return stats.alignmentScore;
 }

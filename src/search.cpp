@@ -23,27 +23,27 @@
 
 #include <iostream>
 
-#include <seqan/basic.h>
-#include <seqan/sequence.h>
 #include <seqan/arg_parse.h>
-#include <seqan/seq_io.h>
-#include <seqan/reduced_aminoacid.h>
+#include <seqan/basic.h>
 #include <seqan/misc/terminal.h>
+#include <seqan/reduced_aminoacid.h>
+#include <seqan/seq_io.h>
+#include <seqan/sequence.h>
 
 #include <seqan3/io/views/async_input_buffer.hpp>
 
 #include "shared_definitions.hpp"
-#include "shared_options.hpp"
 #include "shared_misc.hpp"
+#include "shared_options.hpp"
 
-#include "search_output.hpp"
-#include "search_options.hpp"
+#include "search_algo.hpp"
 #include "search_datastructures.hpp"
 #include "search_misc.hpp"
-#include "search_algo.hpp"
+#include "search_options.hpp"
+#include "search_output.hpp"
 
 #ifndef SEQAN_SIMD_ENABLED
-#error "Lambda must be built with at least SSE4 support. Add -march=native to your compiler flags."
+#    error "Lambda must be built with at least SSE4 support. Add -march=native to your compiler flags."
 #endif
 
 // forwards
@@ -53,26 +53,21 @@ void argConv0(LambdaOptions & options);
 template <DbIndexType c_indexType>
 void argConv1(LambdaOptions const & options);
 
-template <DbIndexType   c_indexType,
-          AlphabetEnum  c_origSbjAlph>
+template <DbIndexType c_indexType, AlphabetEnum c_origSbjAlph>
 void argConv2a(LambdaOptions const & options);
 
-template <DbIndexType   c_indexType,
-          AlphabetEnum  c_origSbjAlph>
+template <DbIndexType c_indexType, AlphabetEnum c_origSbjAlph>
 void argConv2b(LambdaOptions const & options);
 
-template <DbIndexType   c_indexType,
-          AlphabetEnum  c_origSbjAlph,
-          AlphabetEnum  c_transAlph,
-          AlphabetEnum  c_redAlph>
-void argConv3(LambdaOptions     const & options);
+template <DbIndexType c_indexType, AlphabetEnum c_origSbjAlph, AlphabetEnum c_transAlph, AlphabetEnum c_redAlph>
+void argConv3(LambdaOptions const & options);
 
-template <DbIndexType   c_indexType,
-          AlphabetEnum  c_origSbjAlph,
-          AlphabetEnum  c_transAlph,
-          AlphabetEnum  c_redAlph,
-          AlphabetEnum  c_origQryAlph>
-void realMain(LambdaOptions     const & options);
+template <DbIndexType  c_indexType,
+          AlphabetEnum c_origSbjAlph,
+          AlphabetEnum c_transAlph,
+          AlphabetEnum c_redAlph,
+          AlphabetEnum c_origQryAlph>
+void realMain(LambdaOptions const & options);
 
 // --------------------------------------------------------------------------
 // Function main()
@@ -92,25 +87,28 @@ int searchMain(int const argc, char const ** argv)
 #ifdef NDEBUG
     try
     {
-       argConv0(options);
-    } catch (std::bad_alloc const & e)
+        argConv0(options);
+    }
+    catch (std::bad_alloc const & e)
     {
         std::cerr << "\n\nERROR: Lambda ran out of memory :(\n"
                      "       You need to split your file into smaller segments or search against a smaller database.\n";
         return -1;
-    } catch (IndexException const & e)
+    }
+    catch (IndexException const & e)
     {
         std::cerr << "\n\nERROR: The following exception was thrown while reading the index:\n"
-                  <<     "       \"" << e.what() << "\"\n"
-                  <<     "       Make sure the directory exists and is readable; recreate the index and try again.\n"
-                  <<     "       If the problem persists, report an issue at https://github.com/seqan/lambda/issues "
+                  << "       \"" << e.what() << "\"\n"
+                  << "       Make sure the directory exists and is readable; recreate the index and try again.\n"
+                  << "       If the problem persists, report an issue at https://github.com/seqan/lambda/issues "
                   << "and include this output, as well as the output of `lambda3 --version`, thanks!\n";
         return -1;
-    } catch (std::exception const & e)
+    }
+    catch (std::exception const & e)
     {
         std::cerr << "\n\nERROR: The following unspecified exception was thrown:\n"
-                  <<     "       \"" << e.what() << "\"\n"
-                  <<     "       If the problem persists, report an issue at https://github.com/seqan/lambda/issues "
+                  << "       \"" << e.what() << "\"\n"
+                  << "       If the problem persists, report an issue at https://github.com/seqan/lambda/issues "
                   << "and include this output, as well as the output of `lambda3 --version`, thanks!\n";
         return -1;
     }
@@ -122,20 +120,29 @@ int searchMain(int const argc, char const ** argv)
 }
 
 // CONVERT Run-time options to compile-time Format-Type
-void
-argConv0(LambdaOptions & options)
+void argConv0(LambdaOptions & options)
 {
-    myPrint(options, 1, "LAMBDA - the Local Aligner for Massive Biological DatA"
-                        "\n======================================================"
-                        "\nVersion ", SEQAN_APP_VERSION, "\n\n");
+    myPrint(options,
+            1,
+            "LAMBDA - the Local Aligner for Massive Biological DatA"
+            "\n======================================================"
+            "\nVersion ",
+            SEQAN_APP_VERSION,
+            "\n\n");
 
     // Index
     myPrint(options, 1, "Reading index properties... ");
     readIndexOptions(options);
     myPrint(options, 1, "done.\n");
 
-    myPrint(options, 2, "  type:                ", _indexEnumToName(options.indexFileOptions.indexType), "\n",
-                        "  original alphabet:   ", _alphabetEnumToName(options.indexFileOptions.origAlph), "\n");
+    myPrint(options,
+            2,
+            "  type:                ",
+            _indexEnumToName(options.indexFileOptions.indexType),
+            "\n",
+            "  original alphabet:   ",
+            _alphabetEnumToName(options.indexFileOptions.origAlph),
+            "\n");
     if (options.indexFileOptions.origAlph == options.indexFileOptions.transAlph)
     {
         myPrint(options, 2, "  translated alphabet: not translated\n");
@@ -149,11 +156,13 @@ argConv0(LambdaOptions & options)
         if ((int)options.geneticCodeQry == 0) // use same geneticCode as Index
         {
             options.geneticCodeQry = options.indexFileOptions.geneticCode;
-        } else if (options.geneticCodeQry != options.indexFileOptions.geneticCode)
+        }
+        else if (options.geneticCodeQry != options.indexFileOptions.geneticCode)
         {
-            std::cerr << "WARNING: The genetic code used when creating the index: " << (int) options.indexFileOptions.geneticCode
-                      << "\n         is not the same as now selected for the query sequences: " << (int)options.geneticCodeQry
-                      << "\n         Are you sure this is what you want?\n";
+            std::cerr << "WARNING: The genetic code used when creating the index: "
+                      << (int)options.indexFileOptions.geneticCode
+                      << "\n         is not the same as now selected for the query sequences: "
+                      << (int)options.geneticCodeQry << "\n         Are you sure this is what you want?\n";
         }
     }
 
@@ -166,14 +175,18 @@ argConv0(LambdaOptions & options)
         myPrint(options, 2, "  reduced alphabet:    ", _alphabetEnumToName(options.indexFileOptions.redAlph), "\n\n");
     }
 
-    if ((options.nucleotide_mode) && (options.indexFileOptions.redAlph != AlphabetEnum::DNA5 && options.indexFileOptions.redAlph != AlphabetEnum::DNA4  && options.indexFileOptions.redAlph != AlphabetEnum::DNA3BS))
+    if ((options.nucleotide_mode) && (options.indexFileOptions.redAlph != AlphabetEnum::DNA5 &&
+                                      options.indexFileOptions.redAlph != AlphabetEnum::DNA4 &&
+                                      options.indexFileOptions.redAlph != AlphabetEnum::DNA3BS))
     {
-        throw std::runtime_error("You are attempting a nucleotide search on a protein index. "
-                                 "Did you want to use 'lambda3 searchp' instead?");
+        throw std::runtime_error(
+          "You are attempting a nucleotide search on a protein index. "
+          "Did you want to use 'lambda3 searchp' instead?");
     }
 
     // query file
-    if (options.qryOrigAlphabet == AlphabetEnum::DNA4) // means "auto", as dna4 not valid as argument to --query-alphabet
+    if (options.qryOrigAlphabet ==
+        AlphabetEnum::DNA4) // means "auto", as dna4 not valid as argument to --query-alphabet
     {
         myPrint(options, 1, "Detecting query alphabet... ");
         options.qryOrigAlphabet = detectSeqFileAlphabet(options.queryFile);
@@ -224,9 +237,12 @@ argConv0(LambdaOptions & options)
 
     switch (options.indexFileOptions.indexType)
     {
-        case DbIndexType::FM_INDEX:     return argConv1<DbIndexType::FM_INDEX>(options);
-        case DbIndexType::BI_FM_INDEX:  return argConv1<DbIndexType::BI_FM_INDEX>(options);
-        default: throw 52;
+        case DbIndexType::FM_INDEX:
+            return argConv1<DbIndexType::FM_INDEX>(options);
+        case DbIndexType::BI_FM_INDEX:
+            return argConv1<DbIndexType::BI_FM_INDEX>(options);
+        default:
+            throw 52;
     }
 }
 
@@ -241,100 +257,77 @@ void argConv1(LambdaOptions const & options)
     {
         switch (options.indexFileOptions.origAlph)
         {
-            case AlphabetEnum::DNA5:        return argConv2b<c_indexType,
-                                                            AlphabetEnum::DNA5>(options);
-            case AlphabetEnum::AMINO_ACID:  return argConv2b<c_indexType,
-                                                            AlphabetEnum::AMINO_ACID>(options);
-            default: throw 53;
+            case AlphabetEnum::DNA5:
+                return argConv2b<c_indexType, AlphabetEnum::DNA5>(options);
+            case AlphabetEnum::AMINO_ACID:
+                return argConv2b<c_indexType, AlphabetEnum::AMINO_ACID>(options);
+            default:
+                throw 53;
         }
     }
 }
 
-template <DbIndexType   c_indexType,
-          AlphabetEnum  c_origSbjAlph>
+template <DbIndexType c_indexType, AlphabetEnum c_origSbjAlph>
 void argConv2a(LambdaOptions const & options)
 {
     // transalph is always amino acid, unless in nucleotide_mode
     switch (options.indexFileOptions.redAlph)
     {
-        case AlphabetEnum::DNA5:      return realMain<c_indexType,
-                                                      c_origSbjAlph,
-                                                      AlphabetEnum::DNA5,
-                                                      AlphabetEnum::DNA5,
-                                                      AlphabetEnum::DNA5>(options);
-        case AlphabetEnum::DNA4:      return realMain<c_indexType,
-                                                      c_origSbjAlph,
-                                                      AlphabetEnum::DNA5,
-                                                      AlphabetEnum::DNA4,
-                                                      AlphabetEnum::DNA5>(options);
-        case AlphabetEnum::DNA3BS:    return realMain<c_indexType,
-                                                      c_origSbjAlph,
-                                                      AlphabetEnum::DNA5,
-                                                      AlphabetEnum::DNA3BS,
-                                                      AlphabetEnum::DNA5>(options);
-        default: throw 555;
+        case AlphabetEnum::DNA5:
+            return realMain<c_indexType, c_origSbjAlph, AlphabetEnum::DNA5, AlphabetEnum::DNA5, AlphabetEnum::DNA5>(
+              options);
+        case AlphabetEnum::DNA4:
+            return realMain<c_indexType, c_origSbjAlph, AlphabetEnum::DNA5, AlphabetEnum::DNA4, AlphabetEnum::DNA5>(
+              options);
+        case AlphabetEnum::DNA3BS:
+            return realMain<c_indexType, c_origSbjAlph, AlphabetEnum::DNA5, AlphabetEnum::DNA3BS, AlphabetEnum::DNA5>(
+              options);
+        default:
+            throw 555;
     }
 }
 
-template <DbIndexType   c_indexType,
-          AlphabetEnum  c_origSbjAlph>
+template <DbIndexType c_indexType, AlphabetEnum c_origSbjAlph>
 void argConv2b(LambdaOptions const & options)
 {
     // transalph is always amino acid, unless in nucleotide_mode
     switch (options.indexFileOptions.redAlph)
     {
-        case AlphabetEnum::AMINO_ACID:      return argConv3<c_indexType,
-                                                            c_origSbjAlph,
-                                                            AlphabetEnum::AMINO_ACID,
-                                                            AlphabetEnum::AMINO_ACID>(options);
-        case AlphabetEnum::MURPHY10:        return argConv3<c_indexType,
-                                                            c_origSbjAlph,
-                                                            AlphabetEnum::AMINO_ACID,
-                                                            AlphabetEnum::MURPHY10>(options);
-        case AlphabetEnum::LI10:            return argConv3<c_indexType,
-                                                            c_origSbjAlph,
-                                                            AlphabetEnum::AMINO_ACID,
-                                                            AlphabetEnum::LI10>(options);
-        default: throw 54;
+        case AlphabetEnum::AMINO_ACID:
+            return argConv3<c_indexType, c_origSbjAlph, AlphabetEnum::AMINO_ACID, AlphabetEnum::AMINO_ACID>(options);
+        case AlphabetEnum::MURPHY10:
+            return argConv3<c_indexType, c_origSbjAlph, AlphabetEnum::AMINO_ACID, AlphabetEnum::MURPHY10>(options);
+        case AlphabetEnum::LI10:
+            return argConv3<c_indexType, c_origSbjAlph, AlphabetEnum::AMINO_ACID, AlphabetEnum::LI10>(options);
+        default:
+            throw 54;
     }
 }
 
-template <DbIndexType   c_indexType,
-          AlphabetEnum  c_origSbjAlph,
-          AlphabetEnum  c_transAlph,
-          AlphabetEnum  c_redAlph>
-void argConv3(LambdaOptions     const & options)
+template <DbIndexType c_indexType, AlphabetEnum c_origSbjAlph, AlphabetEnum c_transAlph, AlphabetEnum c_redAlph>
+void argConv3(LambdaOptions const & options)
 {
     // transalph is always amino acid, unless in nucleotide_mode
     switch (options.qryOrigAlphabet)
     {
-        case AlphabetEnum::DNA5:            return realMain<c_indexType,
-                                                            c_origSbjAlph,
-                                                            c_transAlph,
-                                                            c_redAlph,
-                                                            AlphabetEnum::DNA5>(options);
-        case AlphabetEnum::AMINO_ACID:      return realMain<c_indexType,
-                                                            c_origSbjAlph,
-                                                            c_transAlph,
-                                                            c_redAlph,
-                                                            AlphabetEnum::AMINO_ACID>(options);
-        default: throw 55;
+        case AlphabetEnum::DNA5:
+            return realMain<c_indexType, c_origSbjAlph, c_transAlph, c_redAlph, AlphabetEnum::DNA5>(options);
+        case AlphabetEnum::AMINO_ACID:
+            return realMain<c_indexType, c_origSbjAlph, c_transAlph, c_redAlph, AlphabetEnum::AMINO_ACID>(options);
+        default:
+            throw 55;
     }
 }
 
-template <DbIndexType   c_indexType,
-          AlphabetEnum  c_origSbjAlph,
-          AlphabetEnum  c_transAlph,
-          AlphabetEnum  c_redAlph,
-          AlphabetEnum  c_origQryAlph>
-void realMain(LambdaOptions     const & options)
+template <DbIndexType  c_indexType,
+          AlphabetEnum c_origSbjAlph,
+          AlphabetEnum c_transAlph,
+          AlphabetEnum c_redAlph,
+          AlphabetEnum c_origQryAlph>
+void realMain(LambdaOptions const & options)
 {
-    using TGlobalHolder = GlobalDataHolder<c_indexType,
-                                           c_origSbjAlph,
-                                           c_transAlph,
-                                           c_redAlph,
-                                           c_origQryAlph>;
-    using TLocalHolder = LocalDataHolder<TGlobalHolder>;
+    using TGlobalHolder = GlobalDataHolder<c_indexType, c_origSbjAlph, c_transAlph, c_redAlph, c_origQryAlph>;
+    using TLocalHolder  = LocalDataHolder<TGlobalHolder>;
 
     if (options.verbosity >= 2)
         printOptions<TLocalHolder>(options);
@@ -349,14 +342,16 @@ void realMain(LambdaOptions     const & options)
 
     myWriteHeader(globalHolder, options);
 
-    myPrint(options, 1, "Searching and extending hits on-line...progress:\n"
-                "0%  10%  20%  30%  40%  50%  60%  70%  80%  90%  100%\n|");
+    myPrint(options,
+            1,
+            "Searching and extending hits on-line...progress:\n"
+            "0%  10%  20%  30%  40%  50%  60%  70%  80%  90%  100%\n|");
 
     double start = sysTime();
 
     uint64_t lastPercent = 0;
 
-    typename TGlobalHolder::TQueryFile  infile{options.queryFile};
+    typename TGlobalHolder::TQueryFile infile{options.queryFile};
     auto file_view = infile | seqan3::views::async_input_buffer(globalHolder.records_per_batch * options.threads);
 
     SEQAN_OMP_PRAGMA(parallel)
@@ -370,7 +365,7 @@ void realMain(LambdaOptions     const & options)
                 localHolder.reset();
 
                 // load records until batch is full or file at end
-                for (auto & [ id, seq ] : file_view)
+                for (auto & [id, seq] : file_view)
                 {
                     localHolder.qryIds.push_back(std::move(id));
                     localHolder.qrySeqs.push_back(std::move(seq));
@@ -388,13 +383,13 @@ void realMain(LambdaOptions     const & options)
             localHolder.resetViews(); // views reset after sequences have been loaded
 
             // seed
-        #ifdef LAMBDA_MICRO_STATS
+#ifdef LAMBDA_MICRO_STATS
             double buf = sysTime();
-        #endif
+#endif
             search(localHolder); //TODO seed refining if iterateMatches gives 0 results
-        #ifdef LAMBDA_MICRO_STATS
+#ifdef LAMBDA_MICRO_STATS
             localHolder.stats.timeSearch += sysTime() - buf;
-        #endif
+#endif
             // extend
             if (localHolder.matches.size() > 0)
                 iterateMatches(localHolder);
@@ -434,5 +429,4 @@ void realMain(LambdaOptions     const & options)
     myPrint(options, 2, "Runtime total: ", sysTime() - start, "s.\n\n");
 
     printStats(globalHolder.stats, options);
-
 }

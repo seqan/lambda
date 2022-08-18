@@ -21,24 +21,26 @@
 
 #pragma once
 
+#include <cmath>
+
 #include <cereal/archives/binary.hpp>
 #include <cereal/archives/json.hpp>
 #include <cereal/details/traits.hpp>
 #include <cereal/types/array.hpp>
 #include <cereal/types/vector.hpp>
 
+#include <fmindex-collection/DenseCSA.h>
 #include <fmindex-collection/fmindex-collection.h>
 #include <fmindex-collection/occtable/all.h>
-#include <fmindex-collection/DenseCSA.h>
 
+#include <seqan3/alphabet/aminoacid/aa10li.hpp>
+#include <seqan3/alphabet/aminoacid/aa10murphy.hpp>
+#include <seqan3/alphabet/aminoacid/aa27.hpp>
+#include <seqan3/alphabet/aminoacid/translation_genetic_code.hpp>
+#include <seqan3/alphabet/container/concatenated_sequences.hpp>
 #include <seqan3/alphabet/nucleotide/dna3bs.hpp>
 #include <seqan3/alphabet/nucleotide/dna4.hpp>
 #include <seqan3/alphabet/nucleotide/dna5.hpp>
-#include <seqan3/alphabet/aminoacid/aa27.hpp>
-#include <seqan3/alphabet/aminoacid/aa10murphy.hpp>
-#include <seqan3/alphabet/aminoacid/aa10li.hpp>
-#include <seqan3/alphabet/aminoacid/translation_genetic_code.hpp>
-#include <seqan3/alphabet/container/concatenated_sequences.hpp>
 #include <seqan3/alphabet/views/translate_join.hpp>
 #include <seqan3/utility/views/convert.hpp>
 #include <seqan3/utility/views/deep.hpp>
@@ -59,21 +61,21 @@ enum class DbIndexType : uint8_t
     BI_FM_INDEX
 };
 
-inline std::string
-_indexEnumToName(DbIndexType const t)
+inline std::string _indexEnumToName(DbIndexType const t)
 {
     switch (t)
     {
-        case DbIndexType::FM_INDEX:      return "fm_index";
-        case DbIndexType::BI_FM_INDEX:   return "bi_fm_index";
+        case DbIndexType::FM_INDEX:
+            return "fm_index";
+        case DbIndexType::BI_FM_INDEX:
+            return "bi_fm_index";
     }
 
     throw std::runtime_error("Error: unknown index type");
     return "";
 }
 
-inline DbIndexType
-_indexNameToEnum(std::string const t)
+inline DbIndexType _indexNameToEnum(std::string const t)
 {
     if (t == "bi_fm_index")
         return DbIndexType::BI_FM_INDEX;
@@ -88,38 +90,32 @@ _indexNameToEnum(std::string const t)
 //  Alphabet stuff
 // ==========================================================================
 
-constexpr const char *
-_alphTypeToName(seqan3::semialphabet_any<6> const & /**/)
+constexpr char const * _alphTypeToName(seqan3::semialphabet_any<6> const & /**/)
 {
     return "dna3bs";
 }
 
-constexpr const char *
-_alphTypeToName(seqan3::dna4 const & /**/)
+constexpr char const * _alphTypeToName(seqan3::dna4 const & /**/)
 {
     return "dna4";
 }
 
-constexpr const char *
-_alphTypeToName(seqan3::dna5 const & /**/)
+constexpr char const * _alphTypeToName(seqan3::dna5 const & /**/)
 {
     return "dna5";
 }
 
-constexpr const char *
-_alphTypeToName(seqan3::aa27 const & /**/)
+constexpr char const * _alphTypeToName(seqan3::aa27 const & /**/)
 {
     return "aminoacid";
 }
 
-constexpr const char *
-_alphTypeToName(seqan3::aa10murphy const & /**/)
+constexpr char const * _alphTypeToName(seqan3::aa10murphy const & /**/)
 {
     return "murphy10";
 }
 
-constexpr const char *
-_alphTypeToName(seqan3::aa10li const & /**/)
+constexpr char const * _alphTypeToName(seqan3::aa10li const & /**/)
 {
     return "li10";
 }
@@ -135,26 +131,31 @@ enum class AlphabetEnum : uint8_t
     LI10,
 };
 
-inline std::string
-_alphabetEnumToName(AlphabetEnum const t)
+inline std::string _alphabetEnumToName(AlphabetEnum const t)
 {
     switch (t)
     {
-        case AlphabetEnum::UNDEFINED:   return "UNDEFINED";
-        case AlphabetEnum::DNA3BS:      return _alphTypeToName(seqan3::semialphabet_any<6>{});
-        case AlphabetEnum::DNA4:        return _alphTypeToName(seqan3::dna4{});
-        case AlphabetEnum::DNA5:        return _alphTypeToName(seqan3::dna5{});
-        case AlphabetEnum::AMINO_ACID:  return _alphTypeToName(seqan3::aa27{});
-        case AlphabetEnum::MURPHY10:    return _alphTypeToName(seqan3::aa10murphy{});
-        case AlphabetEnum::LI10:        return _alphTypeToName(seqan3::aa10li{});
+        case AlphabetEnum::UNDEFINED:
+            return "UNDEFINED";
+        case AlphabetEnum::DNA3BS:
+            return _alphTypeToName(seqan3::semialphabet_any<6>{});
+        case AlphabetEnum::DNA4:
+            return _alphTypeToName(seqan3::dna4{});
+        case AlphabetEnum::DNA5:
+            return _alphTypeToName(seqan3::dna5{});
+        case AlphabetEnum::AMINO_ACID:
+            return _alphTypeToName(seqan3::aa27{});
+        case AlphabetEnum::MURPHY10:
+            return _alphTypeToName(seqan3::aa10murphy{});
+        case AlphabetEnum::LI10:
+            return _alphTypeToName(seqan3::aa10li{});
     }
 
     throw std::runtime_error("Error: unknown alphabet type");
     return "";
 }
 
-inline AlphabetEnum
-_alphabetNameToEnum(std::string const t)
+inline AlphabetEnum _alphabetNameToEnum(std::string const t)
 {
     if ((t == "UNDEFINED") || (t == "auto"))
         return AlphabetEnum::UNDEFINED;
@@ -229,7 +230,7 @@ inline constexpr uint64_t currentIndexGeneration = 0;
 // ==========================================================================
 
 template <size_t AlphabetSize>
-using IndexSpec = fmindex_collection::occtable::interleavedEPR32V2::OccTable<AlphabetSize+1>;
+using IndexSpec = fmindex_collection::occtable::interleavedEPR32V2::OccTable<AlphabetSize + 1>;
 
 // ==========================================================================
 //  Misc. aliases
@@ -238,10 +239,8 @@ using IndexSpec = fmindex_collection::occtable::interleavedEPR32V2::OccTable<Alp
 template <typename TString>
 using TCDStringSet = seqan3::concatenated_sequences<TString>; //TODO seqan3::concatenated_sequences
 
-template <AlphabetEnum  c_origSbjAlph,
-          AlphabetEnum  c_transAlph,
-          AlphabetEnum  c_redAlph>
-inline constexpr auto sbjTransView = [] ()
+template <AlphabetEnum c_origSbjAlph, AlphabetEnum c_transAlph, AlphabetEnum c_redAlph>
+inline constexpr auto sbjTransView = []()
 {
     if constexpr (c_redAlph == AlphabetEnum::DNA3BS)
         return views::duplicate;
@@ -249,12 +248,10 @@ inline constexpr auto sbjTransView = [] ()
         return seqan3::views::translate_join;
     else
         return seqan3::views::type_reduce;
-} ();
+}();
 
-template <AlphabetEnum  c_origQryAlph,
-          AlphabetEnum  c_transAlph,
-          AlphabetEnum  c_redAlph>
-constexpr auto qryTransView = [] ()
+template <AlphabetEnum c_origQryAlph, AlphabetEnum c_transAlph, AlphabetEnum c_redAlph>
+constexpr auto qryTransView = []()
 {
     if constexpr (c_redAlph == AlphabetEnum::DNA3BS)
         return views::add_reverse_complement | views::duplicate;
@@ -264,11 +261,10 @@ constexpr auto qryTransView = [] ()
         return seqan3::views::type_reduce;
     else
         return seqan3::views::translate_join;
-} ();
+}();
 
-template <AlphabetEnum  c_transAlph,
-          AlphabetEnum  c_redAlph>
-constexpr auto redView = [] ()
+template <AlphabetEnum c_transAlph, AlphabetEnum c_redAlph>
+constexpr auto redView = []()
 {
     if constexpr (c_transAlph == c_redAlph)
         return seqan3::views::type_reduce;
@@ -278,7 +274,7 @@ constexpr auto redView = [] ()
         return views::dna_n_to_random | views::reduce_to_bisulfite;
     else
         return views::dna_n_to_random;
-} ();
+}();
 
 // ==========================================================================
 //  The index
@@ -311,27 +307,26 @@ struct index_file_options
 };
 
 /* actual index */
-template <DbIndexType           dbIndexType,
-          AlphabetEnum          origAlph,
-          AlphabetEnum          redAlph>    // <- all members of index_file_options that influence types
+template <DbIndexType  dbIndexType,
+          AlphabetEnum origAlph,
+          AlphabetEnum redAlph> // <- all members of index_file_options that influence types
 struct index_file
 {
     index_file_options options{};
 
-    TCDStringSet<std::string>                                   ids;
-    TCDStringSet<std::vector<_alphabetEnumToType<origAlph>>>    seqs;
-    TCDStringSet<std::vector<uint32_t>>                         sTaxIds; //TODO double check int-width
+    TCDStringSet<std::string>                                ids;
+    TCDStringSet<std::vector<_alphabetEnumToType<origAlph>>> seqs;
+    TCDStringSet<std::vector<uint32_t>>                      sTaxIds; //TODO double check int-width
 
-    std::vector<uint32_t>                                       taxonParentIDs;
-    std::vector<uint8_t>                                        taxonHeights;
-    TCDStringSet<std::string>                                   taxonNames;
+    std::vector<uint32_t>     taxonParentIDs;
+    std::vector<uint8_t>      taxonHeights;
+    TCDStringSet<std::string> taxonNames;
 
-    using TRedAlph      = _alphabetEnumToType<redAlph>;
-    using TIndexSpec    = IndexSpec<seqan3::alphabet_size<TRedAlph>>;
-    using TIndex        = std::conditional_t<dbIndexType == DbIndexType::BI_FM_INDEX,
-        fmindex_collection::BiFMIndex<TIndexSpec>,
-        fmindex_collection::ReverseFMIndex<TIndexSpec>>;
-
+    using TRedAlph   = _alphabetEnumToType<redAlph>;
+    using TIndexSpec = IndexSpec<seqan3::alphabet_size<TRedAlph>>;
+    using TIndex     = std::conditional_t<dbIndexType == DbIndexType::BI_FM_INDEX,
+                                      fmindex_collection::BiFMIndex<TIndexSpec>,
+                                      fmindex_collection::ReverseFMIndex<TIndexSpec>>;
 
     // Special c'tor that supports 'default' initialization to allow deserialize
     TIndex index{fmindex_collection::cereal_tag{}};
@@ -339,14 +334,14 @@ struct index_file
     template <typename TArchive>
     void serialize(TArchive & archive)
     {
-        archive(cereal::make_nvp("options",          options),
-                cereal::make_nvp("ids",              ids),
-                cereal::make_nvp("seqs",             seqs),
-                cereal::make_nvp("sTaxIds",          sTaxIds),
-                cereal::make_nvp("taxonParentIDs",   taxonParentIDs),
-                cereal::make_nvp("taxonHeights",     taxonHeights),
-                cereal::make_nvp("taxonNames",       taxonNames),
-                cereal::make_nvp("index",            index));
+        archive(cereal::make_nvp("options", options),
+                cereal::make_nvp("ids", ids),
+                cereal::make_nvp("seqs", seqs),
+                cereal::make_nvp("sTaxIds", sTaxIds),
+                cereal::make_nvp("taxonParentIDs", taxonParentIDs),
+                cereal::make_nvp("taxonHeights", taxonHeights),
+                cereal::make_nvp("taxonNames", taxonNames),
+                cereal::make_nvp("index", index));
     }
 };
 
@@ -358,6 +353,6 @@ struct fake_index_file
     template <typename TArchive>
     void serialize(TArchive & archive)
     {
-        archive(cereal::make_nvp("options",          options));
+        archive(cereal::make_nvp("options", options));
     }
 };

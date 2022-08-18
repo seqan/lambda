@@ -1,5 +1,9 @@
 cmake_minimum_required (VERSION 3.8)
 
+###############################################################################
+# App tests
+###############################################################################
+
 # Set directories for test output files, input data and binaries.
 file (MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/output)
 add_definitions (-DOUTPUTDIR=\"${CMAKE_CURRENT_BINARY_DIR}/output/\")
@@ -83,3 +87,26 @@ else ()
 endif ()
 
 message (STATUS "${FontBold}You can run `make cli-test` to build the tests and `make test` to run them.${FontReset}")
+
+###############################################################################
+# Clang format
+###############################################################################
+
+find_program(CLANG_FORMAT "clang-format-14")
+
+if (CLANG_FORMAT STREQUAL "CLANG_FORMAT-NOTFOUND")
+    find_program(CLANG_FORMAT "clang-format")
+endif()
+
+if (NOT CLANG_FORMAT STREQUAL "CLANG_FORMAT-NOTFOUND")
+    add_custom_target (check_format ALL "find" "${CMAKE_CURRENT_SOURCE_DIR}/../src" "-name" "'*.[ch]pp'" "-exec"
+                       ${CLANG_FORMAT} "-style=file" "-n" "-Werror" "{}" "+"
+                       COMMENT "Checking the source-code with clang-format.")
+
+
+    add_custom_target (reformat "find" "${CMAKE_CURRENT_SOURCE_DIR}/../src" "-name" "'*.[ch]pp'" "-exec"
+                       ${CLANG_FORMAT} "-style=file" "-i" "{}" "+"
+                       COMMENT "Reformatting the source-code with clang-format.")
+else ()
+    message(STATUS "clang_format not found; not adding the 'check_format' and 'reformat' targets.")
+endif()

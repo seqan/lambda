@@ -51,10 +51,10 @@ struct duplicate_fn
                       "The inner range of the range parameter to views::duplicate must model "
                       "std::ranges::random_access_range.");
 
-        return std::forward<urng_t>(urange) | views::pos_transform([] (auto && urange, size_t pos) -> decltype(auto)
-        {
-            return urange[(pos - (pos % 2)) / 2];
-        }, [] (auto && urange) { return std::ranges::size(urange) * 2; });
+        return std::forward<urng_t>(urange) |
+               views::pos_transform([](auto && urange, size_t pos) -> decltype(auto)
+                                    { return urange[(pos - (pos % 2)) / 2]; },
+                                    [](auto && urange) { return std::ranges::size(urange) * 2; });
     }
 
     template <std::ranges::range urng_t>
