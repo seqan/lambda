@@ -21,6 +21,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - name: "gcc12"
+            install: "g++-12"
+            cxx: "g++-12"
+            cc: "gcc-12"
+            build_type: Release
+
           - name: "gcc11"
             install: "g++-11"
             cxx: "g++-11"
