@@ -94,7 +94,7 @@ jobs:
         run: |
           mkdir build
           cd build
-          cmake ../lambda -DLAMBDA_COMPILE_THREADS=2 -DLAMBDA_NATIVE_BUILD=ON -DCMAKE_CXX_FLAGS="${{ matrix.cxx_flags }}" -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_C_COMPILER_LAUNCHER=ccache
+          cmake ../lambda -DLAMBDA_COMPILE_THREADS=2 -DLAMBDA_NATIVE_BUILD=OFF -DCMAKE_CXX_FLAGS="${{ matrix.cxx_flags }}" -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_C_COMPILER_LAUNCHER=ccache
 
       - name: Build tests
         if: matrix.name != 'clang_format'
