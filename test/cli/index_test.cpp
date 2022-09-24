@@ -5,6 +5,18 @@
 
 struct index_test : public cli_test
 {
+    std::string md5_cmd;
+
+    void determine_md5_cmd()
+    {
+        if (std::system("echo foo | md5sum > /dev/null 2>&1") == 0)
+            md5_cmd = "md5sum";
+        else if (std::system("echo foo | md5 > /dev/null 2>&1") == 0)
+            md5_cmd = "md5";
+
+        ASSERT_FALSE(md5_cmd.empty());
+    }
+
     void run_index_test(std::string const & index_command,
                         std::string const & db_file,
                         std::string const & index_file,
@@ -18,10 +30,15 @@ struct index_test : public cli_test
                                              "--db-index-type", index_type,
                                              "-r", reduction);
 
-        EXPECT_EQ(result.exit_code, 0);
+        ASSERT_EQ(result.exit_code, 0);
 
-        std::system(("md5sum " + index_file + " > md5sum_test.txt").c_str());
-        std::system(("md5sum " + (std::string) data(control_file) + " > md5sum_control.txt").c_str());
+        if (md5_cmd.empty())
+            determine_md5_cmd();
+
+        int ret = std::system((md5_cmd + " " + index_file + " > md5sum_test.txt").c_str());
+        ASSERT_TRUE(ret == 0);
+        ret = std::system((md5_cmd + " " + (std::string) data(control_file) + " > md5sum_control.txt").c_str());
+        ASSERT_TRUE(ret == 0);
 
         std::ifstream test_output ("md5sum_test.txt");
         std::ifstream control_output ("md5sum_control.txt");

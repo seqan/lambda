@@ -5,6 +5,18 @@
 
 struct search_test : public cli_test
 {
+    std::string md5_cmd;
+
+    void determine_md5_cmd()
+    {
+        if (std::system("echo foo | md5sum > /dev/null 2>&1") == 0)
+            md5_cmd = "md5sum";
+        else if (std::system("echo foo | md5 > /dev/null 2>&1") == 0)
+            md5_cmd = "md5";
+
+        ASSERT_FALSE(md5_cmd.empty());
+    }
+
     void run_search_test(std::string const & index_command,
                          std::string const & db_file,
                          std::string const & index_file,
@@ -29,12 +41,19 @@ struct search_test : public cli_test
                                                     "--version-to-outputfile", "0",
                                                     "-o", output_file);
 
-        EXPECT_EQ(result_search.exit_code, 0);
+        ASSERT_EQ(result_search.exit_code, 0);
+
+        int ret = 0;
 
         if (output_type == "bam")
         {
-            std::system(("md5sum " + output_file + " > md5sum_test.txt").c_str());
-            std::system(("md5sum " + (std::string) data(control_file) + " > md5sum_control.txt").c_str());
+            if (md5_cmd.empty())
+                determine_md5_cmd();
+
+            ret = std::system((md5_cmd + " " + output_file + " > md5sum_test.txt").c_str());
+            ASSERT_TRUE(ret == 0);
+            ret = std::system((md5_cmd + " " + (std::string) data(control_file) + " > md5sum_control.txt").c_str());
+            ASSERT_TRUE(ret == 0);
 
             std::ifstream test_output ("md5sum_test.txt");
             std::ifstream control_output ("md5sum_control.txt");
@@ -56,12 +75,14 @@ struct search_test : public cli_test
 
             if (output_type == "m9_gz")
             {
-                system(("gunzip " + output_file).c_str());
+                ret = system(("gunzip " + output_file).c_str());
+                ASSERT_TRUE(ret == 0);
                 test_output.open(output_file.substr(0, output_file.length() - 3));
             }
             else if (output_type == "sam_bz2")
             {
-                system(("bzip2 -d " + output_file).c_str());
+                ret = system(("bzip2 -d " + output_file).c_str());
+                ASSERT_TRUE(ret == 0);
                 test_output.open(output_file.substr(0, output_file.length() - 4));
             }
             else

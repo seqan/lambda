@@ -40,6 +40,8 @@ if (LAMBDA_NATIVE_BUILD)
     if (CMAKE_CXX_COMPILER_ID MATCHES "Intel")
         set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -xHOST -ipo -no-prec-div -fp-model fast=2")
     endif (CMAKE_CXX_COMPILER_ID MATCHES "Intel")
+else (LAMBDA_NATIVE_BUILD)
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmmx -msse -msse2 -msse3 -mssse3 -msse4 -mpopcnt")
 endif (LAMBDA_NATIVE_BUILD)
 
 if (LAMBDA_STATIC_BUILD)

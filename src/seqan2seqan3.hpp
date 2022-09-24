@@ -57,6 +57,7 @@ inline seqan3::gapped<alph_t> gapValueImpl(seqan3::gapped<alph_t> const *)
 #include <seqan/score.h>
 #include <seqan/sequence.h>
 
+#include "holder_tristate_overload.h"
 #include "bisulfite_scoring.hpp"
 
 namespace seqan
@@ -213,6 +214,25 @@ struct GetValue<Iter<TContainer const, StdIteratorAdaptor>>
 {
     using Type = std::ranges::range_reference_t<TContainer const>;
 };
+
+template <overload_c TSequence>
+decltype(auto) source(Gaps<TSequence, ArrayGaps> const & gaps)
+{
+    return value(gaps._source);
+}
+
+template <overload_c TSequence>
+decltype(auto) source(Gaps<TSequence, ArrayGaps> & gaps)
+{
+    return value(gaps._source);
+}
+
+template <overload_c TSequence>
+inline void assignSource(Gaps<TSequence, ArrayGaps> & gaps, TSequence const & source)
+{
+    setValue(gaps._source, source);
+    _reinitArrayGaps(gaps);
+}
 
 // –---------------------------------------------------------------------------
 // range stuff
