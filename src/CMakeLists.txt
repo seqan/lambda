@@ -30,19 +30,7 @@ message ("\n${ColourBold}Build configuration${ColourReset}")
 
 message (STATUS "LAMBDA version is: ${SEQAN_APP_VERSION}")
 
-option (LAMBDA_NATIVE_BUILD             "Architecture-specific optimizations, i.e. g++ -march=native."                              ON)
-option (LAMBDA_MULTIOPT_BUILD           "Build and install multiple binaries with different optimisation levels + a dispatcher."    OFF)
-option (LAMBDA_STATIC_BUILD             "Include all libraries in the binaries."                                                    OFF)
-
-if (LAMBDA_NATIVE_BUILD)
-    add_definitions (-DLAMBDA_NATIVE_BUILD=1)
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
-    if (CMAKE_CXX_COMPILER_ID MATCHES "Intel")
-        set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -xHOST -ipo -no-prec-div -fp-model fast=2")
-    endif (CMAKE_CXX_COMPILER_ID MATCHES "Intel")
-else (LAMBDA_NATIVE_BUILD)
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmmx -msse -msse2 -msse3 -mssse3 -msse4 -mpopcnt")
-endif (LAMBDA_NATIVE_BUILD)
+option (LAMBDA_STATIC_BUILD "Include all libraries in the binaries." OFF)
 
 if (LAMBDA_STATIC_BUILD)
     add_definitions (-DLAMBDA_STATIC_BUILD=1)
@@ -62,8 +50,6 @@ endif (LAMBDA_STATIC_BUILD)
 
 
 message(STATUS "The following options are selected for the build:")
-message(   "     LAMBDA_NATIVE_BUILD             ${LAMBDA_NATIVE_BUILD}")
-message(   "     LAMBDA_MULTIOPT_BUILD           ${LAMBDA_MULTIOPT_BUILD}")
 message(   "     LAMBDA_STATIC_BUILD             ${LAMBDA_STATIC_BUILD}")
 message(STATUS "Run 'cmake -LH' to get a comment on each option.")
 message(STATUS "Remove CMakeCache.txt and re-run cmake with -DOPTIONNAME=ON|OFF to change an option.")
@@ -171,12 +157,7 @@ set (LAMBDA_SOURCE_FILES lambda.cpp  search.cpp mkindex.cpp)
 
 add_executable (lambda3 ${LAMBDA_SOURCE_FILES})
 target_link_libraries (lambda3 ${SEQAN_LIBRARIES} seqan3::seqan3 fmindex-collection)
-
-if (LAMBDA_MULTIOPT_BUILD)
-    add_executable (lambda3-sse4 ${LAMBDA_SOURCE_FILES})
-    target_link_libraries (lambda3-sse4 ${SEQAN_LIBRARIES} seqan3::seqan3)
-    set_target_properties (lambda3-sse4 PROPERTIES COMPILE_FLAGS "-mmmx -msse -msse2 -msse3 -mssse3 -msse4 -mpopcnt")
-endif ()
+set_target_properties (lambda3 PROPERTIES COMPILE_FLAGS "-mmmx -msse -msse2 -msse3 -mssse3 -msse4 -mpopcnt")
 
 # ----------------------------------------------------------------------------
 # Man-pages
@@ -214,24 +195,18 @@ add_custom_target (manual
 # Adapt to system paths
 include (GNUInstallDirs)
 
-if (LAMBDA_MULTIOPT_BUILD)
-    # Install lambda binaries into LIBEXECDIR
-    install (TARGETS lambda3 lambda3-sse4
-             DESTINATION ${CMAKE_INSTALL_LIBEXECDIR})
+# Install lambda binaries into LIBEXECDIR
+install (TARGETS lambda3
+         DESTINATION ${CMAKE_INSTALL_LIBEXECDIR})
 
-    # Install dispatcher script into BINDIR
-    configure_file(../bin/lambda3.in
-                   ${CMAKE_CURRENT_BINARY_DIR}/lambda3-dispatch
-                   @ONLY)
-    install (FILES ${CMAKE_CURRENT_BINARY_DIR}/lambda3-dispatch
-             DESTINATION ${CMAKE_INSTALL_BINDIR}
-             RENAME lambda3
-             PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
-elseif ()
-    # Install lambda into BINDIR, usually ${PREFIX}/bin
-    install (TARGETS lambda3
-             DESTINATION ${CMAKE_INSTALL_BINDIR})
-endif ()
+# Install dispatcher script into BINDIR
+configure_file(../bin/lambda3.in
+               ${CMAKE_CURRENT_BINARY_DIR}/lambda3-dispatch
+               @ONLY)
+install (FILES ${CMAKE_CURRENT_BINARY_DIR}/lambda3-dispatch
+         DESTINATION ${CMAKE_INSTALL_BINDIR}
+         RENAME lambda3
+         PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
 
 # Install non-binary files for the package to DOCDIR, usually ${PREFIX}/share/doc/lambda3
 install (FILES ../LICENSE.rst
@@ -257,7 +232,7 @@ set (CPACK_PACKAGE_NAME "lambda3")
 set (CPACK_PACKAGE_DESCRIPTION_SUMMARY "lambda -- the local aligner for massive bioligical data")
 set (CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/../README.rst")
 set (CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/../LICENSE.rst")
-set (CPACK_PACKAGE_VENDOR "Hannes Hauswedell <hannes.hauswedell@fu-berlin.de>")
+set (CPACK_PACKAGE_VENDOR "Hannes Hauswedell <hannes.hauswedell@decode.is>")
 set (CPACK_PACKAGE_CONTACT "${CPACK_PACKAGE_VENDOR}")
 set (CPACK_PACKAGE_VERSION_MAJOR "${SEQAN_APP_VERSION_MAJOR}")
 set (CPACK_PACKAGE_VERSION_MINOR "${SEQAN_APP_VERSION_MINOR}")
@@ -285,11 +260,6 @@ if (CMAKE_SYSTEM_PROCESSOR STREQUAL "amd64")
     set(CMAKE_SYSTEM_PROCESSOR "x86_64")
     set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "amd64")
 endif ()
-if (CMAKE_CXX_FLAGS MATCHES "avx2")
-    set (CMAKE_SYSTEM_PROCESSOR "${CMAKE_SYSTEM_PROCESSOR}_avx2")
-elseif (CMAKE_CXX_FLAGS MATCHES "sse4")
-    set (CMAKE_SYSTEM_PROCESSOR "${CMAKE_SYSTEM_PROCESSOR}_sse4")
-endif()
 
 # Include architecture in package name
 if (NOT DEFINED CPACK_SYSTEM_NAME)
