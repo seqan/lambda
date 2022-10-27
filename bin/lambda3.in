@@ -9,38 +9,43 @@ else                                                    # we are just unpacked
     PREFIX="${CURDIR}/../@CMAKE_INSTALL_LIBEXECDIR@"
 fi
 
-BIN_FAILSAFE=${PREFIX}/lambda2
-BIN_SSE4=${PREFIX}/lambda2-sse4
+BIN=${PREFIX}/lambda3
 
-# failsafe is default
-BIN=${BIN_FAILSAFE}
+# no is the default
+HAS_CPU_EXT=0
 
 case $(uname) in
     "Linux")
         grep -E "flags.* popcnt "  -q /proc/cpuinfo 2>/dev/null && \
         grep -E "flags.* sse4_1 "  -q /proc/cpuinfo 2>/dev/null && \
         grep -E "flags.* sse4_2 "  -q /proc/cpuinfo 2>/dev/null && \
-        export BIN=${BIN_SSE4}
+        export HAS_CPU_EXT=1
         ;;
     "FreeBSD")
         grep -E "Feature.*POPCNT"  -q /var/run/dmesg.boot 2>/dev/null && \
         grep -E "Feature.*SSE4\.1" -q /var/run/dmesg.boot 2>/dev/null && \
         grep -E "Feature.*SSE4\.2" -q /var/run/dmesg.boot 2>/dev/null && \
-        export BIN=${BIN_SSE4}
+        export HAS_CPU_EXT=1
         ;;
 ## OpenBSD doesn't yet support POPCNT software side (although it does detect the cpu feature)
 #     "OpenBSD")
 #         grep -E "cpu.*POPCNT"  -q /var/run/dmesg.boot 2>/dev/null && \
 #         grep -E "cpu.*SSE4\.1" -q /var/run/dmesg.boot 2>/dev/null && \
 #         grep -E "cpu.*SSE4\.2" -q /var/run/dmesg.boot 2>/dev/null && \
-#         export BIN=${BIN_SSE4}
+#         export HAS_CPU_EXT=1
 #         ;;
     "Darwin")
         sysctl machdep.cpu.features 2>&1 | grep -E "POPCNT"  -q 2>/dev/null && \
         sysctl machdep.cpu.features 2>&1 | grep -E "SSE4\.1" -q 2>/dev/null && \
         sysctl machdep.cpu.features 2>&1 | grep -E "SSE4\.2" -q 2>/dev/null && \
-        export BIN=${BIN_SSE4}
+        export HAS_CPU_EXT=1
+        ;;
+    *)
         ;;
 esac
+
+if [ $HAS_CPU_EXT -eq 0 ]; then
+    echo "Your CPU does not meet Lambda's minimum requirements. The app might crash." >&2
+fi
 
 exec "${BIN}" "${@}"
