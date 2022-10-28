@@ -91,8 +91,8 @@ struct LambdaOptions : public SharedOptions
     int32_t misMatch      = -3; // only for manual
 
     int32_t  band        = -3;
-    int32_t  minBitScore = -1;
-    double   maxEValue   = 1e-04;
+    int32_t  minBitScore = 42;
+    double   maxEValue   = -1;
     int32_t  idCutOff    = 0;
     uint64_t maxMatches  = 256;
 
@@ -102,7 +102,8 @@ struct LambdaOptions : public SharedOptions
     int32_t preScoring       = 2; // 0 = off, 1 = seed, 2 = region
     double  preScoringThresh = 2.0;
 
-    bool iterativeSearch = false;
+    bool        iterativeSearch = true;
+    std::string profile         = "none";
 };
 
 void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
@@ -166,15 +167,6 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
           "Alphabet of the query sequences (specify to override auto-detection). Dna sequences will be translated.",
           seqan3::option_spec::advanced,
           seqan3::value_list_validator{"auto", "dna5", "aminoacid"});
-
-#if 0 // TODO: we currently don't support other code, but we should
-        parser.add_option(geneticCodeTmp, 'g', "genetic-code",
-            "The translation table to use if input is Dna. See "
-            "https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi?mode=c"
-            " for ids. Default is to use the same table that was used for the index or 1/CANONICAL if the index "
-            "was not translated.", seqan3::option_spec::advanced,
-            seqan3::value_list_validator{0, 1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 13, 14, 15, 16, 21, 22, 23, 24, 25});
-#endif
     }
 
     parser.add_option(options.indexFilePath,
@@ -250,7 +242,16 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     std::string samBamSeqDescr;
     if (options.nucleotide_mode)
     {
-        samBamSeqDescr = "Write matching DNA subsequence into SAM/BAM file.";
+        samBamSeqDescr                  = "Write matching DNA subsequence into SAM/BAM file.";
+        options.searchOpts0.seedLength  = 14;
+        options.searchOpts0.seedOffset  = 7;
+        options.searchOpts0.maxSeedDist = 0;
+        options.searchOpts.seedLength   = 14;
+        options.searchOpts.seedOffset   = 7;
+        options.searchOpts.maxSeedDist  = 1;
+
+        options.gapOpen   = -5;
+        options.gapExtend = -2;
     }
     else
     {
@@ -259,6 +260,16 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
           "sequence is \"untranslated\" and positions retransformed to the original sequence. For BLASTP and TBLASTN "
           "there is no DNA sequence so a \"*\" is written to the SEQ column. The matching protein sequence can be "
           "written as an optional tag, see --sam-bam-tags.";
+
+        options.searchOpts0.seedLength  = 10;
+        options.searchOpts0.seedOffset  = 5;
+        options.searchOpts0.maxSeedDist = 0;
+        options.searchOpts.seedLength   = 11;
+        options.searchOpts.seedOffset   = 3;
+        options.searchOpts.maxSeedDist  = 1;
+
+        options.gapOpen   = -11;
+        options.gapExtend = -1;
     }
 
     std::string samBamSeqDescrTmp = "uniq";
@@ -313,6 +324,13 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
                       seqan3::arithmetic_range_validator{2, 2});
 #endif
 
+    parser.add_option(options.profile,
+                      'p',
+                      "profile",
+                      "Profiles are presets of a group of parameters. See below.",
+                      seqan3::option_spec::standard,
+                      seqan3::value_list_validator{"none", "fast", "sensitive"});
+
     parser.add_section("Seeding / Filtration");
 
     parser.add_option(options.adaptiveSeeding,
@@ -327,9 +345,6 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
                       "Allow errors only in second half of seed.",
                       seqan3::option_spec::advanced);
 
-    unsigned defaultSeedLength = options.nucleotide_mode ? 14 : 10;
-
-    options.searchOpts.seedLength = defaultSeedLength;
     parser.add_option(options.searchOpts.seedLength,
                       '\0',
                       "seed-length",
@@ -337,12 +352,11 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
                       seqan3::option_spec::advanced,
                       seqan3::arithmetic_range_validator{3, 50});
 
-    options.searchOpts.seedOffset = options.searchOpts.seedLength / 2;
     parser.add_option(options.searchOpts.seedOffset,
                       '\0',
                       "seed-offset",
                       "Offset for seeding. "
-                      "If you set 'seed-length', please consider setting this option to half of that.",
+                      "Distance between seed begin positions.",
                       seqan3::option_spec::standard,
                       seqan3::arithmetic_range_validator{1, 50});
 
@@ -351,7 +365,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
                       "seed-delta",
                       "Maximum seed distance.",
                       seqan3::option_spec::advanced,
-                      seqan3::arithmetic_range_validator{0, 5});
+                      seqan3::arithmetic_range_validator{0, 3});
 
     /* iterative search parameters */
     parser.add_option(options.iterativeSearch,
@@ -360,7 +374,6 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
                       "If (cheaper) pre-search yield results, skip regular search.",
                       seqan3::option_spec::advanced);
 
-    options.searchOpts0.seedLength = options.searchOpts.seedLength;
     parser.add_option(options.searchOpts0.seedLength,
                       '\0',
                       "seed-length0",
@@ -373,11 +386,10 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
                       '\0',
                       "seed-offset0",
                       "Offset for seeding. "
-                      "If you set 'seed-length', please consider setting this option to half of that.",
+                      "Distance between seed begin positions.",
                       seqan3::option_spec::standard,
                       seqan3::arithmetic_range_validator{1, 50});
 
-    options.searchOpts0.maxSeedDist = 0; // <- this is different from normal
     parser.add_option(options.searchOpts0.maxSeedDist,
                       '\0',
                       "seed-delta0",
@@ -410,14 +422,14 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         parser.add_option(options.match,
                           '\0',
                           "score-match",
-                          "Match score [only BLASTN]",
+                          "Match score",
                           seqan3::option_spec::advanced,
                           seqan3::arithmetic_range_validator{-1000, 1000});
 
         parser.add_option(options.misMatch,
                           '\0',
                           "score-mismatch",
-                          "Mismatch score [only BLASTN]",
+                          "Mismatch score",
                           seqan3::option_spec::advanced,
                           seqan3::arithmetic_range_validator{-1000, 1000});
     }
@@ -431,22 +443,12 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
                           seqan3::value_list_validator{45, 62, 80});
     }
 
-    if (options.nucleotide_mode)
-        options.gapExtend = -2;
-    else
-        options.gapExtend = -1;
-
     parser.add_option(options.gapExtend,
                       '\0',
                       "score-gap",
                       "Score per gap character.",
                       seqan3::option_spec::advanced,
                       seqan3::arithmetic_range_validator{-1000, 1000});
-
-    if (options.nucleotide_mode)
-        options.gapOpen = -5;
-    else
-        options.gapOpen = -11;
 
     parser.add_option(options.gapOpen,
                       '\0',
@@ -477,6 +479,31 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     parser.add_line("For further information see the wiki: <https://github.com/seqan/lambda/wiki>", false);
 #endif
 
+    parser.add_section("Profiles");
+    parser.add_line(
+      "Setting a profile other than \"none\" always overwrites manually given command line "
+      "arguments!",
+      true);
+
+    if (options.nucleotide_mode)
+    {
+        parser.add_line("\"fast\"", false);
+        parser.add_line("TODO", true);
+        parser.add_line("\"sensitive\"", false);
+        parser.add_line("TODO", true);
+    }
+    else
+    {
+        parser.add_line("\"fast\"", false);
+        parser.add_line("--seed-length0 12 --seed-offset0 8 --seed-length 10 --seed-offset 5 --seed-delta 0", true);
+        parser.add_line("\"sensitive\"", false);
+        parser.add_line(
+          "--seed-length0 9 --seed-offset0 4 --seed-length 8 --seed-offset 3 --pre-scoring 3 "
+          "--pre-scoring-threshold 1.9",
+          true);
+    }
+    parser.add_line("For further information see the wiki: <https://github.com/seqan/lambda/wiki>", false);
+
     // parse command line.
     parser.parse();
 
@@ -493,6 +520,39 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
             throw seqan3::argument_parser_error("ERROR: Invalid argument to --input-alphabet\n");
 
         options.geneticCodeQry = static_cast<seqan3::genetic_code>(geneticCodeTmp);
+    }
+
+    if (options.profile == "fast")
+    {
+        if (options.nucleotide_mode)
+        {
+            //TODO
+        }
+        else
+        {
+            options.searchOpts0.seedLength = 12;
+            options.searchOpts0.seedOffset = 8;
+            options.searchOpts.seedLength  = 10;
+            options.searchOpts.seedOffset  = 5;
+            options.searchOpts.maxSeedDist = 0;
+        }
+    }
+    else
+    {
+        if (options.nucleotide_mode)
+        {
+            // TODO
+        }
+        else
+        {
+            options.searchOpts0.seedLength = 9;
+            options.searchOpts0.seedOffset = 4;
+            options.searchOpts.seedLength  = 8;
+            options.searchOpts.seedOffset  = 3;
+
+            options.preScoring       = 3;
+            options.preScoringThresh = 1.9;
+        }
     }
 
     // set output file format

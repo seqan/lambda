@@ -169,10 +169,10 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
     }
     else
     {
-        alphabetReductionTmp               = "murphy10";
+        alphabetReductionTmp               = "li10";
         options.indexFileOptions.origAlph  = AlphabetEnum::UNDEFINED;
         options.indexFileOptions.transAlph = AlphabetEnum::AMINO_ACID;
-        options.indexFileOptions.redAlph   = AlphabetEnum::MURPHY10;
+        options.indexFileOptions.redAlph   = AlphabetEnum::LI10;
 
         parser.add_section("Alphabet and Translation");
 
@@ -184,16 +184,6 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
                           seqan3::option_spec::advanced,
                           seqan3::value_list_validator{"auto", "dna5", "aminoacid"});
 
-        parser.add_option(
-          geneticCodeTmp,
-          'g',
-          "genetic-code",
-          "The translation table to use if input is Dna. See "
-          "https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi?mode=c"
-          " for ids. (default is generic)",
-          seqan3::option_spec::advanced,
-          seqan3::value_list_validator{0, 1, 2, 3, 4, 5, 6, 9, 10, 11, 12, 13, 14, 15, 16, 21, 22, 23, 24, 25});
-
         parser.add_option(alphabetReductionTmp,
                           'r',
                           "alphabet-reduction",
@@ -202,36 +192,8 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
                           seqan3::value_list_validator{"none", "murphy10", "li10"});
     }
 
-    // TODO: try to get out-of-memory version from SeqAn3/SDSL now; get parallel version later
-    parser.add_option(options.algo,
-                      '\0',
-                      "algorithm",
-                      "Algorithm for SA construction (also used for FM; see Memory Requirements below!).",
-                      seqan3::option_spec::advanced,
-                      seqan3::value_list_validator<std::string>{"default"});
-
-#if 0 // re-add if a parallel algorithm is added
-    parser.add_option(options.threads, 't', "threads",
-        "Number of threads to run concurrently (ignored if a == skew7ext).", seqan3::option_spec::advanced,
-        seqan3::arithmetic_range_validator{1, 1000});
-#endif
-
-    parser.add_option(options.tmpdir,
-                      '\0',
-                      "tmp-dir",
-                      "temporary directory used by skew, defaults to working directory.",
-                      seqan3::option_spec::advanced,
-                      seqan3::output_directory_validator());
-
     parser.add_section("Remarks");
-    parser.add_line(
-      "Please see the wiki (<https://github.com/seqan/lambda/wiki>) for more information on which indexes"
-      " to chose and which algorithms to pick.",
-      false);
-    parser.add_line(
-      "Since SeqAn3, indexes are compatible between different CPU endiannesses. "
-      "The on-disk format is still subject to change between Lambda versions.",
-      false);
+    parser.add_line("Indexes are *NOT* compatible between different CPU endiannesses.", false);
 
     // parse command line.
     parser.parse();
