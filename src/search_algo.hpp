@@ -109,9 +109,9 @@ void readIndexOptions(LambdaOptions & options)
     }
     else if (options.indexFilePath.extension() == ".lta")
     {
-        std::ifstream            is{options.indexFilePath.c_str(), std::ios::binary};
-        cereal::JSONInputArchive iarchive(is);
-        iarchive(cereal::make_nvp("lambda index", f));
+//        std::ifstream            is{options.indexFilePath.c_str(), std::ios::binary};
+//        cereal::JSONInputArchive iarchive(is);
+//        iarchive(cereal::make_nvp("lambda index", f));
     }
     else
     {
@@ -272,9 +272,9 @@ void loadDbIndexFromDisk(
     }
     else if (options.indexFilePath.extension() == ".lta")
     {
-        std::ifstream            is{options.indexFilePath.c_str(), std::ios::binary};
-        cereal::JSONInputArchive iarchive(is);
-        iarchive(cereal::make_nvp("lambda index", globalHolder.indexFile));
+//        std::ifstream            is{options.indexFilePath.c_str(), std::ios::binary};
+//        cereal::JSONInputArchive iarchive(is);
+//        iarchive(cereal::make_nvp("lambda index", globalHolder.indexFile));
     }
     else
     {

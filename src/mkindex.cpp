@@ -220,9 +220,9 @@ void realMain(LambdaIndexerOptions const & options)
     }
     else if (options.indexFilePath.extension() == ".lta")
     {
-        std::ofstream             os{options.indexFilePath.c_str()};
-        cereal::JSONOutputArchive oarchive(os);
-        oarchive(cereal::make_nvp("lambda index", f));
+//        std::ofstream             os{options.indexFilePath.c_str()};
+//        cereal::JSONOutputArchive oarchive(os);
+//        oarchive(cereal::make_nvp("lambda index", f));
     }
     else
     {
