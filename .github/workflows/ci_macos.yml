@@ -87,7 +87,7 @@ jobs:
         run: |
           ccache -p || true
           cd build
-          make -k -j3 cli_test
+          make -k -j3 cli_test VERBOSE=1
           ccache -s || true
 
       - name: Run tests
