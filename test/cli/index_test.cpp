@@ -11,8 +11,8 @@ struct index_test : public cli_test
     {
         if (std::system("echo foo | md5sum > /dev/null 2>&1") == 0)
             md5_cmd = "md5sum";
-        else if (std::system("echo foo | md5 > /dev/null 2>&1") == 0)
-            md5_cmd = "md5";
+        else if (std::system("echo foo | md5 -r > /dev/null 2>&1") == 0)
+            md5_cmd = "md5 -r";
 
         ASSERT_FALSE(md5_cmd.empty());
     }
