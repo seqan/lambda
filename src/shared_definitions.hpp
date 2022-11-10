@@ -237,7 +237,7 @@ using IndexSpec = fmindex_collection::occtable::interleavedEPR32V2::OccTable<Alp
 // ==========================================================================
 
 template <typename TString>
-using TCDStringSet = seqan3::concatenated_sequences<TString>; //TODO seqan3::concatenated_sequences
+using TCDStringSet = seqan3::concatenated_sequences<TString>;
 
 template <AlphabetEnum c_origSbjAlph, AlphabetEnum c_transAlph, AlphabetEnum c_redAlph>
 inline constexpr auto sbjTransView = []()
@@ -275,6 +275,34 @@ constexpr auto redView = []()
     else
         return views::dna_n_to_random;
 }();
+
+// ==========================================================================
+//  overload serialisation
+// ==========================================================================
+
+namespace cereal
+{
+
+template <seqan3::alphabet alph_t>
+    requires std::is_trivially_copyable_v<alph_t>
+void save(cereal::BinaryOutputArchive & archive, std::vector<alph_t> const & vec)
+{
+    archive(static_cast<uint64_t>(vec.size()));
+    archive(cereal::binary_data(vec.data(), vec.size() * sizeof(alph_t)));
+}
+
+template <seqan3::alphabet alph_t>
+    requires std::is_trivially_copyable_v<alph_t>
+void load(cereal::BinaryInputArchive & archive, std::vector<alph_t> & vec)
+{
+    uint64_t s = 0;
+    archive(s);
+
+    vec.resize(s);
+    archive(cereal::binary_data(vec.data(), s * sizeof(alph_t)));
+}
+
+} // namespace cereal
 
 // ==========================================================================
 //  The index
