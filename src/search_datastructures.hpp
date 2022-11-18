@@ -505,9 +505,6 @@ public:
                                             uint32_t>;
     std::list<TBlastMatch> blastMatches;
 
-    // map from sequence length to band size
-    std::unordered_map<uint64_t, int> bandTable;
-
     // regarding the gathering of stats
     StatsHolder stats{};
 

@@ -90,11 +90,10 @@ struct LambdaOptions : public SharedOptions
     int32_t match         = 2;  // only for manual
     int32_t misMatch      = -3; // only for manual
 
-    int32_t  band        = -3;
     int32_t  minBitScore = 42;
     double   maxEValue   = -1;
     int32_t  idCutOff    = 0;
-    uint64_t maxMatches  = 256;
+    uint64_t maxMatches  = 25;
 
     bool                 computeLCA = false;
     seqan3::genetic_code geneticCodeQry;
@@ -130,7 +129,6 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     sharedSetup(parser);
 
     // TODO version check
-
     parser.add_option(options.verbosity,
                       'v',
                       "verbosity",
@@ -181,7 +179,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     parser.add_section("Output options");
 
-    // TODO Fix outout file requirements
+    // TODO Fix output file requirements
     parser.add_option(options.output,
                       'o',
                       "output",
@@ -222,7 +220,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
                       seqan3::option_spec::standard,
                       seqan3::arithmetic_range_validator{-1, 100});
 
-    int32_t numMatchesTmp = 256;
+    int32_t numMatchesTmp = 25;
     parser.add_option(numMatchesTmp,
                       'n',
                       "num-matches",
@@ -244,11 +242,12 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     {
         samBamSeqDescr                  = "Write matching DNA subsequence into SAM/BAM file.";
         options.searchOpts0.seedLength  = 14;
-        options.searchOpts0.seedOffset  = 7;
+        options.searchOpts0.seedOffset  = 9;
         options.searchOpts0.maxSeedDist = 0;
         options.searchOpts.seedLength   = 14;
         options.searchOpts.seedOffset   = 7;
         options.searchOpts.maxSeedDist  = 1;
+        options.preScoringThresh        = 1.4;
 
         options.gapOpen   = -5;
         options.gapExtend = -2;
@@ -381,7 +380,6 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
                       seqan3::option_spec::advanced,
                       seqan3::arithmetic_range_validator{3, 50});
 
-    options.searchOpts0.seedOffset = options.searchOpts.seedOffset;
     parser.add_option(options.searchOpts0.seedOffset,
                       '\0',
                       "seed-offset0",
@@ -457,28 +455,6 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
                       seqan3::option_spec::advanced,
                       seqan3::arithmetic_range_validator{-1000, 1000});
 
-    parser.add_section("Extension");
-
-    //TODO this is only used in serial mode right now
-    parser.add_option(options.band,
-                      'b',
-                      "band",
-                      "Size of the DP-band used in extension (-3 means log2 of query length;"
-                      " -2 means sqrt of query length; -1 means full dp; n means band of size 2n+1)",
-                      seqan3::option_spec::advanced,
-                      seqan3::arithmetic_range_validator{-3, 1000});
-
-#if 0 //TODO make new guide
-    parser.add_section("Tuning");
-    parser.add_line("Tuning the seeding parameters and (de)activating alphabet "
-                    "reduction has a strong "
-                    "influence on both speed and sensitivity. We recommend the "
-                    "following alternative profiles for protein searches:", false);
-    parser.add_line("fast (high similarity):    --seed-delta-increases-length on", false);
-    parser.add_line("sensitive (lower similarity): --seed-offset 3", false);
-    parser.add_line("For further information see the wiki: <https://github.com/seqan/lambda/wiki>", false);
-#endif
-
     parser.add_section("Profiles");
     parser.add_line(
       "Setting a profile other than \"none\" always overwrites manually given command line "
@@ -488,9 +464,9 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     if (options.nucleotide_mode)
     {
         parser.add_line("\"fast\"", false);
-        parser.add_line("TODO", true);
+        parser.add_line("--seed-length 14 --seed-offset 9 --seed-delta 0", true);
         parser.add_line("\"sensitive\"", false);
-        parser.add_line("TODO", true);
+        parser.add_line("--seed-length0 14 --seed-offset0 3 --seed-length 14 --seed-offset 3", true);
     }
     else
     {
@@ -526,7 +502,9 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     {
         if (options.nucleotide_mode)
         {
-            //TODO
+            options.iterativeSearch        = false;
+            options.searchOpts.seedOffset  = 9;
+            options.searchOpts.maxSeedDist = 0;
         }
         else
         {
@@ -537,11 +515,12 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
             options.searchOpts.maxSeedDist = 0;
         }
     }
-    else
+    else if (options.profile == "sensitive")
     {
         if (options.nucleotide_mode)
         {
-            // TODO
+            options.searchOpts0.seedOffset = 3;
+            options.searchOpts.seedOffset  = 3;
         }
         else
         {
@@ -702,23 +681,6 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 template <typename TLH>
 inline void printOptions(LambdaOptions const & options)
 {
-    std::string bandStr;
-    switch (options.band)
-    {
-        case -3:
-            bandStr = "2 * log(queryLength) + 1";
-            break;
-        case -2:
-            bandStr = "2 * sqrt(queryLength) + 1";
-            break;
-        case -1:
-            bandStr = "no band";
-            break;
-        default:
-            bandStr = std::to_string(2 * options.band + 1);
-            break;
-    }
-
     std::cout << "OPTIONS\n"
               << " INPUT\n"
               << "  query file:               " << options.queryFile << "\n"

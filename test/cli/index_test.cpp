@@ -127,24 +127,24 @@ TEST_F(index_test, nucl_bs_bifm)
 
 TEST_F(index_test, prot_fm)
 {
-    run_index_test("mkindexp", "db_prot.fasta.gz", "db_prot_fm_test.fasta.gz.lba", "fm", "murphy10",
+    run_index_test("mkindexp", "db_prot.fasta.gz", "db_prot_fm_test.fasta.gz.lba", "fm", "li10",
                    "db_prot_fm.fasta.gz.lba");
 }
 
 TEST_F(index_test, prot_bifm)
 {
-    run_index_test("mkindexp", "db_prot.fasta.gz", "db_prot_bifm_test.fasta.gz.lba", "bifm", "murphy10",
+    run_index_test("mkindexp", "db_prot.fasta.gz", "db_prot_bifm_test.fasta.gz.lba", "bifm", "li10",
                    "db_prot_bifm.fasta.gz.lba");
 }
 
 TEST_F(index_test, trans_fm)
 {
-    run_index_test("mkindexp", "db_nucl.fasta.gz", "db_trans_fm_test.fasta.gz.lba", "fm", "murphy10",
+    run_index_test("mkindexp", "db_nucl.fasta.gz", "db_trans_fm_test.fasta.gz.lba", "fm", "li10",
                    "db_trans_fm.fasta.gz.lba");
 }
 
 TEST_F(index_test, trans_bifm)
 {
-    run_index_test("mkindexp", "db_nucl.fasta.gz", "db_trans_bifm_test.fasta.gz.lba", "bifm", "murphy10",
+    run_index_test("mkindexp", "db_nucl.fasta.gz", "db_trans_bifm_test.fasta.gz.lba", "bifm", "li10",
                    "db_trans_bifm.fasta.gz.lba");
 }
