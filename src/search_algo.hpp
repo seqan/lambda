@@ -842,7 +842,7 @@ inline void _setupAlignInfix(TBlastMatch & bm, typename TLocalHolder::TMatch con
     int64_t startMod = (int64_t)m.subjStart - (int64_t)m.qryStart;
 
     bm.qEnd                = lH.transQrySeqs[m.qryId].size();
-    decltype(bm.qEnd) band = _bandSize(bm.qEnd, lH);
+    decltype(bm.qEnd) band = _bandSize(bm.qEnd);
     if (startMod >= 0)
     {
         bm.sStart = startMod;

@@ -43,36 +43,10 @@ struct QueryException : public std::runtime_error
 // Alignment-related
 // ============================================================================
 
-template <typename TLocalHolder>
-inline int _bandSize(uint64_t const seqLength, TLocalHolder & lH)
+inline int _bandSize(uint64_t const seqLength)
 {
-    switch (lH.options.band)
-    {
-        case -3:
-        case -2:
-            {
-                int  ret = 0;
-                auto fit = lH.bandTable.find(seqLength);
-                if (fit != lH.bandTable.end())
-                {
-                    ret = fit->second;
-                }
-                else
-                {
-                    if (lH.options.band == -3)
-                        ret = ceil(std::log2(seqLength));
-                    else
-                        ret = floor(sqrt(seqLength));
-                }
-                lH.bandTable[seqLength] = ret;
-                return ret;
-            }
-            break;
-        case -1:
-            return std::numeric_limits<int>::max();
-        default:
-            return lH.options.band;
-    }
+    // Currently only used for padding of the subject sequences
+    return 63ull - std::countl_zero(std::bit_ceil(seqLength));
 }
 
 // ----------------------------------------------------------------------------
