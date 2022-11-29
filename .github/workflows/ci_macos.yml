@@ -43,9 +43,6 @@ jobs:
       - name: Configure Homebrew
         uses: Homebrew/actions/setup-homebrew@master
 
-      - name: Install CMake
-        run: bash ./lambda/submodules/seqan3/.github/workflows/scripts/install_cmake.sh
-
       - name: Install ccache
         run: bash ./lambda/submodules/seqan3/.github/workflows/scripts/install_via_brew.sh ccache
 
