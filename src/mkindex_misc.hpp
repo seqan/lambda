@@ -21,10 +21,11 @@
 
 #pragma once
 
+#include <bio/ranges/to.hpp>
 #include <seqan3/core/range/detail/misc.hpp> // seqan3::detail::consume
 #include <seqan3/utility/char_operations/predicate.hpp>
 
-inline constexpr auto not_eol = !(seqan3::is_char<'\r'> || seqan3::is_char<'\n'>);
+inline constexpr auto not_eol = !(bio::io::is_char<'\r'> || bio::io::is_char<'\n'>);
 
 bool setEnv(std::string const & key, std::string const & value)
 {
@@ -55,21 +56,21 @@ void _readMappingFileUniProt(TInputView &                                      f
     while (std::ranges::begin(fiv) != std::ranges::end(fiv))
     {
         // read accession number
-        acc = fiv | std::views::take_while(!seqan3::is_blank) | seqan3::ranges::to<std::string>(); //TODO and_consume
+        acc = fiv | std::views::take_while(!bio::io::is_blank) | bio::ranges::to<std::string>(); //TODO and_consume
         // skip whitespace
-        seqan3::detail::consume(fiv | std::views::take_while(!seqan3::is_alnum));
+        seqan3::detail::consume(fiv | std::views::take_while(!bio::io::is_alnum));
         // read accession number
         nextColumn =
-          fiv | std::views::take_while(!seqan3::is_blank) | seqan3::ranges::to<std::string>(); //TODO and_consume
+          fiv | std::views::take_while(!bio::io::is_blank) | bio::ranges::to<std::string>(); //TODO and_consume
 
         if ((nextColumn == "NCBI_TaxID") && (accToIdRank.count(acc) == 1))
         {
             auto & sTaxIdV = sTaxIds[accToIdRank.at(acc)];
             // skip whitespace
-            seqan3::detail::consume(fiv | std::views::take_while(!seqan3::is_alnum));
+            seqan3::detail::consume(fiv | std::views::take_while(!bio::io::is_alnum));
             // read tax id
             nextColumn =
-              fiv | std::views::take_while(!seqan3::is_space) | seqan3::ranges::to<std::string>(); //TODO and_consume
+              fiv | std::views::take_while(!bio::io::is_space) | bio::ranges::to<std::string>(); //TODO and_consume
 
             uint32_t idNum = 0;
             auto [p, ec]   = std::from_chars(nextColumn.data(), nextColumn.data() + nextColumn.size(), idNum);
@@ -105,20 +106,19 @@ void _readMappingFileNCBI(TInputView &                                      fiv,
     while (std::ranges::begin(fiv) != std::ranges::end(fiv))
     {
         // read accession number
-        buf = fiv | std::views::take_while(!seqan3::is_blank) | seqan3::ranges::to<std::string>(); //TODO and_consume
+        buf = fiv | std::views::take_while(!bio::io::is_blank) | bio::ranges::to<std::string>(); //TODO and_consume
         // we have a sequence with this ID in our database
         if (accToIdRank.count(buf) == 1)
         {
             auto & sTaxIdV = sTaxIds[accToIdRank.at(buf)];
             // skip whitespace
-            seqan3::detail::consume(fiv | std::views::take_while(!seqan3::is_alnum));
+            seqan3::detail::consume(fiv | std::views::take_while(!bio::io::is_alnum));
             // skip versioned acc
-            seqan3::detail::consume(fiv | std::views::take_while(!seqan3::is_blank));
+            seqan3::detail::consume(fiv | std::views::take_while(!bio::io::is_blank));
             // skip whitespace
-            seqan3::detail::consume(fiv | std::views::take_while(!seqan3::is_alnum));
+            seqan3::detail::consume(fiv | std::views::take_while(!bio::io::is_alnum));
             // read tax id
-            buf =
-              fiv | std::views::take_while(!seqan3::is_blank) | seqan3::ranges::to<std::string>(); //TODO and_consume
+            buf = fiv | std::views::take_while(!bio::io::is_blank) | bio::ranges::to<std::string>(); //TODO and_consume
 
             uint32_t idNum = 0;
             auto [p, ec]   = std::from_chars(buf.data(), buf.data() + buf.size(), idNum);

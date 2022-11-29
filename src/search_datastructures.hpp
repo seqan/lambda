@@ -25,18 +25,26 @@
 #include <search_schemes/expand.h>
 #include <search_schemes/generator/all.h>
 
+#include <bio/ranges/views/convert.hpp>
+#include <bio/ranges/views/deep.hpp>
+#include <bio/ranges/views/translate_join.hpp>
+#include <bio/ranges/views/type_reduce.hpp>
 #include <seqan3/alignment/scoring/aminoacid_scoring_scheme.hpp>
 #include <seqan3/alignment/scoring/nucleotide_scoring_scheme.hpp>
-#include <seqan3/alphabet/views/translate_join.hpp>
 #include <seqan3/utility/type_traits/lazy_conditional.hpp>
-#include <seqan3/utility/views/convert.hpp>
-#include <seqan3/utility/views/deep.hpp>
-#include <seqan3/utility/views/type_reduce.hpp>
 
 #include <seqan/align_extend.h>
 
 #include "bisulfite_scoring.hpp"
 #include "search_options.hpp"
+
+namespace seqan3
+{
+
+template <>
+inline constexpr bool enable_aminoacid<bio::alphabet::aa27> = true;
+
+}
 
 // ============================================================================
 // Tags, Classes, Enums
@@ -297,22 +305,6 @@ void printStats(StatsHolder const & stats, LambdaOptions const & options)
     }
 }
 
-template <AlphabetEnum c_origQryAlph>
-struct QueryFileTraits :
-  std::conditional_t<c_origQryAlph == AlphabetEnum::DNA5,
-                     seqan3::sequence_file_input_default_traits_dna,
-                     seqan3::sequence_file_input_default_traits_aa>
-{
-    template <typename _sequence_container>
-    using sequence_container_container = TCDStringSet<_sequence_container>;
-
-    template <typename _id_container>
-    using id_container_container = TCDStringSet<_id_container>;
-
-    template <typename _quality_container>
-    using quality_container_container = TCDStringSet<_quality_container>;
-};
-
 enum class IterativeSearchMode
 {
     OFF,
@@ -353,9 +345,6 @@ public:
       /*(c_origQryAlph != AlphabetEnum::AMINO_ACID && c_origSbjAlph != c_origQryAlph) ?*/ seqan::BlastProgram::BLASTX;
     // clang-format on
 
-    using TQueryFile = seqan3::sequence_file_input<QueryFileTraits<c_origQryAlph>,
-                                                   seqan3::fields<seqan3::field::id, seqan3::field::seq>>;
-
     /* untranslated query sequences (ONLY USED FOR SAM/BAM OUTPUT) */
     using TQrySeqs = std::vector<std::vector<TOrigQryAlph>>;
     using TSbjSeqs = TCDStringSet<std::vector<TOrigSbjAlph>>;
@@ -387,7 +376,7 @@ public:
 
     // SeqAn2 scoring scheme for local alignment of extended seeds. This can be adapted for bisulfite scoring.
     using TScoreSchemeAlign =
-      std::conditional_t<seqan3::nucleotide_alphabet<TTransAlph>,
+      std::conditional_t<bio::alphabet::nucleotide_alphabet<TTransAlph>,
                          std::conditional_t<c_redAlph == AlphabetEnum::DNA3BS,
                                             seqan::Score<int, seqan::ScoreMatrix<seqan::Dna5, seqan::BisulfiteMatrix>>,
                                             seqan::Score<int, seqan::Simple>>,
@@ -395,7 +384,7 @@ public:
 
     // SeqAn2 scoring scheme for blast statistics (does not work with bisulfite scoring scheme)
     using TScoreSchemeStats =
-      std::conditional_t<seqan3::nucleotide_alphabet<TTransAlph>,
+      std::conditional_t<bio::alphabet::nucleotide_alphabet<TTransAlph>,
                          seqan::Score<int, seqan::Simple>,
                          seqan::Score<int, seqan::ScoreMatrix<seqan::AminoAcid, seqan::ScoreSpecSelectable>>>;
 
@@ -458,9 +447,9 @@ public:
     using TMatch          = typename TGlobalHolder::TMatch;
     using TScoreExtension = seqan::AffineGaps;
     using TSeqInfix0 = decltype(std::declval<std::ranges::range_reference_t<typename TGlobalHolder::TTransQrySeqs>>() |
-                                seqan3::views::slice(0, 1));
+                                bio::views::slice(0, 1));
     using TSeqInfix1 = decltype(std::declval<std::ranges::range_reference_t<typename TGlobalHolder::TTransSbjSeqs>>() |
-                                seqan3::views::slice(0, 1));
+                                bio::views::slice(0, 1));
 
     // references to global stuff
     LambdaOptions const &                options;

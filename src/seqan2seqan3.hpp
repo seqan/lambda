@@ -3,14 +3,13 @@
 #include <ranges>
 #include <span>
 
-#include <seqan3/alphabet/aminoacid/concept.hpp>
-#include <seqan3/alphabet/concept.hpp>
-#include <seqan3/alphabet/gap/all.hpp>
-#include <seqan3/alphabet/nucleotide/concept.hpp>
-#include <seqan3/alphabet/nucleotide/dna3bs.hpp>
-#include <seqan3/alphabet/nucleotide/dna5.hpp>
-#include <seqan3/alphabet/views/to_rank.hpp>
-#include <seqan3/alphabet/views/translate_join.hpp>
+#include <bio/alphabet/aminoacid/all.hpp>
+#include <bio/alphabet/concept.hpp>
+#include <bio/alphabet/gap/all.hpp>
+#include <bio/alphabet/nucleotide/concept.hpp>
+#include <bio/alphabet/nucleotide/dna5.hpp>
+#include <bio/ranges/views/to_rank.hpp>
+#include <bio/ranges/views/translate_join.hpp>
 
 // seqan3 does not alias ranges::cpp20::{take,transform}_view -> std::ranges::{take,transform}_view when using range-v3 implementation
 #if !defined(__cpp_lib_ranges)
@@ -39,15 +38,15 @@ inline void const * getObjectId(T const & me)
 }
 
 template <typename alph_t>
-inline seqan3::gapped<alph_t> gapValueImpl(seqan3::gapped<alph_t> *)
+inline bio::alphabet::gapped<alph_t> gapValueImpl(bio::alphabet::gapped<alph_t> *)
 {
-    return seqan3::gapped<alph_t>{seqan3::gap{}};
+    return bio::alphabet::gapped<alph_t>{bio::alphabet::gap{}};
 }
 
 template <typename alph_t>
-inline seqan3::gapped<alph_t> gapValueImpl(seqan3::gapped<alph_t> const *)
+inline bio::alphabet::gapped<alph_t> gapValueImpl(bio::alphabet::gapped<alph_t> const *)
 {
-    return seqan3::gapped<alph_t>{seqan3::gap{}};
+    return bio::alphabet::gapped<alph_t>{bio::alphabet::gap{}};
 }
 
 } // namespace seqan
@@ -87,10 +86,10 @@ template <typename... ts>
 inline constexpr bool is_new_range<std::ranges::transform_view<ts...>> = true;
 template <typename... ts>
 inline constexpr bool is_new_range<std::ranges::subrange<ts...>> = true;
+// template <typename... ts>
+// inline constexpr bool is_new_range<bio::ranges::detail::view_translate_join<ts...>> = true;
 template <typename... ts>
-inline constexpr bool is_new_range<seqan3::detail::view_translate_join<ts...>> = true;
-template <typename... ts>
-inline constexpr bool is_new_range<seqan3::detail::view_translate_single<ts...>> = true;
+inline constexpr bool is_new_range<bio::ranges::detail::view_transform_by_pos<ts...>> = true;
 template <typename t>
 inline constexpr bool is_new_range<std::ranges::take_view<t>> = true;
 
@@ -281,87 +280,89 @@ void copy_range(TSource && in, String<TVal, TSpec> & out)
 // alphabet stuff
 // –---------------------------------------------------------------------------
 
-template <typename stream_t, seqan3::alphabet alph_t>
+template <typename stream_t, bio::alphabet::alphabet alph_t>
     requires(!std::integral<alph_t>)
 inline void write(stream_t & s, alph_t const alph)
 {
-    write(s, seqan3::to_char(alph));
+    write(s, bio::alphabet::to_char(alph));
 }
 
 template <typename alph_t>
-    requires(!std::integral<alph_t> && requires(alph_t & a) { {seqan3::to_char(a)}; })
+    requires(!std::integral<alph_t> && requires(alph_t & a) { {bio::alphabet::to_char(a)}; })
 inline bool operator==(alph_t alph, char c)
 {
-    return seqan3::to_char(alph) == c;
+    return bio::alphabet::to_char(alph) == c;
 }
 
 template <typename alph_t>
-    requires(!std::integral<alph_t> && requires(alph_t & a) { {seqan3::to_char(a)}; })
+    requires(!std::integral<alph_t> && requires(alph_t & a) { {bio::alphabet::to_char(a)}; })
 inline bool operator==(char c, alph_t alph)
 {
-    return seqan3::to_char(alph) == c;
+    return bio::alphabet::to_char(alph) == c;
 }
 
-template <typename TValue, typename TSequenceValue, typename TSpec, seqan3::aminoacid_alphabet alph_t>
+template <typename TValue, typename TSequenceValue, typename TSpec, bio::alphabet::aminoacid_alphabet alph_t>
 inline auto score(Score<TValue, ScoreMatrix<TSequenceValue, TSpec>> const & scheme, alph_t const a1, alph_t const a2)
 {
-    return score(scheme, AminoAcid{seqan3::to_char(a1)}, AminoAcid{seqan3::to_char(a2)});
+    return score(scheme, AminoAcid{bio::alphabet::to_char(a1)}, AminoAcid{bio::alphabet::to_char(a2)});
 }
 
-template <typename TValue, seqan3::nucleotide_alphabet alph_t>
+template <typename TValue, bio::alphabet::nucleotide_alphabet alph_t>
 inline auto score(Score<TValue, ScoreMatrix<Dna5, BisulfiteMatrix>> const & scheme, alph_t const a1, alph_t const a2)
 {
-    return score(scheme, Dna5{seqan3::to_char(a1)}, Dna5{seqan3::to_char(a2)});
+    return score(scheme, Dna5{bio::alphabet::to_char(a1)}, Dna5{bio::alphabet::to_char(a2)});
 }
 
-template <typename TValue, typename TSequenceValue, typename TSpec, seqan3::alphabet alph_t>
+template <typename TValue, typename TSequenceValue, typename TSpec, bio::alphabet::alphabet alph_t>
 inline auto score(Score<TValue, ScoreMatrix<TSequenceValue, TSpec>> const & scheme,
-                  seqan3::gapped<alph_t> const                              a1,
-                  seqan3::gapped<alph_t> const                              a2)
+                  bio::alphabet::gapped<alph_t> const                       a1,
+                  bio::alphabet::gapped<alph_t> const                       a2)
 {
     // TODO convert_unsafely_to
     return score(scheme, a1.template convert_to<alph_t>(), a2.template convert_to<alph_t>());
 }
 
-template <typename TValue, typename TSpec, seqan3::nucleotide_alphabet alph_t>
+template <typename TValue, typename TSpec, bio::alphabet::nucleotide_alphabet alph_t>
 inline auto score(Score<TValue, TSpec> const & scheme, alph_t const a1, alph_t const a2)
 {
-    return score(scheme, Iupac{seqan3::to_char(a1)}, Iupac{seqan3::to_char(a2)});
+    return score(scheme, Iupac{bio::alphabet::to_char(a1)}, Iupac{bio::alphabet::to_char(a2)});
 }
 
-template <typename TValue, typename TSpec, seqan3::alphabet alph_t>
-inline auto score(Score<TValue, TSpec> const & scheme, seqan3::gapped<alph_t> const a1, seqan3::gapped<alph_t> const a2)
+template <typename TValue, typename TSpec, bio::alphabet::alphabet alph_t>
+inline auto score(Score<TValue, TSpec> const &        scheme,
+                  bio::alphabet::gapped<alph_t> const a1,
+                  bio::alphabet::gapped<alph_t> const a2)
 {
     return score(scheme, a1.template convert_to<alph_t>(), a2.template convert_to<alph_t>());
 }
 
-template <seqan3::alphabet alph_t>
+template <bio::alphabet::alphabet alph_t>
     requires(!std::integral<alph_t>)
 char convertImpl(seqan::Convert<char, alph_t>, alph_t const & a)
 {
-    return seqan3::to_char(a);
+    return bio::alphabet::to_char(a);
 }
 
-template <std::integral int_t, seqan3::alphabet alph_t>
+template <std::integral int_t, bio::alphabet::alphabet alph_t>
     requires(!std::integral<alph_t>)
 int_t convertImpl(seqan::Convert<int_t, alph_t>, alph_t const & a)
 {
-    return seqan3::to_rank(a);
+    return bio::alphabet::to_rank(a);
 }
 
-template <seqan3::alphabet alph_t>
+template <bio::alphabet::alphabet alph_t>
     requires(!std::integral<alph_t>)
-alph_t convertImpl(seqan::Convert<alph_t, seqan3::gapped<alph_t>>, seqan3::gapped<alph_t> const & a)
+alph_t convertImpl(seqan::Convert<alph_t, bio::alphabet::gapped<alph_t>>, bio::alphabet::gapped<alph_t> const & a)
 {
-    //     return a.template convert_unsafely_to<seqan3::gap>();
+    //     return a.template convert_unsafely_to<bio::alphabet::gap>();
     return a.template convert_to<alph_t>();
 }
 
-template <seqan3::alphabet alph_t>
+template <bio::alphabet::alphabet alph_t>
     requires(!std::integral<alph_t>)
 struct GappedValueType<alph_t>
 {
-    using Type = seqan3::gapped<alph_t>;
+    using Type = bio::alphabet::gapped<alph_t>;
 };
 
 // default is invalid; only used for alphabets that are scored with matrixes
@@ -370,7 +371,7 @@ inline constexpr std::array<uint8_t, 1> seqan3rank_to_seqan2rank{};
 
 // aa27 are not:
 template <>
-inline constexpr std::array<uint8_t, 27> seqan3rank_to_seqan2rank<seqan3::aa27> =
+inline constexpr std::array<uint8_t, 27> seqan3rank_to_seqan2rank<bio::alphabet::aa27> =
   // clang-format off
 //A  B  C  D  E  F  G  H  I  J  K   L   M   N   O   P   Q   R   S   T   U   V   W   X   Y   Z   *       <- seqan3
 { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 25, 23, 24, 26 };
@@ -378,7 +379,7 @@ inline constexpr std::array<uint8_t, 27> seqan3rank_to_seqan2rank<seqan3::aa27> 
 //                                                                                  ↑   ↑   ↑
 // dna5 is scored via matrix in bisulfite-mode
 template <>
-inline constexpr std::array<uint8_t, 5> seqan3rank_to_seqan2rank<seqan3::dna5> =
+inline constexpr std::array<uint8_t, 5> seqan3rank_to_seqan2rank<bio::alphabet::dna5> =
 //A  C  G  N  T       <- seqan3
 { 0, 1, 2, 4, 3 };
 //A  C  G  T  N       <- seqan2
@@ -406,10 +407,11 @@ struct seqan2_to_rank_inner
     template <typename t>
     constexpr uint8_t operator()(t const c) const noexcept
     {
-        if constexpr (std::is_same_v<t, seqan3::aa27> || std::is_same_v<t, seqan3::dna5>) // dna5 used in bisulfite-mode
-            return seqan3rank_to_seqan2rank<t>[seqan3::to_rank(c)];
+        if constexpr (std::is_same_v<t, bio::alphabet::aa27> ||
+                      std::is_same_v<t, bio::alphabet::dna5>) // dna5 used in bisulfite-mode
+            return seqan3rank_to_seqan2rank<t>[bio::alphabet::to_rank(c)];
         else // alphabets that are scored with seqan::SimpleScore don't need extra conversion
-            return seqan3::to_rank(c);
+            return bio::alphabet::to_rank(c);
     }
 };
 
@@ -424,8 +426,8 @@ struct seqan2_to_rank_outer
 };
 
 template <typename TSimdVecs, typename TStrings>
-    requires((!std::integral<seqan3::range_innermost_value_t<TStrings>>)&&seqan3::alphabet<
-             seqan3::range_innermost_value_t<TStrings>>)
+    requires((!std::integral<bio::ranges::range_innermost_value_t<TStrings>>)&&bio::alphabet::alphabet<
+             bio::ranges::range_innermost_value_t<TStrings>>)
 inline void _createSimdRepImpl(TSimdVecs & simdStr, TStrings const & strings)
 {
     using TModT = seqan::ModifiedString<TStrings const, seqan::ModView<seqan2_to_rank_outer<TStrings const>>>;

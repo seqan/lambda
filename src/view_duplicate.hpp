@@ -23,9 +23,9 @@
 
 #include <ranges>
 
+#include <bio/ranges/views/transform_by_pos.hpp>
 #include <seqan3/core/range/type_traits.hpp>
 #include <seqan3/utility/range/concept.hpp>
-#include "view_pos_transform.hpp"
 
 // Definition of the range adaptor object type for views::duplicate.
 struct duplicate_fn
@@ -52,9 +52,9 @@ struct duplicate_fn
                       "std::ranges::random_access_range.");
 
         return std::forward<urng_t>(urange) |
-               views::pos_transform([](auto && urange, size_t pos) -> decltype(auto)
-                                    { return urange[(pos - (pos % 2)) / 2]; },
-                                    [](auto && urange) { return std::ranges::size(urange) * 2; });
+               bio::views::transform_by_pos([](auto && urange, size_t pos) -> decltype(auto)
+                                            { return urange[(pos - (pos % 2)) / 2]; },
+                                            [](auto && urange) { return std::ranges::size(urange) * 2; });
     }
 
     template <std::ranges::range urng_t>

@@ -70,16 +70,21 @@ find_package(BZip2  QUIET)
 find_package(SeqAn  QUIET REQUIRED CONFIG)
 find_package(SeqAn3 QUIET REQUIRED CONFIG)
 
+# BIO
+find_package (biocpp COMPONENTS core io QUIET REQUIRED HINTS "${CMAKE_SOURCE_DIR}/submodules/biocpp-core/build_system")
+
 # SHARG
 find_package (sharg QUIET REQUIRED HINTS "${CMAKE_SOURCE_DIR}/submodules/sharg-parser/build_system")
 
 message(STATUS "These dependencies were found:")
-message(   "     OPENMP     ${OPENMP_FOUND}      ${OpenMP_CXX_FLAGS}")
-message(   "     ZLIB       ${ZLIB_FOUND}      ${ZLIB_VERSION_STRING}")
-message(   "     BZIP2      ${BZIP2_FOUND}      ${BZIP2_VERSION_STRING}")
-message(   "     SEQAN      ${SEQAN_FOUND}      ${SEQAN_VERSION_STRING}")
-message(   "     SEQAN3     ${SEQAN3_FOUND}      ${SEQAN3_VERSION}")
-message(   "     SHARG      ${SHARG_FOUND}      ${SHARG_VERSION}")
+message(   "     BIOCPP-CORE  ${BIOCPP_CORE_FOUND}      ${BIOCPP_CORE_VERSION}")
+message(   "     BIOCPP-IO    ${BIOCPP_IO_FOUND}      ${BIOCPP_IO_VERSION}")
+message(   "     OPENMP       ${OPENMP_FOUND}      ${OpenMP_CXX_FLAGS}")
+message(   "     ZLIB         ${ZLIB_FOUND}      ${ZLIB_VERSION_STRING}")
+message(   "     BZIP2        ${BZIP2_FOUND}      ${BZIP2_VERSION_STRING}")
+message(   "     SEQAN        ${SEQAN_FOUND}      ${SEQAN_VERSION_STRING}")
+message(   "     SEQAN3       ${SEQAN3_FOUND}      ${SEQAN3_VERSION}")
+message(   "     SHARG        ${SHARG_FOUND}      ${SHARG_VERSION}")
 
 # Warn if Zlib was not found.
 if (NOT ZLIB_FOUND)
@@ -123,9 +128,12 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
         include(ProcessorCount)
         ProcessorCount(LAMBDA_COMPILE_THREADS)
     endif ()
-    if (LAMBDA_COMPILE_THREADS GREATER 1)
-        set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -flto=${LAMBDA_COMPILE_THREADS}")
-    endif()
+    # if (LAMBDA_COMPILE_THREADS GREATER 4)
+    #     set (LAMBDA_COMPILE_THREADS 4)
+    # endif ()
+    # if (LAMBDA_COMPILE_THREADS GREATER 1)
+    #     set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -flto=${LAMBDA_COMPILE_THREADS}")
+    # endif()
 
     # strip binaries to make them smaller
     set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -s")
@@ -160,7 +168,7 @@ set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN_CXX_FLAGS} -Wall -pedantic")
 set (LAMBDA_SOURCE_FILES lambda.cpp  search.cpp mkindex.cpp)
 
 add_executable (lambda3 ${LAMBDA_SOURCE_FILES})
-target_link_libraries (lambda3 ${SEQAN_LIBRARIES} seqan3::seqan3 fmindex-collection)
+target_link_libraries (lambda3 ${SEQAN_LIBRARIES} seqan3::seqan3 fmindex-collection sharg::sharg biocpp::core biocpp::io)
 set_target_properties (lambda3 PROPERTIES COMPILE_FLAGS "-mmmx -msse -msse2 -msse3 -mssse3 -msse4 -mpopcnt")
 
 # ----------------------------------------------------------------------------

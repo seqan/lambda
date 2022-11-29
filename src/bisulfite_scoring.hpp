@@ -25,8 +25,8 @@
 #include <seqan/sequence.h>
 
 #include <algorithm>
+#include <bio/alphabet/nucleotide/dna5.hpp>
 #include <seqan3/alignment/scoring/scoring_scheme_base.hpp>
-#include <seqan3/alphabet/nucleotide/dna5.hpp>
 
 enum class bsDirection
 {
@@ -36,17 +36,17 @@ enum class bsDirection
 
 template <seqan3::arithmetic score_type = int8_t>
 class bisulfite_scoring_scheme :
-  public seqan3::scoring_scheme_base<bisulfite_scoring_scheme<score_type>, seqan3::dna5, score_type>
+  public seqan3::scoring_scheme_base<bisulfite_scoring_scheme<score_type>, bio::alphabet::dna5, score_type>
 {
 private:
-    using base_t = seqan3::scoring_scheme_base<bisulfite_scoring_scheme<score_type>, seqan3::dna5, score_type>;
+    using base_t = seqan3::scoring_scheme_base<bisulfite_scoring_scheme<score_type>, bio::alphabet::dna5, score_type>;
     using base_t::matrix;
 
 public:
     using base_t::base_t;
     using typename base_t::matrix_type;
-    using matrix_size_type                        = std::remove_const_t<decltype(seqan3::alphabet_size<seqan3::dna5>)>;
-    static constexpr matrix_size_type matrix_size = seqan3::alphabet_size<seqan3::dna5>;
+    using matrix_size_type = std::remove_const_t<decltype(bio::alphabet::size<bio::alphabet::dna5>)>;
+    static constexpr matrix_size_type matrix_size = bio::alphabet::size<bio::alphabet::dna5>;
 
     constexpr bisulfite_scoring_scheme() noexcept {}
 
