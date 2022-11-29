@@ -19,7 +19,7 @@
 // lambda.cpp: Main File for Lambda
 // ==========================================================================
 
-#include <seqan3/argument_parser/all.hpp>
+#include <sharg/all.hpp>
 
 #include "mkindex.hpp"
 #include "search.hpp"
@@ -85,7 +85,7 @@ int main(int argc, char const ** argv)
 
 void parseCommandLineMain(int argc, char const ** argv)
 {
-    seqan3::argument_parser parser("lambda3", argc, argv);
+    sharg::parser parser("lambda3", argc, argv, sharg::update_notifications::off);
 
     parser.info.short_description = "Lambda, the Local Aligner for Massive Biological DatA.";
     parser.info.synopsis.push_back("[\\fIOPTIONS\\fP] COMMAND [\\fICOMMAND-OPTIONS\\fP]");
@@ -93,9 +93,12 @@ void parseCommandLineMain(int argc, char const ** argv)
     sharedSetup(parser);
 
     std::string command{};
-    parser.add_positional_option(command,
-                                 "The sub-program to execute. See below.",
-                                 seqan3::value_list_validator{"searchp", "searchn", "mkindexp", "mkindexn"});
+    parser.add_positional_option(
+      command,
+      sharg::config{
+        .description = "The sub-program to execute. See below.",
+        .validator   = sharg::value_list_validator{"searchp", "searchn", "mkindexp", "mkindexn"}
+    });
 
     parser.info.description.push_back("Available commands");
     parser.info.description.push_back(

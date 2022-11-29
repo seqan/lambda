@@ -7,3 +7,6 @@
 [submodule "submodules/fmindex-collection"]
 	path = submodules/fmindex-collection
 	url = ../../SGSSGene/fmindex-collection.git
+[submodule "submodules/sharg-parser"]
+	path = submodules/sharg-parser
+	url = ../../seqan/sharg-parser

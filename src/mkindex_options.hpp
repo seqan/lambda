@@ -25,7 +25,7 @@
 #include <cstdio>
 #include <unistd.h>
 
-#include <seqan3/argument_parser/all.hpp>
+#include <sharg/all.hpp>
 
 // --------------------------------------------------------------------------
 // Class LambdaIndexerOptions
@@ -59,7 +59,7 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
     // this is important for option handling:
     options.nucleotide_mode = (std::string(argv[0]) == "mkindexn");
 
-    seqan3::argument_parser parser(programName, argc, argv, seqan3::update_notifications::off);
+    sharg::parser parser(programName, argc, argv, sharg::update_notifications::off);
 
     parser.info.short_description = "the Local Aligner for Massive Biological DatA";
 
@@ -71,24 +71,23 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
     sharedSetup(parser);
 
     parser.add_option(options.verbosity,
-                      'v',
-                      "verbosity",
-                      "Display more/less diagnostic output during operation: "
-                      "0 [only errors]; 1 [default]; 2 [+run-time, options and statistics].",
-                      seqan3::option_spec::standard,
-                      seqan3::arithmetic_range_validator{0, 2});
+                      sharg::config{
+                        .short_id    = 'v',
+                        .long_id     = "verbosity",
+                        .description = "Display more/less diagnostic output during operation: "
+                                       "0 [only errors]; 1 [default]; 2 [+run-time, options and statistics].",
+                        .validator   = sharg::arithmetic_range_validator{0, 2}
+    });
 
     parser.add_section("Input Options");
 
     // TODO Change file extensions, make more generic
     parser.add_option(options.dbFile,
-                      'd',
-                      "database",
-                      "Database sequences.",
-                      seqan3::option_spec::required,
-                      seqan3::input_file_validator{
-                        {"fa", "fq", "fasta", "fastq", "gz"}
-    });
+                      sharg::config{.short_id    = 'd',
+                                    .long_id     = "database",
+                                    .description = "Database sequences.",
+                                    .required    = true,
+                                    .validator   = sharg::input_file_validator{{"fa", "fq", "fasta", "fastq", "gz"}}});
 
     std::vector<std::string> taxExtensions{"accession2taxid", "dat"};
 #ifdef SEQAN_HAS_ZLIB
@@ -102,50 +101,52 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
     taxExtensions.push_back("dat.bz2");
 #endif
 
-    parser.add_option(options.accToTaxMapFile,
-                      'm',
-                      "acc-tax-map",
+    parser.add_option(
+      options.accToTaxMapFile,
+      sharg::config{.short_id = 'm',
+                    .long_id  = "acc-tax-map",
+                    .description =
                       "An NCBI or UniProt accession-to-taxid mapping file. Download from "
                       "ftp://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/ or "
                       "ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/idmapping/ .",
-                      seqan3::option_spec::standard,
-                      seqan3::input_file_validator(taxExtensions));
+                    .validator = sharg::input_file_validator(taxExtensions)});
 
     parser.add_option(options.taxDumpDir,
-                      'x',
-                      "tax-dump-dir",
-                      "A directory that contains nodes.dmp and names.dmp; unzipped from "
-                      "ftp://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump.tar.gz",
-                      seqan3::option_spec::standard,
-                      seqan3::input_directory_validator());
+                      sharg::config{.short_id    = 'x',
+                                    .long_id     = "tax-dump-dir",
+                                    .description = "A directory that contains nodes.dmp and names.dmp; unzipped from "
+                                                   "ftp://ftp.ncbi.nlm.nih.gov/pub/taxonomy/taxdump.tar.gz",
+                                    .validator   = sharg::input_directory_validator()});
 
     parser.add_section("Output Options");
 
     options.indexFilePath = "»INPUT«.lba";
-    parser.add_option(options.indexFilePath,
-                      'i',
-                      "index",
-                      "The output path for the index file.",
-                      seqan3::option_spec::standard,
-                      seqan3::output_file_validator{
-                        seqan3::output_file_open_options::create_new,
-                        {"lba", "lta"}
+    parser.add_option(
+      options.indexFilePath,
+      sharg::config{
+        .short_id    = 'i',
+        .long_id     = "index",
+        .description = "The output path for the index file.",
+        .validator   = sharg::output_file_validator{sharg::output_file_open_options::create_new, {"lba", "lta"}}
     });
 
     std::string dbIndexTypeTmp = "fm";
     parser.add_option(dbIndexTypeTmp,
-                      '\0',
-                      "db-index-type",
-                      "FM-Index oder bidirectional FM-Index.",
-                      seqan3::option_spec::advanced,
-                      seqan3::value_list_validator{"fm", "bifm"});
+                      sharg::config{
+                        .short_id    = '\0',
+                        .long_id     = "db-index-type",
+                        .description = "FM-Index oder bidirectional FM-Index.",
+                        .advanced    = true,
+                        .validator   = sharg::value_list_validator{"fm", "bifm"}
+    });
 
     parser.add_option(
       options.truncateIDs,
-      '\0',
-      "truncate-ids",
-      "Truncate IDs at first whitespace. This saves a lot of space and is irrelevant for all LAMBDA output formats "
-      "other than BLAST Pairwise (.m0).");
+      sharg::config{.short_id = '\0',
+                    .long_id  = "truncate-ids",
+                    .description =
+                      "Truncate IDs at first whitespace. This saves a lot of space and is irrelevant for all "
+                      "LAMBDA output formats other than BLAST Pairwise (.m0)."});
 
     std::string inputAlphabetTmp = "auto";
     std::string alphabetReductionTmp;
@@ -161,11 +162,13 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
         parser.add_section("Alphabet reduction");
 
         parser.add_option(alphabetReductionTmp,
-                          'r',
-                          "alphabet-reduction",
-                          "Alphabet Reduction for seeding phase.",
-                          seqan3::option_spec::advanced,
-                          seqan3::value_list_validator{"none", "dna4", "dna3bs"});
+                          sharg::config{
+                            .short_id    = 'r',
+                            .long_id     = "alphabet-reduction",
+                            .description = "Alphabet Reduction for seeding phase.",
+                            .advanced    = true,
+                            .validator   = sharg::value_list_validator{"none", "dna4", "dna3bs"}
+        });
     }
     else
     {
@@ -177,19 +180,23 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
         parser.add_section("Alphabet and Translation");
 
         parser.add_option(inputAlphabetTmp,
-                          'a',
-                          "input-alphabet",
-                          "Alphabet of the database sequences (specify to override auto-detection); "
-                          "if input is Dna, it will be translated.",
-                          seqan3::option_spec::advanced,
-                          seqan3::value_list_validator{"auto", "dna5", "aminoacid"});
+                          sharg::config{
+                            .short_id    = 'a',
+                            .long_id     = "input-alphabet",
+                            .description = "Alphabet of the database sequences (specify to override auto-detection); "
+                                           "if input is Dna, it will be translated.",
+                            .advanced    = true,
+                            .validator   = sharg::value_list_validator{"auto", "dna5", "aminoacid"}
+        });
 
         parser.add_option(alphabetReductionTmp,
-                          'r',
-                          "alphabet-reduction",
-                          "Alphabet Reduction for seeding phase.",
-                          seqan3::option_spec::advanced,
-                          seqan3::value_list_validator{"none", "murphy10", "li10"});
+                          sharg::config{
+                            .short_id    = 'r',
+                            .long_id     = "alphabet-reduction",
+                            .description = "Alphabet Reduction for seeding phase.",
+                            .advanced    = true,
+                            .validator   = sharg::value_list_validator{"none", "murphy10", "li10"}
+        });
     }
 
     parser.add_section("Remarks");
@@ -232,16 +239,15 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
 
     if (std::filesystem::exists(options.indexFilePath))
     {
-        throw seqan3::argument_parser_error("ERROR: An output file already exists at " +
-                                            options.indexFilePath.string() +
-                                            "\n       Remove it, or choose a different location.\n");
+        throw sharg::parser_error("ERROR: An output file already exists at " + options.indexFilePath.string() +
+                                  "\n       Remove it, or choose a different location.\n");
     }
 
     if (!options.taxDumpDir.empty())
     {
         if (!options.hasSTaxIds)
         {
-            throw seqan3::argument_parser_error(
+            throw sharg::parser_error(
               "ERROR: There is no point in including a taxonomic tree in the index, if\n"
               "       you don't also include taxonomic IDs for your sequences.\n");
         }

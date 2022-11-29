@@ -70,12 +70,16 @@ find_package(BZip2  QUIET)
 find_package(SeqAn  QUIET REQUIRED CONFIG)
 find_package(SeqAn3 QUIET REQUIRED CONFIG)
 
+# SHARG
+find_package (sharg QUIET REQUIRED HINTS "${CMAKE_SOURCE_DIR}/submodules/sharg-parser/build_system")
+
 message(STATUS "These dependencies were found:")
 message(   "     OPENMP     ${OPENMP_FOUND}      ${OpenMP_CXX_FLAGS}")
 message(   "     ZLIB       ${ZLIB_FOUND}      ${ZLIB_VERSION_STRING}")
 message(   "     BZIP2      ${BZIP2_FOUND}      ${BZIP2_VERSION_STRING}")
 message(   "     SEQAN      ${SEQAN_FOUND}      ${SEQAN_VERSION_STRING}")
 message(   "     SEQAN3     ${SEQAN3_FOUND}      ${SEQAN3_VERSION}")
+message(   "     SHARG      ${SHARG_FOUND}      ${SHARG_VERSION}")
 
 # Warn if Zlib was not found.
 if (NOT ZLIB_FOUND)
