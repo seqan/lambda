@@ -185,7 +185,7 @@ void realMain(LambdaIndexerOptions const & options)
     f.options = options.indexFileOptions;
 
     {
-        std::unordered_map<std::string, uint64_t> accToIdRank;
+        TaccToIdRank accToIdRank;
 
         // ids get saved to disk again immediately and are not kept in memory
         std::tie(f.ids, f.seqs, accToIdRank) = loadSubjSeqsAndIds<_alphabetEnumToType<c_origAlph>>(options);
@@ -194,11 +194,15 @@ void realMain(LambdaIndexerOptions const & options)
         {
             std::vector<bool> taxIdIsPresent;
 
-            // read the mapping file and save relevant mappings to disk
+            // read taxonomic IDs
             std::tie(f.sTaxIds, taxIdIsPresent) = mapTaxIDs(accToIdRank, std::ranges::size(f.seqs), options);
 
-            // read the mapping file and save relevant mappings to disk
-            std::tie(f.taxonParentIDs, f.taxonHeights, f.taxonNames) = parseAndStoreTaxTree(taxIdIsPresent, options);
+            if (!options.taxDumpDir.empty())
+            {
+                // read and create taxonomic tree
+                std::tie(f.taxonParentIDs, f.taxonHeights, f.taxonNames) =
+                  parseAndStoreTaxTree(taxIdIsPresent, options);
+            }
         }
     }
 

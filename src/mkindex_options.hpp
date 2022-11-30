@@ -251,6 +251,5 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
               "ERROR: There is no point in including a taxonomic tree in the index, if\n"
               "       you don't also include taxonomic IDs for your sequences.\n");
         }
-        //TODO check existance of directory
     }
 }
