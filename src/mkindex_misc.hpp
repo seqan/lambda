@@ -60,6 +60,12 @@ using TaccToIdRank = std::unordered_map<std::string, uint64_t, hash_string, std:
 // function _readMappingFileNCBI
 // ----------------------------------------------------------------------------
 
+#if defined(__GNUC__) && __GNUC__ < 11
+#    define LAMBDA_TO_STR(x) static_cast<std::string>(x)
+#else
+#    define LAMBDA_TO_STR(x) x
+#endif
+
 inline void _readMappingFileUniProt(std::filesystem::path const &        fileName,
                                     TaccToIdRank const &                 accToIdRank,
                                     std::vector<std::vector<uint32_t>> & sTaxIds,
@@ -77,7 +83,7 @@ inline void _readMappingFileUniProt(std::filesystem::path const &        fileNam
 
         if (category == "NCBI_TaxID")
         {
-            if (auto it = accToIdRank.find(acc); it != accToIdRank.end())
+            if (auto it = accToIdRank.find(LAMBDA_TO_STR(acc)); it != accToIdRank.end())
             {
                 std::vector<uint32_t> & sTaxIdV = sTaxIds[it->second];
 
@@ -116,7 +122,7 @@ inline void _readMappingFileNCBI(std::filesystem::path const &        fileName,
         std::string_view acc = r.fields[0];
         std::string_view tId = r.fields[2];
 
-        if (auto it = accToIdRank.find(acc); it != accToIdRank.end())
+        if (auto it = accToIdRank.find(LAMBDA_TO_STR(acc)); it != accToIdRank.end())
         {
             std::vector<uint32_t> & sTaxIdV = sTaxIds[it->second];
 
@@ -136,3 +142,5 @@ inline void _readMappingFileNCBI(std::filesystem::path const &        fileName,
         }
     }
 }
+
+#undef LAMBDA_TO_STR

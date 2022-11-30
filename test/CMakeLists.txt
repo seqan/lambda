@@ -45,6 +45,9 @@ macro (add_app_test test_filename)
     file (RELATIVE_PATH source_file "${CMAKE_SOURCE_DIR}" "${CMAKE_CURRENT_LIST_DIR}/${test_filename}")
     get_filename_component (target "${source_file}" NAME_WE)
 
+    # since we are not linking biocpp, we need to manually add c++20
+    set(CMAKE_CXX_STANDARD 20)
+
     # Create the test target.
     add_executable (${target} ${test_filename})
     target_link_libraries (${target} gtest gtest_main)
