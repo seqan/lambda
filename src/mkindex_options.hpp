@@ -219,7 +219,7 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
             options.indexFileOptions.redAlph = AlphabetEnum::AMINO_ACID;
         else
             options.indexFileOptions.redAlph = _alphabetNameToEnum(alphabetReductionTmp);
-        options.indexFileOptions.geneticCode = static_cast<seqan3::genetic_code>(geneticCodeTmp);
+        options.indexFileOptions.geneticCode = static_cast<bio::alphabet::genetic_code>(geneticCodeTmp);
     }
     else
     {

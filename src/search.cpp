@@ -30,7 +30,7 @@
 #include <seqan/seq_io.h>
 #include <seqan/sequence.h>
 
-#include <seqan3/io/views/async_input_buffer.hpp>
+#include "view_async_input_buffer.hpp"
 
 #include "shared_definitions.hpp"
 #include "shared_misc.hpp"
@@ -147,7 +147,7 @@ void argConv0(LambdaOptions & options)
     {
         myPrint(options, 2, "  translated alphabet: not translated\n");
         if ((int)options.geneticCodeQry == 0) // use same geneticCode as Index, but index wasn't translated
-            options.geneticCodeQry = seqan3::genetic_code::canonical;
+            options.geneticCodeQry = bio::alphabet::genetic_code::CANONICAL;
     }
     else
     {
@@ -356,7 +356,7 @@ void realMain(LambdaOptions const & options)
                            .qual = std::ignore};
     bio::io::seq::reader reader{options.queryFile, bio::io::seq::reader_options{.record = r}};
 
-    auto file_view = reader | seqan3::views::async_input_buffer(globalHolder.records_per_batch * options.threads);
+    auto file_view = reader | views::async_input_buffer(globalHolder.records_per_batch * options.threads);
 
     SEQAN_OMP_PRAGMA(parallel)
     {

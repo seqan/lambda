@@ -95,8 +95,8 @@ struct LambdaOptions : public SharedOptions
     int32_t  idCutOff    = 0;
     uint64_t maxMatches  = 25;
 
-    bool                 computeLCA = false;
-    seqan3::genetic_code geneticCodeQry;
+    bool                        computeLCA = false;
+    bio::alphabet::genetic_code geneticCodeQry;
 
     int32_t preScoring       = 2; // 0 = off, 1 = seed, 2 = region
     double  preScoringThresh = 2.0;
@@ -546,7 +546,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         else
             throw sharg::parser_error("ERROR: Invalid argument to --input-alphabet\n");
 
-        options.geneticCodeQry = static_cast<seqan3::genetic_code>(geneticCodeTmp);
+        options.geneticCodeQry = static_cast<bio::alphabet::genetic_code>(geneticCodeTmp);
     }
 
     if (options.profile == "fast")

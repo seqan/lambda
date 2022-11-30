@@ -319,7 +319,7 @@ struct index_file_options
     AlphabetEnum transAlph{};
     AlphabetEnum redAlph{};
 
-    seqan3::genetic_code geneticCode{};
+    bio::alphabet::genetic_code geneticCode{};
 
     //TODO reserve space here for more vars?
 
