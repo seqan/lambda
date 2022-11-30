@@ -44,10 +44,10 @@ jobs:
         uses: Homebrew/actions/setup-homebrew@master
 
       - name: Install ccache
-        run: bash ./lambda/submodules/seqan3/.github/workflows/scripts/install_via_brew.sh ccache
+        run: brew install ccache
 
       - name: Install compiler ${{ matrix.cxx }}
-        run: bash ./lambda/submodules/seqan3/.github/workflows/scripts/install_via_brew.sh gcc $(echo "${{ matrix.cxx }}" | sed "s/g++-//g")
+        run: brew install gcc@$(echo "${{ matrix.cxx }}" | sed "s/g++-//g")
 
       - name: Load ccache
         uses: actions/cache@v2
