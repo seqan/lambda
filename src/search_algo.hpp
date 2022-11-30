@@ -178,13 +178,6 @@ void prepareScoring(
                                            options.match,
                                            options.misMatch,
                                            bsDirection::rev);
-
-            // Seqan3
-            globalHolder.scoringSchemePreScoring.set_bisulfite_scheme(seqan3::match_score{options.match},
-                                                                      seqan3::mismatch_score{options.misMatch});
-            globalHolder.scoringSchemePreScoringBSRev.set_bisulfite_scheme(seqan3::match_score{options.match},
-                                                                           seqan3::mismatch_score{options.misMatch},
-                                                                           bsDirection::rev);
         }
         else
         {
@@ -192,32 +185,22 @@ void prepareScoring(
             globalHolder.scoringSchemeAlign = seqan::seqanScheme(context(globalHolder.outfileBlastTab).scoringScheme);
             globalHolder.scoringSchemeAlignBSRev =
               seqan::seqanScheme(context(globalHolder.outfileBlastTab).scoringScheme);
-
-            // Seqan3
-            globalHolder.scoringSchemePreScoring.set_simple_scheme(seqan3::match_score{options.match},
-                                                                   seqan3::mismatch_score{options.misMatch});
-            globalHolder.scoringSchemePreScoringBSRev.set_simple_scheme(seqan3::match_score{options.match},
-                                                                        seqan3::mismatch_score{options.misMatch});
         }
     }
     else
     {
-        seqan::AminoAcidScoreMatrixID       seqan2_matrix_id{};
-        seqan3::aminoacid_similarity_matrix seqan3_matrix_id{};
+        seqan::AminoAcidScoreMatrixID seqan2_matrix_id{};
 
         switch (options.scoringMethod)
         {
             case 45:
                 seqan2_matrix_id = seqan::AminoAcidScoreMatrixID::BLOSUM45;
-                seqan3_matrix_id = seqan3::aminoacid_similarity_matrix::blosum45;
                 break;
             case 62:
                 seqan2_matrix_id = seqan::AminoAcidScoreMatrixID::BLOSUM62;
-                seqan3_matrix_id = seqan3::aminoacid_similarity_matrix::blosum62;
                 break;
             case 80:
                 seqan2_matrix_id = seqan::AminoAcidScoreMatrixID::BLOSUM80;
-                seqan3_matrix_id = seqan3::aminoacid_similarity_matrix::blosum80;
                 break;
             default:
                 break;
@@ -228,9 +211,6 @@ void prepareScoring(
                                   seqan2_matrix_id);
         seqan::setScoreMatrixById(globalHolder.scoringSchemeAlign, seqan2_matrix_id);
         seqan::setScoreMatrixById(globalHolder.scoringSchemeAlignBSRev, seqan2_matrix_id);
-        // Seqan3
-        globalHolder.scoringSchemePreScoring.set_similarity_matrix(seqan3_matrix_id);
-        globalHolder.scoringSchemePreScoringBSRev.set_similarity_matrix(seqan3_matrix_id);
     }
 
     // seqan2
@@ -393,12 +373,12 @@ inline bool seedLooksPromising(LocalDataHolder<TGlobalHolder> const & lH, typena
 
     // score the diagonal
     auto & currentScoringScheme = TGlobalHolder::c_redAlph == AlphabetEnum::DNA3BS && m.subjId % 2
-                                    ? lH.gH.scoringSchemePreScoringBSRev
-                                    : lH.gH.scoringSchemePreScoring;
+                                    ? lH.gH.scoringSchemeAlignBSRev
+                                    : lH.gH.scoringSchemeAlign;
 
     for (uint64_t i = 0; i < effectiveLength; ++i)
     {
-        s += currentScoringScheme.score(qSeq[i], sSeq[i]);
+        s += score(currentScoringScheme, qSeq[i], sSeq[i]);
 
         if (s < 0)
             s = 0;

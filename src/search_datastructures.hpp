@@ -367,13 +367,6 @@ public:
     using TIndexCursor = fmindex_collection::select_cursor_t<TIndex>;
 
     /* output file */
-    // SeqAn3 scoring scheme type for evaluation of seeds after search
-    using TScoreScheme3 = std::conditional_t<seqan3::nucleotide_alphabet<TTransAlph>,
-                                             std::conditional_t<c_redAlph == AlphabetEnum::DNA3BS,
-                                                                bisulfite_scoring_scheme<>,
-                                                                seqan3::nucleotide_scoring_scheme<>>,
-                                             seqan3::aminoacid_scoring_scheme<>>;
-
     // SeqAn2 scoring scheme for local alignment of extended seeds. This can be adapted for bisulfite scoring.
     using TScoreSchemeAlign =
       std::conditional_t<bio::alphabet::nucleotide_alphabet<TTransAlph>,
@@ -417,8 +410,6 @@ public:
     TBlastRepFile outfileBlastRep;
     TBamFile      outfileBam;
 
-    TScoreScheme3     scoringSchemePreScoring;
-    TScoreScheme3     scoringSchemePreScoringBSRev;
     TScoreSchemeAlign scoringSchemeAlign;
     TScoreSchemeAlign scoringSchemeAlignBSRev;
 
