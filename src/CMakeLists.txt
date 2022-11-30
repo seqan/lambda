@@ -74,10 +74,16 @@ find_package (biocpp COMPONENTS core io QUIET REQUIRED HINTS "${CMAKE_SOURCE_DIR
 # SHARG
 find_package (sharg QUIET REQUIRED HINTS "${CMAKE_SOURCE_DIR}/submodules/sharg-parser/build_system")
 
+# CEREAL
+if (NOT EXISTS ${CMAKE_SOURCE_DIR}/submodules/cereal)
+    find_package(cereal QUIET REQUIRED)
+endif ()
+
 message(STATUS "These dependencies were found:")
 message(   "     BIOCPP-CORE  ${BIOCPP_CORE_FOUND}      ${BIOCPP_CORE_VERSION}")
 message(   "     BIOCPP-IO    ${BIOCPP_IO_FOUND}      ${BIOCPP_IO_VERSION}")
 message(   "     BZIP2        ${BZIP2_FOUND}      ${BZIP2_VERSION_STRING}")
+message(   "     CEREAL       ${CEREAL_FOUND}      ${CEREAL_VERSION}")
 message(   "     OPENMP       ${OPENMP_FOUND}      ${OpenMP_CXX_FLAGS}")
 message(   "     SEQAN        ${SEQAN_FOUND}      ${SEQAN_VERSION_STRING}")
 message(   "     SHARG        ${SHARG_FOUND}      ${SHARG_VERSION}")
@@ -159,7 +165,7 @@ set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN_CXX_FLAGS} -Wall -pedantic")
 set (LAMBDA_SOURCE_FILES lambda.cpp  search.cpp mkindex.cpp)
 
 add_executable (lambda3 ${LAMBDA_SOURCE_FILES})
-target_link_libraries (lambda3 ${SEQAN_LIBRARIES} fmindex-collection sharg::sharg biocpp::core biocpp::io)
+target_link_libraries (lambda3 ${SEQAN_LIBRARIES} fmindex-collection sharg::sharg biocpp::core biocpp::io cereal::cereal)
 set_target_properties (lambda3 PROPERTIES COMPILE_FLAGS "-mmmx -msse -msse2 -msse3 -mssse3 -msse4 -mpopcnt")
 
 # ----------------------------------------------------------------------------

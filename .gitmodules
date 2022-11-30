@@ -13,3 +13,6 @@
 [submodule "submodules/biocpp-io"]
 	path = submodules/biocpp-io
 	url = ../../biocpp/biocpp-io
+[submodule "submodules/cereal"]
+	path = submodules/cereal
+	url = ../../USCiLab/cereal
