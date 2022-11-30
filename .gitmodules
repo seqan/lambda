@@ -1,9 +1,6 @@
 [submodule "seqan"]
 	path = submodules/seqan
 	url = ../../seqan/seqan.git
-[submodule "submodules/seqan3"]
-	path = submodules/seqan3
-	url = ../../seqan/seqan3.git
 [submodule "submodules/fmindex-collection"]
 	path = submodules/fmindex-collection
 	url = ../../SGSSGene/fmindex-collection.git
