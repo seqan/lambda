@@ -24,8 +24,6 @@
 #include <ranges>
 
 #include <bio/ranges/views/transform_by_pos.hpp>
-#include <seqan3/core/range/type_traits.hpp>
-#include <seqan3/utility/range/concept.hpp>
 
 // Definition of the range adaptor object type for views::duplicate.
 struct duplicate_fn

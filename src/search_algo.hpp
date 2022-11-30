@@ -38,8 +38,6 @@
 #include <bio/io/seq/reader.hpp>
 #include <bio/ranges/views/complement.hpp>
 #include <bio/ranges/views/translate_join.hpp>
-#include <seqan3/core/debug_stream.hpp>
-#include <seqan3/search/search.hpp>
 
 #include <fmindex-collection/DenseCSA.h>
 #include <fmindex-collection/locate.h>
@@ -54,34 +52,6 @@
 #include "search_options.hpp"
 #include "view_dna_n_to_random.hpp"
 #include "view_reduce_to_bisulfite.hpp"
-
-// ============================================================================
-// Classes, structs, enums
-// ============================================================================
-
-enum COMPUTERESULT_
-{
-    SUCCESS = 0,
-    PREEXTEND,
-    PERCENTIDENT,
-    EVALUE,
-    OTHER_FAIL
-};
-
-//TODO replace with lambda
-// comparison operator to sort SA-Values based on the strings in the SA they refer to
-template <typename TSav, typename TStringSet>
-struct Comp : public ::std::binary_function<TSav, TSav, bool>
-{
-    TStringSet const & stringSet;
-
-    Comp(TStringSet const & _stringSet) : stringSet(_stringSet) {}
-
-    inline bool operator()(TSav const & i, TSav const & j) const
-    {
-        return (value(stringSet, getSeqNo(i)) < value(stringSet, getSeqNo(j)));
-    }
-};
 
 // ============================================================================
 // Functions

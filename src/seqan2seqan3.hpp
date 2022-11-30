@@ -11,18 +11,6 @@
 #include <bio/ranges/views/to_rank.hpp>
 #include <bio/ranges/views/translate_join.hpp>
 
-// seqan3 does not alias ranges::cpp20::{take,transform}_view -> std::ranges::{take,transform}_view when using range-v3 implementation
-#if !defined(__cpp_lib_ranges)
-namespace std::ranges
-{
-namespace
-{
-using ::ranges::cpp20::take_view;
-using ::ranges::cpp20::transform_view;
-} // namespace
-} // namespace std::ranges
-#endif
-
 // Some things needs to be defined before including SeqAn2 headers.
 // This does not make sense, but oh well ¯\_(ツ)_/¯
 

@@ -26,7 +26,6 @@
 
 #include <algorithm>
 #include <bio/alphabet/nucleotide/dna5.hpp>
-#include <seqan3/alignment/scoring/scoring_scheme_base.hpp>
 
 enum class bsDirection
 {

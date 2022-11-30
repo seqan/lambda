@@ -42,13 +42,6 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/submodules/seqan/include/seqan/version.h
     message (    "   This will be preferred over system global headers.")
 endif ()
 
-if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/submodules/seqan3/include/seqan3/version.hpp")
-    set (SeqAn3_DIR ${CMAKE_CURRENT_SOURCE_DIR}/submodules/seqan3/build_system)
-    message (STATUS "Found a local SeqAn3 library provided with the Lambda source code.")
-    message (    "   This will be preferred over system global headers.")
-endif ()
-
-
 # ----------------------------------------------------------------------------
 # Add Lambda targets
 # ----------------------------------------------------------------------------

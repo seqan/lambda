@@ -29,22 +29,11 @@
 #include <bio/ranges/views/deep.hpp>
 #include <bio/ranges/views/translate_join.hpp>
 #include <bio/ranges/views/type_reduce.hpp>
-#include <seqan3/alignment/scoring/aminoacid_scoring_scheme.hpp>
-#include <seqan3/alignment/scoring/nucleotide_scoring_scheme.hpp>
-#include <seqan3/utility/type_traits/lazy_conditional.hpp>
 
 #include <seqan/align_extend.h>
 
 #include "bisulfite_scoring.hpp"
 #include "search_options.hpp"
-
-namespace seqan3
-{
-
-template <>
-inline constexpr bool enable_aminoacid<bio::alphabet::aa27> = true;
-
-}
 
 // ============================================================================
 // Tags, Classes, Enums

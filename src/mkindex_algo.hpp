@@ -33,7 +33,6 @@
 #include <bio/ranges/views/to_rank.hpp>
 #include <bio/ranges/views/translate.hpp>
 #include <bio/ranges/views/translate_join.hpp>
-#include <seqan3/io/detail/misc_input.hpp>
 
 #include "mkindex_misc.hpp"
 // #include "mkindex_saca.hpp"

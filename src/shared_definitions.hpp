@@ -27,9 +27,8 @@
 #include <cereal/archives/json.hpp>
 #include <cereal/details/traits.hpp>
 #include <cereal/types/array.hpp>
+#include <cereal/types/string.hpp>
 #include <cereal/types/vector.hpp>
-
-#include <seqan3/alphabet/aminoacid/translation.hpp>
 
 #include <fmindex-collection/DenseCSA.h>
 #include <fmindex-collection/fmindex-collection.h>

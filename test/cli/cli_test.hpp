@@ -1,6 +1,5 @@
 #include <gtest/gtest.h>
 
-#include <seqan3/test/expect_range_eq.hpp>
 #include <cstdlib>               // system calls
 #include <sstream>               // ostringstream
 #include <string>                // strings
@@ -34,7 +33,7 @@ protected:
 
         // Assemble the command string and disable version check.
         std::ostringstream command{};
-        command << "SEQAN3_NO_VERSION_CHECK=1 " << BINDIR;
+        command << "SHARG_NO_VERSION_CHECK=1 " << BINDIR;
         ((command << command_items << ' '), ...);
 
         // Always capture the output streams.

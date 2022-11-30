@@ -29,7 +29,6 @@
 #include <bio/alphabet/nucleotide/concept.hpp>
 #include <bio/ranges/views/deep.hpp>
 #include <bio/ranges/views/transform_by_pos.hpp>
-#include <seqan3/utility/char_operations/predicate.hpp>
 
 // Definition of the range adaptor object type for views::dna_n_to_random.
 struct dna_n_to_random_fn

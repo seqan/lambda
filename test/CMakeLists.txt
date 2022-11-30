@@ -14,16 +14,16 @@ add_definitions (-DBINDIR=\"${PROJECT_BINARY_DIR}/bin/\")
 # this project.
 # We also pass the C_COMPILER such that googletest is built with the corresponding GCC.
 # Otherwise, it might happen that the app is built with, e.g., g++-11, but gtest with gcc-7, which might cause trouble.
-set (SEQAN3_EXTERNAL_PROJECT_CMAKE_ARGS "")
-list (APPEND SEQAN3_EXTERNAL_PROJECT_CMAKE_ARGS "-DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}")
-list (APPEND SEQAN3_EXTERNAL_PROJECT_CMAKE_ARGS "-DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}")
-list (APPEND SEQAN3_EXTERNAL_PROJECT_CMAKE_ARGS "-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}")
-list (APPEND SEQAN3_EXTERNAL_PROJECT_CMAKE_ARGS "-DCMAKE_INSTALL_PREFIX=${PROJECT_BINARY_DIR}")
-list (APPEND SEQAN3_EXTERNAL_PROJECT_CMAKE_ARGS "-DCMAKE_VERBOSE_MAKEFILE=${CMAKE_VERBOSE_MAKEFILE}")
-set (SEQAN3_TEST_CLONE_DIR "${PROJECT_BINARY_DIR}/vendor/googletest")
+set (BIOCPP_EXTERNAL_PROJECT_CMAKE_ARGS "")
+list (APPEND BIOCPP_EXTERNAL_PROJECT_CMAKE_ARGS "-DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}")
+list (APPEND BIOCPP_EXTERNAL_PROJECT_CMAKE_ARGS "-DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}")
+list (APPEND BIOCPP_EXTERNAL_PROJECT_CMAKE_ARGS "-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}")
+list (APPEND BIOCPP_EXTERNAL_PROJECT_CMAKE_ARGS "-DCMAKE_INSTALL_PREFIX=${PROJECT_BINARY_DIR}")
+list (APPEND BIOCPP_EXTERNAL_PROJECT_CMAKE_ARGS "-DCMAKE_VERBOSE_MAKEFILE=${CMAKE_VERBOSE_MAKEFILE}")
+set (BIOCPP_TEST_CLONE_DIR "${PROJECT_BINARY_DIR}/vendor/googletest")
 
-include ("${SEQAN3_CLONE_DIR}/test/cmake/seqan3_require_test.cmake")
-seqan3_require_test ()
+include ("${BIOCPP_CORE_CLONE_DIR}/test/cmake/biocpp_require_test.cmake")
+biocpp_require_test ()
 
 # Build tests just before their execution, because they have not been built with "all" target.
 # The trick is here to provide a cmake file as a directory property that executes the build command.
@@ -47,11 +47,11 @@ macro (add_app_test test_filename)
 
     # Create the test target.
     add_executable (${target} ${test_filename})
-    target_link_libraries (${target} seqan3::seqan3 gtest gtest_main)
+    target_link_libraries (${target} gtest gtest_main)
 
-    # Make seqan3::test available for both cli and api tests.
-    target_include_directories (${target} PUBLIC "${SEQAN3_CLONE_DIR}/test/include")
-    target_include_directories (${target} PUBLIC "${SEQAN3_TEST_CLONE_DIR}/googletest/include/")
+    # Make biocpp::test available for both cli and api tests.
+    # target_include_directories (${target} PUBLIC "${BIOCPP_CORE_CLONE_DIR}/test/include")
+    target_include_directories (${target} PUBLIC "${BIOCPP_TEST_CLONE_DIR}/googletest/include/")
 
     add_dependencies (${target} "${PROJECT_NAME}") # cli test needs the application executable
     add_dependencies (cli_test ${target})
