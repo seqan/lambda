@@ -19,7 +19,7 @@
 // search.cpp: Main File for the search
 // ==========================================================================
 
-#include "seqan2seqan3.hpp" // must come first
+#include "seqan2_to_biocpp.hpp" // must come first
 
 #include <iostream>
 

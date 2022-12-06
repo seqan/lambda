@@ -74,8 +74,6 @@ template <typename... ts>
 inline constexpr bool is_new_range<std::ranges::transform_view<ts...>> = true;
 template <typename... ts>
 inline constexpr bool is_new_range<std::ranges::subrange<ts...>> = true;
-// template <typename... ts>
-// inline constexpr bool is_new_range<bio::ranges::detail::view_translate_join<ts...>> = true;
 template <typename... ts>
 inline constexpr bool is_new_range<bio::ranges::detail::view_transform_by_pos<ts...>> = true;
 template <typename t>
@@ -243,27 +241,6 @@ void copy_range(TSource && in, String<TVal, TSpec> & out)
     }
 }
 
-// // template <typename TValue, typename TSpec, std::ranges::input_range T>
-// // inline void append(String<TValue, TSpec> & out, T const & in)
-// // {
-// //     if constexpr (std::ranges::sized_range<T>)
-// //         reserve(out, length(out) + std::ranges::size(in));
-// //
-// //     for (auto && v : in)
-// //         appendValue(out, std::forward<decltype(v)>(v));
-// // }
-// //
-// // template <typename TValue, typename TSpec, std::ranges::input_range T>
-// // inline void append(String<TValue, TSpec> & out, T & in)
-// // {
-// //     if constexpr (std::ranges::sized_range<T>)
-// //         reserve(out, length(out) + std::ranges::size(in));
-// //
-// //     for (auto && v : in)
-// //         appendValue(out, std::forward<decltype(v)>(v));
-// // }
-// //
-
 // –---------------------------------------------------------------------------
 // alphabet stuff
 // –---------------------------------------------------------------------------
@@ -355,20 +332,20 @@ struct GappedValueType<alph_t>
 
 // default is invalid; only used for alphabets that are scored with matrixes
 template <typename seqan3_alph_t>
-inline constexpr std::array<uint8_t, 1> seqan3rank_to_seqan2rank{};
+inline constexpr std::array<uint8_t, 1> biocpp_rank_to_seqan2rank{};
 
 // aa27 are not:
 template <>
-inline constexpr std::array<uint8_t, 27> seqan3rank_to_seqan2rank<bio::alphabet::aa27> =
+inline constexpr std::array<uint8_t, 27> biocpp_rank_to_seqan2rank<bio::alphabet::aa27> =
   // clang-format off
-//A  B  C  D  E  F  G  H  I  J  K   L   M   N   O   P   Q   R   S   T   U   V   W   X   Y   Z   *       <- seqan3
+//A  B  C  D  E  F  G  H  I  J  K   L   M   N   O   P   Q   R   S   T   U   V   W   X   Y   Z   *       <- biocpp
 { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 25, 23, 24, 26 };
 //A  B  C  D  E  F  G  H  I  J  K   L   M   N   O   P   Q   R   S   T   U   V   W   Y   Z   X   *       <- seqan2
 //                                                                                  ↑   ↑   ↑
 // dna5 is scored via matrix in bisulfite-mode
 template <>
-inline constexpr std::array<uint8_t, 5> seqan3rank_to_seqan2rank<bio::alphabet::dna5> =
-//A  C  G  N  T       <- seqan3
+inline constexpr std::array<uint8_t, 5> biocpp_rank_to_seqan2rank<bio::alphabet::dna5> =
+//A  C  G  N  T       <- biocpp
 { 0, 1, 2, 4, 3 };
 //A  C  G  T  N       <- seqan2
 //         ↑  ↑
@@ -397,7 +374,7 @@ struct seqan2_to_rank_inner
     {
         if constexpr (std::is_same_v<t, bio::alphabet::aa27> ||
                       std::is_same_v<t, bio::alphabet::dna5>) // dna5 used in bisulfite-mode
-            return seqan3rank_to_seqan2rank<t>[bio::alphabet::to_rank(c)];
+            return biocpp_rank_to_seqan2rank<t>[bio::alphabet::to_rank(c)];
         else // alphabets that are scored with seqan::SimpleScore don't need extra conversion
             return bio::alphabet::to_rank(c);
     }

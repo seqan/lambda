@@ -26,8 +26,6 @@
 #include <cereal/types/string.hpp>
 #include <cereal/types/vector.hpp>
 
-#define LAMBDA_INDEXER 1 // some things are different for the indexer binary
-
 #include "shared_definitions.hpp"
 #include "shared_misc.hpp"
 #include "shared_options.hpp"
