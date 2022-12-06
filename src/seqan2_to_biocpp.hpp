@@ -7,6 +7,7 @@
 #include <bio/alphabet/concept.hpp>
 #include <bio/alphabet/gap/all.hpp>
 #include <bio/alphabet/nucleotide/concept.hpp>
+#include <bio/alphabet/nucleotide/dna4.hpp>
 #include <bio/alphabet/nucleotide/dna5.hpp>
 #include <bio/ranges/views/to_rank.hpp>
 #include <bio/ranges/views/translate_join.hpp>
@@ -267,38 +268,51 @@ inline bool operator==(char c, alph_t alph)
 }
 
 template <typename TValue, typename TSequenceValue, typename TSpec, bio::alphabet::aminoacid_alphabet alph_t>
-inline auto score(Score<TValue, ScoreMatrix<TSequenceValue, TSpec>> const & scheme, alph_t const a1, alph_t const a2)
+inline auto score(Score<TValue, ScoreMatrix<TSequenceValue, TSpec>> const & scheme,
+                  alph_t const                                              a1,
+                  alph_t const                                              a2) noexcept
 {
     return score(scheme, AminoAcid{bio::alphabet::to_char(a1)}, AminoAcid{bio::alphabet::to_char(a2)});
-}
-
-template <typename TValue, bio::alphabet::nucleotide_alphabet alph_t>
-inline auto score(Score<TValue, ScoreMatrix<Dna5, BisulfiteMatrix>> const & scheme, alph_t const a1, alph_t const a2)
-{
-    return score(scheme, Dna5{bio::alphabet::to_char(a1)}, Dna5{bio::alphabet::to_char(a2)});
 }
 
 template <typename TValue, typename TSequenceValue, typename TSpec, bio::alphabet::alphabet alph_t>
 inline auto score(Score<TValue, ScoreMatrix<TSequenceValue, TSpec>> const & scheme,
                   bio::alphabet::gapped<alph_t> const                       a1,
-                  bio::alphabet::gapped<alph_t> const                       a2)
+                  bio::alphabet::gapped<alph_t> const                       a2) noexcept
 {
-    // TODO convert_unsafely_to
-    return score(scheme, a1.template convert_to<alph_t>(), a2.template convert_to<alph_t>());
+    return score(scheme, a1.template convert_unsafely_to<alph_t>(), a2.template convert_unsafely_to<alph_t>());
 }
 
-template <typename TValue, typename TSpec, bio::alphabet::nucleotide_alphabet alph_t>
-inline auto score(Score<TValue, TSpec> const & scheme, alph_t const a1, alph_t const a2)
+template <typename TValue>
+inline auto score(Score<TValue, ScoreMatrix<Dna5, BisulfiteMatrix>> const & scheme,
+                  bio::alphabet::dna5 const                                 a1,
+                  bio::alphabet::dna5 const                                 a2) noexcept
 {
-    return score(scheme, Iupac{bio::alphabet::to_char(a1)}, Iupac{bio::alphabet::to_char(a2)});
+    return score(scheme, Dna5{bio::alphabet::to_char(a1)}, Dna5{bio::alphabet::to_char(a2)});
+}
+
+template <typename TValue, typename TSpec>
+inline auto score(Score<TValue, TSpec> const & scheme,
+                  bio::alphabet::dna5 const    a1,
+                  bio::alphabet::dna5 const    a2) noexcept
+{
+    return score(scheme, Dna5{bio::alphabet::to_char(a1)}, Dna5{bio::alphabet::to_char(a2)});
+}
+
+template <typename TValue, typename TSpec>
+inline auto score(Score<TValue, TSpec> const & scheme,
+                  bio::alphabet::dna4 const    a1,
+                  bio::alphabet::dna4 const    a2) noexcept
+{
+    return score(scheme, Dna{bio::alphabet::to_char(a1)}, Dna{bio::alphabet::to_char(a2)});
 }
 
 template <typename TValue, typename TSpec, bio::alphabet::alphabet alph_t>
 inline auto score(Score<TValue, TSpec> const &        scheme,
                   bio::alphabet::gapped<alph_t> const a1,
-                  bio::alphabet::gapped<alph_t> const a2)
+                  bio::alphabet::gapped<alph_t> const a2) noexcept
 {
-    return score(scheme, a1.template convert_to<alph_t>(), a2.template convert_to<alph_t>());
+    return score(scheme, a1.template convert_unsafely_to<alph_t>(), a2.template convert_unsafely_to<alph_t>());
 }
 
 template <bio::alphabet::alphabet alph_t>
@@ -320,7 +334,7 @@ template <bio::alphabet::alphabet alph_t>
 alph_t convertImpl(seqan::Convert<alph_t, bio::alphabet::gapped<alph_t>>, bio::alphabet::gapped<alph_t> const & a)
 {
     //     return a.template convert_unsafely_to<bio::alphabet::gap>();
-    return a.template convert_to<alph_t>();
+    return a.template convert_unsafely_to<alph_t>();
 }
 
 template <bio::alphabet::alphabet alph_t>
