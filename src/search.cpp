@@ -19,7 +19,7 @@
 // search.cpp: Main File for the search
 // ==========================================================================
 
-#include "seqan2seqan3.hpp" // must come first
+#include "seqan2_to_biocpp.hpp" // must come first
 
 #include <iostream>
 
@@ -30,7 +30,7 @@
 #include <seqan/seq_io.h>
 #include <seqan/sequence.h>
 
-#include <seqan3/io/views/async_input_buffer.hpp>
+#include "view_async_input_buffer.hpp"
 
 #include "shared_definitions.hpp"
 #include "shared_misc.hpp"
@@ -147,7 +147,7 @@ void argConv0(LambdaOptions & options)
     {
         myPrint(options, 2, "  translated alphabet: not translated\n");
         if ((int)options.geneticCodeQry == 0) // use same geneticCode as Index, but index wasn't translated
-            options.geneticCodeQry = seqan3::genetic_code::canonical;
+            options.geneticCodeQry = bio::alphabet::genetic_code::CANONICAL;
     }
     else
     {
@@ -351,8 +351,12 @@ void realMain(LambdaOptions const & options)
 
     uint64_t lastPercent = 0;
 
-    typename TGlobalHolder::TQueryFile infile{options.queryFile};
-    auto file_view = infile | seqan3::views::async_input_buffer(globalHolder.records_per_batch * options.threads);
+    bio::io::seq::record r{.id   = std::string{},
+                           .seq  = std::vector<typename TGlobalHolder::TOrigQryAlph>{},
+                           .qual = std::ignore};
+    bio::io::seq::reader reader{options.queryFile, bio::io::seq::reader_options{.record = r}};
+
+    auto file_view = reader | views::async_input_buffer(globalHolder.records_per_batch * options.threads);
 
     SEQAN_OMP_PRAGMA(parallel)
     {
@@ -365,7 +369,7 @@ void realMain(LambdaOptions const & options)
                 localHolder.reset();
 
                 // load records until batch is full or file at end
-                for (auto & [id, seq] : file_view)
+                for (auto & [id, seq, qual] : file_view)
                 {
                     localHolder.qryIds.push_back(std::move(id));
                     localHolder.qrySeqs.push_back(std::move(seq));

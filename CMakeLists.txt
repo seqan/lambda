@@ -42,19 +42,24 @@ if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/submodules/seqan/include/seqan/version.h
     message (    "   This will be preferred over system global headers.")
 endif ()
 
-if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/submodules/seqan3/include/seqan3/version.hpp")
-    set (SeqAn3_DIR ${CMAKE_CURRENT_SOURCE_DIR}/submodules/seqan3/build_system)
-    message (STATUS "Found a local SeqAn3 library provided with the Lambda source code.")
-    message (    "   This will be preferred over system global headers.")
+# CEREAL
+if (EXISTS ${CMAKE_SOURCE_DIR}/submodules/cereal)
+    set(BUILD_SANDBOX OFF)
+    set(BUILD_DOC OFF)
+    set(BUILD_TESTS OFF)
+    set(SKIP_PERFORMANCE_COMPARISON ON)
+    set(CEREAL_INSTALL OFF)
+    add_subdirectory(submodules/cereal)
 endif ()
 
+# SGS FMindex
+add_subdirectory(submodules/fmindex-collection)
 
 # ----------------------------------------------------------------------------
 # Add Lambda targets
 # ----------------------------------------------------------------------------
 
 add_subdirectory(src)
-add_subdirectory(submodules/fmindex-collection)
 
 # ----------------------------------------------------------------------------
 # Warn if cmake build type is not "Release"

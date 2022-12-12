@@ -34,12 +34,10 @@
 #include <seqan/sequence.h>
 #include <seqan/translation.h>
 
-#include <seqan3/alphabet/aminoacid/aa27.hpp>
-#include <seqan3/alphabet/views/complement.hpp>
-#include <seqan3/alphabet/views/translate_join.hpp>
-#include <seqan3/core/debug_stream.hpp>
-#include <seqan3/io/sequence_file/input.hpp>
-#include <seqan3/search/search.hpp>
+#include <bio/alphabet/aminoacid/aa27.hpp>
+#include <bio/io/seq/reader.hpp>
+#include <bio/ranges/views/complement.hpp>
+#include <bio/ranges/views/translate_join.hpp>
 
 #include <fmindex-collection/DenseCSA.h>
 #include <fmindex-collection/locate.h>
@@ -54,34 +52,6 @@
 #include "search_options.hpp"
 #include "view_dna_n_to_random.hpp"
 #include "view_reduce_to_bisulfite.hpp"
-
-// ============================================================================
-// Classes, structs, enums
-// ============================================================================
-
-enum COMPUTERESULT_
-{
-    SUCCESS = 0,
-    PREEXTEND,
-    PERCENTIDENT,
-    EVALUE,
-    OTHER_FAIL
-};
-
-//TODO replace with lambda
-// comparison operator to sort SA-Values based on the strings in the SA they refer to
-template <typename TSav, typename TStringSet>
-struct Comp : public ::std::binary_function<TSav, TSav, bool>
-{
-    TStringSet const & stringSet;
-
-    Comp(TStringSet const & _stringSet) : stringSet(_stringSet) {}
-
-    inline bool operator()(TSav const & i, TSav const & j) const
-    {
-        return (value(stringSet, getSeqNo(i)) < value(stringSet, getSeqNo(j)));
-    }
-};
 
 // ============================================================================
 // Functions
@@ -178,13 +148,6 @@ void prepareScoring(
                                            options.match,
                                            options.misMatch,
                                            bsDirection::rev);
-
-            // Seqan3
-            globalHolder.scoringSchemePreScoring.set_bisulfite_scheme(seqan3::match_score{options.match},
-                                                                      seqan3::mismatch_score{options.misMatch});
-            globalHolder.scoringSchemePreScoringBSRev.set_bisulfite_scheme(seqan3::match_score{options.match},
-                                                                           seqan3::mismatch_score{options.misMatch},
-                                                                           bsDirection::rev);
         }
         else
         {
@@ -192,32 +155,22 @@ void prepareScoring(
             globalHolder.scoringSchemeAlign = seqan::seqanScheme(context(globalHolder.outfileBlastTab).scoringScheme);
             globalHolder.scoringSchemeAlignBSRev =
               seqan::seqanScheme(context(globalHolder.outfileBlastTab).scoringScheme);
-
-            // Seqan3
-            globalHolder.scoringSchemePreScoring.set_simple_scheme(seqan3::match_score{options.match},
-                                                                   seqan3::mismatch_score{options.misMatch});
-            globalHolder.scoringSchemePreScoringBSRev.set_simple_scheme(seqan3::match_score{options.match},
-                                                                        seqan3::mismatch_score{options.misMatch});
         }
     }
     else
     {
-        seqan::AminoAcidScoreMatrixID       seqan2_matrix_id{};
-        seqan3::aminoacid_similarity_matrix seqan3_matrix_id{};
+        seqan::AminoAcidScoreMatrixID seqan2_matrix_id{};
 
         switch (options.scoringMethod)
         {
             case 45:
                 seqan2_matrix_id = seqan::AminoAcidScoreMatrixID::BLOSUM45;
-                seqan3_matrix_id = seqan3::aminoacid_similarity_matrix::blosum45;
                 break;
             case 62:
                 seqan2_matrix_id = seqan::AminoAcidScoreMatrixID::BLOSUM62;
-                seqan3_matrix_id = seqan3::aminoacid_similarity_matrix::blosum62;
                 break;
             case 80:
                 seqan2_matrix_id = seqan::AminoAcidScoreMatrixID::BLOSUM80;
-                seqan3_matrix_id = seqan3::aminoacid_similarity_matrix::blosum80;
                 break;
             default:
                 break;
@@ -228,9 +181,6 @@ void prepareScoring(
                                   seqan2_matrix_id);
         seqan::setScoreMatrixById(globalHolder.scoringSchemeAlign, seqan2_matrix_id);
         seqan::setScoreMatrixById(globalHolder.scoringSchemeAlignBSRev, seqan2_matrix_id);
-        // Seqan3
-        globalHolder.scoringSchemePreScoring.set_similarity_matrix(seqan3_matrix_id);
-        globalHolder.scoringSchemePreScoringBSRev.set_similarity_matrix(seqan3_matrix_id);
     }
 
     // seqan2
@@ -324,10 +274,16 @@ void countQuery(GlobalDataHolder<c_indexType, c_origSbjAlph, c_transAlph, c_redA
     myPrint(options, 1, strIdent);
 
     // TODO potentially optimise this for fasta/fastq with simple 'grep -c'
-    seqan3::sequence_file_input<QueryFileTraits<c_origQryAlph>, seqan3::fields<>> infile{options.queryFile};
+#if __GNUC__ >= 11
+    bio::io::seq::record r{.id = std::ignore, .seq = std::ignore, .qual = std::ignore};
+    bio::io::seq::reader reader{options.queryFile, bio::io::seq::reader_options{.record = r}};
+#else // it is absolutely unclear why this workaround is needed here––CTAD with member-init works everywhere else
+    bio::io::seq::record<bio::meta::ignore_t, bio::meta::ignore_t, bio::meta::ignore_t> r{};
+    bio::io::seq::reader reader{options.queryFile, bio::io::seq::reader_options<decltype(r)>{}};
+#endif
 
     // parse the file completely and get count in one line:
-    globalHolder.queryTotal = std::ranges::distance(infile);
+    globalHolder.queryTotal = std::ranges::distance(reader);
 
     // batch-size as set in options (unless too few sequences)
     globalHolder.records_per_batch = std::max<size_t>(
@@ -377,9 +333,9 @@ inline bool seedLooksPromising(LocalDataHolder<TGlobalHolder> const & lH, typena
     }
 
     auto const & qSeq = lH.transQrySeqs[m.qryId] |
-                        seqan3::views::slice(effectiveQBegin, static_cast<int64_t>(effectiveQBegin + effectiveLength));
+                        bio::views::slice(effectiveQBegin, static_cast<int64_t>(effectiveQBegin + effectiveLength));
     auto const & sSeq = lH.gH.transSbjSeqs[m.subjId] |
-                        seqan3::views::slice(effectiveSBegin, static_cast<int64_t>(effectiveSBegin + effectiveLength));
+                        bio::views::slice(effectiveSBegin, static_cast<int64_t>(effectiveSBegin + effectiveLength));
 
     int       s        = 0;
     int       maxScore = 0;
@@ -387,12 +343,12 @@ inline bool seedLooksPromising(LocalDataHolder<TGlobalHolder> const & lH, typena
 
     // score the diagonal
     auto & currentScoringScheme = TGlobalHolder::c_redAlph == AlphabetEnum::DNA3BS && m.subjId % 2
-                                    ? lH.gH.scoringSchemePreScoringBSRev
-                                    : lH.gH.scoringSchemePreScoring;
+                                    ? lH.gH.scoringSchemeAlignBSRev
+                                    : lH.gH.scoringSchemeAlign;
 
     for (uint64_t i = 0; i < effectiveLength; ++i)
     {
-        s += currentScoringScheme.score(qSeq[i], sSeq[i]);
+        s += score(currentScoringScheme, qSeq[i], sSeq[i]);
 
         if (s < 0)
             s = 0;
@@ -414,7 +370,7 @@ inline void search_impl(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
         //      This is a conceptual TODO for fmindex_collection library
         fmindex_collection::search_backtracking_with_buffers::search(
           lH.gH.indexFile.index,
-          seed | std::views::reverse | seqan3::views::to_rank | fmindex_collection::add_sentinel,
+          seed | std::views::reverse | bio::views::to_rank | fmindex_collection::add_sentinel,
           lH.searchOpts.maxSeedDist,
           lH.cursor_tmp_buffer,
           lH.cursor_tmp_buffer2,
@@ -428,7 +384,7 @@ inline void search_impl(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
             {
                 using cursor_t = TGlobalHolder::TIndexCursor;
 
-                auto query = seed | seqan3::views::to_rank | fmindex_collection::add_sentinel;
+                auto query = seed | bio::views::to_rank | fmindex_collection::add_sentinel;
 
                 auto cur = cursor_t{lH.gH.indexFile.index};
                 for (size_t i{0}; i < query.size(); ++i)
@@ -445,16 +401,16 @@ inline void search_impl(LocalDataHolder<TGlobalHolder> & lH, TSeed && seed)
         }
         else if (lH.searchOpts.maxSeedDist == 1)
         {
-            fmindex_collection::search_one_error::search(
-              lH.gH.indexFile.index,
-              seed | seqan3::views::to_rank | fmindex_collection::add_sentinel,
-              [&](auto cursor, size_t /*errors*/) { lH.cursor_buffer.push_back(cursor); });
+            fmindex_collection::search_one_error::search(lH.gH.indexFile.index,
+                                                         seed | bio::views::to_rank | fmindex_collection::add_sentinel,
+                                                         [&](auto cursor, size_t /*errors*/)
+                                                         { lH.cursor_buffer.push_back(cursor); });
         }
         else
         {
             fmindex_collection::search_pseudo::search</*editdistance=*/false>(
               lH.gH.indexFile.index,
-              seed | seqan3::views::to_rank | fmindex_collection::add_sentinel,
+              seed | bio::views::to_rank | fmindex_collection::add_sentinel,
               lH.searchScheme,
               [&](auto cursor, size_t /*errors*/) { lH.cursor_buffer.push_back(cursor); });
         }
@@ -505,9 +461,9 @@ inline void searchHalfExactImpl(LocalDataHolder<TGlobalHolder> & lH, TSeed && se
         {
             if (error_count < lH.searchOpts.maxSeedDist)
             {
-                for (size_t r = 0; r < seqan3::alphabet_size<alph_t>; ++r)
+                for (size_t r = 0; r < bio::alphabet::size<alph_t>; ++r)
                 {
-                    alph_t cur_letter = seqan3::assign_rank_to(r, alph_t{});
+                    alph_t cur_letter = bio::alphabet::assign_rank_to(r, alph_t{});
 
                     lH.cursor_tmp_buffer2.emplace_back(cursor, error_count + (cur_letter != seed_at_i));
                     if (!extendRight(lH.cursor_tmp_buffer2.back().first, cur_letter))
@@ -578,7 +534,7 @@ inline void search(LocalDataHolder<TGlobalHolder> & lH)
             // skip proteine 'X' or Dna 'N', skip letter if next letter is the same
             while ((seedBegin < (lH.redQrySeqs[i].size() - lH.searchOpts.seedLength)) &&
                    ((lH.transQrySeqs[i][seedBegin] ==
-                     seqan3::assign_char_to('`', TTransAlph{})) || // assume that '°' gets converted to UNKNOWN
+                     bio::alphabet::assign_char_to('`', TTransAlph{})) || // assume that '°' gets converted to UNKNOWN
                     (lH.transQrySeqs[i][seedBegin] == lH.transQrySeqs[i][seedBegin + 1])))
                 ++seedBegin;
 
@@ -591,10 +547,9 @@ inline void search(LocalDataHolder<TGlobalHolder> & lH)
             if (lH.options.seedHalfExact && lH.searchOpts.maxSeedDist != 0)
                 searchHalfExactImpl(lH,
                                     lH.redQrySeqs[i] |
-                                      seqan3::views::slice(seedBegin, seedBegin + lH.searchOpts.seedLength));
+                                      bio::views::slice(seedBegin, seedBegin + lH.searchOpts.seedLength));
             else
-                search_impl(lH,
-                            lH.redQrySeqs[i] | seqan3::views::slice(seedBegin, seedBegin + lH.searchOpts.seedLength));
+                search_impl(lH, lH.redQrySeqs[i] | bio::views::slice(seedBegin, seedBegin + lH.searchOpts.seedLength));
 
             if (lH.options.adaptiveSeeding)
                 lH.offset_modifier_buffer.clear();
@@ -860,8 +815,8 @@ inline void _setupAlignInfix(TBlastMatch & bm, typename TLocalHolder::TMatch con
     else
         bm.sStart = 0;
 
-    seqan::assignSource(bm.alignRow0, lH.transQrySeqs[m.qryId] | seqan3::views::slice(bm.qStart, bm.qEnd));
-    seqan::assignSource(bm.alignRow1, lH.gH.transSbjSeqs[m.subjId] | seqan3::views::slice(bm.sStart, bm.sEnd));
+    seqan::assignSource(bm.alignRow0, lH.transQrySeqs[m.qryId] | bio::views::slice(bm.qStart, bm.qEnd));
+    seqan::assignSource(bm.alignRow1, lH.gH.transSbjSeqs[m.subjId] | bio::views::slice(bm.sStart, bm.sEnd));
 }
 
 template <typename TBlastMatch, typename TLocalHolder>
@@ -932,9 +887,9 @@ inline void _expandAlign(TBlastMatch & bm, TLocalHolder const & lH)
 
     // replace source from underneath without triggering reset
     bm.alignRow0._source = lH.transQrySeqs[_untrueQryId(bm, lH)] |
-                           seqan3::views::slice(0, std::ranges::size(lH.transQrySeqs[_untrueQryId(bm, lH)]));
+                           bio::views::slice(0, std::ranges::size(lH.transQrySeqs[_untrueQryId(bm, lH)]));
     bm.alignRow1._source = lH.gH.transSbjSeqs[_untrueSubjId(bm, lH)] |
-                           seqan3::views::slice(0, std::ranges::size(lH.gH.transSbjSeqs[_untrueSubjId(bm, lH)]));
+                           bio::views::slice(0, std::ranges::size(lH.gH.transSbjSeqs[_untrueSubjId(bm, lH)]));
 
     // insert fields into array gaps
     if (bm.alignRow0._array[0] == 0)

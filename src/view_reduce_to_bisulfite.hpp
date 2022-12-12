@@ -24,21 +24,20 @@
 
 #include <ranges>
 
-#include <seqan3/alphabet/composite/semialphabet_any.hpp>
-#include <seqan3/alphabet/nucleotide/concept.hpp>
-#include <seqan3/alphabet/nucleotide/dna4.hpp>
-#include <seqan3/core/range/type_traits.hpp>
-#include <seqan3/utility/range/concept.hpp>
-#include <seqan3/utility/views/deep.hpp>
+#include <bio/alphabet/composite/semialphabet_any.hpp>
+#include <bio/alphabet/nucleotide/concept.hpp>
+#include <bio/alphabet/nucleotide/dna4.hpp>
+#include <bio/ranges/views/deep.hpp>
+#include <bio/ranges/views/transform_by_pos.hpp>
+
 #include "bisulfite_scoring.hpp"
-#include "view_pos_transform.hpp"
 
 // Definition of the range adaptor object type for views::to_bisulfite_semialphabet.
 struct to_bisulfite_semialphabet_fn
 {
     constexpr auto operator()(bsDirection const direction) const
     {
-        return seqan3::detail::adaptor_from_functor{*this, direction};
+        return bio::ranges::detail::adaptor_from_functor{*this, direction};
     }
 
     // Rank
@@ -54,11 +53,13 @@ private:
 
     static auto func_fwd(auto && urange, size_t pos)
     {
-        return seqan3::assign_rank_to(dna4_to_rank_bs_fwd[seqan3::to_rank(urange[pos])], seqan3::semialphabet_any<6>{});
+        return bio::alphabet::assign_rank_to(dna4_to_rank_bs_fwd[bio::alphabet::to_rank(urange[pos])],
+                                             bio::alphabet::semialphabet_any<6>{});
     }
     static auto func_rev(auto && urange, size_t pos)
     {
-        return seqan3::assign_rank_to(dna4_to_rank_bs_rev[seqan3::to_rank(urange[pos])], seqan3::semialphabet_any<6>{});
+        return bio::alphabet::assign_rank_to(dna4_to_rank_bs_rev[bio::alphabet::to_rank(urange[pos])],
+                                             bio::alphabet::semialphabet_any<6>{});
     }
 
 public:
@@ -73,23 +74,24 @@ public:
         static_assert(
           std::ranges::random_access_range<urng_t>,
           "The range parameter to views::to_bisulfite_semialphabet must model std::ranges::random_access_range.");
-        static_assert(std::is_same_v<std::remove_const_t<seqan3::range_innermost_value_t<urng_t>>, seqan3::dna4>,
-                      "The range parameter to views::to_bisulfite_semialphabet must be over elements of seqan3::dna4.");
+        static_assert(
+          std::is_same_v<std::remove_const_t<bio::ranges::range_innermost_value_t<urng_t>>, bio::alphabet::dna4>,
+          "The range parameter to views::to_bisulfite_semialphabet must be over elements of bio::alphabet::dna4.");
 
         auto l = &func_fwd<std::views::all_t<urng_t> const &>;
         if (direction == bsDirection::rev)
             l = &func_rev<std::views::all_t<urng_t> const &>;
-        return std::forward<urng_t>(urange) | views::pos_transform(l);
+        return std::forward<urng_t>(urange) | bio::views::transform_by_pos(l);
     }
 };
 
-// A view that converts elements of the seqan3::dna4 alphabet to a semialphabet that models reduced forward and reverse
+// A view that converts elements of the bio::alphabet::dna4 alphabet to a semialphabet that models reduced forward and reverse
 // alphabets for the bisulfite mode. Depending on the `direction` parameter, letters get converted to the rank of the bisulfite
 // reduced alphabet for forward sequences or reverse sequences which both are included in the same semialphabet of size 6.
 namespace views
 {
 
-inline constexpr auto to_bisulfite_semialphabet = seqan3::views::deep{to_bisulfite_semialphabet_fn{}};
+inline constexpr auto to_bisulfite_semialphabet = bio::views::deep{to_bisulfite_semialphabet_fn{}};
 
 } // namespace views
 
@@ -99,7 +101,7 @@ struct reduce_to_bisulfite_fn
     template <std::ranges::range urng_t>
     constexpr auto operator()(urng_t && urange) const
     {
-        static_assert(seqan3::range_dimension_v<urng_t> == 2,
+        static_assert(bio::ranges::range_dimension_v<urng_t> == 2,
                       "This adaptor only handles range-of-range (two dimensions) as input.");
         static_assert(std::ranges::viewable_range<urng_t>,
                       "The range parameter to views::reduce_to_bisulfite cannot be a temporary of a non-view range.");
@@ -116,13 +118,15 @@ struct reduce_to_bisulfite_fn
         static_assert(std::ranges::random_access_range<std::ranges::range_reference_t<urng_t>>,
                       "The inner range of the range parameter to views::reduce_to_bisulfite must model "
                       "std::ranges::random_access_range.");
-        static_assert(std::is_same_v<std::remove_const_t<seqan3::range_innermost_value_t<urng_t>>, seqan3::dna4>,
-                      "The range parameter to views::reduce_to_bisulfite must be over a range over elements of "
-                      "seqan3::dna4.");
+        static_assert(
+          std::is_same_v<std::remove_const_t<bio::ranges::range_innermost_value_t<urng_t>>, bio::alphabet::dna4>,
+          "The range parameter to views::reduce_to_bisulfite must be over a range over elements of "
+          "bio::alphabet::dna4.");
 
         return std::forward<urng_t>(urange) |
-               views::pos_transform([](auto && urange, size_t pos)
-                                    { return urange[pos] | views::to_bisulfite_semialphabet((bsDirection)(pos % 2)); });
+               bio::views::transform_by_pos(
+                 [](auto && urange, size_t pos)
+                 { return urange[pos] | views::to_bisulfite_semialphabet((bsDirection)(pos % 2)); });
     }
 
     template <std::ranges::range urng_t>
@@ -132,7 +136,7 @@ struct reduce_to_bisulfite_fn
     }
 };
 
-// A view that operates on a range-of-ranges where the inner range needs to be of type seqan3::dna4.
+// A view that operates on a range-of-ranges where the inner range needs to be of type bio::alphabet::dna4.
 // Inner ranges with an even index get reduced to forward bisulfite sequences while inner ranges with an odd index get
 // converted to reverse bisulfite sequences. The output range is a range-of-range where the type of the inner ranges is
 // a semialphabet of size 6.

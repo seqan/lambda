@@ -6,7 +6,7 @@ on:
 
 env:
   CMAKE_VERSION: 3.10.0
-  SEQAN3_NO_VERSION_CHECK: 1
+  SHARG_NO_VERSION_CHECK: 1
   TZ: Europe/Berlin
 
 defaults:
@@ -43,14 +43,11 @@ jobs:
       - name: Configure Homebrew
         uses: Homebrew/actions/setup-homebrew@master
 
-      - name: Install CMake
-        run: bash ./lambda/submodules/seqan3/.github/workflows/scripts/install_cmake.sh
-
       - name: Install ccache
-        run: bash ./lambda/submodules/seqan3/.github/workflows/scripts/install_via_brew.sh ccache
+        run: brew install ccache
 
       - name: Install compiler ${{ matrix.cxx }}
-        run: bash ./lambda/submodules/seqan3/.github/workflows/scripts/install_via_brew.sh gcc $(echo "${{ matrix.cxx }}" | sed "s/g++-//g")
+        run: brew install gcc@$(echo "${{ matrix.cxx }}" | sed "s/g++-//g")
 
       - name: Load ccache
         uses: actions/cache@v2

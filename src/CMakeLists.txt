@@ -20,7 +20,6 @@ set (SEQAN_APP_VERSION "${SEQAN_APP_VERSION_MAJOR}.${SEQAN_APP_VERSION_MINOR}.${
 
 # adapt when necessary
 set (MINIMUM_SEQAN_VERSION "2.3.1")
-set (MINIMUM_SEQAN3_VERSION "3.0.0")
 
 # ----------------------------------------------------------------------------
 # App-Level Configuration
@@ -68,14 +67,27 @@ find_package(OpenMP QUIET)
 find_package(ZLIB   QUIET)
 find_package(BZip2  QUIET)
 find_package(SeqAn  QUIET REQUIRED CONFIG)
-find_package(SeqAn3 QUIET REQUIRED CONFIG)
+
+# BIO
+find_package (biocpp COMPONENTS core io QUIET REQUIRED HINTS "${CMAKE_SOURCE_DIR}/submodules/biocpp-core/build_system")
+
+# SHARG
+find_package (sharg QUIET REQUIRED HINTS "${CMAKE_SOURCE_DIR}/submodules/sharg-parser/build_system")
+
+# CEREAL
+if (NOT EXISTS ${CMAKE_SOURCE_DIR}/submodules/cereal)
+    find_package(cereal QUIET REQUIRED)
+endif ()
 
 message(STATUS "These dependencies were found:")
-message(   "     OPENMP     ${OPENMP_FOUND}      ${OpenMP_CXX_FLAGS}")
-message(   "     ZLIB       ${ZLIB_FOUND}      ${ZLIB_VERSION_STRING}")
-message(   "     BZIP2      ${BZIP2_FOUND}      ${BZIP2_VERSION_STRING}")
-message(   "     SEQAN      ${SEQAN_FOUND}      ${SEQAN_VERSION_STRING}")
-message(   "     SEQAN3     ${SEQAN3_FOUND}      ${SEQAN3_VERSION}")
+message(   "     BIOCPP-CORE  ${BIOCPP_CORE_FOUND}      ${BIOCPP_CORE_VERSION}")
+message(   "     BIOCPP-IO    ${BIOCPP_IO_FOUND}      ${BIOCPP_IO_VERSION}")
+message(   "     BZIP2        ${BZIP2_FOUND}      ${BZIP2_VERSION_STRING}")
+message(   "     CEREAL       ${CEREAL_FOUND}      ${CEREAL_VERSION}")
+message(   "     OPENMP       ${OPENMP_FOUND}      ${OpenMP_CXX_FLAGS}")
+message(   "     SEQAN        ${SEQAN_FOUND}      ${SEQAN_VERSION_STRING}")
+message(   "     SHARG        ${SHARG_FOUND}      ${SHARG_VERSION}")
+message(   "     ZLIB         ${ZLIB_FOUND}      ${ZLIB_VERSION_STRING}")
 
 # Warn if Zlib was not found.
 if (NOT ZLIB_FOUND)
@@ -89,11 +101,6 @@ endif (NOT BZIP2_FOUND)
 
 if (SEQAN_VERSION_STRING VERSION_LESS "${MINIMUM_SEQAN_VERSION}")
     message (FATAL_ERROR "The minimum SeqAn version required is ${MINIMUM_SEQAN_VERSION}!")
-    return ()
-endif ()
-
-if (SEQAN3_VERSION VERSION_LESS "${MINIMUM_SEQAN3_VERSION}")
-    message (FATAL_ERROR "The minimum SeqAn3 version required is ${MINIMUM_SEQAN3_VERSION}!")
     return ()
 endif ()
 
@@ -119,9 +126,11 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
         include(ProcessorCount)
         ProcessorCount(LAMBDA_COMPILE_THREADS)
     endif ()
-    if (LAMBDA_COMPILE_THREADS GREATER 1)
-        set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -flto=${LAMBDA_COMPILE_THREADS}")
-    endif()
+
+    # This triggers an ICE for some reason
+    # if (LAMBDA_COMPILE_THREADS GREATER 1)
+    #     set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -flto=${LAMBDA_COMPILE_THREADS}")
+    # endif()
 
     # strip binaries to make them smaller
     set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -s")
@@ -156,7 +165,7 @@ set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SEQAN_CXX_FLAGS} -Wall -pedantic")
 set (LAMBDA_SOURCE_FILES lambda.cpp  search.cpp mkindex.cpp)
 
 add_executable (lambda3 ${LAMBDA_SOURCE_FILES})
-target_link_libraries (lambda3 ${SEQAN_LIBRARIES} seqan3::seqan3 fmindex-collection)
+target_link_libraries (lambda3 ${SEQAN_LIBRARIES} fmindex-collection sharg::sharg biocpp::core biocpp::io cereal::cereal)
 set_target_properties (lambda3 PROPERTIES COMPILE_FLAGS "-mmmx -msse -msse2 -msse3 -mssse3 -msse4 -mpopcnt")
 
 # ----------------------------------------------------------------------------

@@ -27,7 +27,7 @@
 #include <unistd.h>
 
 #include <filesystem>
-#include <seqan3/argument_parser/all.hpp>
+#include <sharg/all.hpp>
 
 #include "shared_definitions.hpp"
 
@@ -67,7 +67,7 @@ struct SharedOptions
     }
 };
 
-inline void sharedSetup(seqan3::argument_parser & parser)
+inline void sharedSetup(sharg::parser & parser)
 {
     // Set short description, version, and date
     parser.info.version  = SEQAN_APP_VERSION;

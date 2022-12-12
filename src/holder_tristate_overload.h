@@ -37,8 +37,10 @@
 #pragma once
 
 #include <seqan/basic.h>
+#include <bio/ranges/views/slice.hpp>
+#include <bio/ranges/views/translate_single.hpp>
 
-using overload_t = std::ranges::take_view<std::ranges::drop_view<seqan3::detail::view_translate_single<std::ranges::ref_view<std::vector<seqan3::dna5>>>>>;
+using overload_t = decltype(std::declval<std::vector<bio::alphabet::dna5> &>() | bio::views::translate_single | bio::views::slice(0,1));
 
 template <typename t>
 concept overload_c = std::same_as<std::remove_cvref_t<t>, overload_t>;

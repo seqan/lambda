@@ -31,7 +31,7 @@
 #include <seqan/index.h>
 #include <seqan/translation.h>
 
-#include <seqan3/argument_parser/all.hpp>
+#include <sharg/all.hpp>
 
 #include "search_output.hpp"
 
@@ -95,8 +95,8 @@ struct LambdaOptions : public SharedOptions
     int32_t  idCutOff    = 0;
     uint64_t maxMatches  = 25;
 
-    bool                 computeLCA = false;
-    seqan3::genetic_code geneticCodeQry;
+    bool                        computeLCA = false;
+    bio::alphabet::genetic_code geneticCodeQry;
 
     int32_t preScoring       = 2; // 0 = off, 1 = seed, 2 = region
     double  preScoringThresh = 2.0;
@@ -117,7 +117,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     // this is important for option handling:
     options.nucleotide_mode = (std::string(argv[0]) == "searchn");
 
-    seqan3::argument_parser parser(programName, argc, argv, seqan3::update_notifications::off);
+    sharg::parser parser(programName, argc, argv, sharg::update_notifications::off);
 
     // Set short description, version, and date.
     parser.info.short_description = "the Local Aligner for Massive Biological DatA";
@@ -130,24 +130,24 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     // TODO version check
     parser.add_option(options.verbosity,
-                      'v',
-                      "verbosity",
-                      "Display more/less diagnostic output during operation: "
-                      "0 [only errors]; 1 [default]; 2 [+run-time, options and statistics].",
-                      seqan3::option_spec::standard,
-                      seqan3::arithmetic_range_validator{0, 2});
+                      sharg::config{
+                        .short_id    = 'v',
+                        .long_id     = "verbosity",
+                        .description = "Display more/less diagnostic output during operation: "
+                                       "0 [only errors]; 1 [default]; 2 [+run-time, options and statistics].",
+
+                        .validator = sharg::arithmetic_range_validator{0, 2}
+    });
 
     parser.add_section("Input options");
 
     // TODO Better solution for file extensions
     parser.add_option(options.queryFile,
-                      'q',
-                      "query",
-                      "Query sequences.",
-                      seqan3::option_spec::required,
-                      seqan3::input_file_validator{
-                        {"fa", "fq", "fasta", "fastq", "gz"}
-    });
+                      sharg::config{.short_id    = 'q',
+                                    .long_id     = "query",
+                                    .description = "Query sequences.",
+                                    .required    = true,
+                                    .validator   = sharg::input_file_validator{{"fa", "fq", "fasta", "fastq", "gz"}}});
 
     std::string inputAlphabetTmp = "auto";
     int32_t     geneticCodeTmp   = 1;
@@ -158,84 +158,96 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     }
     else
     {
-        parser.add_option(
-          inputAlphabetTmp,
-          'a',
-          "input-alphabet",
-          "Alphabet of the query sequences (specify to override auto-detection). Dna sequences will be translated.",
-          seqan3::option_spec::advanced,
-          seqan3::value_list_validator{"auto", "dna5", "aminoacid"});
+        parser.add_option(inputAlphabetTmp,
+                          sharg::config{
+                            .short_id    = 'a',
+                            .long_id     = "input-alphabet",
+                            .description = "Alphabet of the query sequences (specify to override auto-detection). "
+                                           "Dna sequences will be translated.",
+                            .advanced    = true,
+                            .validator   = sharg::value_list_validator{"auto", "dna5", "aminoacid"}
+        });
     }
 
     parser.add_option(options.indexFilePath,
-                      'i',
-                      "index",
-                      std::string{
-                        "The database index (created by the 'lambda "
-    } +
-                        (options.nucleotide_mode ? "mkindexn" : "mkindexp") + "' command).",
-                      seqan3::option_spec::required,
-                      seqan3::input_file_validator{{"lba", "lta"}});
+                      sharg::config{.short_id    = 'i',
+                                    .long_id     = "index",
+                                    .description = std::string{"The database index (created by the 'lambda "} +
+                                                   (options.nucleotide_mode ? "mkindexn" : "mkindexp") + "' command).",
+                                    .required  = true,
+                                    .validator = sharg::input_file_validator{{"lba", "lta"}}});
 
     parser.add_section("Output options");
 
     // TODO Fix output file requirements
     parser.add_option(options.output,
-                      'o',
-                      "output",
-                      "File to hold reports on hits (.m* are blastall -m* formats; .m8 is tab-seperated "
-                      ".m9 is tab-seperated with with comments, .m0 is pairwise format).",
-                      seqan3::option_spec::standard,
-                      seqan3::output_file_validator{
-                        seqan3::output_file_open_options::create_new,
-                        {"m0", "m8", "m9", "bam", "sam", "gz", "bz2"}
+                      sharg::config{
+                        .short_id = 'o',
+                        .long_id  = "output",
+                        .description =
+                          "File to hold reports on hits (.m* are blastall -m* formats; .m8 is tab-seperated "
+                          ".m9 is tab-seperated with with comments, .m0 is pairwise format).",
+                        .validator = sharg::output_file_validator{sharg::output_file_open_options::create_new,
+                                                                  {"m0", "m8", "m9", "bam", "sam", "gz", "bz2"}}
     });
 
     std::string outputColumnsTmp = "std";
     parser.add_option(
       outputColumnsTmp,
-      '\0',
-      "output-columns",
-      "Print specified column combination and/or order (.m8 and .m9 outputs only); call -oc help for more details.",
-      seqan3::option_spec::advanced);
+      sharg::config{.short_id    = '\0',
+                    .long_id     = "output-columns",
+                    .description = "Print specified column combination and/or order (.m8 and .m9 outputs only); call "
+                                   "-oc help for more details.",
+                    .advanced    = true});
 
     parser.add_option(options.idCutOff,
-                      '\0',
-                      "percent-identity",
-                      "Output only matches above this threshold (checked before e-value check).",
-                      seqan3::option_spec::standard,
-                      seqan3::arithmetic_range_validator{0, 100});
+                      sharg::config{
+                        .short_id    = '\0',
+                        .long_id     = "percent-identity",
+                        .description = "Output only matches above this threshold (checked before e-value check).",
+
+                        .validator = sharg::arithmetic_range_validator{0, 100}
+    });
 
     parser.add_option(options.minBitScore,
-                      '\0',
-                      "bit-score",
-                      "Output only matches that score >= this threshold (-1 means no check).",
-                      seqan3::option_spec::standard,
-                      seqan3::arithmetic_range_validator{-1, 1000});
+                      sharg::config{
+                        .short_id    = '\0',
+                        .long_id     = "bit-score",
+                        .description = "Output only matches that score >= this threshold (-1 means no check).",
+
+                        .validator = sharg::arithmetic_range_validator{-1, 1000}
+    });
 
     parser.add_option(options.maxEValue,
-                      'e',
-                      "e-value",
-                      "Output only matches that score below this threshold (-1 means no check).",
-                      seqan3::option_spec::standard,
-                      seqan3::arithmetic_range_validator{-1, 100});
+                      sharg::config{
+                        .short_id    = 'e',
+                        .long_id     = "e-value",
+                        .description = "Output only matches that score below this threshold (-1 means no check).",
+
+                        .validator = sharg::arithmetic_range_validator{-1, 100}
+    });
 
     int32_t numMatchesTmp = 25;
     parser.add_option(numMatchesTmp,
-                      'n',
-                      "num-matches",
-                      "Print at most this number of matches per query.",
-                      seqan3::option_spec::standard,
-                      seqan3::arithmetic_range_validator{0, 10000});
+                      sharg::config{
+                        .short_id    = 'n',
+                        .long_id     = "num-matches",
+                        .description = "Print at most this number of matches per query.",
+
+                        .validator = sharg::arithmetic_range_validator{0, 10000}
+    });
 
     parser.add_option(
       options.samWithRefHeader,
-      '\0',
-      "sam-with-refheader",
-      "BAM files require all subject names to be written to the header. For SAM this is not required, so Lambda does "
-      "not automatically do it to save space (especially for protein database this is a lot!). If you still want "
-      "them with SAM, e.g. for better BAM compatibility, use this option.",
-      seqan3::option_spec::advanced);
+      sharg::config{.short_id    = '\0',
+                    .long_id     = "sam-with-refheader",
+                    .description = "BAM files require all subject names to be written to the header. For SAM this is "
+                                   "not required, so Lambda "
+                                   "does "
+                                   "not automatically do it to save space (especially for protein database this is a "
+                                   "lot!). If you still want "
+                                   "them with SAM, e.g. for better BAM compatibility, use this option.",
+                    .advanced    = true});
 
     std::string samBamSeqDescr;
     if (options.nucleotide_mode)
@@ -256,8 +268,10 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     {
         samBamSeqDescr =
           "For BLASTX and TBLASTX the matching protein "
-          "sequence is \"untranslated\" and positions retransformed to the original sequence. For BLASTP and TBLASTN "
-          "there is no DNA sequence so a \"*\" is written to the SEQ column. The matching protein sequence can be "
+          "sequence is \"untranslated\" and positions retransformed to the original sequence. For BLASTP and "
+          "TBLASTN "
+          "there is no DNA sequence so a \"*\" is written to the SEQ column. The matching protein sequence "
+          "can be "
           "written as an optional tag, see --sam-bam-tags.";
 
         options.searchOpts0.seedLength  = 10;
@@ -273,187 +287,224 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     std::string samBamSeqDescrTmp = "uniq";
     parser.add_option(samBamSeqDescrTmp,
-                      '\0',
-                      "sam-bam-seq",
-                      samBamSeqDescr +
-                        " If set to uniq than the sequence is "
-                        "omitted iff it is identical to the previous match's subsequence.",
-                      seqan3::option_spec::advanced,
-                      seqan3::value_list_validator{"always", "uniq", "never"});
+                      sharg::config{
+                        .short_id    = '\0',
+                        .long_id     = "sam-bam-seq",
+                        .description = samBamSeqDescr +
+                                       " If set to uniq than the sequence is "
+                                       "omitted iff it is identical to the previous match's subsequence.",
+                        .advanced  = true,
+                        .validator = sharg::value_list_validator{"always", "uniq", "never"}
+    });
 
     std::string samBamTagsTmp = "AS NM ae ai qf";
     parser.add_option(
       samBamTagsTmp,
-      '\0',
-      "sam-bam-tags",
-      "Write the specified optional columns to the SAM/BAM file. Call --sam-bam-tags help for more details.",
-      seqan3::option_spec::advanced);
+      sharg::config{.short_id    = '\0',
+                    .long_id     = "sam-bam-tags",
+                    .description = "Write the specified optional columns to the SAM/BAM file. Call --sam-bam-tags help "
+                                   "for more details.",
+                    .advanced    = true});
 
     std::string samBamClip = "hard";
-    parser.add_option(
-      samBamClip,
-      '\0',
-      "sam-bam-clip",
-      "Whether to hard-clip or soft-clip the regions beyond the local match. Soft-clipping retains the full sequence "
-      "in the output file, but obviously uses more space.",
-      seqan3::option_spec::advanced,
-      seqan3::value_list_validator{"hard", "soft"});
+    parser.add_option(samBamClip,
+                      sharg::config{
+                        .short_id    = '\0',
+                        .long_id     = "sam-bam-clip",
+                        .description = "Whether to hard-clip or soft-clip the regions beyond the local match. "
+                                       "Soft-clipping retains the full sequence "
+                                       "in the output file, but obviously uses more space.",
+                        .advanced    = true,
+                        .validator   = sharg::value_list_validator{"hard", "soft"}
+    });
 
-    parser.add_option(options.versionInformationToOutputFile,
-                      '\0',
-                      "version-to-outputfile",
-                      "Write the Lambda program tag and version number to the output file.",
-                      seqan3::option_spec::hidden);
+    parser.add_option(
+      options.versionInformationToOutputFile,
+      sharg::config{.short_id    = '\0',
+                    .long_id     = "version-to-outputfile",
+                    .description = "Write the Lambda program tag and version number to the output file.",
+                    .hidden      = true});
 
     parser.add_section("General Options");
-
 #ifdef _OPENMP
     parser.add_option(options.threads,
-                      't',
-                      "threads",
-                      "Number of threads to run concurrently.",
-                      seqan3::option_spec::advanced,
-                      seqan3::arithmetic_range_validator{2, 1000});
+                      sharg::config{
+                        .short_id    = 't',
+                        .long_id     = "threads",
+                        .description = "Number of threads to run concurrently.",
+                        .advanced    = true,
+                        .validator   = sharg::arithmetic_range_validator{2, 1000}
+    });
 #else
     parser.add_option(options.threads,
-                      't',
-                      "threads",
-                      "LAMBDA BUILT WITHOUT OPENMP; setting this option has no effect.",
-                      seqan3::option_spec::advanced,
-                      seqan3::arithmetic_range_validator{2, 2});
+                      sharg::config{
+                        .short_id    = 't',
+                        .long_id     = "threads",
+                        .description = "LAMBDA BUILT WITHOUT OPENMP; setting this option has no effect.",
+                        .advanced    = true,
+                        .validator   = sharg::arithmetic_range_validator{2, 2}
+    });
 #endif
 
     parser.add_option(options.profile,
-                      'p',
-                      "profile",
-                      "Profiles are presets of a group of parameters. See below.",
-                      seqan3::option_spec::standard,
-                      seqan3::value_list_validator{"none", "fast", "sensitive"});
+                      sharg::config{
+                        .short_id    = 'p',
+                        .long_id     = "profile",
+                        .description = "Profiles are presets of a group of parameters. See below.",
+
+                        .validator = sharg::value_list_validator{"none", "fast", "sensitive"}
+    });
 
     parser.add_section("Seeding / Filtration");
 
     parser.add_option(options.adaptiveSeeding,
-                      '\0',
-                      "adaptive-seeding",
-                      "Grow the seed if it has too many hits (low complexity filter).",
-                      seqan3::option_spec::advanced);
+                      sharg::config{.short_id    = '\0',
+                                    .long_id     = "adaptive-seeding",
+                                    .description = "Grow the seed if it has too many hits (low complexity filter).",
+                                    .advanced    = true});
 
     parser.add_option(options.seedHalfExact,
-                      '\0',
-                      "seed-half-exact",
-                      "Allow errors only in second half of seed.",
-                      seqan3::option_spec::advanced);
+                      sharg::config{.short_id    = '\0',
+                                    .long_id     = "seed-half-exact",
+                                    .description = "Allow errors only in second half of seed.",
+                                    .advanced    = true});
 
     parser.add_option(options.searchOpts.seedLength,
-                      '\0',
-                      "seed-length",
-                      "Length of the seeds.",
-                      seqan3::option_spec::advanced,
-                      seqan3::arithmetic_range_validator{3, 50});
+                      sharg::config{
+                        .short_id    = '\0',
+                        .long_id     = "seed-length",
+                        .description = "Length of the seeds.",
+                        .advanced    = true,
+                        .validator   = sharg::arithmetic_range_validator{3, 50}
+    });
 
     parser.add_option(options.searchOpts.seedOffset,
-                      '\0',
-                      "seed-offset",
-                      "Offset for seeding. "
-                      "Distance between seed begin positions.",
-                      seqan3::option_spec::standard,
-                      seqan3::arithmetic_range_validator{1, 50});
+                      sharg::config{
+                        .short_id    = '\0',
+                        .long_id     = "seed-offset",
+                        .description = "Offset for seeding. "
+                                       "Distance between seed begin positions.",
+
+                        .validator = sharg::arithmetic_range_validator{1, 50}
+    });
 
     parser.add_option(options.searchOpts.maxSeedDist,
-                      '\0',
-                      "seed-delta",
-                      "Maximum seed distance.",
-                      seqan3::option_spec::advanced,
-                      seqan3::arithmetic_range_validator{0, 3});
+                      sharg::config{
+                        .short_id    = '\0',
+                        .long_id     = "seed-delta",
+                        .description = "Maximum seed distance.",
+                        .advanced    = true,
+                        .validator   = sharg::arithmetic_range_validator{0, 3}
+    });
 
     /* iterative search parameters */
     parser.add_option(options.iterativeSearch,
-                      '\0',
-                      "search0",
-                      "If (cheaper) pre-search yield results, skip regular search.",
-                      seqan3::option_spec::advanced);
+                      sharg::config{.short_id    = '\0',
+                                    .long_id     = "search0",
+                                    .description = "If (cheaper) pre-search yield results, skip regular search.",
+                                    .advanced    = true});
 
     parser.add_option(options.searchOpts0.seedLength,
-                      '\0',
-                      "seed-length0",
-                      "Length of the seeds.",
-                      seqan3::option_spec::advanced,
-                      seqan3::arithmetic_range_validator{3, 50});
+                      sharg::config{
+                        .short_id    = '\0',
+                        .long_id     = "seed-length0",
+                        .description = "Length of the seeds.",
+                        .advanced    = true,
+                        .validator   = sharg::arithmetic_range_validator{3, 50}
+    });
 
     parser.add_option(options.searchOpts0.seedOffset,
-                      '\0',
-                      "seed-offset0",
-                      "Offset for seeding. "
-                      "Distance between seed begin positions.",
-                      seqan3::option_spec::standard,
-                      seqan3::arithmetic_range_validator{1, 50});
+                      sharg::config{
+                        .short_id    = '\0',
+                        .long_id     = "seed-offset0",
+                        .description = "Offset for seeding. "
+                                       "Distance between seed begin positions.",
+
+                        .validator = sharg::arithmetic_range_validator{1, 50}
+    });
 
     parser.add_option(options.searchOpts0.maxSeedDist,
-                      '\0',
-                      "seed-delta0",
-                      "Maximum seed distance.",
-                      seqan3::option_spec::advanced,
-                      seqan3::arithmetic_range_validator{0, 5});
+                      sharg::config{
+                        .short_id    = '\0',
+                        .long_id     = "seed-delta0",
+                        .description = "Maximum seed distance.",
+                        .advanced    = true,
+                        .validator   = sharg::arithmetic_range_validator{0, 5}
+    });
 
     parser.add_section("Miscellaneous Heuristics");
 
     parser.add_option(options.preScoring,
-                      '\0',
-                      "pre-scoring",
-                      "Evaluate score of a region NUM times the size of the seed "
-                      "before extension (0 -> no pre-scoring, 1 -> evaluate seed, n-> area "
-                      "around seed, as well; default = 1 if no reduction is used).",
-                      seqan3::option_spec::advanced,
-                      seqan3::arithmetic_range_validator{1, 10});
+                      sharg::config{
+                        .short_id    = '\0',
+                        .long_id     = "pre-scoring",
+                        .description = "Evaluate score of a region NUM times the size of the seed "
+                                       "before extension (0 -> no pre-scoring, 1 -> evaluate seed, n-> area "
+                                       "around seed, as well; default = 1 if no reduction is used).",
+                        .advanced    = true,
+                        .validator   = sharg::arithmetic_range_validator{1, 10}
+    });
 
     parser.add_option(options.preScoringThresh,
-                      '\0',
-                      "pre-scoring-threshold",
-                      "Minimum average score per position in pre-scoring region.",
-                      seqan3::option_spec::advanced,
-                      seqan3::arithmetic_range_validator{0, 20});
+                      sharg::config{
+                        .short_id    = '\0',
+                        .long_id     = "pre-scoring-threshold",
+                        .description = "Minimum average score per position in pre-scoring region.",
+                        .advanced    = true,
+                        .validator   = sharg::arithmetic_range_validator{0, 20}
+    });
 
     parser.add_section("Scoring");
 
     if (options.nucleotide_mode)
     {
         parser.add_option(options.match,
-                          '\0',
-                          "score-match",
-                          "Match score",
-                          seqan3::option_spec::advanced,
-                          seqan3::arithmetic_range_validator{-1000, 1000});
+                          sharg::config{
+                            .short_id    = '\0',
+                            .long_id     = "score-match",
+                            .description = "Match score",
+                            .advanced    = true,
+                            .validator   = sharg::arithmetic_range_validator{-1000, 1000}
+        });
 
         parser.add_option(options.misMatch,
-                          '\0',
-                          "score-mismatch",
-                          "Mismatch score",
-                          seqan3::option_spec::advanced,
-                          seqan3::arithmetic_range_validator{-1000, 1000});
+                          sharg::config{
+                            .short_id    = '\0',
+                            .long_id     = "score-mismatch",
+                            .description = "Mismatch score",
+                            .advanced    = true,
+                            .validator   = sharg::arithmetic_range_validator{-1000, 1000}
+        });
     }
     else
     {
         parser.add_option(options.scoringMethod,
-                          's',
-                          "scoring-scheme",
-                          "Use '45' for Blosum45; '62' for Blosum62 (default); '80' for Blosum80.",
-                          seqan3::option_spec::advanced,
-                          seqan3::value_list_validator{45, 62, 80});
+                          sharg::config{
+                            .short_id    = 's',
+                            .long_id     = "scoring-scheme",
+                            .description = "Use '45' for Blosum45; '62' for Blosum62 (default); '80' for Blosum80.",
+                            .advanced    = true,
+                            .validator   = sharg::value_list_validator{45, 62, 80}
+        });
     }
 
     parser.add_option(options.gapExtend,
-                      '\0',
-                      "score-gap",
-                      "Score per gap character.",
-                      seqan3::option_spec::advanced,
-                      seqan3::arithmetic_range_validator{-1000, 1000});
+                      sharg::config{
+                        .short_id    = '\0',
+                        .long_id     = "score-gap",
+                        .description = "Score per gap character.",
+                        .advanced    = true,
+                        .validator   = sharg::arithmetic_range_validator{-1000, 1000}
+    });
 
     parser.add_option(options.gapOpen,
-                      '\0',
-                      "score-gap-open",
-                      "Additional cost for opening gap.",
-                      seqan3::option_spec::advanced,
-                      seqan3::arithmetic_range_validator{-1000, 1000});
+                      sharg::config{
+                        .short_id    = '\0',
+                        .long_id     = "score-gap-open",
+                        .description = "Additional cost for opening gap.",
+                        .advanced    = true,
+                        .validator   = sharg::arithmetic_range_validator{-1000, 1000}
+    });
 
     parser.add_section("Profiles");
     parser.add_line(
@@ -493,9 +544,9 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         else if (inputAlphabetTmp == "aminoacid")
             options.qryOrigAlphabet = AlphabetEnum::AMINO_ACID;
         else
-            throw seqan3::argument_parser_error("ERROR: Invalid argument to --input-alphabet\n");
+            throw sharg::parser_error("ERROR: Invalid argument to --input-alphabet\n");
 
-        options.geneticCodeQry = static_cast<seqan3::genetic_code>(geneticCodeTmp);
+        options.geneticCodeQry = static_cast<bio::alphabet::genetic_code>(geneticCodeTmp);
     }
 
     if (options.profile == "fast")
@@ -565,7 +616,9 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     // help page for output columns
     if (outputColumnsTmp == "help")
     {
-        std::cout << "Please specify the columns in this format -oc 'column1 column2', i.e. space-separated and "
+        std::cout << "Please specify the columns in this format -oc 'column1 column2', i.e. "
+                     "space-separated "
+                     "and "
                   << "enclosed in single quotes.\nThe specifiers are the same as in NCBI Blast, currently "
                   << "the following are supported:\n";
         for (unsigned i = 0; i < seqan::length(seqan::BlastMatchField<>::implemented); ++i)
@@ -604,8 +657,8 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
             }
             if (!resolved)
             {
-                throw seqan3::argument_parser_error(std::string("Unknown column specifier \"") + toCString(str) +
-                                                    std::string("\". Please see -oc help for valid options.\n"));
+                throw sharg::parser_error(std::string("Unknown column specifier \"") + toCString(str) +
+                                          std::string("\". Please see -oc help for valid options.\n"));
             }
         }
     }
@@ -625,7 +678,8 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     if (samBamTagsTmp == "help")
     {
         std::cout << "Please specify the tags in this format -oc 'tag1 tag2', i.e. space-separated and "
-                  << "enclosed in quotes. The order of tags is not preserved.\nThe following specifiers are "
+                  << "enclosed in quotes. The order of tags is not preserved.\nThe following specifiers "
+                     "are "
                   << "supported:\n";
 
         for (auto const & c : SamBamExtraTags<>::keyDescPairs)
@@ -653,9 +707,8 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
             {
                 std::cerr << "Unknown column specifier \"" << str
                           << "\". Please see \"--sam-bam-tags help\" for valid options.\n";
-                throw seqan3::argument_parser_error(
-                  std::string("Unknown column specifier \"") + seqan::toCString(str) +
-                  std::string("\". Please see \"--sam-bam-tags help\" for valid options.\n"));
+                throw sharg::parser_error(std::string("Unknown column specifier \"") + seqan::toCString(str) +
+                                          std::string("\". Please see \"--sam-bam-tags help\" for valid options.\n"));
             }
         }
     }

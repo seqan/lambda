@@ -21,10 +21,15 @@
 
 #pragma once
 
-#include <seqan3/core/range/detail/misc.hpp> // seqan3::detail::consume
-#include <seqan3/utility/char_operations/predicate.hpp>
+#include <charconv>
+#include <filesystem>
+#include <string>
+#include <string_view>
+#include <unordered_map>
+#include <vector>
 
-inline constexpr auto not_eol = !(seqan3::is_char<'\r'> || seqan3::is_char<'\n'>);
+#include <bio/io/txt/reader.hpp>
+#include <bio/ranges/to.hpp>
 
 bool setEnv(std::string const & key, std::string const & value)
 {
@@ -36,104 +41,106 @@ bool setEnv(std::string const & key, std::string const & value)
 }
 
 // ----------------------------------------------------------------------------
+// hashmap type
+// ----------------------------------------------------------------------------
+
+struct hash_string
+{
+    using is_transparent = void;
+
+    std::size_t operator()(std::string const & v) const { return std::hash<std::string>{}(v); }
+    std::size_t operator()(char const * v) const { return std::hash<std::string_view>{}(v); }
+
+    std::size_t operator()(std::string_view const & v) const { return std::hash<std::string_view>{}(v); }
+};
+
+using TaccToIdRank = std::unordered_map<std::string, uint64_t, hash_string, std::equal_to<void>>;
+
+// ----------------------------------------------------------------------------
 // function _readMappingFileNCBI
 // ----------------------------------------------------------------------------
 
-template <typename TInputView, typename TStaxIDs>
-void _readMappingFileUniProt(TInputView &                                      fiv,
-                             TStaxIDs &                                        sTaxIds,
-                             std::vector<bool> &                               taxIdIsPresent,
-                             std::unordered_map<std::string, uint64_t> const & accToIdRank)
+#if defined(__GNUC__) && __GNUC__ < 11
+#    define LAMBDA_TO_STR(x) static_cast<std::string>(x)
+#else
+#    define LAMBDA_TO_STR(x) x
+#endif
+
+inline void _readMappingFileUniProt(std::filesystem::path const &        fileName,
+                                    TaccToIdRank const &                 accToIdRank,
+                                    std::vector<std::vector<uint32_t>> & sTaxIds,
+                                    std::vector<bool> &                  taxIdIsPresent)
 {
-    // skip line with headers
-    seqan3::detail::consume(fiv | std::views::take_while(not_eol));
+    bio::io::txt::reader reader{fileName, '\t'};
 
-    //TODO this is too slow, investigate whether its the lookup or the allocs
-    std::string acc;
-    std::string nextColumn;
-
-    while (std::ranges::begin(fiv) != std::ranges::end(fiv))
+    for (auto & r : reader)
     {
-        // read accession number
-        acc = fiv | std::views::take_while(!seqan3::is_blank) | seqan3::ranges::to<std::string>(); //TODO and_consume
-        // skip whitespace
-        seqan3::detail::consume(fiv | std::views::take_while(!seqan3::is_alnum));
-        // read accession number
-        nextColumn =
-          fiv | std::views::take_while(!seqan3::is_blank) | seqan3::ranges::to<std::string>(); //TODO and_consume
+        assert(r.fields.size() == 3);
 
-        if ((nextColumn == "NCBI_TaxID") && (accToIdRank.count(acc) == 1))
+        std::string_view acc      = r.fields[0];
+        std::string_view category = r.fields[1];
+        std::string_view tId      = r.fields[2];
+
+        if (category == "NCBI_TaxID")
         {
-            auto & sTaxIdV = sTaxIds[accToIdRank.at(acc)];
-            // skip whitespace
-            seqan3::detail::consume(fiv | std::views::take_while(!seqan3::is_alnum));
-            // read tax id
-            nextColumn =
-              fiv | std::views::take_while(!seqan3::is_space) | seqan3::ranges::to<std::string>(); //TODO and_consume
-
-            uint32_t idNum = 0;
-            auto [p, ec]   = std::from_chars(nextColumn.data(), nextColumn.data() + nextColumn.size(), idNum);
-            (void)p;
-            if (ec != std::errc{})
+            if (auto it = accToIdRank.find(LAMBDA_TO_STR(acc)); it != accToIdRank.end())
             {
-                throw std::runtime_error(
-                  std::string("Error: Expected taxonomical ID, but got something I couldn't read: ") + nextColumn +
-                  "\n");
+                std::vector<uint32_t> & sTaxIdV = sTaxIds[it->second];
+
+                uint32_t idNum = 0;
+                auto [p, ec]   = std::from_chars(tId.data(), tId.data() + tId.size(), idNum);
+                if (ec != std::errc{})
+                {
+                    std::string msg = "Error: Expected taxonomical ID, but got something I couldn't read: ";
+                    msg += tId;
+                    msg += '\n';
+                    throw std::runtime_error(msg);
+                }
+                sTaxIdV.push_back(idNum);
+                if (taxIdIsPresent.size() < idNum + 1)
+                    taxIdIsPresent.resize(idNum + 1);
+                taxIdIsPresent[idNum] = true;
             }
-
-            sTaxIdV.push_back(idNum);
-            if (taxIdIsPresent.size() < idNum + 1)
-                taxIdIsPresent.resize(idNum + 1);
-            taxIdIsPresent[idNum] = true;
         }
-
-        seqan3::detail::consume(fiv | std::views::take_while(not_eol));
     }
 }
 
-template <typename TInputView, typename TStaxIDs>
-void _readMappingFileNCBI(TInputView &                                      fiv,
-                          TStaxIDs &                                        sTaxIds,
-                          std::vector<bool> &                               taxIdIsPresent,
-                          std::unordered_map<std::string, uint64_t> const & accToIdRank)
+inline void _readMappingFileNCBI(std::filesystem::path const &        fileName,
+                                 TaccToIdRank const &                 accToIdRank,
+                                 std::vector<std::vector<uint32_t>> & sTaxIds,
+                                 std::vector<bool> &                  taxIdIsPresent)
 {
-    // skip line with headers
-    seqan3::detail::consume(fiv | std::views::take_while(not_eol));
+    bio::io::txt::reader reader{fileName, '\t', bio::io::txt::header_kind::first_line};
 
-    //TODO this is too slow, investigate whether its the lookup or the allocs
-    std::string buf;
-    while (std::ranges::begin(fiv) != std::ranges::end(fiv))
+    if (reader.header() != "accession\taccession.version\ttaxid\tgi")
+        throw std::runtime_error{"Unexpected first line in NCBI taxid file."};
+
+    for (auto & r : reader)
     {
-        // read accession number
-        buf = fiv | std::views::take_while(!seqan3::is_blank) | seqan3::ranges::to<std::string>(); //TODO and_consume
-        // we have a sequence with this ID in our database
-        if (accToIdRank.count(buf) == 1)
+        assert(r.fields.size() == 4);
+
+        std::string_view acc = r.fields[0];
+        std::string_view tId = r.fields[2];
+
+        if (auto it = accToIdRank.find(LAMBDA_TO_STR(acc)); it != accToIdRank.end())
         {
-            auto & sTaxIdV = sTaxIds[accToIdRank.at(buf)];
-            // skip whitespace
-            seqan3::detail::consume(fiv | std::views::take_while(!seqan3::is_alnum));
-            // skip versioned acc
-            seqan3::detail::consume(fiv | std::views::take_while(!seqan3::is_blank));
-            // skip whitespace
-            seqan3::detail::consume(fiv | std::views::take_while(!seqan3::is_alnum));
-            // read tax id
-            buf =
-              fiv | std::views::take_while(!seqan3::is_blank) | seqan3::ranges::to<std::string>(); //TODO and_consume
+            std::vector<uint32_t> & sTaxIdV = sTaxIds[it->second];
 
             uint32_t idNum = 0;
-            auto [p, ec]   = std::from_chars(buf.data(), buf.data() + buf.size(), idNum);
-            (void)p;
+            auto [p, ec]   = std::from_chars(tId.data(), tId.data() + tId.size(), idNum);
             if (ec != std::errc{})
             {
-                throw std::runtime_error(
-                  std::string("Error: Expected taxonomical ID, but got something I couldn't read: ") + buf + "\n");
+                std::string msg = "Error: Expected taxonomical ID, but got something I couldn't read: ";
+                msg += tId;
+                msg += '\n';
+                throw std::runtime_error(msg);
             }
             sTaxIdV.push_back(idNum);
             if (taxIdIsPresent.size() < idNum + 1)
                 taxIdIsPresent.resize(idNum + 1);
             taxIdIsPresent[idNum] = true;
         }
-
-        seqan3::detail::consume(fiv | std::views::take_while(not_eol));
     }
 }
+
+#undef LAMBDA_TO_STR

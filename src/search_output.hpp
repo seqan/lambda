@@ -21,6 +21,7 @@
 
 #pragma once
 
+#include <bio/ranges/to.hpp>
 #include <seqan/bam_io.h>
 #include <seqan/blast.h>
 #include <seqan/modifier.h>
@@ -91,16 +92,16 @@ inline void _untranslateSequence(TSequence1 &       target,
     if (qFrameShift >= 0)
     {
         seqan::copy_range(
-          source | seqan3::views::slice(3 * qStart + std::abs(qFrameShift) - 1, 3 * qEnd + std::abs(qFrameShift) - 1) |
-            seqan3::views::to_char,
+          source | bio::views::slice(3 * qStart + std::abs(qFrameShift) - 1, 3 * qEnd + std::abs(qFrameShift) - 1) |
+            bio::views::to_char,
           target);
     }
     else
     {
         seqan::copy_range(source |
-                            seqan3::views::slice(seqan::length(source) - (3 * qEnd + std::abs(qFrameShift) - 1),
-                                                 seqan::length(source) - (3 * qStart + std::abs(qFrameShift) - 1)) |
-                            seqan3::views::to_char,
+                            bio::views::slice(seqan::length(source) - (3 * qEnd + std::abs(qFrameShift) - 1),
+                                              seqan::length(source) - (3 * qStart + std::abs(qFrameShift) - 1)) |
+                            bio::views::to_char,
                           target);
 
         reverseComplement(target);
@@ -361,8 +362,8 @@ inline void myWriteHeader(TGH & globalHolder, TLambdaOptions const & options)
         for (unsigned i = 0; i < globalHolder.indexFile.ids.size(); ++i)
         {
             //TODO replace with assign algo
-            subjIds[i] = globalHolder.indexFile.ids[i] | seqan3::detail::take_until(seqan3::is_space) |
-                         seqan3::ranges::to<std::string>();
+            subjIds[i] = globalHolder.indexFile.ids[i] | std::views::take_while(!bio::io::is_space) |
+                         bio::ranges::to<std::string>();
         }
 
         typedef seqan::BamHeaderRecord::TTag TTag;
@@ -499,7 +500,7 @@ inline void myWriteRecord(TLH & lH, TRecord const & record)
             if (mIt->qFrameShift < 0)
                 bamR.flag |= seqan::BAM_FLAG_RC;
             // truncated query name+
-            for (char c : record.qId | seqan3::detail::take_until(seqan3::is_space))
+            for (char c : record.qId | std::views::take_while(!bio::io::is_space))
                 seqan::appendValue(bamR.qName, c);
             // reference ID
             bamR.rID = mIt->_n_sId;
@@ -550,22 +551,22 @@ inline void myWriteRecord(TLH & lH, TRecord const & record)
                 {
                     if (writeSeq)
                     {
-                        seqan::copy_range(
-                          seqan::source(mIt->alignRow0) |
-                            seqan3::views::slice(seqan::beginPosition(mIt->alignRow0),
-                                                 seqan::endPosition(mIt->alignRow0)) |
-                            std::views::transform([](seqan3::dna5 a) { return seqan::Iupac{seqan3::to_char(a)}; }),
-                          bamR.seq);
+                        seqan::copy_range(seqan::source(mIt->alignRow0) |
+                                            bio::views::slice(seqan::beginPosition(mIt->alignRow0),
+                                                              seqan::endPosition(mIt->alignRow0)) |
+                                            std::views::transform([](bio::alphabet::dna5 a)
+                                                                  { return seqan::Iupac{bio::alphabet::to_char(a)}; }),
+                                          bamR.seq);
                     }
                 }
                 else
                 {
                     if (writeSeq)
                     {
-                        seqan::copy_range(
-                          seqan::source(mIt->alignRow0) |
-                            std::views::transform([](seqan3::dna5 a) { return seqan::Iupac{seqan3::to_char(a)}; }),
-                          bamR.seq);
+                        seqan::copy_range(seqan::source(mIt->alignRow0) |
+                                            std::views::transform([](bio::alphabet::dna5 a)
+                                                                  { return seqan::Iupac{bio::alphabet::to_char(a)}; }),
+                                          bamR.seq);
                     }
                 }
             }
@@ -678,13 +679,13 @@ inline void myWriteRecord(TLH & lH, TRecord const & record)
                       bamR.tags,
                       std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::Q_AA_SEQ]),
                       seqan::source(mIt->alignRow0) |
-                        seqan3::views::slice(seqan::beginPosition(mIt->alignRow0), seqan::endPosition(mIt->alignRow0)) |
-                        seqan3::views::to_char,
+                        bio::views::slice(seqan::beginPosition(mIt->alignRow0), seqan::endPosition(mIt->alignRow0)) |
+                        bio::views::to_char,
                       'Z');
                 else // full prot sequence
                     seqan::appendTagValue(bamR.tags,
                                           std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::Q_AA_SEQ]),
-                                          seqan::source(mIt->alignRow0) | seqan3::views::to_char,
+                                          seqan::source(mIt->alignRow0) | bio::views::to_char,
                                           'Z');
             }
             if (lH.options.samBamTags[SamBamExtraTags<>::Q_AA_CIGAR])

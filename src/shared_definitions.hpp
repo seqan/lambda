@@ -27,26 +27,26 @@
 #include <cereal/archives/json.hpp>
 #include <cereal/details/traits.hpp>
 #include <cereal/types/array.hpp>
+#include <cereal/types/string.hpp>
 #include <cereal/types/vector.hpp>
 
 #include <fmindex-collection/DenseCSA.h>
 #include <fmindex-collection/fmindex-collection.h>
 #include <fmindex-collection/occtable/all.h>
 
-#include <seqan3/alphabet/aminoacid/aa10li.hpp>
-#include <seqan3/alphabet/aminoacid/aa10murphy.hpp>
-#include <seqan3/alphabet/aminoacid/aa27.hpp>
-#include <seqan3/alphabet/aminoacid/translation_genetic_code.hpp>
-#include <seqan3/alphabet/container/concatenated_sequences.hpp>
-#include <seqan3/alphabet/nucleotide/dna3bs.hpp>
-#include <seqan3/alphabet/nucleotide/dna4.hpp>
-#include <seqan3/alphabet/nucleotide/dna5.hpp>
-#include <seqan3/alphabet/views/translate_join.hpp>
-#include <seqan3/utility/views/convert.hpp>
-#include <seqan3/utility/views/deep.hpp>
-#include <seqan3/utility/views/type_reduce.hpp>
+#include <bio/alphabet/aminoacid/aa10li.hpp>
+#include <bio/alphabet/aminoacid/aa10murphy.hpp>
+#include <bio/alphabet/aminoacid/aa27.hpp>
+#include <bio/alphabet/aminoacid/translation_genetic_code.hpp>
+#include <bio/alphabet/nucleotide/dna4.hpp>
+#include <bio/alphabet/nucleotide/dna5.hpp>
+#include <bio/ranges/container/concatenated_sequences.hpp>
+#include <bio/ranges/views/convert.hpp>
+#include <bio/ranges/views/deep.hpp>
+#include <bio/ranges/views/translate_join.hpp>
+#include <bio/ranges/views/type_reduce.hpp>
 
-#include "view_add_reverse_complement.hpp"
+#include <bio/ranges/views/add_reverse_complement.hpp>
 #include "view_dna_n_to_random.hpp"
 #include "view_duplicate.hpp"
 #include "view_reduce_to_bisulfite.hpp"
@@ -90,32 +90,32 @@ inline DbIndexType _indexNameToEnum(std::string const t)
 //  Alphabet stuff
 // ==========================================================================
 
-constexpr char const * _alphTypeToName(seqan3::semialphabet_any<6> const & /**/)
+constexpr char const * _alphTypeToName(bio::alphabet::semialphabet_any<6> const & /**/)
 {
     return "dna3bs";
 }
 
-constexpr char const * _alphTypeToName(seqan3::dna4 const & /**/)
+constexpr char const * _alphTypeToName(bio::alphabet::dna4 const & /**/)
 {
     return "dna4";
 }
 
-constexpr char const * _alphTypeToName(seqan3::dna5 const & /**/)
+constexpr char const * _alphTypeToName(bio::alphabet::dna5 const & /**/)
 {
     return "dna5";
 }
 
-constexpr char const * _alphTypeToName(seqan3::aa27 const & /**/)
+constexpr char const * _alphTypeToName(bio::alphabet::aa27 const & /**/)
 {
     return "aminoacid";
 }
 
-constexpr char const * _alphTypeToName(seqan3::aa10murphy const & /**/)
+constexpr char const * _alphTypeToName(bio::alphabet::aa10murphy const & /**/)
 {
     return "murphy10";
 }
 
-constexpr char const * _alphTypeToName(seqan3::aa10li const & /**/)
+constexpr char const * _alphTypeToName(bio::alphabet::aa10li const & /**/)
 {
     return "li10";
 }
@@ -138,17 +138,17 @@ inline std::string _alphabetEnumToName(AlphabetEnum const t)
         case AlphabetEnum::UNDEFINED:
             return "UNDEFINED";
         case AlphabetEnum::DNA3BS:
-            return _alphTypeToName(seqan3::semialphabet_any<6>{});
+            return _alphTypeToName(bio::alphabet::semialphabet_any<6>{});
         case AlphabetEnum::DNA4:
-            return _alphTypeToName(seqan3::dna4{});
+            return _alphTypeToName(bio::alphabet::dna4{});
         case AlphabetEnum::DNA5:
-            return _alphTypeToName(seqan3::dna5{});
+            return _alphTypeToName(bio::alphabet::dna5{});
         case AlphabetEnum::AMINO_ACID:
-            return _alphTypeToName(seqan3::aa27{});
+            return _alphTypeToName(bio::alphabet::aa27{});
         case AlphabetEnum::MURPHY10:
-            return _alphTypeToName(seqan3::aa10murphy{});
+            return _alphTypeToName(bio::alphabet::aa10murphy{});
         case AlphabetEnum::LI10:
-            return _alphTypeToName(seqan3::aa10li{});
+            return _alphTypeToName(bio::alphabet::aa10li{});
     }
 
     throw std::runtime_error("Error: unknown alphabet type");
@@ -159,17 +159,17 @@ inline AlphabetEnum _alphabetNameToEnum(std::string const t)
 {
     if ((t == "UNDEFINED") || (t == "auto"))
         return AlphabetEnum::UNDEFINED;
-    else if (t == _alphTypeToName(seqan3::semialphabet_any<6>{}))
+    else if (t == _alphTypeToName(bio::alphabet::semialphabet_any<6>{}))
         return AlphabetEnum::DNA3BS;
-    else if (t == _alphTypeToName(seqan3::dna4{}))
+    else if (t == _alphTypeToName(bio::alphabet::dna4{}))
         return AlphabetEnum::DNA4;
-    else if (t == _alphTypeToName(seqan3::dna5{}))
+    else if (t == _alphTypeToName(bio::alphabet::dna5{}))
         return AlphabetEnum::DNA5;
-    else if (t == _alphTypeToName(seqan3::aa27{}))
+    else if (t == _alphTypeToName(bio::alphabet::aa27{}))
         return AlphabetEnum::AMINO_ACID;
-    else if (t == _alphTypeToName(seqan3::aa10murphy{}))
+    else if (t == _alphTypeToName(bio::alphabet::aa10murphy{}))
         return AlphabetEnum::MURPHY10;
-    else if (t == _alphTypeToName(seqan3::aa10li{}))
+    else if (t == _alphTypeToName(bio::alphabet::aa10li{}))
         return AlphabetEnum::LI10;
 
     throw std::runtime_error("Error: unknown alphabet type");
@@ -182,37 +182,37 @@ struct _alphabetEnumToType_;
 template <>
 struct _alphabetEnumToType_<AlphabetEnum::DNA3BS>
 {
-    using type = seqan3::semialphabet_any<6>;
+    using type = bio::alphabet::semialphabet_any<6>;
 };
 
 template <>
 struct _alphabetEnumToType_<AlphabetEnum::DNA4>
 {
-    using type = seqan3::dna4;
+    using type = bio::alphabet::dna4;
 };
 
 template <>
 struct _alphabetEnumToType_<AlphabetEnum::DNA5>
 {
-    using type = seqan3::dna5;
+    using type = bio::alphabet::dna5;
 };
 
 template <>
 struct _alphabetEnumToType_<AlphabetEnum::AMINO_ACID>
 {
-    using type = seqan3::aa27;
+    using type = bio::alphabet::aa27;
 };
 
 template <>
 struct _alphabetEnumToType_<AlphabetEnum::MURPHY10>
 {
-    using type = seqan3::aa10murphy;
+    using type = bio::alphabet::aa10murphy;
 };
 
 template <>
 struct _alphabetEnumToType_<AlphabetEnum::LI10>
 {
-    using type = seqan3::aa10li;
+    using type = bio::alphabet::aa10li;
 };
 
 template <AlphabetEnum e>
@@ -237,7 +237,7 @@ using IndexSpec = fmindex_collection::occtable::interleavedEPR32V2::OccTable<Alp
 // ==========================================================================
 
 template <typename TString>
-using TCDStringSet = seqan3::concatenated_sequences<TString>;
+using TCDStringSet = bio::ranges::concatenated_sequences<TString>;
 
 template <AlphabetEnum c_origSbjAlph, AlphabetEnum c_transAlph, AlphabetEnum c_redAlph>
 inline constexpr auto sbjTransView = []()
@@ -245,31 +245,31 @@ inline constexpr auto sbjTransView = []()
     if constexpr (c_redAlph == AlphabetEnum::DNA3BS)
         return views::duplicate;
     else if constexpr (c_origSbjAlph != c_transAlph)
-        return seqan3::views::translate_join;
+        return bio::views::translate_join;
     else
-        return seqan3::views::type_reduce;
+        return bio::views::type_reduce;
 }();
 
 template <AlphabetEnum c_origQryAlph, AlphabetEnum c_transAlph, AlphabetEnum c_redAlph>
 constexpr auto qryTransView = []()
 {
     if constexpr (c_redAlph == AlphabetEnum::DNA3BS)
-        return views::add_reverse_complement | views::duplicate;
-    else if constexpr (seqan3::nucleotide_alphabet<_alphabetEnumToType<c_redAlph>>)
-        return views::add_reverse_complement;
+        return bio::views::add_reverse_complement | views::duplicate;
+    else if constexpr (bio::alphabet::nucleotide_alphabet<_alphabetEnumToType<c_redAlph>>)
+        return bio::views::add_reverse_complement;
     else if constexpr (c_origQryAlph == c_transAlph)
-        return seqan3::views::type_reduce;
+        return bio::views::type_reduce;
     else
-        return seqan3::views::translate_join;
+        return bio::views::translate_join;
 }();
 
 template <AlphabetEnum c_transAlph, AlphabetEnum c_redAlph>
 constexpr auto redView = []()
 {
     if constexpr (c_transAlph == c_redAlph)
-        return seqan3::views::type_reduce;
+        return bio::views::type_reduce;
     else if constexpr (c_transAlph == AlphabetEnum::AMINO_ACID)
-        return seqan3::views::deep{seqan3::views::convert<_alphabetEnumToType<c_redAlph>>};
+        return bio::views::deep{bio::views::convert<_alphabetEnumToType<c_redAlph>>};
     else if constexpr (c_redAlph == AlphabetEnum::DNA3BS)
         return views::dna_n_to_random | views::reduce_to_bisulfite;
     else
@@ -283,7 +283,7 @@ constexpr auto redView = []()
 namespace cereal
 {
 
-template <seqan3::alphabet alph_t>
+template <bio::alphabet::alphabet alph_t>
     requires std::is_trivially_copyable_v<alph_t>
 void save(cereal::BinaryOutputArchive & archive, std::vector<alph_t> const & vec)
 {
@@ -291,7 +291,7 @@ void save(cereal::BinaryOutputArchive & archive, std::vector<alph_t> const & vec
     archive(cereal::binary_data(vec.data(), vec.size() * sizeof(alph_t)));
 }
 
-template <seqan3::alphabet alph_t>
+template <bio::alphabet::alphabet alph_t>
     requires std::is_trivially_copyable_v<alph_t>
 void load(cereal::BinaryInputArchive & archive, std::vector<alph_t> & vec)
 {
@@ -318,7 +318,7 @@ struct index_file_options
     AlphabetEnum transAlph{};
     AlphabetEnum redAlph{};
 
-    seqan3::genetic_code geneticCode{};
+    bio::alphabet::genetic_code geneticCode{};
 
     //TODO reserve space here for more vars?
 
@@ -351,7 +351,7 @@ struct index_file
     TCDStringSet<std::string> taxonNames;
 
     using TRedAlph   = _alphabetEnumToType<redAlph>;
-    using TIndexSpec = IndexSpec<seqan3::alphabet_size<TRedAlph>>;
+    using TIndexSpec = IndexSpec<bio::alphabet::size<TRedAlph>>;
     using TIndex     = std::conditional_t<dbIndexType == DbIndexType::BI_FM_INDEX,
                                       fmindex_collection::BiFMIndex<TIndexSpec>,
                                       fmindex_collection::ReverseFMIndex<TIndexSpec>>;

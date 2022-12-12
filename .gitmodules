@@ -1,9 +1,18 @@
 [submodule "seqan"]
 	path = submodules/seqan
 	url = ../../seqan/seqan.git
-[submodule "submodules/seqan3"]
-	path = submodules/seqan3
-	url = ../../seqan/seqan3.git
 [submodule "submodules/fmindex-collection"]
 	path = submodules/fmindex-collection
 	url = ../../SGSSGene/fmindex-collection.git
+[submodule "submodules/sharg-parser"]
+	path = submodules/sharg-parser
+	url = ../../seqan/sharg-parser
+[submodule "submodules/biocpp-core"]
+	path = submodules/biocpp-core
+	url = ../../biocpp/biocpp-core
+[submodule "submodules/biocpp-io"]
+	path = submodules/biocpp-io
+	url = ../../biocpp/biocpp-io
+[submodule "submodules/cereal"]
+	path = submodules/cereal
+	url = ../../USCiLab/cereal

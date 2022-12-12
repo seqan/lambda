@@ -27,12 +27,12 @@
 #include <fmindex-collection/fmindex-collection.h>
 #include <fmindex-collection/occtable/all.h>
 
-#include <seqan3/alphabet/views/to_rank.hpp>
-#include <seqan3/alphabet/views/translate.hpp>
-#include <seqan3/alphabet/views/translate_join.hpp>
-#include <seqan3/io/detail/misc_input.hpp>
-#include <seqan3/io/sequence_file/input.hpp>
-#include <seqan3/utility/views/convert.hpp>
+#include <bio/io/seq/reader.hpp>
+#include <bio/ranges/to.hpp>
+#include <bio/ranges/views/convert.hpp>
+#include <bio/ranges/views/to_rank.hpp>
+#include <bio/ranges/views/translate.hpp>
+#include <bio/ranges/views/translate_join.hpp>
 
 #include "mkindex_misc.hpp"
 // #include "mkindex_saca.hpp"
@@ -47,11 +47,10 @@
 template <typename TOrigAlph>
 auto loadSubjSeqsAndIds(LambdaIndexerOptions const & options)
 {
-    using TIDs         = TCDStringSet<std::string>;
-    using TOrigSeqs    = TCDStringSet<std::vector<TOrigAlph>>;
-    using TAccToIdRank = std::unordered_map<std::string, uint64_t>;
+    using TIDs      = TCDStringSet<std::string>;
+    using TOrigSeqs = TCDStringSet<std::vector<TOrigAlph>>;
 
-    std::tuple<TIDs, TOrigSeqs, TAccToIdRank> ret;
+    std::tuple<TIDs, TOrigSeqs, TaccToIdRank> ret;
 
     auto & ids          = std::get<0>(ret);
     auto & originalSeqs = std::get<1>(ret);
@@ -84,15 +83,10 @@ auto loadSubjSeqsAndIds(LambdaIndexerOptions const & options)
     uint64_t multiAcc = 0;
 
     // lambda that extracts accession numbers and saves them in the map
-    auto extractAccIds = [&accToIdRank, &accRegEx, &noAcc, &multiAcc](auto && id, uint64_t const rank)
+    auto extractAccIds = [&accToIdRank, &accRegEx, &noAcc, &multiAcc](std::string_view const id, uint64_t const rank)
     {
-        std::conditional_t<(bool)std::constructible_from<std::string const &, decltype(id)>,
-                           std::string const &,
-                           std::string>
-          buf{id};
-
         uint64_t count = 0;
-        for (auto it = std::sregex_iterator(buf.begin(), buf.end(), accRegEx), itEnd = std::sregex_iterator();
+        for (auto it = std::cregex_iterator(id.begin(), id.end(), accRegEx), itEnd = std::cregex_iterator();
              it != itEnd;
              ++it, ++count)
         {
@@ -119,24 +113,23 @@ auto loadSubjSeqsAndIds(LambdaIndexerOptions const & options)
     double start = sysTime();
     myPrint(options, 1, "Loading Subject Sequences and Ids...");
 
-    using seq_traits = std::conditional_t<seqan3::nucleotide_alphabet<TOrigAlph>,
-                                          seqan3::sequence_file_input_default_traits_dna,
-                                          seqan3::sequence_file_input_default_traits_aa>;
-    seqan3::sequence_file_input<seq_traits, seqan3::fields<seqan3::field::id, seqan3::field::seq>> infile{
-      options.dbFile};
+    bio::io::seq::record r{.id   = std::string_view{},
+                           .seq  = bio::ranges::views::char_conversion_view_t<TOrigAlph>{},
+                           .qual = std::ignore};
+    bio::io::seq::reader reader{
+      options.dbFile,
+      bio::io::seq::reader_options{.record = r, .truncate_ids = options.truncateIDs}
+    };
 
     size_t count = 0;
-    for (auto & [id, seq] : infile)
+    for (auto & [id, seq, qual] : reader)
     {
         if (options.hasSTaxIds)
             extractAccIds(id, count);
 
-        if (options.truncateIDs)
-            ids.push_back(id | seqan3::detail::take_until(seqan3::is_space) | seqan3::ranges::to<std::string>());
-        else
-            ids.push_back(std::move(id));
+        ids.push_back(id);
 
-        originalSeqs.push_back(std::move(seq));
+        originalSeqs.push_back(seq);
         ++count;
     }
 
@@ -275,9 +268,7 @@ void checkIndexSize(TCDStringSet<std::vector<TRedAlph>> const & seqs, LambdaInde
 // Function mapAndDumpTaxIDs()
 // --------------------------------------------------------------------------
 
-auto mapTaxIDs(std::unordered_map<std::string, uint64_t> const & accToIdRank,
-               uint64_t const                                    numSubjects,
-               LambdaIndexerOptions const &                      options)
+auto mapTaxIDs(TaccToIdRank const & accToIdRank, uint64_t const numSubjects, LambdaIndexerOptions const & options)
 {
     using TTaxIds        = std::vector<std::vector<uint32_t>>; // not concat because we resize inbetween
     using TTaxIdsPresent = std::vector<bool>;
@@ -290,33 +281,17 @@ auto mapTaxIDs(std::unordered_map<std::string, uint64_t> const & accToIdRank,
     taxIdIsPresent.reserve(2'000'000);
     sTaxIds.resize(numSubjects);
 
-    // c++ stream
-    std::ifstream fin(options.accToTaxMapFile.c_str(), std::ios_base::in | std::ios_base::binary);
-    if (!fin.is_open())
-    {
-        throw std::invalid_argument(std::string("ERROR: Could not open acc-to-tax-map file at ") +
-                                    options.accToTaxMapFile + "\n");
-    }
-
-    // transparent decompressor
-    auto vstream = seqan3::detail::make_secondary_istream(fin);
-
-    // TODO: use seqan3::views::istreambuf instead, it's faster
-    auto file_view = std::ranges::subrange<std::istreambuf_iterator<char>, std::istreambuf_iterator<char>>{
-      std::istreambuf_iterator<char>{*vstream},
-      std::istreambuf_iterator<char>{}};
-
     myPrint(options, 1, "Parsing acc-to-tax-map file... ");
 
     double start = sysTime();
 
     if (std::regex_match(options.accToTaxMapFile, std::regex{R"raw(.*\.accession2taxid(\.(gz|bgzf|bz2))?)raw"}))
     {
-        _readMappingFileNCBI(file_view, sTaxIds, taxIdIsPresent, accToIdRank);
+        _readMappingFileNCBI(options.accToTaxMapFile, accToIdRank, sTaxIds, taxIdIsPresent);
     }
     else if (std::regex_match(options.accToTaxMapFile, std::regex{R"raw(.*\.dat(\.(gz|bgzf|bz2))?)raw"}))
     {
-        _readMappingFileUniProt(file_view, sTaxIds, taxIdIsPresent, accToIdRank);
+        _readMappingFileUniProt(options.accToTaxMapFile, accToIdRank, sTaxIds, taxIdIsPresent);
     }
     else
     {
@@ -386,22 +361,6 @@ auto parseAndStoreTaxTree(std::vector<bool> & taxIdIsPresent, LambdaIndexerOptio
 
     taxonParentIDs.reserve(2'000'000); // reserve 2million to save reallocs
 
-    std::string path = options.taxDumpDir + "/nodes.dmp";
-
-    std::ifstream fin(path.c_str(), std::ios_base::in | std::ios_base::binary);
-    if (!fin.is_open())
-    {
-        throw std::runtime_error(std::string("ERROR: Could not open ") + path + "\n");
-    }
-
-    // transparent decompressor
-    auto vstream = seqan3::detail::make_secondary_istream(fin);
-
-    // TODO: use seqan3::views::istreambuf instead, it's faster
-    auto file_view = std::ranges::subrange<std::istreambuf_iterator<char>, std::istreambuf_iterator<char>>{
-      std::istreambuf_iterator<char>{*vstream},
-      std::istreambuf_iterator<char>{}};
-
     myPrint(options, 1, "Parsing nodes.dmp... ");
 
     double start = sysTime();
@@ -409,15 +368,14 @@ auto parseAndStoreTaxTree(std::vector<bool> & taxIdIsPresent, LambdaIndexerOptio
     std::string      buf;
     std::regex const numRegEx{"\\b\\d+\\b"};
 
-    while (std::ranges::begin(file_view) != std::ranges::end(file_view))
+    //TODO it would be better to do TSV reading here instead of the regex-voodoo, but I need to understand it first o_O
+    bio::io::txt::reader reader{options.taxDumpDir + "/nodes.dmp"};
+    for (std::string_view line : reader)
     {
-        // read line
-        buf = file_view | std::views::take_while(not_eol) | seqan3::ranges::to<std::string>();
-
         uint32_t n      = 0;
         uint32_t parent = 0;
         unsigned i      = 0;
-        for (auto it = std::sregex_iterator(buf.begin(), buf.end(), numRegEx), itEnd = std::sregex_iterator();
+        for (auto it = std::cregex_iterator(line.begin(), line.end(), numRegEx), itEnd = std::cregex_iterator();
              (it != itEnd) && (i < 2);
              ++it, ++i)
         {
@@ -580,19 +538,6 @@ auto parseAndStoreTaxTree(std::vector<bool> & taxIdIsPresent, LambdaIndexerOptio
     /** read the names **/
     taxonNames.resize(std::ranges::size(taxonParentIDs));
 
-    path = options.taxDumpDir + "/names.dmp";
-
-    std::ifstream fin2(path.c_str(), std::ios_base::in | std::ios_base::binary);
-    if (!fin2.is_open())
-        throw std::runtime_error(std::string("ERROR: Could not open ") + path + "\n");
-
-    // transparent decompressor
-    auto vstream2 = seqan3::detail::make_secondary_istream(fin2);
-
-    auto file_view2 = std::ranges::subrange<std::istreambuf_iterator<char>, std::istreambuf_iterator<char>>{
-      std::istreambuf_iterator<char>{*vstream2},
-      std::istreambuf_iterator<char>{}};
-
     myPrint(options, 1, "Parsing names.dmp... ");
 
     start = sysTime();
@@ -600,15 +545,14 @@ auto parseAndStoreTaxTree(std::vector<bool> & taxIdIsPresent, LambdaIndexerOptio
     std::regex const wordRegEx{R"([\w.,\"<> ]+)"};
     std::string      name;
 
-    while (std::ranges::begin(file_view2) != std::ranges::end(file_view2))
+    //TODO it would be better to do TSV reading here instead of the regex-voodoo, but I need to understand it first o_O
+    bio::io::txt::reader reader2{options.taxDumpDir + "/names.dmp"};
+    for (std::string_view line : reader2)
     {
-        // read line
-        buf = file_view2 | std::views::take_while(not_eol) | seqan3::ranges::to<std::string>();
-
         uint32_t taxId = 0;
 
-        auto itWord = std::sregex_iterator(buf.begin(), buf.end(), wordRegEx);
-        if (itWord == std::sregex_iterator())
+        auto itWord = std::cregex_iterator(line.begin(), line.end(), wordRegEx);
+        if (itWord == std::cregex_iterator())
         {
             throw std::runtime_error("Error: Expected taxonomical ID in first column, but couldn't find it.\n");
         }
@@ -637,12 +581,12 @@ auto parseAndStoreTaxTree(std::vector<bool> & taxIdIsPresent, LambdaIndexerOptio
         if (!taxIdIsPresentOrParent[taxId])
             continue;
 
-        if (++itWord == std::sregex_iterator())
+        if (++itWord == std::cregex_iterator())
             throw std::runtime_error("Error: Expected name in second column, but couldn't find it.\n");
         else
             name = itWord->str();
 
-        while (++itWord != std::sregex_iterator())
+        while (++itWord != std::cregex_iterator())
         {
             if (itWord->str() == "scientific name")
                 taxonNames[taxId] = name;
@@ -668,15 +612,15 @@ auto parseAndStoreTaxTree(std::vector<bool> & taxIdIsPresent, LambdaIndexerOptio
 template <bool is_bi, typename TStringSet>
 auto generateIndex(TStringSet & seqs, LambdaIndexerOptions const & options)
 {
-    using TRedAlph   = seqan3::range_innermost_value_t<TStringSet>;
-    using TIndexSpec = IndexSpec<seqan3::alphabet_size<TRedAlph>>;
+    using TRedAlph   = bio::ranges::range_innermost_value_t<TStringSet>;
+    using TIndexSpec = IndexSpec<bio::alphabet::size<TRedAlph>>;
     using TIndex     = std::
       conditional_t<is_bi, fmindex_collection::BiFMIndex<TIndexSpec>, fmindex_collection::ReverseFMIndex<TIndexSpec>>;
 
     myPrint(options, 1, "Generating Index...");
     double s = sysTime();
 
-    TIndex index{seqs | seqan3::views::to_rank | fmindex_collection::add_sentinels, 5};
+    TIndex index{seqs | bio::views::to_rank | fmindex_collection::add_sentinels, 5};
 
     double e = sysTime() - s;
     myPrint(options, 1, " done.\n");
