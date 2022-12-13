@@ -175,7 +175,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
                                     .description = std::string{"The database index (created by the 'lambda "} +
                                                    (options.nucleotide_mode ? "mkindexn" : "mkindexp") + "' command).",
                                     .required  = true,
-                                    .validator = sharg::input_file_validator{{"lba", "lta"}}});
+                                    .validator = sharg::input_file_validator{{"lba", "lta", "lba.gz", "lta.gz"}}});
 
     parser.add_section("Output options");
 

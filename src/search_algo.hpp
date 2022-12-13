@@ -63,23 +63,19 @@
 
 void readIndexOptions(LambdaOptions & options)
 {
-    // Check that directory exists and is readable
-    //     struct stat path_stat;
-    // //     stat(indexFilePath.c_str(), &path_stat);
-    //     if (stat(indexFilePath.c_str(), &path_stat) || !S_ISDIR(path_stat.st_mode))
-    //         throw IndexException("Index directory does not exist or is not readable.\n");
-
     fake_index_file f{options.indexFileOptions};
 
-    if (options.indexFilePath.extension() == ".lba")
+    std::string                  filename(options.indexFilePath);
+    size_t                       t = std::min<size_t>(options.threads, 4); // more than four threads is harmful
+    bio::io::transparent_istream is{filename, {.threads = t}};
+
+    if (filename.ends_with(".lba") || filename.ends_with(".lba.gz"))
     {
-        std::ifstream              is{options.indexFilePath.c_str(), std::ios::binary};
         cereal::BinaryInputArchive iarchive(is);
         iarchive(cereal::make_nvp("lambda index", f));
     }
-    else if (options.indexFilePath.extension() == ".lta")
+    else if (filename.ends_with(".lta") || filename.ends_with(".lta.gz"))
     {
-        std::ifstream            is{options.indexFilePath.c_str(), std::ios::binary};
         cereal::JSONInputArchive iarchive(is);
         iarchive(cereal::make_nvp("lambda index", f));
     }
@@ -214,21 +210,25 @@ void loadDbIndexFromDisk(
     myPrint(options, 1, strIdent);
     double start = sysTime();
 
-    if (options.indexFilePath.extension() == ".lba")
     {
-        std::ifstream              is{options.indexFilePath.c_str(), std::ios::binary};
-        cereal::BinaryInputArchive iarchive(is);
-        iarchive(cereal::make_nvp("lambda index", globalHolder.indexFile));
-    }
-    else if (options.indexFilePath.extension() == ".lta")
-    {
-        std::ifstream            is{options.indexFilePath.c_str(), std::ios::binary};
-        cereal::JSONInputArchive iarchive(is);
-        iarchive(cereal::make_nvp("lambda index", globalHolder.indexFile));
-    }
-    else
-    {
-        throw 88;
+        std::string filename(options.indexFilePath);
+        size_t      threads = std::min<size_t>(options.threads, 4); // more than four threads is harmful
+        bio::io::transparent_istream is{filename, {.threads = threads}};
+
+        if (filename.ends_with(".lba") || filename.ends_with(".lba.gz"))
+        {
+            cereal::BinaryInputArchive iarchive(is);
+            iarchive(cereal::make_nvp("lambda index", globalHolder.indexFile));
+        }
+        else if (filename.ends_with(".lta") || filename.ends_with(".lta.gz"))
+        {
+            cereal::JSONInputArchive iarchive(is);
+            iarchive(cereal::make_nvp("lambda index", globalHolder.indexFile));
+        }
+        else
+        {
+            throw 88;
+        }
     }
 
     globalHolder.transSbjSeqs = globalHolder.indexFile.seqs | sbjTransView<c_origSbjAlph, c_transAlph, c_redAlph>;

@@ -26,6 +26,8 @@
 #include <cereal/types/string.hpp>
 #include <cereal/types/vector.hpp>
 
+#include <bio/io/stream/transparent_ostream.hpp>
+
 #include "shared_definitions.hpp"
 #include "shared_misc.hpp"
 #include "shared_options.hpp"
@@ -214,23 +216,28 @@ void realMain(LambdaIndexerOptions const & options)
 
     myPrint(options, 1, "Writing Index to disk...");
     double s = sysTime();
-    if (options.indexFilePath.extension() == ".lba")
     {
-        std::ofstream               os{options.indexFilePath.c_str()};
-        cereal::BinaryOutputArchive oarchive(os);
-        oarchive(cereal::make_nvp("lambda index", f));
-    }
-    else if (options.indexFilePath.extension() == ".lta")
-    {
-        std::ofstream             os{options.indexFilePath.c_str()};
-        cereal::JSONOutputArchive oarchive(os);
-        oarchive(cereal::make_nvp("lambda index", f));
-    }
-    else
-    {
-        throw 59;
-    }
+        std::string                  filename(options.indexFilePath);
+        bio::io::transparent_ostream os{
+          filename,
+          {.compression_level = 5, .threads = options.threads}
+        };
 
+        if (filename.ends_with(".lba") || filename.ends_with(".lba.gz"))
+        {
+            cereal::BinaryOutputArchive oarchive(os);
+            oarchive(cereal::make_nvp("lambda index", f));
+        }
+        else if (filename.ends_with(".lta") || filename.ends_with(".lta.gz"))
+        {
+            cereal::JSONOutputArchive oarchive(os);
+            oarchive(cereal::make_nvp("lambda index", f));
+        }
+        else
+        {
+            throw 59;
+        }
+    }
     double e = sysTime() - s;
     myPrint(options, 1, " done.\n");
     myPrint(options, 2, "Runtime: ", e, "s \n");
