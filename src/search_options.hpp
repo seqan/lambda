@@ -835,10 +835,9 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     // TODO always prescore 1
     getOptionValue(options.preScoring, parser, "pre-scoring");
 
-    //TODO reactivate
-//     if ((!isSet(parser, "pre-scoring")) &&
-//         (options.alphReduction == 0))
-//         options.preScoring = 1;
+    if ((!isSet(parser, "pre-scoring")) &&
+        (options.reducedAlphabet == options.transAlphabet))
+        options.preScoring = 1;
 
     getOptionValue(options.preScoringThresh, parser, "pre-scoring-threshold");
 //     if (options.preScoring == 0)

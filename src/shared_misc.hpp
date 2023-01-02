@@ -26,7 +26,10 @@
 #include <locale>
 #include <type_traits>
 #include <forward_list>
-#include <sys/sysctl.h>
+
+#if __has_include(<sys/sysctl.h>)
+    #include <sys/sysctl.h>
+#endif
 
 #include <seqan/basic.h>
 #include <seqan/sequence.h>
