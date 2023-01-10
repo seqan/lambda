@@ -121,13 +121,23 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
     parser.add_section("Output Options");
 
     options.indexFilePath = "»INPUT«.lba";
-    parser.add_option(
-      options.indexFilePath,
-      sharg::config{
-        .short_id    = 'i',
-        .long_id     = "index",
-        .description = "The output path for the index file.",
-        .validator   = sharg::output_file_validator{sharg::output_file_open_options::create_new, {"lba", "lta"}}
+    parser.add_option(options.indexFilePath,
+                      sharg::config{
+                        .short_id    = 'i',
+                        .long_id     = "index",
+                        .description = "The output path for the index file.",
+                        .validator   = sharg::output_file_validator{sharg::output_file_open_options::create_new,
+                                                                    {"lba", "lta", "lba.gz", "lta.gz"}}
+    });
+
+    options.threads = std::max<size_t>(2ul, std::min<size_t>(std::thread::hardware_concurrency(), 4ul));
+    parser.add_option(options.threads,
+                      sharg::config{
+                        .short_id    = 't',
+                        .long_id     = "threads",
+                        .description = "Number of threads (only used for compression).",
+                        .advanced    = true,
+                        .validator   = sharg::arithmetic_range_validator{2, 1000}
     });
 
     std::string dbIndexTypeTmp = "fm";
