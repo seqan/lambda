@@ -113,9 +113,12 @@ auto loadSubjSeqsAndIds(LambdaIndexerOptions const & options)
     double start = sysTime();
     myPrint(options, 1, "Loading Subject Sequences and Ids...");
 
-    bio::io::seq::record r{.id   = std::string_view{},
-                           .seq  = bio::ranges::views::char_conversion_view_t<TOrigAlph>{},
-                           .qual = std::ignore};
+    using seq_t = std::conditional_t<BIOCPP_IS_SAME(TOrigAlph, bio::alphabet::dna5),
+                                     decltype(std::string_view{} | bio::views::validate_char_for<bio::alphabet::dna15> |
+                                              bio::views::char_to<bio::alphabet::dna5>),
+                                     bio::ranges::views::char_conversion_view_t<TOrigAlph>>;
+
+    bio::io::seq::record r{.id = std::string_view{}, .seq = seq_t{}, .qual = std::ignore};
     bio::io::seq::reader reader{
       options.dbFile,
       bio::io::seq::reader_options{.record = r, .truncate_ids = options.truncateIDs}
