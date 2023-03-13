@@ -27,6 +27,8 @@
 
 #include <sharg/all.hpp>
 
+#include "shared_options.hpp"
+
 // --------------------------------------------------------------------------
 // Class LambdaIndexerOptions
 // --------------------------------------------------------------------------
@@ -54,17 +56,26 @@ struct LambdaIndexerOptions : public SharedOptions
 // INDEXER
 void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** argv)
 {
-    std::string programName = "lambda3-" + std::string(argv[0]);
+    std::string const subcommand  = std::string(argv[0]);
+    std::string const programName = "lambda3-" + subcommand;
 
     // this is important for option handling:
-    options.nucleotide_mode = (std::string(argv[0]) == "mkindexn");
+    if (subcommand == "mkindexp")
+        options.domain = domain_t::protein;
+    else if (subcommand == "mkindexn")
+        options.domain = domain_t::nucleotide;
+    else if (subcommand == "mkindexbs")
+        options.domain = domain_t::bisulfite;
+    else
+        throw std::runtime_error{"Unknown subcommand."};
 
     sharg::parser parser(programName, argc, argv, sharg::update_notifications::off);
 
     parser.info.short_description = "the Local Aligner for Massive Biological DatA";
 
     // Define usage line and long description.
-    parser.info.synopsis.push_back("[\\fIOPTIONS\\fP] \\-d DATABASE.fasta [-i INDEX.lba]\\fP");
+    parser.info.synopsis.push_back("lambda3 "s + subcommand +
+                                   " [\\fIOPTIONS\\fP] \\-d DATABASE.fasta [-i INDEX.lba]\\fP");
 
     parser.info.description.push_back("This is the indexer command for creating lambda-compatible databases.");
 
@@ -162,51 +173,45 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
     std::string alphabetReductionTmp;
     int         geneticCodeTmp = 1;
 
-    if (options.nucleotide_mode)
+    switch (options.domain)
     {
-        alphabetReductionTmp               = "dna4";
-        options.indexFileOptions.origAlph  = AlphabetEnum::DNA5;
-        options.indexFileOptions.transAlph = AlphabetEnum::DNA5;
-        options.indexFileOptions.redAlph   = AlphabetEnum::DNA4;
+        case domain_t::protein:
+            alphabetReductionTmp               = "li10";
+            options.indexFileOptions.origAlph  = AlphabetEnum::UNDEFINED;
+            options.indexFileOptions.transAlph = AlphabetEnum::AMINO_ACID;
+            options.indexFileOptions.redAlph   = AlphabetEnum::LI10;
 
-        parser.add_section("Alphabet reduction");
+            parser.add_section("Alphabet and Translation");
 
-        parser.add_option(alphabetReductionTmp,
-                          sharg::config{
-                            .short_id    = 'r',
-                            .long_id     = "alphabet-reduction",
-                            .description = "Alphabet Reduction for seeding phase.",
-                            .advanced    = true,
-                            .validator   = sharg::value_list_validator{"none", "dna4", "dna3bs"}
-        });
-    }
-    else
-    {
-        alphabetReductionTmp               = "li10";
-        options.indexFileOptions.origAlph  = AlphabetEnum::UNDEFINED;
-        options.indexFileOptions.transAlph = AlphabetEnum::AMINO_ACID;
-        options.indexFileOptions.redAlph   = AlphabetEnum::LI10;
+            parser.add_option(inputAlphabetTmp,
+                              sharg::config{
+                                .short_id    = 'a',
+                                .long_id     = "input-alphabet",
+                                .description = "Alphabet of the database sequences (specify to override "
+                                               "auto-detection); if input is Dna, it will be translated.",
+                                .advanced    = true,
+                                .validator   = sharg::value_list_validator{"auto", "dna5", "aminoacid"}
+            });
 
-        parser.add_section("Alphabet and Translation");
-
-        parser.add_option(inputAlphabetTmp,
-                          sharg::config{
-                            .short_id    = 'a',
-                            .long_id     = "input-alphabet",
-                            .description = "Alphabet of the database sequences (specify to override auto-detection); "
-                                           "if input is Dna, it will be translated.",
-                            .advanced    = true,
-                            .validator   = sharg::value_list_validator{"auto", "dna5", "aminoacid"}
-        });
-
-        parser.add_option(alphabetReductionTmp,
-                          sharg::config{
-                            .short_id    = 'r',
-                            .long_id     = "alphabet-reduction",
-                            .description = "Alphabet Reduction for seeding phase.",
-                            .advanced    = true,
-                            .validator   = sharg::value_list_validator{"none", "murphy10", "li10"}
-        });
+            parser.add_option(alphabetReductionTmp,
+                              sharg::config{
+                                .short_id    = 'r',
+                                .long_id     = "alphabet-reduction",
+                                .description = "Alphabet Reduction for seeding phase.",
+                                .advanced    = true,
+                                .validator   = sharg::value_list_validator{"none", "murphy10", "li10"}
+            });
+            break;
+        case domain_t::nucleotide:
+            options.indexFileOptions.origAlph  = AlphabetEnum::DNA5;
+            options.indexFileOptions.transAlph = AlphabetEnum::DNA5;
+            options.indexFileOptions.redAlph   = AlphabetEnum::DNA4;
+            break;
+        case domain_t::bisulfite:
+            options.indexFileOptions.origAlph  = AlphabetEnum::DNA5;
+            options.indexFileOptions.transAlph = AlphabetEnum::DNA5;
+            options.indexFileOptions.redAlph   = AlphabetEnum::DNA3BS;
+            break;
     }
 
     parser.add_section("Remarks");
@@ -222,7 +227,7 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
         options.indexFileOptions.indexType = DbIndexType::FM_INDEX;
 
     // set options for protein alphabet, genetic code and alphabet reduction
-    if (!options.nucleotide_mode)
+    if (options.domain == domain_t::protein)
     {
         options.indexFileOptions.origAlph = _alphabetNameToEnum(inputAlphabetTmp);
         if (alphabetReductionTmp == "none")
@@ -230,13 +235,6 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
         else
             options.indexFileOptions.redAlph = _alphabetNameToEnum(alphabetReductionTmp);
         options.indexFileOptions.geneticCode = static_cast<bio::alphabet::genetic_code>(geneticCodeTmp);
-    }
-    else
-    {
-        if (alphabetReductionTmp == "none")
-            options.indexFileOptions.redAlph = AlphabetEnum::DNA5;
-        else
-            options.indexFileOptions.redAlph = _alphabetNameToEnum(alphabetReductionTmp);
     }
 
     setEnv("TMPDIR", options.tmpdir);

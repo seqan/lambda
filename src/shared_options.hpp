@@ -23,6 +23,7 @@
 
 #include <bitset>
 #include <cstdio>
+#include <stdexcept>
 #include <thread>
 #include <unistd.h>
 
@@ -31,9 +32,32 @@
 
 #include "shared_definitions.hpp"
 
+using namespace std::string_literals;
+
 // --------------------------------------------------------------------------
 // Class SharedOptions
 // --------------------------------------------------------------------------
+
+enum class domain_t : uint8_t
+{
+    protein,
+    nucleotide,
+    bisulfite
+};
+
+inline std::string_view domain2string(domain_t const d)
+{
+    switch (d)
+    {
+        case domain_t::protein:
+            return "protein";
+        case domain_t::nucleotide:
+            return "nucleotide";
+        case domain_t::bisulfite:
+            return "bisulfite";
+    }
+    throw std::logic_error{__FUNCTION__};
+}
 
 struct SharedOptions
 {
@@ -46,8 +70,8 @@ struct SharedOptions
 
     index_file_options indexFileOptions{};
 
-    bool nucleotide_mode   = false;
-    bool need_to_translate = false;
+    domain_t domain            = domain_t::nucleotide;
+    bool     need_to_translate = false;
 
     bool     isTerm       = true;
     unsigned terminalCols = 80;
@@ -120,9 +144,8 @@ inline void sharedSetup(sharg::parser & parser)
       " OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH\n"
       " DAMAGE.\n";
     parser.info.description.push_back(
-      "Lambda is a local aligner optimized for many query "
-      "sequences and searches in protein space. It is compatible to BLAST, but "
-      "much faster than BLAST and many other comparable tools.");
+      "Lambda is a local aligner capable of performing protein, nucleotide and bisulfite searches. "
+      "It is compatible to BLAST, but much faster than BLAST and many other comparable tools.");
 
     parser.info.description.push_back(
       "Detailed information is available in the wiki: "
