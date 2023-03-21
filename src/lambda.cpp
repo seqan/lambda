@@ -66,11 +66,13 @@ int main(int argc, char const ** argv)
 
     --until; // undo the "+ 1" above
 
-    if ((std::string(argv[until]) == "searchp") || (std::string(argv[until]) == "searchn"))
+    std::string const subcommand_actual = argv[until];
+
+    if (subcommand_actual.starts_with("search"))
     {
         return searchMain(argc - until, argv + until);
     }
-    else if ((std::string(argv[until]) == "mkindexp") || (std::string(argv[until]) == "mkindexn"))
+    else if (subcommand_actual.starts_with("mkindex"))
     {
         return mkindexMain(argc - until, argv + until);
     }
@@ -88,7 +90,7 @@ void parseCommandLineMain(int argc, char const ** argv)
     sharg::parser parser("lambda3", argc, argv, sharg::update_notifications::off);
 
     parser.info.short_description = "Lambda, the Local Aligner for Massive Biological DatA.";
-    parser.info.synopsis.push_back("[\\fIOPTIONS\\fP] COMMAND [\\fICOMMAND-OPTIONS\\fP]");
+    parser.info.synopsis.push_back("lambda3 [\\fIOPTIONS\\fP] COMMAND [\\fICOMMAND-OPTIONS\\fP]");
 
     sharedSetup(parser);
 
@@ -96,16 +98,19 @@ void parseCommandLineMain(int argc, char const ** argv)
     parser.add_positional_option(
       command,
       sharg::config{
-        .description = "The sub-program to execute. See below.",
-        .validator   = sharg::value_list_validator{"searchp", "searchn", "mkindexp", "mkindexn"}
+        .description = "The sub-program to execute. See above.",
+        .validator =
+          sharg::value_list_validator{"searchp", "searchn", "searchbs", "mkindexp", "mkindexn", "mkindexbs"}
     });
 
     parser.info.description.push_back("Available commands");
     parser.info.description.push_back(
       "\\fBsearchp  \\fP– Perform a protein search (BLASTP, BLASTX, TBLASTN, TBLASTX).");
     parser.info.description.push_back("\\fBsearchn  \\fP– Perform a nucleotide search (BLASTN, MEGABLAST).");
+    parser.info.description.push_back("\\fBsearchbs \\fP– Perform a bisulfite search.");
     parser.info.description.push_back("\\fBmkindexp \\fP– Create an index for protein searches.");
     parser.info.description.push_back("\\fBmkindexn \\fP– Create an index for nucleotide searches.");
+    parser.info.description.push_back("\\fBmkindexbs\\fP– Create an index for bisulfite searches.");
     parser.info.description.push_back(
       "To view the help page for a specific command, simply run 'lambda command --help'.");
 

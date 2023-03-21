@@ -54,10 +54,7 @@ template <DbIndexType c_indexType>
 void argConv1(LambdaOptions const & options);
 
 template <DbIndexType c_indexType, AlphabetEnum c_origSbjAlph>
-void argConv2a(LambdaOptions const & options);
-
-template <DbIndexType c_indexType, AlphabetEnum c_origSbjAlph>
-void argConv2b(LambdaOptions const & options);
+void argConv2(LambdaOptions const & options);
 
 template <DbIndexType c_indexType, AlphabetEnum c_origSbjAlph, AlphabetEnum c_transAlph, AlphabetEnum c_redAlph>
 void argConv3(LambdaOptions const & options);
@@ -175,13 +172,24 @@ void argConv0(LambdaOptions & options)
         myPrint(options, 2, "  reduced alphabet:    ", _alphabetEnumToName(options.indexFileOptions.redAlph), "\n\n");
     }
 
-    if ((options.nucleotide_mode) && (options.indexFileOptions.redAlph != AlphabetEnum::DNA5 &&
-                                      options.indexFileOptions.redAlph != AlphabetEnum::DNA4 &&
-                                      options.indexFileOptions.redAlph != AlphabetEnum::DNA3BS))
+    switch (options.domain)
     {
-        throw std::runtime_error(
-          "You are attempting a nucleotide search on a protein index. "
-          "Did you want to use 'lambda3 searchp' instead?");
+        case domain_t::protein:
+            if (options.indexFileOptions.transAlph != AlphabetEnum::AMINO_ACID)
+                throw std::runtime_error{"Attempting to use nucleotide or bisulfite index for protein search."};
+            break;
+        case domain_t::nucleotide:
+            if (options.indexFileOptions.transAlph != AlphabetEnum::DNA5)
+                throw std::runtime_error{"Attempting to use protein index for nucleotide search."};
+            if (options.indexFileOptions.redAlph != AlphabetEnum::DNA4)
+                throw std::runtime_error{"Attempting to use bisulfite index for nucleotide search."};
+            break;
+        case domain_t::bisulfite:
+            if (options.indexFileOptions.transAlph != AlphabetEnum::DNA5)
+                throw std::runtime_error{"Attempting to use protein index for bisulfite search."};
+            if (options.indexFileOptions.redAlph != AlphabetEnum::DNA3BS)
+                throw std::runtime_error{"Attempting to use nucleotid index for bisulfite search."};
+            break;
     }
 
     // query file
@@ -249,46 +257,37 @@ void argConv0(LambdaOptions & options)
 template <DbIndexType c_indexType>
 void argConv1(LambdaOptions const & options)
 {
-    if (options.nucleotide_mode)
+    switch (options.domain)
     {
-        return argConv2a<c_indexType, AlphabetEnum::DNA5>(options);
-    }
-    else
-    {
-        switch (options.indexFileOptions.origAlph)
-        {
-            case AlphabetEnum::DNA5:
-                return argConv2b<c_indexType, AlphabetEnum::DNA5>(options);
-            case AlphabetEnum::AMINO_ACID:
-                return argConv2b<c_indexType, AlphabetEnum::AMINO_ACID>(options);
-            default:
-                throw 53;
-        }
-    }
-}
-
-template <DbIndexType c_indexType, AlphabetEnum c_origSbjAlph>
-void argConv2a(LambdaOptions const & options)
-{
-    // transalph is always amino acid, unless in nucleotide_mode
-    switch (options.indexFileOptions.redAlph)
-    {
-        case AlphabetEnum::DNA5:
-            return realMain<c_indexType, c_origSbjAlph, AlphabetEnum::DNA5, AlphabetEnum::DNA5, AlphabetEnum::DNA5>(
-              options);
-        case AlphabetEnum::DNA4:
-            return realMain<c_indexType, c_origSbjAlph, AlphabetEnum::DNA5, AlphabetEnum::DNA4, AlphabetEnum::DNA5>(
-              options);
-        case AlphabetEnum::DNA3BS:
-            return realMain<c_indexType, c_origSbjAlph, AlphabetEnum::DNA5, AlphabetEnum::DNA3BS, AlphabetEnum::DNA5>(
-              options);
-        default:
-            throw 555;
+        case domain_t::protein:
+            switch (options.indexFileOptions.origAlph)
+            {
+                case AlphabetEnum::DNA5:
+                    return argConv2<c_indexType, AlphabetEnum::DNA5>(options);
+                case AlphabetEnum::AMINO_ACID:
+                    return argConv2<c_indexType, AlphabetEnum::AMINO_ACID>(options);
+                default:
+                    throw 53;
+                    break;
+            }
+            break;
+        case domain_t::nucleotide:
+            return realMain<c_indexType,
+                            AlphabetEnum::DNA5,
+                            AlphabetEnum::DNA5,
+                            AlphabetEnum::DNA4,
+                            AlphabetEnum::DNA5>(options);
+        case domain_t::bisulfite:
+            return realMain<c_indexType,
+                            AlphabetEnum::DNA5,
+                            AlphabetEnum::DNA5,
+                            AlphabetEnum::DNA3BS,
+                            AlphabetEnum::DNA5>(options);
     }
 }
 
 template <DbIndexType c_indexType, AlphabetEnum c_origSbjAlph>
-void argConv2b(LambdaOptions const & options)
+void argConv2(LambdaOptions const & options)
 {
     // transalph is always amino acid, unless in nucleotide_mode
     switch (options.indexFileOptions.redAlph)

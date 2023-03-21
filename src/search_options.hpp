@@ -24,6 +24,7 @@
 #include <bitset>
 #include <cstdio>
 #include <filesystem>
+#include <shared_options.hpp>
 #include <unistd.h>
 
 #include <seqan/basic.h>
@@ -112,10 +113,20 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
         options.commandLine += std::string(argv[i]) + " ";
     seqan::eraseBack(options.commandLine);
 
-    std::string programName = "lambda3-" + std::string(argv[0]);
+    std::string const subcommand  = std::string(argv[0]);
+    std::string const programName = "lambda3-" + subcommand;
 
     // this is important for option handling:
-    options.nucleotide_mode = (std::string(argv[0]) == "searchn");
+    if (subcommand == "searchp")
+        options.domain = domain_t::protein;
+    else if (subcommand == "searchn")
+        options.domain = domain_t::nucleotide;
+    else if (subcommand == "searchbs")
+        options.domain = domain_t::bisulfite;
+    else
+        throw std::runtime_error{"Unknown subcommand."};
+
+    std::string const mkdindex_subcommand = "mkindex"s + subcommand.substr(6);
 
     sharg::parser parser(programName, argc, argv, sharg::update_notifications::off);
 
@@ -124,7 +135,8 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     // Define usage line and long description.
     parser.info.synopsis.push_back(
-      "[\\fIOPTIONS\\fP] \\fI-q QUERY.fasta\\fP \\fI-i INDEX.lambda\\fP [\\fI-o output.m8\\fP]");
+      "lambda3 "s + subcommand +
+      " [\\fIOPTIONS\\fP] \\fI-q QUERY.fasta\\fP \\fI-i INDEX.lambda\\fP [\\fI-o output.m8\\fP]");
 
     sharedSetup(parser);
 
@@ -152,11 +164,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     std::string inputAlphabetTmp = "auto";
     int32_t     geneticCodeTmp   = 1;
 
-    if (options.nucleotide_mode) // seqan::BlastProgram::BLASTN
-    {
-        options.qryOrigAlphabet = AlphabetEnum::DNA5;
-    }
-    else
+    if (options.domain == domain_t::protein)
     {
         parser.add_option(inputAlphabetTmp,
                           sharg::config{
@@ -168,12 +176,16 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
                             .validator   = sharg::value_list_validator{"auto", "dna5", "aminoacid"}
         });
     }
+    else
+    {
+        options.qryOrigAlphabet = AlphabetEnum::DNA5;
+    }
 
     parser.add_option(options.indexFilePath,
                       sharg::config{.short_id    = 'i',
                                     .long_id     = "index",
                                     .description = std::string{"The database index (created by the 'lambda "} +
-                                                   (options.nucleotide_mode ? "mkindexn" : "mkindexp") + "' command).",
+                                                   mkdindex_subcommand + "' command).",
                                     .required  = true,
                                     .validator = sharg::input_file_validator{{"lba", "lta", "lba.gz", "lta.gz"}}});
 
@@ -250,7 +262,8 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
                     .advanced    = true});
 
     std::string samBamSeqDescr;
-    if (options.nucleotide_mode)
+
+    if (options.domain != domain_t::protein) //TODO add separate for BS
     {
         samBamSeqDescr                  = "Write matching DNA subsequence into SAM/BAM file.";
         options.searchOpts0.seedLength  = 14;
@@ -456,7 +469,18 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     parser.add_section("Scoring");
 
-    if (options.nucleotide_mode)
+    if (options.domain == domain_t::protein)
+    {
+        parser.add_option(options.scoringMethod,
+                          sharg::config{
+                            .short_id    = 's',
+                            .long_id     = "scoring-scheme",
+                            .description = "Use '45' for Blosum45; '62' for Blosum62 (default); '80' for Blosum80.",
+                            .advanced    = true,
+                            .validator   = sharg::value_list_validator{45, 62, 80}
+        });
+    }
+    else
     {
         parser.add_option(options.match,
                           sharg::config{
@@ -474,17 +498,6 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
                             .description = "Mismatch score",
                             .advanced    = true,
                             .validator   = sharg::arithmetic_range_validator{-1000, 1000}
-        });
-    }
-    else
-    {
-        parser.add_option(options.scoringMethod,
-                          sharg::config{
-                            .short_id    = 's',
-                            .long_id     = "scoring-scheme",
-                            .description = "Use '45' for Blosum45; '62' for Blosum62 (default); '80' for Blosum80.",
-                            .advanced    = true,
-                            .validator   = sharg::value_list_validator{45, 62, 80}
         });
     }
 
@@ -512,7 +525,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
       "arguments!",
       true);
 
-    if (options.nucleotide_mode)
+    if (options.domain != domain_t::protein) //TODO add separate for BS
     {
         parser.add_line("\"fast\"", false);
         parser.add_line("--seed-length 14 --seed-offset 9 --seed-delta 0", true);
@@ -535,7 +548,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     parser.parse();
 
     // set query alphabet and genetic code depending on options
-    if (!options.nucleotide_mode)
+    if (options.domain == domain_t::protein)
     {
         if (inputAlphabetTmp == "auto")
             options.qryOrigAlphabet = AlphabetEnum::DNA4;
@@ -551,7 +564,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     if (options.profile == "fast")
     {
-        if (options.nucleotide_mode)
+        if (options.domain != domain_t::protein) //TODO add separate for BS
         {
             options.iterativeSearch        = false;
             options.searchOpts.seedOffset  = 9;
@@ -568,7 +581,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     }
     else if (options.profile == "sensitive")
     {
-        if (options.nucleotide_mode)
+        if (options.domain != domain_t::protein) //TODO add separate for BS
         {
             options.searchOpts0.seedOffset = 3;
             options.searchOpts.seedOffset  = 3;
@@ -755,8 +768,8 @@ inline void printOptions(LambdaOptions const & options)
               << " GENERAL\n"
               << "  threads:                  " << uint(options.threads) << "\n"
               << " TRANSLATION AND ALPHABETS\n"
+              << "  domain:                   " << domain2string(options.domain) << "\n"
               << "  genetic code:             " << (int)options.geneticCodeQry << "\n"
-              << "  nucleotide_mode:          " << options.nucleotide_mode << "\n"
               << "  original alphabet (query):" << _alphabetEnumToName(options.qryOrigAlphabet) << "\n"
               << " SEEDING\n"
               << "  seed length:              " << options.searchOpts.seedLength << "\n"
