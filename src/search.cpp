@@ -76,7 +76,7 @@ int searchMain(int const argc, char const ** argv)
     parseCommandLine(options, argc, argv);
 
 #ifdef _OPENMP
-    omp_set_num_threads(options.threads - 1);
+    omp_set_num_threads(options.threads - options.lazyQryFile); // reserve one thread for I/O when lazy-loading
 #else
     options.threads = 1;
 #endif
@@ -337,7 +337,10 @@ void realMain(LambdaOptions const & options)
 
     loadDbIndexFromDisk(globalHolder, options);
 
-    countQuery(globalHolder, options);
+    if (options.lazyQryFile)
+        countQuery(globalHolder, options);
+    else
+        loadQuery(globalHolder, options);
 
     myWriteHeader(globalHolder, options);
 
@@ -346,20 +349,23 @@ void realMain(LambdaOptions const & options)
             "Searching and extending hits on-line...progress:\n"
             "0%  10%  20%  30%  40%  50%  60%  70%  80%  90%  100%\n|");
 
-    double start = sysTime();
-
+    double   start       = sysTime();
     uint64_t lastPercent = 0;
 
-    bio::io::seq::record r{.id   = std::string{},
-                           .seq  = std::vector<typename TGlobalHolder::TOrigQryAlph>{},
-                           .qual = std::ignore};
-    bio::io::seq::reader reader{options.queryFile, bio::io::seq::reader_options{.record = r}};
-
-    auto file_view = reader | views::async_input_buffer(globalHolder.records_per_batch * options.threads);
+    /* Setup lazy-loader for query (if set in options) */
+    decltype(createQryView(globalHolder, options)) file_view;
+    if (options.lazyQryFile)
+        file_view = createQryView(globalHolder, options);
 
     SEQAN_OMP_PRAGMA(parallel)
     {
         TLocalHolder localHolder(options, globalHolder);
+
+        /* Define region of query this thread gets (eager-loading only) */
+        size_t const chunk_begin = globalHolder.qrySeqs.size() * omp_get_thread_num() / omp_get_num_threads();
+        size_t const chunk_end   = globalHolder.qrySeqs.size() * (omp_get_thread_num() + 1) / omp_get_num_threads();
+        /* Track (per-thread) batch count (eager-loading only) */
+        size_t       batch_i     = 0;
 
         while (true)
         {
@@ -367,14 +373,31 @@ void realMain(LambdaOptions const & options)
             {
                 localHolder.reset();
 
-                // load records until batch is full or file at end
-                for (auto & [id, seq, qual] : file_view)
+                if (options.lazyQryFile) // load records until batch is full or file at end
                 {
-                    localHolder.qryIds.push_back(std::move(id));
-                    localHolder.qrySeqs.push_back(std::move(seq));
+                    for (auto & [id, seq, qual] : file_view)
+                    {
+                        localHolder.qryIdsTmp.push_back(std::move(id));
+                        localHolder.qrySeqsTmp.push_back(std::move(seq));
 
-                    if (++localHolder.queryCount == globalHolder.records_per_batch)
-                        break;
+                        if (++localHolder.queryCount == globalHolder.records_per_batch) // no more records in file
+                            break;
+                    }
+
+                    localHolder.qryIds  = localHolder.qryIdsTmp;
+                    localHolder.qrySeqs = localHolder.qrySeqsTmp;
+                }
+                else // select subset from stored query sequences
+                {
+                    size_t const slice_begin =
+                      std::min(chunk_end, chunk_begin + batch_i * globalHolder.records_per_batch);
+                    size_t const slice_end = std::min(chunk_end, slice_begin + globalHolder.records_per_batch);
+
+                    localHolder.qryIds  = globalHolder.qryIds | bio::views::slice(slice_begin, slice_end);
+                    localHolder.qrySeqs = globalHolder.qrySeqs | bio::views::slice(slice_begin, slice_end);
+
+                    ++batch_i;
+                    localHolder.queryCount = localHolder.qrySeqs.size();
                 }
 
                 if (localHolder.queryCount == 0) // no more records in file

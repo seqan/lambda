@@ -395,6 +395,12 @@ public:
     TTransSbjSeqs transSbjSeqs = indexFile.seqs | sbjTransView<c_origSbjAlph, c_transAlph, c_redAlph>;
     TRedSbjSeqs   redSbjSeqs   = transSbjSeqs | redView<c_transAlph, c_redAlph>;
 
+    /* the following are not used when the query is loaded on-demand / lazily */
+    TQryIds       qryIds;
+    TQrySeqs      qrySeqs;
+    TTransQrySeqs transQrySeqs = qrySeqs | qryTransView<c_origQryAlph, c_transAlph, c_redAlph>;
+    TRedQrySeqs   redQrySeqs   = transQrySeqs | redView<c_transAlph, c_redAlph>;
+
     TBlastTabFile outfileBlastTab;
     TBlastRepFile outfileBlastRep;
     TBamFile      outfileBam;
@@ -406,7 +412,7 @@ public:
 
     size_t              queryTotal        = 0;
     std::atomic<size_t> queryCount        = 0;
-    size_t              records_per_batch = 100;
+    size_t              records_per_batch = 100; // TODO this currently has no effect
 
     GlobalDataHolder()                                     = default;
     GlobalDataHolder(GlobalDataHolder const &)             = delete;
@@ -436,10 +442,13 @@ public:
     TGlobalHolder /*const*/ &            gH;
     static constexpr seqan::BlastProgram blastProgram = TGlobalHolder::blastProgram;
 
-    // query data
-    typename TGlobalHolder::TQryIds       qryIds;
-    typename TGlobalHolder::TQrySeqs      qrySeqs;
-    typename TGlobalHolder::TTransQrySeqs transQrySeqs =
+    // temporary storage used by lazy-loading
+    typename TGlobalHolder::TQryIds                qryIdsTmp;
+    typename TGlobalHolder::TQrySeqs               qrySeqsTmp;
+    // refers to temporary storage (lazy-loading) or subset of qry in globalHolder (eager-loading)
+    decltype(qryIdsTmp | bio::views::slice(0, 0))  qryIds;
+    decltype(qrySeqsTmp | bio::views::slice(0, 0)) qrySeqs;
+    typename TGlobalHolder::TTransQrySeqs          transQrySeqs =
       qrySeqs | qryTransView<TGlobalHolder::c_origQryAlph, TGlobalHolder::c_transAlph, TGlobalHolder::c_redAlph>;
     typename TGlobalHolder::TRedQrySeqs redQrySeqs =
       transQrySeqs | redView<TGlobalHolder::c_transAlph, TGlobalHolder::c_redAlph>;
@@ -512,8 +521,8 @@ public:
         // clear storage
         queryCount = 0;
         matches.clear();
-        qryIds.clear();
-        qrySeqs.clear();
+        qryIdsTmp.clear();
+        qrySeqsTmp.clear();
         blastMatches.clear();
 
         // stats explicitly not cleared, because accumulated

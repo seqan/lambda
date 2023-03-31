@@ -68,7 +68,9 @@ struct LambdaOptions : public SharedOptions
     unsigned                                    samBamSeq;
     bool                                        samBamHardClip;
     bool                                        versionInformationToOutputFile = true;
-    size_t                                      maximumQueryBlockSize          = 10;
+    size_t                                      maximumQueryBlockSize          = 10; // WTF; TODO CHANGE THIS
+
+    bool lazyQryFile = false;
 
     bool seedHalfExact   = true;
     bool adaptiveSeeding = true;
@@ -180,6 +182,12 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     {
         options.qryOrigAlphabet = AlphabetEnum::DNA5;
     }
+
+    parser.add_option(options.lazyQryFile,
+                      sharg::config{.long_id     = "lazy-query",
+                                    .description = "Load query sequences on-demand (instead of at start); "
+                                                   "reduces memory usage but \"wastes\" one thread on I/O.",
+                                    .advanced    = true});
 
     parser.add_option(options.indexFilePath,
                       sharg::config{.short_id    = 'i',
@@ -346,7 +354,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
                         .long_id     = "threads",
                         .description = "Number of threads to run concurrently.",
                         .advanced    = true,
-                        .validator   = sharg::arithmetic_range_validator{2, 1000}
+                        .validator   = sharg::arithmetic_range_validator{1, 1000}
     });
 #else
     parser.add_option(options.threads,
@@ -355,7 +363,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
                         .long_id     = "threads",
                         .description = "LAMBDA BUILT WITHOUT OPENMP; setting this option has no effect.",
                         .advanced    = true,
-                        .validator   = sharg::arithmetic_range_validator{2, 2}
+                        .validator   = sharg::arithmetic_range_validator{1, 1}
     });
 #endif
 
@@ -738,6 +746,9 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     // set samBamHardClip
     options.samBamHardClip = (samBamClip == "hard");
+
+    if (options.threads == 1ull && options.lazyQryFile)
+        throw sharg::parser_error{"Lazy query loading requires at least two total threads."};
 }
 
 // --------------------------------------------------------------------------

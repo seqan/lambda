@@ -38,6 +38,9 @@
 #include <bio/io/seq/reader.hpp>
 #include <bio/ranges/views/complement.hpp>
 #include <bio/ranges/views/translate_join.hpp>
+#if __cpp_lib_ranges <= 202106L
+#    include <bio/ranges/views/persist.hpp>
+#endif
 
 #include <fmindex-collection/DenseCSA.h>
 #include <fmindex-collection/locate.h>
@@ -265,12 +268,48 @@ template <DbIndexType  c_indexType,
           AlphabetEnum c_transAlph,
           AlphabetEnum c_redAlph,
           AlphabetEnum c_origQryAlph>
+void loadQuery(GlobalDataHolder<c_indexType, c_origSbjAlph, c_transAlph, c_redAlph, c_origQryAlph> & globalHolder,
+               LambdaOptions const &                                                                 options)
+{
+    using TGH = GlobalDataHolder<c_indexType, c_origSbjAlph, c_transAlph, c_redAlph, c_origQryAlph>;
+
+    double start = sysTime();
+
+    std::string strIdent = "Loading Query Sequences...";
+    myPrint(options, 1, strIdent);
+
+    bio::io::seq::record r{.id = std::string{}, .seq = std::vector<typename TGH::TOrigQryAlph>{}, .qual = std::ignore};
+    bio::io::seq::reader reader{options.queryFile, bio::io::seq::reader_options{.record = r}};
+    for (auto & rec : reader)
+    {
+        globalHolder.qryIds.push_back(std::move(rec.id));
+        globalHolder.qrySeqs.push_back(std::move(rec.seq));
+    }
+
+    // parse the file completely and get count in one line:
+    globalHolder.queryTotal = globalHolder.qrySeqs.size();
+
+    // batch-size as set in options (unless too few sequences)
+    globalHolder.records_per_batch = std::max<size_t>(
+      std::min<size_t>(globalHolder.queryTotal / (options.threads * 10), options.maximumQueryBlockSize),
+      1);
+    double finish = sysTime() - start;
+    myPrint(options, 1, " done.\n");
+
+    myPrint(options, 2, "Runtime: ", finish, "s \n\n");
+}
+
+template <DbIndexType  c_indexType,
+          AlphabetEnum c_origSbjAlph,
+          AlphabetEnum c_transAlph,
+          AlphabetEnum c_redAlph,
+          AlphabetEnum c_origQryAlph>
 void countQuery(GlobalDataHolder<c_indexType, c_origSbjAlph, c_transAlph, c_redAlph, c_origQryAlph> & globalHolder,
                 LambdaOptions const &                                                                 options)
 {
     double start = sysTime();
 
-    std::string strIdent = "Counting Query Sequences ...";
+    std::string strIdent = "Counting Query Sequences...";
     myPrint(options, 1, strIdent);
 
     // TODO potentially optimise this for fasta/fastq with simple 'grep -c'
@@ -293,6 +332,26 @@ void countQuery(GlobalDataHolder<c_indexType, c_origSbjAlph, c_transAlph, c_redA
     myPrint(options, 1, " done.\n");
 
     myPrint(options, 2, "Runtime: ", finish, "s \n\n");
+}
+
+template <DbIndexType  c_indexType,
+          AlphabetEnum c_origSbjAlph,
+          AlphabetEnum c_transAlph,
+          AlphabetEnum c_redAlph,
+          AlphabetEnum c_origQryAlph>
+auto createQryView(GlobalDataHolder<c_indexType, c_origSbjAlph, c_transAlph, c_redAlph, c_origQryAlph> & globalHolder,
+                   LambdaOptions const &                                                                 options)
+{
+    using TGH = GlobalDataHolder<c_indexType, c_origSbjAlph, c_transAlph, c_redAlph, c_origQryAlph>;
+    bio::io::seq::record r{.id = std::string{}, .seq = std::vector<typename TGH::TOrigQryAlph>{}, .qual = std::ignore};
+    bio::io::seq::reader reader{options.queryFile, bio::io::seq::reader_options{.record = r}};
+
+#if __cpp_lib_ranges <= 202106L
+    return std::move(reader) | bio::views::persist |
+           views::async_input_buffer(globalHolder.records_per_batch * options.threads);
+#else
+    return std::move(reader) | views::async_input_buffer(globalHolder.records_per_batch * options.threads);
+#endif
 }
 
 /// THREAD LOCAL STUFF
@@ -1284,8 +1343,8 @@ void iterativeSearchPost(auto & lH)
                     assert(subr2.size() == successfulCount);
                 }
 
-                lH.qryIds.resize(lH.qryIds.size() - successfulCount);
-                lH.qrySeqs.resize(lH.qrySeqs.size() - successfulCount);
+                lH.qryIds  = lH.qryIds | std::views::take(lH.qryIds.size() - successfulCount);
+                lH.qrySeqs = lH.qrySeqs | std::views::take(lH.qrySeqs.size() - successfulCount);
 
                 /* only switch to PHASE2 if there are any left */
                 if (!lH.qryIds.empty())
