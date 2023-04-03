@@ -254,13 +254,13 @@ template <AlphabetEnum c_origQryAlph, AlphabetEnum c_transAlph, AlphabetEnum c_r
 constexpr auto qryTransView = []()
 {
     if constexpr (c_redAlph == AlphabetEnum::DNA3BS)
-        return bio::views::add_reverse_complement | views::duplicate;
+        return bio::views::type_reduce | bio::views::add_reverse_complement | views::duplicate;
     else if constexpr (bio::alphabet::nucleotide_alphabet<_alphabetEnumToType<c_redAlph>>)
-        return bio::views::add_reverse_complement;
+        return bio::views::type_reduce | bio::views::add_reverse_complement;
     else if constexpr (c_origQryAlph == c_transAlph)
         return bio::views::type_reduce;
     else
-        return bio::views::translate_join;
+        return bio::views::type_reduce | bio::views::translate_join;
 }();
 
 template <AlphabetEnum c_transAlph, AlphabetEnum c_redAlph>
@@ -269,11 +269,11 @@ constexpr auto redView = []()
     if constexpr (c_transAlph == c_redAlph)
         return bio::views::type_reduce;
     else if constexpr (c_transAlph == AlphabetEnum::AMINO_ACID)
-        return bio::views::deep{bio::views::convert<_alphabetEnumToType<c_redAlph>>};
+        return bio::views::type_reduce | bio::views::deep{bio::views::convert<_alphabetEnumToType<c_redAlph>>};
     else if constexpr (c_redAlph == AlphabetEnum::DNA3BS)
-        return views::dna_n_to_random | views::reduce_to_bisulfite;
+        return bio::views::type_reduce | views::dna_n_to_random | views::reduce_to_bisulfite;
     else
-        return views::dna_n_to_random;
+        return bio::views::type_reduce | views::dna_n_to_random;
 }();
 
 // ==========================================================================

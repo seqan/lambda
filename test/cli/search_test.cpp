@@ -27,15 +27,23 @@ struct search_test : public cli_test
                          std::string const & profile,
                          std::string const & output_file,
                          std::string const & output_type,
-                         std::string const & control_file)
+                         std::string const & control_file,
+                         auto ... more_args)
     {
         std::string _r;
         std::string _red;
-
         if (index_command == "mkindexp")
         {
             _r = "-r";
             _red = reduction;
+        }
+
+        std::string _t = "-t";
+        std::string _threads = "1";
+        if (sizeof...(more_args) > 0 && ((more_args == "-t") || ...))
+        {
+            _t = "";
+            _threads = "";
         }
 
         cli_test_result result_index = execute_app("lambda3", index_command,
@@ -47,10 +55,11 @@ struct search_test : public cli_test
         cli_test_result result_search = execute_app("lambda3", search_command,
                                                     "-i", index_file,
                                                     "-q", data(query_file),
-                                                    "-t", "2",
+                                                    _t, _threads,
                                                     "--version-to-outputfile", "0",
                                                     "-p", profile,
-                                                    "-o", output_file);
+                                                    "-o", output_file,
+                                                    more_args...);
 
         ASSERT_EQ(result_search.exit_code, 0);
 
@@ -646,4 +655,13 @@ TEST_F(search_test, tblastx_fm_sensitive_sam)
 {
     run_search_test("mkindexp", "db_nucl.fasta.gz", "db_trans_fm.fasta.gz.lba", "fm", "li10", "searchp",
                     "queries_nucl.fasta.gz", "sensitive", "output_tblastx_fm_sensitive_test.sam", "sam", "output_tblastx_fm_sensitive.sam");
+}
+
+// special options
+
+TEST_F(search_test, lazy_loading)
+{
+    run_search_test("mkindexp", "db_prot.fasta.gz", "db_prot_fm.fasta.gz.lba", "fm", "li10", "searchp",
+                    "queries_nucl.fasta.gz", "none", "output_blastx_fm_lazy_test.m8", "m8", "output_blastx_fm.m8",
+                    "--lazy-query", "1", "-t", "2");
 }
