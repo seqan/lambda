@@ -226,7 +226,7 @@ using _alphabetEnumToType = typename _alphabetEnumToType_<e>::type;
 inline constexpr uint64_t currentIndexGeneration = 0;
 
 // ==========================================================================
-//  Index specs TODO experiment with these
+//  Index specs
 // ==========================================================================
 
 template <size_t AlphabetSize>
@@ -308,9 +308,12 @@ void load(cereal::BinaryInputArchive & archive, std::vector<alph_t> & vec)
 //  The index
 // ==========================================================================
 
+// bump this on incompatible changes
+inline constexpr uint64_t supportedIndexGeneration = 0;
+
 struct index_file_options
 {
-    uint64_t indexGeneration{0}; // bump this on incompatible changes
+    uint64_t indexGeneration{supportedIndexGeneration};
 
     DbIndexType indexType{};
 
@@ -319,8 +322,6 @@ struct index_file_options
     AlphabetEnum redAlph{};
 
     bio::alphabet::genetic_code geneticCode{};
-
-    //TODO reserve space here for more vars?
 
     template <typename TArchive>
     void serialize(TArchive & archive)
@@ -344,7 +345,7 @@ struct index_file
 
     TCDStringSet<std::string>                                ids;
     TCDStringSet<std::vector<_alphabetEnumToType<origAlph>>> seqs;
-    TCDStringSet<std::vector<uint32_t>>                      sTaxIds; //TODO double check int-width
+    TCDStringSet<std::vector<uint32_t>>                      sTaxIds;
 
     std::vector<uint32_t>     taxonParentIDs;
     std::vector<uint8_t>      taxonHeights;

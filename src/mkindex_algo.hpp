@@ -35,7 +35,6 @@
 #include <bio/ranges/views/translate_join.hpp>
 
 #include "mkindex_misc.hpp"
-// #include "mkindex_saca.hpp"
 #include "shared_definitions.hpp"
 #include "shared_misc.hpp"
 #include "shared_options.hpp"
@@ -69,7 +68,7 @@ auto loadSubjSeqsAndIds(LambdaIndexerOptions const & options)
     // see http://www.uniprot.org/help/accession_numbers
     // https://www.ncbi.nlm.nih.gov/Sequin/acc.html
     // https://www.ncbi.nlm.nih.gov/refseq/about/
-    // TODO: make sure these don't trigger twice on one ID
+    // REMARK: these might trigger twice on one ID
     std::regex const accRegEx{
       "[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2}|" // UNIPROT
       "[A-Z][0-9]{5}|[A-Z]{2}[0-9]{6}|"                                       // NCBI nucl
@@ -93,7 +92,6 @@ auto loadSubjSeqsAndIds(LambdaIndexerOptions const & options)
             assert(accToIdRank.count(it->str()) == 0);
             //                              "An accession number appeared twice in the file, but they should be unique.");
 
-            // TODO store acc outside as well
             accToIdRank[it->str()] = rank;
         }
 
@@ -145,14 +143,16 @@ auto loadSubjSeqsAndIds(LambdaIndexerOptions const & options)
         throw std::runtime_error("ERROR: No sequences in file. Aborting.\n");
     }
 
-    size_t maxLen = 0ul;
+    size_t maxLen    = 0ul;
+    size_t lengthSum = 0ul;
     for (auto const & s : originalSeqs)
     {
-        if (std::ranges::size(s) > maxLen)
+        lengthSum += s.size();
+        if (s.size() > maxLen)
         {
-            maxLen = std::ranges::size(s);
+            maxLen = s.size();
         }
-        else if (std::ranges::size(s) == 0ul)
+        else if (s.size() == 0ul)
         {
             throw std::runtime_error(
               "ERROR: Unexpectedly encountered a sequence of length 0 in the file."
@@ -165,6 +165,8 @@ auto loadSubjSeqsAndIds(LambdaIndexerOptions const & options)
             std::ranges::size(originalSeqs),
             "\nLongest sequence read: ",
             maxLen,
+            "\nSum of all sequence lengths: ",
+            lengthSum,
             "\n");
 
     if (options.hasSTaxIds)
@@ -310,8 +312,6 @@ auto mapTaxIDs(TaccToIdRank const & accToIdRank, uint64_t const numSubjects, Lam
 
     myPrint(options, 2, "Runtime: ", sysTime() - start, "s \n");
 
-    // TODO do something with the subjects that have no (valid) taxid?
-
     uint64_t nomap = 0;
     uint64_t multi = 0;
 
@@ -368,34 +368,31 @@ auto parseAndStoreTaxTree(std::vector<bool> & taxIdIsPresent, LambdaIndexerOptio
 
     double start = sysTime();
 
-    std::string      buf;
-    std::regex const numRegEx{"\\b\\d+\\b"};
-
-    //TODO it would be better to do TSV reading here instead of the regex-voodoo, but I need to understand it first o_O
-    bio::io::txt::reader reader{options.taxDumpDir + "/nodes.dmp"};
-    for (std::string_view line : reader)
+    bio::io::txt::reader reader{options.taxDumpDir + "/nodes.dmp", '\t'};
+    for (auto & record : reader)
     {
-        uint32_t n      = 0;
-        uint32_t parent = 0;
-        unsigned i      = 0;
-        for (auto it = std::cregex_iterator(line.begin(), line.end(), numRegEx), itEnd = std::cregex_iterator();
-             (it != itEnd) && (i < 2);
-             ++it, ++i)
+        /* first column (own id) */
+        uint32_t         n    = 0;
+        std::string_view col1 = record.fields[0];
+        auto             res1 = std::from_chars(col1.data(), col1.data() + col1.size(), n);
+        if (res1.ec != std::errc{})
         {
-            std::string            strbuf = it->str();
-            std::from_chars_result res;
-
-            if (i == 0)
-                res = std::from_chars(strbuf.data(), strbuf.data() + strbuf.size(), n);
-            else
-                res = std::from_chars(strbuf.data(), strbuf.data() + strbuf.size(), parent);
-
-            if (res.ec != std::errc{})
-            {
-                throw std::runtime_error{
-                  std::string{"Error: Expected taxonomical ID, but got something I couldn't read: "} + strbuf + "\n"};
-            }
+            throw std::runtime_error{
+              std::string{"Error: Expected taxonomical ID, but got something I couldn't read: "} +
+              static_cast<std::string>(col1) + "\n"};
         }
+
+        /* second column (parent id) */
+        uint32_t         parent = 0;
+        std::string_view col2   = record.fields[2]; // fields[1] is '|'
+        auto             res2   = std::from_chars(col2.data(), col2.data() + col2.size(), parent);
+        if (res2.ec != std::errc{})
+        {
+            throw std::runtime_error{
+              std::string{"Error: Expected taxonomical ID, but got something I couldn't read: "} +
+              static_cast<std::string>(col2) + "\n"};
+        }
+
         if (std::ranges::size(taxonParentIDs) <= n)
             taxonParentIDs.resize(n + 1, 0);
         taxonParentIDs[n] = parent;
@@ -545,32 +542,25 @@ auto parseAndStoreTaxTree(std::vector<bool> & taxIdIsPresent, LambdaIndexerOptio
 
     start = sysTime();
 
-    std::regex const wordRegEx{R"([\w.,\"<> ]+)"};
-    std::string      name;
-
-    //TODO it would be better to do TSV reading here instead of the regex-voodoo, but I need to understand it first o_O
-    bio::io::txt::reader reader2{options.taxDumpDir + "/names.dmp"};
-    for (std::string_view line : reader2)
+    bio::io::txt::reader reader2{options.taxDumpDir + "/names.dmp", '\t'};
+    for (auto & record : reader2)
     {
-        uint32_t taxId = 0;
+        assert(record.fields.size() == 8);
 
-        auto itWord = std::cregex_iterator(line.begin(), line.end(), wordRegEx);
-        if (itWord == std::cregex_iterator())
+        if (record.fields.size() < 6)
+            continue;
+
+        if (record.fields[6] == "scientific name")
         {
-            throw std::runtime_error("Error: Expected taxonomical ID in first column, but couldn't find it.\n");
-        }
-        else
-        {
-            std::string            strbuf = itWord->str();
-            std::from_chars_result res;
-
-            res = std::from_chars(strbuf.data(), strbuf.data() + strbuf.size(), taxId);
-
-            if (res.ec != std::errc{})
+            /* first column */
+            uint32_t         taxId = 0;
+            std::string_view col1  = record.fields[0];
+            auto             res1  = std::from_chars(col1.data(), col1.data() + col1.size(), taxId);
+            if (res1.ec != std::errc{})
             {
                 throw std::runtime_error{
-                  std::string{"Error: Expected taxonomical ID in first column, but got something I couldn't read: "} +
-                  strbuf + "\n"};
+                  std::string{"Error: Expected taxonomical ID, but got something I couldn't read: "} +
+                  static_cast<std::string>(col1) + "\n"};
             }
 
             if (taxId >= std::ranges::size(taxonNames))
@@ -578,21 +568,11 @@ auto parseAndStoreTaxTree(std::vector<bool> & taxIdIsPresent, LambdaIndexerOptio
                 throw std::runtime_error(std::string("Error: taxonomical ID is ") + std::to_string(taxId) +
                                          ", but no such taxon in tree.\n");
             }
-        }
 
-        // we don't need this name
-        if (!taxIdIsPresentOrParent[taxId])
-            continue;
-
-        if (++itWord == std::cregex_iterator())
-            throw std::runtime_error("Error: Expected name in second column, but couldn't find it.\n");
-        else
-            name = itWord->str();
-
-        while (++itWord != std::cregex_iterator())
-        {
-            if (itWord->str() == "scientific name")
-                taxonNames[taxId] = name;
+            /* second column (name) */
+            if (taxIdIsPresentOrParent[taxId]) // check if we need the name
+                taxonNames[taxId].assign(record.fields[2].begin(),
+                                         record.fields[2].end()); // fields[1] is '|' separator
         }
     }
 

@@ -156,7 +156,6 @@ void argConv3a(LambdaIndexerOptions const & options)
             return realMain<c_indexType, c_origAlph, c_transAlph, AlphabetEnum::MURPHY10>(options);
         case AlphabetEnum::LI10:
             return realMain<c_indexType, c_origAlph, c_transAlph, AlphabetEnum::LI10>(options);
-        //TODO other reduced alphabets
         default:
             throw 45;
     }

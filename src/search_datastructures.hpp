@@ -412,7 +412,7 @@ public:
 
     size_t              queryTotal        = 0;
     std::atomic<size_t> queryCount        = 0;
-    size_t              records_per_batch = 100; // TODO this currently has no effect
+    size_t              records_per_batch = -1; // this is always overwritten
 
     GlobalDataHolder()                                     = default;
     GlobalDataHolder(GlobalDataHolder const &)             = delete;
