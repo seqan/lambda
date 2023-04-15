@@ -68,7 +68,7 @@ struct LambdaOptions : public SharedOptions
     unsigned                                    samBamSeq;
     bool                                        samBamHardClip;
     bool                                        versionInformationToOutputFile = true;
-    size_t                                      maximumQueryBlockSize          = 10; // WTF; TODO CHANGE THIS
+    size_t                                      maximumQueryBlockSize          = 10; // possibly increase this
 
     bool lazyQryFile = false;
 
@@ -142,7 +142,6 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     sharedSetup(parser);
 
-    // TODO version check
     parser.add_option(options.verbosity,
                       sharg::config{
                         .short_id    = 'v',
@@ -155,13 +154,17 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     parser.add_section("Input options");
 
-    // TODO Better solution for file extensions
+    std::vector<std::string> extensions{"fa", "fq", "fasta", "fastq"};
+#ifdef SEQAN_HAS_ZLIB
+    for (auto const & ext : extensions)
+        extensions.push_back(ext + ".gz");
+#endif
     parser.add_option(options.queryFile,
                       sharg::config{.short_id    = 'q',
                                     .long_id     = "query",
                                     .description = "Query sequences.",
                                     .required    = true,
-                                    .validator   = sharg::input_file_validator{{"fa", "fq", "fasta", "fastq", "gz"}}});
+                                    .validator   = sharg::input_file_validator{extensions}});
 
     std::string inputAlphabetTmp = "auto";
     int32_t     geneticCodeTmp   = 1;
@@ -189,26 +192,34 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
                                                    "reduces memory usage but \"wastes\" one thread on I/O.",
                                     .advanced    = true});
 
+    extensions = {"lba", "lta"};
+#ifdef SEQAN_HAS_ZLIB
+    for (auto const & ext : extensions)
+        extensions.push_back(ext + ".gz");
+#endif
     parser.add_option(options.indexFilePath,
                       sharg::config{.short_id    = 'i',
                                     .long_id     = "index",
                                     .description = std::string{"The database index (created by the 'lambda "} +
                                                    mkdindex_subcommand + "' command).",
                                     .required  = true,
-                                    .validator = sharg::input_file_validator{{"lba", "lta", "lba.gz", "lta.gz"}}});
+                                    .validator = sharg::input_file_validator{extensions}});
 
     parser.add_section("Output options");
 
-    // TODO Fix output file requirements
-    parser.add_option(options.output,
-                      sharg::config{
-                        .short_id = 'o',
-                        .long_id  = "output",
-                        .description =
-                          "File to hold reports on hits (.m* are blastall -m* formats; .m8 is tab-seperated "
-                          ".m9 is tab-seperated with with comments, .m0 is pairwise format).",
-                        .validator = sharg::output_file_validator{sharg::output_file_open_options::create_new,
-                                                                  {"m0", "m8", "m9", "bam", "sam", "gz", "bz2"}}
+    extensions = {"m0", "m8", "m9", "bam", "sam"};
+#ifdef SEQAN_HAS_ZLIB
+    for (auto const & ext : extensions)
+        extensions.push_back(ext + ".gz");
+#endif
+    parser.add_option(
+      options.output,
+      sharg::config{
+        .short_id    = 'o',
+        .long_id     = "output",
+        .description = "File to hold reports on hits (.m* are blastall -m* formats; .m8 is tab-seperated "
+                       ".m9 is tab-seperated with with comments, .m0 is pairwise format).",
+        .validator   = sharg::output_file_validator{sharg::output_file_open_options::create_new, extensions}
     });
 
     std::string outputColumnsTmp = "std";
@@ -271,6 +282,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     std::string samBamSeqDescr;
 
+    //TODONE: these are TODOs for you
     if (options.domain != domain_t::protein) //TODO add separate for BS
     {
         samBamSeqDescr                  = "Write matching DNA subsequence into SAM/BAM file.";

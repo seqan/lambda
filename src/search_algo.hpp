@@ -21,6 +21,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <iomanip>
 #include <type_traits>
 
@@ -66,10 +67,39 @@
 
 void readIndexOptions(LambdaOptions & options)
 {
-    fake_index_file f{options.indexFileOptions};
+    std::string filename(options.indexFilePath);
+    size_t      t = std::min<size_t>(options.threads, 4); // more than four threads is harmful
 
-    std::string                  filename(options.indexFilePath);
-    size_t                       t = std::min<size_t>(options.threads, 4); // more than four threads is harmful
+    /* verify the correct index_generation */
+    uint64_t indexGeneration = -1;
+    if (filename.ends_with(".lba") || filename.ends_with(".lba.gz"))
+    {
+        bio::io::transparent_istream is{filename, {.threads = t}};
+        cereal::BinaryInputArchive   iarchive(is);
+        iarchive(cereal::make_nvp("generation", indexGeneration));
+    }
+    else if (filename.ends_with(".lta") || filename.ends_with(".lta.gz"))
+    {
+        bio::io::transparent_istream is{filename, {.threads = t}};
+        cereal::JSONInputArchive     iarchive(is);
+        iarchive(cereal::make_nvp("generation", indexGeneration));
+    }
+    else
+    {
+        throw 59;
+    }
+
+    if (indexGeneration != supportedIndexGeneration)
+    {
+        std::string error = "ERROR: this version of Lambda only supports INDEXES of generation " +
+                            std::to_string(supportedIndexGeneration) +
+                            ", but the provided index was of generation: " + std::to_string(indexGeneration) +
+                            ". PLEASE RECREATE THE INDEX!\n";
+        throw std::runtime_error{error};
+    }
+
+    /* load index "options" */
+    fake_index_file              f{options.indexFileOptions};
     bio::io::transparent_istream is{filename, {.threads = t}};
 
     if (filename.ends_with(".lba") || filename.ends_with(".lba.gz"))
@@ -103,7 +133,13 @@ void checkRAM(LambdaOptions const & options)
 
     sizeQuery = fileSize(options.queryFile.c_str());
 
-    uint64_t requiredRAM = ((sizeIndex + sizeQuery) * 11) / 10; // give it +10% TODO verify
+    uint64_t requiredRAM = 0;
+
+    //TODO I have verified this for 2-16 threads on uniprot, but we should also double-check on Uniref50
+    if (options.lazyQryFile)
+        requiredRAM = (sizeIndex * 12) / 10; // give it +20%
+    else
+        requiredRAM = ((sizeIndex + sizeQuery) * 12) / 10; // give it +20%
 
     if (requiredRAM >= ram)
     {
@@ -239,24 +275,34 @@ void loadDbIndexFromDisk(
 
     double finish = sysTime() - start;
     myPrint(options, 1, " done.\n");
+
+    myPrint(options, 2, "    # original subjects:   ", globalHolder.indexFile.seqs.size(), "\n");
+    myPrint(options, 2, "    # translated subjects: ", globalHolder.transSbjSeqs.size(), "\n");
+    myPrint(options, 2, "    # reduced subjects:    ", globalHolder.redSbjSeqs.size(), "\n");
+    bool const indexHasSTaxIDs = globalHolder.indexFile.sTaxIds.size() == globalHolder.indexFile.seqs.size();
+    myPrint(options, 2, "    has taxonomic IDs:     ", indexHasSTaxIDs, "\n");
+    bool const indexHasTaxTree = globalHolder.indexFile.taxonNames.size() >= globalHolder.indexFile.seqs.size();
+    myPrint(options, 2, "    has taxonomic tree:    ", indexHasTaxTree, "\n");
     myPrint(options, 2, "Runtime: ", finish, "s \n\n");
 
-    // this is actually part of prepareScoring(), but the values are just available now
-    // TODO actually this should be for all modes where total size of redSbjSeqs != origSeqs
-    if constexpr (c_redAlph == AlphabetEnum::DNA3BS)
+    if (options.hasSTaxIds && !indexHasSTaxIDs)
     {
-        auto sizes = globalHolder.redSbjSeqs | std::views::transform(std::ranges::size);
-        seqan::context(globalHolder.outfileBlastTab).dbTotalLength  = std::accumulate(sizes.begin(), sizes.end(), 0ull);
-        seqan::context(globalHolder.outfileBlastTab).dbNumberOfSeqs = globalHolder.redSbjSeqs.size();
+        throw std::runtime_error{
+          "You requested printing of taxonomic IDs and/or taxonomic binning, but the index "
+          "does not contain taxonomic information. Recreate it and provide --acc-tax-map ."};
     }
-    else
+    if (options.computeLCA && !indexHasTaxTree)
     {
-        seqan::context(globalHolder.outfileBlastTab).dbTotalLength  = globalHolder.indexFile.seqs.concat_size();
-        seqan::context(globalHolder.outfileBlastTab).dbNumberOfSeqs = globalHolder.indexFile.seqs.size();
+        throw std::runtime_error{
+          "You requested taxonomic binning, but the index "
+          "does not contain a taxonomic tree. Recreate it and provide --tax-dump-dir ."};
     }
 
-    seqan::context(globalHolder.outfileBlastTab).dbName = options.indexFilePath;
-    //TODO did we forget outfileBlastRep here? Or is that copied in output?
+    /* this is actually part of prepareScoring(), but the values are just available now */
+    auto sizes = globalHolder.redSbjSeqs | std::views::transform(std::ranges::size);
+    seqan::context(globalHolder.outfileBlastTab).dbTotalLength  = std::accumulate(sizes.begin(), sizes.end(), 0ull);
+    seqan::context(globalHolder.outfileBlastTab).dbNumberOfSeqs = globalHolder.redSbjSeqs.size();
+    seqan::context(globalHolder.outfileBlastTab).dbName         = options.indexFilePath;
 }
 
 // --------------------------------------------------------------------------
@@ -312,7 +358,6 @@ void countQuery(GlobalDataHolder<c_indexType, c_origSbjAlph, c_transAlph, c_redA
     std::string strIdent = "Counting Query Sequences...";
     myPrint(options, 1, strIdent);
 
-    // TODO potentially optimise this for fasta/fastq with simple 'grep -c'
 #if __GNUC__ >= 11
     bio::io::seq::record r{.id = std::ignore, .seq = std::ignore, .qual = std::ignore};
     bio::io::seq::reader reader{options.queryFile, bio::io::seq::reader_options{.record = r}};
@@ -832,8 +877,8 @@ inline void _writeRecord(TBlastRecord & record, TLocalHolder & lH)
             if (record.lcaTaxId != 0)
                 for (auto const & bm : record.matches)
                     for (uint32_t const sTaxId : lH.gH.indexFile.sTaxIds[bm._n_sId])
-                        if (const_gH.indexFile.taxonParentIDs[sTaxId] !=
-                            0) // TODO do we want to skip unassigned subjects
+                        // Unassigned subjects are simply ignored
+                        if (const_gH.indexFile.taxonParentIDs[sTaxId] != 0)
                             record.lcaTaxId = computeLCA(const_gH.indexFile.taxonParentIDs,
                                                          const_gH.indexFile.taxonHeights,
                                                          sTaxId,
@@ -1040,7 +1085,7 @@ inline void _performAlignment(TDepSetH &      depSetH,
     TSimdScore                                     simdScoringScheme(currentScoringScheme);
     seqan::StringSet<seqan::String<TTraceSegment>> trace;
 
-    // TODO when band is available, create inside block with band
+    // Alignment is not banded, because SeqAn2 doesn't support it for SIMD-fied alignment
     TAlignConfig config; //(0, 2*band)
 
     auto matchIt = blastMatches.begin();
@@ -1054,7 +1099,6 @@ inline void _performAlignment(TDepSetH &      depSetH,
         seqan::clear(trace);
         seqan::resize(trace, sizeBatch, seqan::Exact());
 
-        // TODO pass in lH.dpSIMDContext
         seqan::_prepareAndRunSimdAlignment(resultsBatch,
                                            trace,
                                            infSetH,
@@ -1129,7 +1173,6 @@ inline void iterateMatchesFullSimd(TLocalHolder & lH, bsDirection const dir = bs
     }
 #ifdef LAMBDA_MICRO_STATS
     lH.stats.timeExtend += sysTime() - start;
-    lH.stats.timeExtendTrace += sysTime() - start; //TODO remove this line!
 
     // filter out duplicates
     start = sysTime();

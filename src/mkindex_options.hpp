@@ -92,24 +92,22 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
 
     parser.add_section("Input Options");
 
-    // TODO Change file extensions, make more generic
+    std::vector<std::string> extensions{"fa", "fq", "fasta", "fastq"};
+#ifdef SEQAN_HAS_ZLIB
+    for (auto const & ext : extensions)
+        extensions.push_back(ext + ".gz");
+#endif
     parser.add_option(options.dbFile,
                       sharg::config{.short_id    = 'd',
                                     .long_id     = "database",
                                     .description = "Database sequences.",
                                     .required    = true,
-                                    .validator   = sharg::input_file_validator{{"fa", "fq", "fasta", "fastq", "gz"}}});
+                                    .validator   = sharg::input_file_validator{extensions}});
 
-    std::vector<std::string> taxExtensions{"accession2taxid", "dat"};
+    extensions = {"accession2taxid", "dat"};
 #ifdef SEQAN_HAS_ZLIB
-    taxExtensions.push_back("accession2taxid.gz");
-    taxExtensions.push_back("accession2taxid.bgzf");
-    taxExtensions.push_back("dat.gz");
-    taxExtensions.push_back("dat.bgzf");
-#endif
-#ifdef SEQAN_HAS_BZIP2
-    taxExtensions.push_back("accession2taxid.bz2");
-    taxExtensions.push_back("dat.bz2");
+    for (auto const & ext : extensions)
+        extensions.push_back(ext + ".gz");
 #endif
 
     parser.add_option(
@@ -120,7 +118,7 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
                       "An NCBI or UniProt accession-to-taxid mapping file. Download from "
                       "ftp://ftp.ncbi.nlm.nih.gov/pub/taxonomy/accession2taxid/ or "
                       "ftp://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/idmapping/ .",
-                    .validator = sharg::input_file_validator(taxExtensions)});
+                    .validator = sharg::input_file_validator{extensions}});
 
     parser.add_option(options.taxDumpDir,
                       sharg::config{.short_id    = 'x',
@@ -132,13 +130,18 @@ void parseCommandLine(LambdaIndexerOptions & options, int argc, char const ** ar
     parser.add_section("Output Options");
 
     options.indexFilePath = "»INPUT«.lba";
-    parser.add_option(options.indexFilePath,
-                      sharg::config{
-                        .short_id    = 'i',
-                        .long_id     = "index",
-                        .description = "The output path for the index file.",
-                        .validator   = sharg::output_file_validator{sharg::output_file_open_options::create_new,
-                                                                    {"lba", "lta", "lba.gz", "lta.gz"}}
+    extensions            = {"lba", "lta"};
+#ifdef SEQAN_HAS_ZLIB
+    for (auto const & ext : extensions)
+        extensions.push_back(ext + ".gz");
+#endif
+    parser.add_option(
+      options.indexFilePath,
+      sharg::config{
+        .short_id    = 'i',
+        .long_id     = "index",
+        .description = "The output path for the index file.",
+        .validator   = sharg::output_file_validator{sharg::output_file_open_options::create_new, {extensions}}
     });
 
     options.threads = std::max<size_t>(2ul, std::min<size_t>(std::thread::hardware_concurrency(), 4ul));

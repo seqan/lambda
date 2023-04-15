@@ -412,7 +412,7 @@ void realMain(LambdaOptions const & options)
 #ifdef LAMBDA_MICRO_STATS
             double buf = sysTime();
 #endif
-            search(localHolder); //TODO seed refining if iterateMatches gives 0 results
+            search(localHolder);
 #ifdef LAMBDA_MICRO_STATS
             localHolder.stats.timeSearch += sysTime() - buf;
 #endif

@@ -195,11 +195,9 @@ public:
      * \{
      */
     iterator()                                 = default; //!< Defaulted.
-    //TODO: delete:
-    iterator(iterator const & rhs)             = default; //!< Defaulted.
+    iterator(iterator const & rhs)             = delete;  //!< Deleted.
     iterator(iterator && rhs)                  = default; //!< Defaulted.
-    //TODO: delete:
-    iterator & operator=(iterator const & rhs) = default; //!< Defaulted.
+    iterator & operator=(iterator const & rhs) = delete;  //!< Deleted.
     iterator & operator=(iterator && rhs)      = default; //!< Defaulted.
     ~iterator() noexcept                       = default; //!< Defaulted.
 
@@ -227,7 +225,7 @@ public:
     //!\brief Pre-increment.
     iterator & operator++() noexcept
     {
-        if (at_end) // TODO unlikely
+        if (at_end)
             return *this;
 
         assert(buffer_ptr != nullptr);

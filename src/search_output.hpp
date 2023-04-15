@@ -361,9 +361,17 @@ inline void myWriteHeader(TGH & globalHolder, TLambdaOptions const & options)
         SEQAN_OMP_PRAGMA(parallel for)
         for (unsigned i = 0; i < globalHolder.indexFile.ids.size(); ++i)
         {
-            //TODO replace with assign algo
-            subjIds[i] = globalHolder.indexFile.ids[i] | std::views::take_while(!bio::io::is_space) |
-                         bio::ranges::to<std::string>();
+            if (auto it = std::ranges::find(globalHolder.indexFile.ids[i], ' '),
+                e       = globalHolder.indexFile.ids[i].end();
+                it == e)
+            {
+                subjIds[i] = globalHolder.indexFile.ids[i];
+            }
+            else
+            {
+                resize(subjIds[i], e - it);
+                std::ranges::copy(globalHolder.indexFile.ids[i].begin(), e, begin(subjIds[i]));
+            }
         }
 
         typedef seqan::BamHeaderRecord::TTag TTag;
@@ -439,13 +447,11 @@ inline void myWriteHeader(TGH & globalHolder, TLambdaOptions const & options)
                              header[i],
                              seqan::context(globalHolder.outfileBam),
                              seqan::Sam());
-            std::cout << __FILE__ << ": " << __LINE__ << '\n';
         }
         else
         {
             // ref header records are automatically added with default writeHeader()
             seqan::writeHeader(globalHolder.outfileBam, header);
-            std::cout << __FILE__ << ": " << __LINE__ << '\n';
         }
     }
 }
@@ -593,12 +599,6 @@ inline void myWriteRecord(TLH & lH, TRecord const & record)
             } // else original query is protein and cannot be printed
 
             // custom tags
-            //TODO untranslate?
-            //             if (lH.options.samBamTags[SamBamExtraTags<>::Q_START])
-            //                 seqan::appendTagValue(bamR.tags,
-            //                                std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::Q_START]),
-            //                                uint32_t(mIt->qStart), 'I');
-            //      case    S_START:
             if (lH.options.samBamTags[SamBamExtraTags<>::E_VALUE])
                 seqan::appendTagValue(bamR.tags,
                                       std::get<0>(SamBamExtraTags<>::keyDescPairs[SamBamExtraTags<>::E_VALUE]),
@@ -636,7 +636,6 @@ inline void myWriteRecord(TLH & lH, TRecord const & record)
                                       'c');
             if (lH.options.samBamTags[SamBamExtraTags<>::S_TAX_IDS])
             {
-                //TODO append integer array, instead of transforming to string
                 seqan::CharString buf;
                 auto              it = begin(buf);
                 if (seqan::length(mIt->sTaxIds) == 0)
