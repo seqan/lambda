@@ -240,6 +240,11 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
                         .validator = sharg::arithmetic_range_validator{0, 100}
     });
 
+    if (options.domain == domain_t::bisulfite)
+    {
+        options.minBitScore = 68;
+    }
+
     parser.add_option(options.minBitScore,
                       sharg::config{
                         .short_id    = '\0',
@@ -282,18 +287,9 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     std::string samBamSeqDescr;
 
-    //TODONE: these are TODOs for you
-    if (options.domain != domain_t::protein) //TODO add separate for BS
+    if (options.domain != domain_t::protein)
     {
-        samBamSeqDescr                  = "Write matching DNA subsequence into SAM/BAM file.";
-        options.searchOpts0.seedLength  = 14;
-        options.searchOpts0.seedOffset  = 9;
-        options.searchOpts0.maxSeedDist = 0;
-        options.searchOpts.seedLength   = 14;
-        options.searchOpts.seedOffset   = 7;
-        options.searchOpts.maxSeedDist  = 1;
-        options.preScoringThresh        = 1.4;
-
+        samBamSeqDescr    = "Write matching DNA subsequence into SAM/BAM file.";
         options.gapOpen   = -5;
         options.gapExtend = -2;
     }
@@ -306,16 +302,38 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
           "there is no DNA sequence so a \"*\" is written to the SEQ column. The matching protein sequence "
           "can be "
           "written as an optional tag, see --sam-bam-tags.";
-
-        options.searchOpts0.seedLength  = 10;
-        options.searchOpts0.seedOffset  = 5;
-        options.searchOpts0.maxSeedDist = 0;
-        options.searchOpts.seedLength   = 11;
-        options.searchOpts.seedOffset   = 3;
-        options.searchOpts.maxSeedDist  = 1;
-
         options.gapOpen   = -11;
         options.gapExtend = -1;
+    }
+
+    switch (options.domain)
+    {
+        case domain_t::protein:
+            options.searchOpts0.seedLength  = 10;
+            options.searchOpts0.seedOffset  = 5;
+            options.searchOpts0.maxSeedDist = 0;
+            options.searchOpts.seedLength   = 11;
+            options.searchOpts.seedOffset   = 3;
+            options.searchOpts.maxSeedDist  = 1;
+            break;
+        case domain_t::nucleotide:
+            options.searchOpts0.seedLength  = 14;
+            options.searchOpts0.seedOffset  = 9;
+            options.searchOpts0.maxSeedDist = 0;
+            options.searchOpts.seedLength   = 14;
+            options.searchOpts.seedOffset   = 7;
+            options.searchOpts.maxSeedDist  = 1;
+            options.preScoringThresh        = 1.4;
+            break;
+        case domain_t::bisulfite:
+            options.searchOpts0.seedLength  = 17;
+            options.searchOpts0.seedOffset  = 10;
+            options.searchOpts0.maxSeedDist = 0;
+            options.searchOpts.seedLength   = 17;
+            options.searchOpts.seedOffset   = 10;
+            options.searchOpts.maxSeedDist  = 1;
+            options.preScoringThresh        = 1.5;
+            break;
     }
 
     std::string samBamSeqDescrTmp = "uniq";
@@ -545,22 +563,29 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
       "arguments!",
       true);
 
-    if (options.domain != domain_t::protein) //TODO add separate for BS
+    switch (options.domain)
     {
-        parser.add_line("\"fast\"", false);
-        parser.add_line("--seed-length 14 --seed-offset 9 --seed-delta 0", true);
-        parser.add_line("\"sensitive\"", false);
-        parser.add_line("--seed-length0 14 --seed-offset0 3 --seed-length 14 --seed-offset 3", true);
-    }
-    else
-    {
-        parser.add_line("\"fast\"", false);
-        parser.add_line("--seed-length0 12 --seed-offset0 8 --seed-length 10 --seed-offset 5 --seed-delta 0", true);
-        parser.add_line("\"sensitive\"", false);
-        parser.add_line(
-          "--seed-length0 9 --seed-offset0 4 --seed-length 8 --seed-offset 3 --pre-scoring 3 "
-          "--pre-scoring-threshold 1.9",
-          true);
+        case domain_t::protein:
+            parser.add_line("\"fast\"", false);
+            parser.add_line("--seed-length0 12 --seed-offset0 8 --seed-length 10 --seed-offset 5 --seed-delta 0", true);
+            parser.add_line("\"sensitive\"", false);
+            parser.add_line(
+              "--seed-length0 9 --seed-offset0 4 --seed-length 8 --seed-offset 3 --pre-scoring 3 "
+              "--pre-scoring-threshold 1.9",
+              true);
+            break;
+        case domain_t::nucleotide:
+            parser.add_line("\"fast\"", false);
+            parser.add_line("--seed-length 14 --seed-offset 9 --seed-delta 0", true);
+            parser.add_line("\"sensitive\"", false);
+            parser.add_line("--seed-length0 14 --seed-offset0 3 --seed-length 14 --seed-offset 3", true);
+            break;
+        case domain_t::bisulfite:
+            parser.add_line("\"fast\"", false);
+            parser.add_line("--seed-length 17 --seed-offset 10 --seed-delta 0", true);
+            parser.add_line("\"sensitive\"", false);
+            parser.add_line("--seed-length0 16 --seed-offset0 8 --seed-length 15 --seed-offset 10", true);
+            break;
     }
     parser.add_line("For further information see the wiki: <https://github.com/seqan/lambda/wiki>", false);
 
@@ -584,11 +609,15 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     if (options.profile == "fast")
     {
-        if (options.domain != domain_t::protein) //TODO add separate for BS
+        if (options.domain != domain_t::protein)
         {
             options.iterativeSearch        = false;
-            options.searchOpts.seedOffset  = 9;
             options.searchOpts.maxSeedDist = 0;
+
+            if (options.domain == domain_t::nucleotide)
+            {
+                options.searchOpts.seedOffset = 9;
+            }
         }
         else
         {
@@ -601,20 +630,27 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     }
     else if (options.profile == "sensitive")
     {
-        if (options.domain != domain_t::protein) //TODO add separate for BS
+        switch (options.domain)
         {
-            options.searchOpts0.seedOffset = 3;
-            options.searchOpts.seedOffset  = 3;
-        }
-        else
-        {
-            options.searchOpts0.seedLength = 9;
-            options.searchOpts0.seedOffset = 4;
-            options.searchOpts.seedLength  = 8;
-            options.searchOpts.seedOffset  = 3;
+            case domain_t::protein:
+                options.searchOpts0.seedLength = 9;
+                options.searchOpts0.seedOffset = 4;
+                options.searchOpts.seedLength  = 8;
+                options.searchOpts.seedOffset  = 3;
 
-            options.preScoring       = 3;
-            options.preScoringThresh = 1.9;
+                options.preScoring       = 3;
+                options.preScoringThresh = 1.9;
+                break;
+            case domain_t::nucleotide:
+                options.searchOpts0.seedOffset = 3;
+                options.searchOpts.seedOffset  = 3;
+                break;
+            case domain_t::bisulfite:
+                options.searchOpts0.seedLength = 16;
+                options.searchOpts0.seedOffset = 8;
+                options.searchOpts.seedLength  = 15;
+                options.searchOpts.seedOffset  = 10;
+                break;
         }
     }
 
