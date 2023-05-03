@@ -44,10 +44,10 @@ jobs:
         uses: Homebrew/actions/setup-homebrew@master
 
       - name: Install ccache
-        run: brew install ccache
+        run: brew install --overwrite ccache
 
       - name: Install compiler ${{ matrix.cxx }}
-        run: brew install gcc@$(echo "${{ matrix.cxx }}" | sed "s/g++-//g")
+        run: brew install --overwrite gcc@$(echo "${{ matrix.cxx }}" | sed "s/g++-//g")
 
       - name: Load ccache
         uses: actions/cache@v2
