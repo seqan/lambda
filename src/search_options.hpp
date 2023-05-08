@@ -95,7 +95,8 @@ struct LambdaOptions : public SharedOptions
     int             misMatch        = 0; // only for manual
 
     int             xDropOff    = 0;
-    int32_t         minBitScore = -1;
+    int             band        = -1;
+    double          minBitScore = 0;
     double          maxEValue   = 1e-04;
     int             idCutOff    = 0;
     unsigned long   maxMatches  = 500;
@@ -246,6 +247,14 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     setDefaultValue(parser, "e-value", "1e-04");
     setMinValue(parser, "e-value", "0");
     setMaxValue(parser, "e-value", "100");
+
+    addOption(parser, ArgParseOption("", "bit-score",
+        "Output only matches that score above this threshold.",
+        ArgParseArgument::DOUBLE));
+    setDefaultValue(parser, "bit-score", "0");
+    setMinValue(parser, "bit-score", "0");
+    setMaxValue(parser, "bit-score", "1000");
+
 
     addOption(parser, ArgParseOption("n", "num-matches",
         "Print at most this number of matches per query.",
@@ -771,7 +780,8 @@ parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     getOptionValue(options.seedDeltaIncreasesLength, parser, "seed-delta-increases-length");
 
-    getOptionValue(options.eCutOff, parser, "e-value");
+    getOptionValue(options.maxEValue, parser, "e-value");
+    getOptionValue(options.minBitScore, parser, "bit-score");
     getOptionValue(options.idCutOff, parser, "percent-identity");
 
     getOptionValue(options.xDropOff, parser, "x-drop");
