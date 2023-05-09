@@ -37,6 +37,7 @@
 
 #include <bio/alphabet/aminoacid/aa27.hpp>
 #include <bio/io/seq/reader.hpp>
+#include <bio/ranges/container/concatenated_sequences.hpp>
 #include <bio/ranges/views/complement.hpp>
 #include <bio/ranges/views/translate_join.hpp>
 #if __cpp_lib_ranges <= 202106L
@@ -273,12 +274,26 @@ void loadDbIndexFromDisk(
     globalHolder.transSbjSeqs = globalHolder.indexFile.seqs | sbjTransView<c_origSbjAlph, c_transAlph, c_redAlph>;
     globalHolder.redSbjSeqs   = globalHolder.transSbjSeqs | redView<c_transAlph, c_redAlph>;
 
+    size_t searchSpaceSize = 0ull;
+
+    if (options.verbosity == 2)
+    {
+        searchSpaceSize = bio::meta::overloaded{[]<typename T>(bio::ranges::concatenated_sequences<T> const & seqs)
+                                                { return seqs.concat_size(); },
+                                                [](auto const & seqs)
+                                                {
+                                                    auto v = seqs | std::views::transform(std::ranges::size);
+                                                    return std::reduce(v.begin(), v.end(), 0ull);
+                                                }}(globalHolder.transSbjSeqs);
+    }
+
     double finish = sysTime() - start;
     myPrint(options, 1, " done.\n");
 
     myPrint(options, 2, "    # original subjects:   ", globalHolder.indexFile.seqs.size(), "\n");
     myPrint(options, 2, "    # translated subjects: ", globalHolder.transSbjSeqs.size(), "\n");
     myPrint(options, 2, "    # reduced subjects:    ", globalHolder.redSbjSeqs.size(), "\n");
+    myPrint(options, 2, "    size of search space:  ", searchSpaceSize, "\n");
     bool const indexHasSTaxIDs = globalHolder.indexFile.sTaxIds.size() == globalHolder.indexFile.seqs.size();
     myPrint(options, 2, "    has taxonomic IDs:     ", indexHasSTaxIDs, "\n");
     bool const indexHasTaxTree = globalHolder.indexFile.taxonNames.size() >= globalHolder.indexFile.seqs.size();
