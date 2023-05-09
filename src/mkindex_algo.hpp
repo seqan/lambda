@@ -603,7 +603,7 @@ auto generateIndex(TStringSet & seqs, LambdaIndexerOptions const & options)
     myPrint(options, 1, "Generating Index...");
     double s = sysTime();
 
-    TIndex index{seqs | bio::views::to_rank | fmindex_collection::add_sentinels, 5};
+    TIndex index{seqs | bio::views::to_rank | fmindex_collection::add_sentinels, /*samplingRate*/ 5, options.threads};
 
     double e = sysTime() - s;
     myPrint(options, 1, " done.\n");

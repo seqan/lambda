@@ -4,7 +4,7 @@ include (cmake/app_datasources.cmake)
 
 ## Index input files
 
-set(BASEURL "https://raw.githubusercontent.com/h-2/lambda-testdata/646b6fc570c5b3673fde6819ea983159921c0360")
+set(BASEURL "https://raw.githubusercontent.com/h-2/lambda-testdata/0a52e3bed1daf8646a496b63721b912fef3364bd")
 
 declare_datasource (FILE db_nucl.fasta.gz
                     URL ${BASEURL}/input_files/db_nucl.fasta.gz
@@ -22,35 +22,35 @@ declare_datasource (FILE db_prot.fasta.gz
 
 declare_datasource (FILE db_nucl_fm.fasta.gz.lba
                     URL ${BASEURL}/output_files/db_nucl_fm.fasta.gz.lba
-                    URL_HASH SHA256=7a139ea6d9da493ae80a1b0de0060f018cc408ce5b130496320b7f18b6f43eda)
+                    URL_HASH SHA256=68de7b2822b3f47268efee8becd400697cb1581a7055d1b581af365dd27f7a89)
 
 declare_datasource (FILE db_nucl_bifm.fasta.gz.lba
                     URL ${BASEURL}/output_files/db_nucl_bifm.fasta.gz.lba
-                    URL_HASH SHA256=4bc3894485ac11210149cb29cbc7a04ec3e8f01d1cc55d50b7c15e61d1a0c115)
+                    URL_HASH SHA256=e812f75f1672b5dc4b8cb6078ce209ec809d21783424836ccbe0c9b78f37887c)
 
 declare_datasource (FILE db_nucl_bs_fm.fasta.gz.lba
                     URL ${BASEURL}/output_files/db_nucl_bs_fm.fasta.gz.lba
-                    URL_HASH SHA256=e7429e16fa79114228a42e367843719f8bf56374c32537a5c25e5c9a062f3faf)
+                    URL_HASH SHA256=b17d4e29f424af54fa802344ae9d4af974dbfc16d0445741e08de6f3cfface0b)
 
 declare_datasource (FILE db_nucl_bs_bifm.fasta.gz.lba
                     URL ${BASEURL}/output_files/db_nucl_bs_bifm.fasta.gz.lba
-                    URL_HASH SHA256=dae02a72f5dd40ccb67f8c4fc8f84b04d148074f84e5e088fff0e61e7c2cda99)
+                    URL_HASH SHA256=6dc216251505f0a913dffb9dc97699898492d511934dbcd1c9961337a151a62b)
 
 declare_datasource (FILE db_prot_fm.fasta.gz.lba
                     URL ${BASEURL}/output_files/db_prot_fm.fasta.gz.lba
-                    URL_HASH SHA256=cc9a563f5a2a2e7fe27b9d19761e8326371625dadf2509289b7a52df65b31da3)
+                    URL_HASH SHA256=57fa7a4319c5eb4dded850a79beefa1c5eca6927c91541cd7d658fde0ab7d166)
 
 declare_datasource (FILE db_prot_bifm.fasta.gz.lba
                     URL ${BASEURL}/output_files/db_prot_bifm.fasta.gz.lba
-                    URL_HASH SHA256=0b2cdbea634481efb840c901ed768bc9bc2811ac87f16cca751c327094c50c75)
+                    URL_HASH SHA256=76d0405235aff8145fe0d90399ffb7d3619ad2fedc37776771a1ca8a38b79a5d)
 
 declare_datasource (FILE db_trans_fm.fasta.gz.lba
                     URL ${BASEURL}/output_files/db_trans_fm.fasta.gz.lba
-                    URL_HASH SHA256=49c0b6784df6de0d6e064c65d034ad3ced961283135f5cc14b86b1048059a0c9)
+                    URL_HASH SHA256=dc94a97d19a2ad224b995640bcacfc8fb6c7aa87ef134f3e61647c5b31286696)
 
 declare_datasource (FILE db_trans_bifm.fasta.gz.lba
                     URL ${BASEURL}/output_files/db_trans_bifm.fasta.gz.lba
-                    URL_HASH SHA256=172f3fb7c529bcf1eff086238efa1c66ce9a609c7abf6146105fa243c3cfcc4d)
+                    URL_HASH SHA256=3ffce0f1115888bce562460e7f4f1222af7052cd8a85a32db0813eac317d8be5)
 
 ## Query input files
 
