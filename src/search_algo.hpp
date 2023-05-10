@@ -1736,7 +1736,7 @@ computeBlastMatch(typename TBlastRecord::TBlastMatch  & bm,
     computeBitScore(bm, context(lH.gH.outfile));
 
     computeEValueThreadSafe(bm, record.qLength, context(lH.gH.outfile));
-    if (bm.eValue > lH.options.eCutOff)
+    if (bm.eValue > lH.options.maxEValue)
         return EVALUE;
 
     _setFrames(bm, m, lH);
@@ -2431,17 +2431,28 @@ iterateMatchesFullSimd(TLocalHolder & lH)
     {
         TBlastMatch & bm = *it;
 
-        computeEValueThreadSafe(bm,
-                                qIsTranslated(TGlobalHolder::blastProgram)
-                                    ? lH.gH.untransQrySeqLengths[bm._n_qId]
-                                    : length(lH.gH.qrySeqs[_untrueQryId(bm, lH)]),
-                                context(lH.gH.outfile));
-
-        if (bm.eValue > lH.options.eCutOff)
+        if (lH.options.minBitScore > 0)
         {
-            ++lH.stats.hitsFailedExtendEValueTest;
-            it = blastMatches.erase(it);
-            continue;
+            seqan::computeBitScore(bm, seqan::context(lH.gH.outfile));
+
+            if (bm.bitScore < lH.options.minBitScore)
+            {
+                ++lH.stats.hitsFailedExtendBitScoreTest;
+                it = blastMatches.erase(it);
+                continue;
+            }
+        }
+
+        if (lH.options.maxEValue < 100)
+        {
+            computeEValueThreadSafe(bm, bm.qLength, seqan::context(lH.gH.outfile));
+
+            if (bm.eValue > lH.options.maxEValue)
+            {
+                ++lH.stats.hitsFailedExtendEValueTest;
+                it = blastMatches.erase(it);
+                continue;
+            }
         }
 
         ++it;
@@ -2484,9 +2495,12 @@ iterateMatchesFullSimd(TLocalHolder & lH)
             continue;
         }
 
-        computeBitScore(bm, context(lH.gH.outfile));
+        // not computed previously
+        if (lH.options.minBitScore == 0)
+            seqan::computeBitScore(bm, seqan::context(lH.gH.outfile));
 
-        // evalue computed previously
+        if (lH.options.maxEValue == 100)
+            computeEValueThreadSafe(bm, bm.qLength, seqan::context(lH.gH.outfile));
 
         ++it;
     }
@@ -2597,9 +2611,16 @@ iterateMatchesFullSerial(TLocalHolder & lH)
                                                            -band,
                                                            +band);
 
-        computeEValueThreadSafe(bm, record.qLength, context(lH.gH.outfile));
+        computeBitScore(bm, context(lH.gH.outfile));
+        if (bm.bitScore < lH.options.minBitScore)
+        {
+            ++lH.stats.hitsFailedExtendBitScoreTest;
+            record.matches.pop_back();
+            continue;
+        }
 
-        if (bm.eValue > lH.options.eCutOff)
+        computeEValueThreadSafe(bm, record.qLength, context(lH.gH.outfile));
+        if (bm.eValue > lH.options.maxEValue)
         {
             ++lH.stats.hitsFailedExtendEValueTest;
             record.matches.pop_back();
@@ -2624,7 +2645,6 @@ iterateMatchesFullSerial(TLocalHolder & lH)
             continue;
         }
 
-        computeBitScore(bm, context(lH.gH.outfile));
 
         if (lH.options.hasSTaxIds)
             bm.sTaxIds = lH.gH.sTaxIds[bm._n_sId];
