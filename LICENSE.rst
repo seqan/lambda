@@ -2,8 +2,8 @@ lambda copyright
 ================
 ::
 
-  Copyright (c) 2013-2020, Hannes Hauswedell
-  Copyright (c) 2019-2020, Sara Hetzel
+  Copyright (c) 2013-2023, Hannes Hauswedell
+  Copyright (c) 2019-2023, Sara Hetzel
   All rights reserved.
 
 Lambda is *free software*: you can redistribute it and/or modify
@@ -33,27 +33,12 @@ submodules
 ==========
 
 When Lambda is distributed in binary form or when Lambda is distributed
-in source form including its submodules the following additional
-license terms apply.
-Note that these submodules might themselves include further submodules, please see the respective license files.
+in source form including its submodules, additional license terms apply.
+See the respective files in the submodules folder:
 
-SeqAn copyright
----------------
-::
-
-  Copyright (c) 2006-2020, Knut Reinert & Freie Universität Berlin
-
-SeqAn is published under the terms of the three clause BSD license as can
-be found in the file `submodules/seqan/LICENSE <./submodules/seqan/LICENSE>`__
-or printed by the parameter ``--copyright``.
-
-SeqAn3 copyright
----------------
-::
-
-  Copyright (c) 2006-2020, Knut Reinert & Freie Universität Berlin
-  Copyright (c) 2016-2020, Knut Reinert & MPI für molekulare Genetik
-
-SeqAn3 is published under the terms of the three clause BSD license as can
-be found in the file `submodules/seqan3/LICENSE.md <./submodules/seqan3/LICENSE.md>`__
-or printed by the parameter ``--copyright``.
+* submodules/biocpp-core/LICENSE.md
+* submodules/biocpp-io/LICENSE
+* submodules/cereal/LICENSE
+* submodules/fmindex-collection/TODO
+* submodules/seqan/LICENSE
+* submodules/sharg-parser/LICENSE.md

@@ -1,11 +1,11 @@
 Lambda: the Local Aligner for Massive Biological DatA
 -----------------------------------------------------
 
-Lambda is a local aligner optimized for many query sequences and searches in protein space. It...
+Lambda is a versatile local aligner that can perform protein, nucleotide and bisulfite searches. It...
 
-* is highly compatible to BLAST (bitscore and e-value statistics, tab separated and verbose output formats)
+* is highly compatible to BLAST (bit-score and e-value statistics, tab separated and verbose output formats)
 * is much faster than BLAST and many other comparable tools
-* supports many other input and output formats, including standards-conformant ``.sam`` and ``.bam`` and many compression types
+* supports many other input and output formats, including standards-conforming ``.sam`` and ``.bam`` and many compression types
 * has special features for species annotation and taxonomic analysis
 * is well-documented and easy to use (e.g. provides progress-bars and memory usage estimates)
 
@@ -39,7 +39,7 @@ Before you can search, you need to have an index. You can
 
 ::
 
-    % bin/lambda2 mkindexp -d db.fasta
+    % bin/lambda3 mkindexp -d db.fasta
 
 *(in case you want to create a nucleotide index, instead use ``mkindexn``)*
 
@@ -47,7 +47,7 @@ After that running Lambda is as simple as
 
 ::
 
-    % bin/lambda2 searchp -q query.fasta -i db.fasta.lambda
+    % bin/lambda3 searchp -q query.fasta -i db.fasta.lambda
 
 *(in case you want to perform a nucleotide search, instead use ``searchn``)*
 
@@ -55,8 +55,8 @@ For a list of options, see the help pages:
 
 ::
 
-    % bin/lambda2 --help
-    % bin/lambda2 COMMAND --help
+    % bin/lambda3 --help
+    % bin/lambda3 COMMAND --help
 
 Advanced options are available via ``--full-help`` or the man pages, and more documentation is available
 in the `wiki <https://github.com/seqan/lambda/wiki>`__.
@@ -64,7 +64,7 @@ in the `wiki <https://github.com/seqan/lambda/wiki>`__.
 authorship and copyright
 ------------------------
 
-Lambda is being developed by `Hannes Hauswedell <mailto:hannes.hauswedell@fu-berlin.de>`__, but it incorporates a lot of work from other members of the `SeqAn project <http://www.seqan.de>`__.
+Lambda is developed by `Hannes Hauswedell <mailto:h2 (æð) fsfe.org>`__ and `Sara Hetzel <mailto:hetzel (æð) molgen.mpg.de>`__ .
 
 +------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------+
 |  **Please always cite the publication, also if using Lambda in comparisons and pipelines**                                                                                                                                            |
@@ -92,8 +92,8 @@ feedback & updates
 |    :width: 76px                                                                                                   |                                                                                                                    |
 +-------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------+
 | .. image:: https://raw.githubusercontent.com/seqan/lambda/gh-pages/images_readme/appbar.email.png                 | To stay up to date via e-mail, please subscribe to the                                                             |
-|    :alt: Newsletter                                                                                               | `newsletter <https://lists.fu-berlin.de/listinfo/lambda-users>`__. There is on average less than one e-mail        |
-|    :target: https://lists.fu-berlin.de/listinfo/lambda-users                                                      | per month.                                                                                                         |
+|    :alt: Newsletter                                                                                               | `newsletter <https://lists.fu-berlin.de/listinfo/lambda-users>`__. There is very low traffic!                      |
+|    :target: https://lists.fu-berlin.de/listinfo/lambda-users                                                      |                                                                                                                    |
 |    :width: 76px                                                                                                   |                                                                                                                    |
 +-------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------------------+
 | .. image:: https://raw.githubusercontent.com/seqan/lambda/gh-pages/images_readme/appbar.social.twitter.png        | You can also follow SeqAn on `twitter <https://twitter.com/SeqAnLib>`__ to receive updates on Lambda.              |

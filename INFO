@@ -1,12 +1,12 @@
 Name: lambda
-Author: Hannes Hauswedell <hannes.hauswedell@fu-berlin.de>
-Maintainer: Hannes Hauswedell <hannes.hauswedell@fu-berlin.de>
+Author: Hannes Hauswedell <h2@fsfe.org>
+Maintainer: Hannes Hauswedell <h2@fsfe.org>
 License: AGPL v3
-Copyright: 2013-2020, Hannes Hauswedell; 2016-2020 Knut Reinert, FU-Berlin
+Copyright: 2013-2023, Hannes Hauswedell; 2016-2023 Knut Reinert, FU-Berlin
 Status: under development
-Description: Lambda is a biological sequence aligner optimized for many
-query sequences and searches in protein space. It is highly compatible
-to BLAST (bitscore and e-value statistics, tab separated and verbose
-output formats), much faster than BLAST and many other comparable tools
-and supports many other input and output formats, including standards-
-conformant .sam and .bam and many compression types
+Description: Lambda is a biological sequence aligner for searches
+in protein, nucleotide or bisulfite-treated databases. It is highly
+compatible to BLAST (bitscore and e-value statistics, tab separated and
+verbose output formats), much faster than BLAST and many other comparable
+tools and supports many other input and output formats, including
+standards-conforming .sam and .bam and many compression types.
