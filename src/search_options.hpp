@@ -93,8 +93,8 @@ struct LambdaOptions : public SharedOptions
     int32_t match         = 2;  // only for manual
     int32_t misMatch      = -3; // only for manual
 
-    int32_t  minBitScore = 42;
-    double   maxEValue   = -1;
+    int32_t  minBitScore = -1;
+    double   maxEValue   = 1e-2;
     int32_t  idCutOff    = 0;
     uint64_t maxMatches  = 25;
 
@@ -240,11 +240,6 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
                         .validator = sharg::arithmetic_range_validator{0, 100}
     });
 
-    if (options.domain == domain_t::bisulfite)
-    {
-        options.minBitScore = 68;
-    }
-
     parser.add_option(options.minBitScore,
                       sharg::config{
                         .short_id    = '\0',
@@ -262,6 +257,11 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
                         .validator = sharg::arithmetic_range_validator{-1, 100}
     });
+
+    if (options.domain == domain_t::bisulfite)
+    {
+        options.maxEValue = 1e-9;
+    }
 
     int32_t numMatchesTmp = 25;
     parser.add_option(numMatchesTmp,

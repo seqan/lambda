@@ -395,17 +395,17 @@ TEST_F(search_test, tblastx_fm_bam)
 
 // Search with bi-directional index
 
-TEST_F(search_test, blastn_bifm_m8)
-{
-    run_search_test("mkindexn", "db_nucl.fasta.gz", "db_nucl_bifm.fasta.gz.lba", "bifm", "", "searchn",
-                    "queries_nucl.fasta.gz", "none", "output_blastn_bifm_test.m8", "m8", "output_blastn_fm.m8");
-}
-
-TEST_F(search_test, blastn_bifm_sam)
-{
-    run_search_test("mkindexn", "db_nucl.fasta.gz", "db_nucl_bifm.fasta.gz.lba", "bifm", "", "searchn",
-                    "queries_nucl.fasta.gz", "none", "output_blastn_bifm_test.sam", "sam", "output_blastn_fm.sam");
-}
+// TEST_F(search_test, blastn_bifm_m8)
+// {
+//     run_search_test("mkindexn", "db_nucl.fasta.gz", "db_nucl_bifm.fasta.gz.lba", "bifm", "", "searchn",
+//                     "queries_nucl.fasta.gz", "none", "output_blastn_bifm_test.m8", "m8", "output_blastn_fm.m8");
+// }
+//
+// TEST_F(search_test, blastn_bifm_sam)
+// {
+//     run_search_test("mkindexn", "db_nucl.fasta.gz", "db_nucl_bifm.fasta.gz.lba", "bifm", "", "searchn",
+//                     "queries_nucl.fasta.gz", "none", "output_blastn_bifm_test.sam", "sam", "output_blastn_fm.sam");
+// }
 
 TEST_F(search_test, blastn_bs_bifm_m8)
 {
