@@ -4,7 +4,7 @@ include (cmake/app_datasources.cmake)
 
 ## Index input files
 
-set(BASEURL "https://raw.githubusercontent.com/h-2/lambda-testdata/0a52e3bed1daf8646a496b63721b912fef3364bd")
+set(BASEURL "https://raw.githubusercontent.com/h-2/lambda-testdata/21e2a230deec072ddc6da4b67403ce684dddf2c2")
 
 declare_datasource (FILE db_nucl.fasta.gz
                     URL ${BASEURL}/input_files/db_nucl.fasta.gz
@@ -70,216 +70,216 @@ declare_datasource (FILE queries_prot.fasta.gz
 
 declare_datasource (FILE output_blastn_fm.bam
                     URL ${BASEURL}/output_files/output_blastn_fm.bam
-                    URL_HASH SHA256=89e4052abc650d8ab01e927a7e7783de78f8d7e8029f0c406c226e8802176260)
+                    URL_HASH SHA256=f181cd5e083df6879044153eced4b545a6c392e3c3e55f733799c37f32be16fb)
 
 declare_datasource (FILE output_blastn_fm.m0
                     URL ${BASEURL}/output_files/output_blastn_fm.m0
-                    URL_HASH SHA256=cac63b12c30ffef52393224ffbe01a17c89ba8b89cb8349acbbac869eb51273b)
+                    URL_HASH SHA256=8d4083e6c4f0979497df61fec5169c1e82a9111bf052b77980c987a5012acddf)
 
 declare_datasource (FILE output_blastn_fm.m8
                     URL ${BASEURL}/output_files/output_blastn_fm.m8
-                    URL_HASH SHA256=2c139f4cf35d3ba5afdf3c0ff7f04c77904d73b7a66895c5d86fcc987b3cf64a)
+                    URL_HASH SHA256=5ee0f2c00efa90aa564b4f3a1a05e5bce084421612d1776d4431377e296c9f5f)
 
 declare_datasource (FILE output_blastn_fm.m9
                     URL ${BASEURL}/output_files/output_blastn_fm.m9
-                    URL_HASH SHA256=5f7a343a5d19238332af16d08b38ea70aa7da5285a8874b361cffe763505a536)
+                    URL_HASH SHA256=46090b822625b64628c0b4bbb7c068a1224a77d5e6c6dd7f5dc4901943e94096)
 
 declare_datasource (FILE output_blastn_fm.sam
                     URL ${BASEURL}/output_files/output_blastn_fm.sam
-                    URL_HASH SHA256=61b1499cead7990c102f7d66ea7323baa1756ce8c832c3caf68d3134df3e4841)
+                    URL_HASH SHA256=a1de463d54ee72ff24cade4526b340aab9e48d6232e3e98b36b9f6560260ef0b)
 
 declare_datasource (FILE output_blastn_bs_fm.bam
                     URL ${BASEURL}/output_files/output_blastn_bs_fm.bam
-                    URL_HASH SHA256=7ffbf515acb743e2f20fe2210493b8de8af88c17ad5339867f1afb1b1ec11bb0)
+                    URL_HASH SHA256=8a73e5bca4b7a3225114170906c520c74bd066c2540898369a9c6ab24f517f5e)
 
 declare_datasource (FILE output_blastn_bs_fm.m0
                     URL ${BASEURL}/output_files/output_blastn_bs_fm.m0
-                    URL_HASH SHA256=8234dc029edac95d878ecea6dac7239584d8c5558f974912a13cc0e37988bc56)
+                    URL_HASH SHA256=5be6f6e2e5e57a9a07d364d1fd5c376e13db9aa4093f1445cdca17ee7e143790)
 
 declare_datasource (FILE output_blastn_bs_fm.m8
                     URL ${BASEURL}/output_files/output_blastn_bs_fm.m8
-                    URL_HASH SHA256=145cf9f87566e820e05c9e84f94037860dbc0c809ae5148fda8b626ce172d37b)
+                    URL_HASH SHA256=a03ec852936061867791a4dabffffe8cead43b24c0e0afba398e134841fc193d)
 
 declare_datasource (FILE output_blastn_bs_fm.m9
                     URL ${BASEURL}/output_files/output_blastn_bs_fm.m9
-                    URL_HASH SHA256=329298632838e82c7fa5c0cae908d0c3c4fa429166d8a1224f0fabef164d5834)
+                    URL_HASH SHA256=2b71a95f02f5cc59037d6d1b34b4fd6141e2d36a0e9a8803a6d6c5c9e98482de)
 
 declare_datasource (FILE output_blastn_bs_fm.sam
                     URL ${BASEURL}/output_files/output_blastn_bs_fm.sam
-                    URL_HASH SHA256=5e975b66c5d034afd7a0adc438eb2951367377b2bf5e55723d0fa00ab2bc5c20)
+                    URL_HASH SHA256=3fe84a825c55004a87b34ee24312d64961a08737e91a948bfe0b5b3bcb2f3e38)
 
 declare_datasource (FILE output_blastp_fm.bam
                     URL ${BASEURL}/output_files/output_blastp_fm.bam
-                    URL_HASH SHA256=a750d396a54ccd7b414f2567d4e96596e9cbd576bb6e2cb40ae7cdf0d049d546)
+                    URL_HASH SHA256=322932054405c802211f9fd1f9e86a96c8b19ea85d2eaa8cbd18f4bcfb1d5131)
 
 declare_datasource (FILE output_blastp_fm.m0
                     URL ${BASEURL}/output_files/output_blastp_fm.m0
-                    URL_HASH SHA256=27c2da9595f3276255eaaaf3910c32809e9472dd4bb190fcea95ebfd14249eb7)
+                    URL_HASH SHA256=56e29329f35f1868d6c5a2ab0c88e7ea1446d433f5d7bb70308ceb97599fcd5f)
 
 declare_datasource (FILE output_blastp_fm.m8
                     URL ${BASEURL}/output_files/output_blastp_fm.m8
-                    URL_HASH SHA256=a3e2c3c0d305cd8ba2e8a5fe52bb1656e41d3091c24c2b80e7a5a5bb678f401b)
+                    URL_HASH SHA256=99f520bb55f5c1b371ae5ba41b881c21360a84e7fcb8ff097e01036beb801d4c)
 
 declare_datasource (FILE output_blastp_fm.m9
                     URL ${BASEURL}/output_files/output_blastp_fm.m9
-                    URL_HASH SHA256=7ee3cc8cf7fb2ea784ec404ec97b9cede14875cfba8de597a16e7b12dc19a1f4)
+                    URL_HASH SHA256=3d7b519b26419361c37f5512b28220f3004620aafa2aae62f0e13bbee3ee92f2)
 
 declare_datasource (FILE output_blastp_fm.sam
                     URL ${BASEURL}/output_files/output_blastp_fm.sam
-                    URL_HASH SHA256=57e2c5c7297a259441976afbc3f4e77c6ea8f92ec8b02e08a103937da8cd32a0)
+                    URL_HASH SHA256=d7267490e2c6c1ebf838fb7f08a5f370bf0f2b23024ca76db6bfed440851fc91)
 
 declare_datasource (FILE output_blastx_fm.bam
                     URL ${BASEURL}/output_files/output_blastx_fm.bam
-                    URL_HASH SHA256=db5daa713193dfcf693cc24e52e4e64631ec58dcaba7eea67901b916d4951843)
+                    URL_HASH SHA256=490b13b75528c87530a3f3028bb825ddb96b46bcbe6dbea76ee782ec17abb5a5)
 
 declare_datasource (FILE output_blastx_fm.m0
                     URL ${BASEURL}/output_files/output_blastx_fm.m0
-                    URL_HASH SHA256=0db7f6f44ba0a4cf5052b1c3abf094e374c881ba79e3c9440156cc3f5e7f7c52)
+                    URL_HASH SHA256=08b1500f717cb596bd1be7919cd72b6ac2c69caccae2716072c046c45122fbdc)
 
 declare_datasource (FILE output_blastx_fm.m8
                     URL ${BASEURL}/output_files/output_blastx_fm.m8
-                    URL_HASH SHA256=bfa3b1d8c0aebea0f0cd2c99fedfe582020c0ac24ab5cd51ecd67649ec75f467)
+                    URL_HASH SHA256=f6345d4856a143b9a425a1cca75889e49d2dbc834a817b8ef261d02ac33d2d0d)
 
 declare_datasource (FILE output_blastx_fm.m9
                     URL ${BASEURL}/output_files/output_blastx_fm.m9
-                    URL_HASH SHA256=cd60e7bf440cfc70362d1757842d9cceb5361cfa2e8cbf9223650617dc54dc47)
+                    URL_HASH SHA256=4965194ec39831d4b9343eebc49cbc0871b0cee3fb7219c5626846477dc0307c)
 
 declare_datasource (FILE output_blastx_fm.sam
                     URL ${BASEURL}/output_files/output_blastx_fm.sam
-                    URL_HASH SHA256=47a7dcc2645221645368acc23d891ca10d04e3f797e0962a7d2734a8415d5d01)
+                    URL_HASH SHA256=2447e15abfcfca8b7b91ec788e46b96b363d9d7b125a95471898956da58fa80c)
 
 declare_datasource (FILE output_tblastn_fm.bam
                     URL ${BASEURL}/output_files/output_tblastn_fm.bam
-                    URL_HASH SHA256=d5dc8d696932d4bc595388368afa60fc6281f5a74be6896e3b6301c048d602af)
+                    URL_HASH SHA256=0d646463d379eeadca4af6705081854034d2e07bce870dee1165f11dc50f9336)
 
 declare_datasource (FILE output_tblastn_fm.m0
                     URL ${BASEURL}/output_files/output_tblastn_fm.m0
-                    URL_HASH SHA256=dbe9949ba4c70f30adb9bf22362a09934c735df31b2d81bbb674373ac897ba90)
+                    URL_HASH SHA256=d3922d4db0245d3c797b4ca5a982e73c3331be7b7f3282754e31daf2820691aa)
 
 declare_datasource (FILE output_tblastn_fm.m8
                     URL ${BASEURL}/output_files/output_tblastn_fm.m8
-                    URL_HASH SHA256=ec174aad5c9199673cd6b9123bf5e9eada348ca3bc68b3409e36b81cbf533197)
+                    URL_HASH SHA256=316ff6d392d1553bf3115f41e14e5cfced72f6b22459e487b0def80c37123b44)
 
 declare_datasource (FILE output_tblastn_fm.m9
                     URL ${BASEURL}/output_files/output_tblastn_fm.m9
-                    URL_HASH SHA256=4498af84a412e273067c3396845b3c8d6a1ef9c72f1c3368207ef6d9ed89b517)
+                    URL_HASH SHA256=720895bca93a35543fc58f2dbc490ba9ce531195fe71d0dbbc0ed41e6392002f)
 
 declare_datasource (FILE output_tblastn_fm.sam
                     URL ${BASEURL}/output_files/output_tblastn_fm.sam
-                    URL_HASH SHA256=f674bcb028742f89b367ee2c1b59284a83ecbac0c29c793574f744887162552d)
+                    URL_HASH SHA256=b2ca3d794d03154ed956d095e531858d71aac8d81b4fdee5ce18ed585300e034)
 
 declare_datasource (FILE output_tblastx_fm.bam
                     URL ${BASEURL}/output_files/output_tblastx_fm.bam
-                    URL_HASH SHA256=eded153112ea8975a6fe736e74c931bfd212c06fa61c0197dafc7911e2058d82)
+                    URL_HASH SHA256=ab3d60dc3beaa6d5ac78aaa7c6bd212297c9e7ab982fc9c9f6d3c69c6b819b87)
 
 declare_datasource (FILE output_tblastx_fm.m0
                     URL ${BASEURL}/output_files/output_tblastx_fm.m0
-                    URL_HASH SHA256=52b19c9a3545471c52a826e95610e67dcf0e6b7851f852a09a54f97b6eaa677b)
+                    URL_HASH SHA256=fcb43c8084305372ebaf931736bc1dc61a1589021aa3d36ff1d0610e7a423cbb)
 
 declare_datasource (FILE output_tblastx_fm.m8
                     URL ${BASEURL}/output_files/output_tblastx_fm.m8
-                    URL_HASH SHA256=a2215049149c581dd34c3c4d28fbb90d654cd59b399b2c7e001af08d858b82c6)
+                    URL_HASH SHA256=d040e8debb4e5cff6443e676e77449a65f4ffdb83924660f339d640b121964f1)
 
 declare_datasource (FILE output_tblastx_fm.m9
                     URL ${BASEURL}/output_files/output_tblastx_fm.m9
-                    URL_HASH SHA256=385a42654fa9ea76ee6dc851702bfad487aa75ff39fab424ec0eec84a2069238)
+                    URL_HASH SHA256=970a2a628e1816243645e6eabc26ee8f20f2f2ae447e5d18b432fb125d25e867)
 
 declare_datasource (FILE output_tblastx_fm.sam
                     URL ${BASEURL}/output_files/output_tblastx_fm.sam
-                    URL_HASH SHA256=3b2046496fc651fa1987b666b899c6b6d2fbc62bc6af623f575a7c7e2ef3b32a)
+                    URL_HASH SHA256=6f218b39e8785e1bebbe8be486237e03e06d9fccd41a5e57e575539cfe4eab6e)
 
 declare_datasource (FILE output_blastn_fm_fast.sam
                     URL ${BASEURL}/output_files/output_blastn_fm_fast.sam
-                    URL_HASH SHA256=de57c8ee12447df2d635b1b2e9943bca9d4089e3cba433bb9e78ce4ec7db729f)
+                    URL_HASH SHA256=a8121e6138ab3c1d5c0e6b32a38782f07806ff4806a46b706444ebf8cdb318b8)
 
 declare_datasource (FILE output_blastn_fm_fast.m8
                     URL ${BASEURL}/output_files/output_blastn_fm_fast.m8
-                    URL_HASH SHA256=1a7d1a07b8673e7fb6ee0033d27aa705be5e366febb95e8d465947f0680f3521)
+                    URL_HASH SHA256=b6dd323c73944d78367cf4f8b6f22f292d89876c4e6a6020fde7461a5115cfad)
 
 declare_datasource (FILE output_blastn_bs_fm_fast.sam
                     URL ${BASEURL}/output_files/output_blastn_bs_fm_fast.sam
-                    URL_HASH SHA256=5e975b66c5d034afd7a0adc438eb2951367377b2bf5e55723d0fa00ab2bc5c20)
+                    URL_HASH SHA256=3fe84a825c55004a87b34ee24312d64961a08737e91a948bfe0b5b3bcb2f3e38)
 
 declare_datasource (FILE output_blastn_bs_fm_fast.m8
                     URL ${BASEURL}/output_files/output_blastn_bs_fm_fast.m8
-                    URL_HASH SHA256=145cf9f87566e820e05c9e84f94037860dbc0c809ae5148fda8b626ce172d37b)
+                    URL_HASH SHA256=a03ec852936061867791a4dabffffe8cead43b24c0e0afba398e134841fc193d)
 
 declare_datasource (FILE output_blastp_fm_fast.sam
                     URL ${BASEURL}/output_files/output_blastp_fm_fast.sam
-                    URL_HASH SHA256=410ff4b7316dd8353cfdc42b68eb01bbdda189b6bbfbbe3fc8333eb7d80328ba)
+                    URL_HASH SHA256=36bca3f2ee56d2234ed44f8351ad83b5fe267c9e75a9eea5c13d34565f20f2ac)
 
 declare_datasource (FILE output_blastp_fm_fast.m8
                     URL ${BASEURL}/output_files/output_blastp_fm_fast.m8
-                    URL_HASH SHA256=47fce11a96fbcce92f62bfacb1545de432e4d97f1d5b74c4d1e6f3fd9418898e)
+                    URL_HASH SHA256=753acc7afccbcacc8e585e7a83b7b295548ea536b23800ca90a9566bcb7a48cb)
 
 declare_datasource (FILE output_blastx_fm_fast.sam
                     URL ${BASEURL}/output_files/output_blastx_fm_fast.sam
-                    URL_HASH SHA256=512373692eb80bf426f027dac5a4355c6f94589cc60bd97d16e9964bc5d8689c)
+                    URL_HASH SHA256=557394a3c75c2da49d3d15c34f10f1eca2e4a934102cfbe92081df0f704b1828)
 
 declare_datasource (FILE output_blastx_fm_fast.m8
                     URL ${BASEURL}/output_files/output_blastx_fm_fast.m8
-                    URL_HASH SHA256=b039b8fabbcfb67bdd2d92c99c4db161f820bc9ea1886ac088327c0b3803f3e3)
+                    URL_HASH SHA256=5554e8dcd4de9ef02818e18ad8fb185594762a425aded7929a0b2a574137f46e)
 
 declare_datasource (FILE output_tblastn_fm_fast.sam
                     URL ${BASEURL}/output_files/output_tblastn_fm_fast.sam
-                    URL_HASH SHA256=d74c48bb71ed0cff236d3f9b14ae694155d1e798f309a84113a3748fba24605d)
+                    URL_HASH SHA256=e416ddf4d79ea72f8240d291c17c5e41fc2a2d7b4560f1c9ad600b498f9e4d1a)
 
 declare_datasource (FILE output_tblastn_fm_fast.m8
                     URL ${BASEURL}/output_files/output_tblastn_fm_fast.m8
-                    URL_HASH SHA256=ae3f8e5f2966579c09688667d56f98b48a5ac5cd513d408cd2de09f7090aa1d9)
+                    URL_HASH SHA256=e7e34710b246347dfdc12619b064da1ec0f1d248316901209d89672e92d9bbb2)
 
 declare_datasource (FILE output_tblastx_fm_fast.sam
                     URL ${BASEURL}/output_files/output_tblastx_fm_fast.sam
-                    URL_HASH SHA256=ffae5e644c963294766a41879fb990c11ec308e56df123649ea2ce9d677eaa93)
+                    URL_HASH SHA256=3c23be9c52c1f05acef72acbfc2ea316e18a9e3fa9a9ad1f59903118783c4129)
 
 declare_datasource (FILE output_tblastx_fm_fast.m8
                     URL ${BASEURL}/output_files/output_tblastx_fm_fast.m8
-                    URL_HASH SHA256=686450a6a1ff546244a75bfb05925963bbce79ecf9a4c67a3566d968134cd0e7)
+                    URL_HASH SHA256=dea0901a96f8dafd9e3f7518223257ac6ad0b8e4bf2ec42fe05701707ed72b4a)
 
 declare_datasource (FILE output_blastn_fm_sensitive.sam
                     URL ${BASEURL}/output_files/output_blastn_fm_sensitive.sam
-                    URL_HASH SHA256=34e6942316c33300004f2d28cc8644dd4bd6cc73f18e70d3a0a357f74519e2ea)
+                    URL_HASH SHA256=40042463f6a551e27cf2820650be691f39417bce1d6f24782a1718ff9cbfc6c5)
 
 declare_datasource (FILE output_blastn_fm_sensitive.m8
                     URL ${BASEURL}/output_files/output_blastn_fm_sensitive.m8
-                    URL_HASH SHA256=16b36d8cab68aa08ca6130be8b91b4c9f48411eaf6edcf4d97b87bde5fe76134)
+                    URL_HASH SHA256=1656959b59c448c919c3e03398eece936fb196f141e1ffbc21185859a144ebd7)
 
 declare_datasource (FILE output_blastn_bs_fm_sensitive.sam
                     URL ${BASEURL}/output_files/output_blastn_bs_fm_sensitive.sam
-                    URL_HASH SHA256=9369c82e236d879928eb5b6731fea04042193a4df7d92fd7fd95cb82ed368d8b)
+                    URL_HASH SHA256=5f4bb4f9b8f43563856c04998069972e01882b694151bc235ead384f97aa3780)
 
 declare_datasource (FILE output_blastn_bs_fm_sensitive.m8
                     URL ${BASEURL}/output_files/output_blastn_bs_fm_sensitive.m8
-                    URL_HASH SHA256=09642471eb94906c1706deb597b58b9bdea5c1924622f5668cc7d9d55c88ba27)
+                    URL_HASH SHA256=947860f9fb506eb0626de5c18bf47b6ba8efaa75fd765a5adc66b95df7958cfd)
 
 declare_datasource (FILE output_blastp_fm_sensitive.sam
                     URL ${BASEURL}/output_files/output_blastp_fm_sensitive.sam
-                    URL_HASH SHA256=582fe1d78cc03eb94e70b78ab8275d7c34a597bb7a896277b5a93573c489dfa8)
+                    URL_HASH SHA256=83fc52cfe429c8ac4d790f69f32856f1426ed003c128d6dc4c8767e977e5e9c1)
 
 declare_datasource (FILE output_blastp_fm_sensitive.m8
                     URL ${BASEURL}/output_files/output_blastp_fm_sensitive.m8
-                    URL_HASH SHA256=0fe2075c016e847b9ffb2b817e0c59326228d2fbeaef86af5542ad187f4ba283)
+                    URL_HASH SHA256=25b8fa3de4eda51b016baa90ade64f5ff4f409b37b32b16226e46ca350673823)
 
 declare_datasource (FILE output_blastx_fm_sensitive.sam
                     URL ${BASEURL}/output_files/output_blastx_fm_sensitive.sam
-                    URL_HASH SHA256=0009d2e5cb5019d8c9867b898f9cd2593306069c6b0bbad33b97914cef0d741b)
+                    URL_HASH SHA256=d7bf59418964c5b7c5e7d10a173d07d2b4fdaaaa7d684a1a2df1c323fe8620c6)
 
 declare_datasource (FILE output_blastx_fm_sensitive.m8
                     URL ${BASEURL}/output_files/output_blastx_fm_sensitive.m8
-                    URL_HASH SHA256=93d341c0cf30a9f42221008fad3ff46c1d213f3c89ce1168871d259b02824260)
+                    URL_HASH SHA256=039b2929a78ea1c4768a215dd7c6f060bea8c11feab6831d767ca4d7d9cdc0fa)
 
 declare_datasource (FILE output_tblastn_fm_sensitive.sam
                     URL ${BASEURL}/output_files/output_tblastn_fm_sensitive.sam
-                    URL_HASH SHA256=f1eb59c90b051798ef0c18f4000c0354fe8c97f83c384f614a19d1d294f7aab6)
+                    URL_HASH SHA256=b9b54e58f158746e1d69fc24d841ba637c859849bc9fe50e2c75cf3bc634a3e8)
 
 declare_datasource (FILE output_tblastn_fm_sensitive.m8
                     URL ${BASEURL}/output_files/output_tblastn_fm_sensitive.m8
-                    URL_HASH SHA256=292ec38ced08c68eca49dd0cd08bc0d89d9c011cddb7ccba445c9c61708cc51b)
+                    URL_HASH SHA256=c07e11add4b48d1d910c76f95a007de452c16a8fe8ea83f695a1c75ee4152db1)
 
 declare_datasource (FILE output_tblastx_fm_sensitive.sam
                     URL ${BASEURL}/output_files/output_tblastx_fm_sensitive.sam
-                    URL_HASH SHA256=727edd5f9c1794ba61af90ccbd3008f1c736383031591a3c76537a55333fcfa3)
+                    URL_HASH SHA256=8b400bf75ba657dd29983fcf0e5f0f8de2243d8b68287af8b884aab61524ba2e)
 
 declare_datasource (FILE output_tblastx_fm_sensitive.m8
                     URL ${BASEURL}/output_files/output_tblastx_fm_sensitive.m8
-                    URL_HASH SHA256=fb0109e002e6ef9805a3aa270ec0455e3c67ceed34a0a297fb6d463472086005)
+                    URL_HASH SHA256=a590cff9711dbbad654a7317c081af5ffacda9c934ece3bf7b59eec223c2cf1f)
