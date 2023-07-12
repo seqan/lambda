@@ -23,6 +23,16 @@ if (NOT CMAKE_BUILD_TYPE)
 endif ()
 
 # ----------------------------------------------------------------------------
+# Options
+# ----------------------------------------------------------------------------
+
+option (LAMBDA_WITH_BIFM "Include codepaths for bidirectional indexes." OFF)
+
+if (LAMBDA_WITH_BIFM)
+    add_definitions (-DLAMBDA_WITH_BIFM=1)
+endif ()
+
+# ----------------------------------------------------------------------------
 # Begin of dependency detection
 # ----------------------------------------------------------------------------
 

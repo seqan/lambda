@@ -135,22 +135,10 @@ TEST_F(index_test, nucl_fm)
     run_index_test("mkindexn", "db_nucl.fasta.gz", "db_nucl_fm_test.fasta.gz.lba", "fm", "", "db_nucl_fm.fasta.gz.lba");
 }
 
-TEST_F(index_test, nucl_bifm)
-{
-    run_index_test("mkindexn", "db_nucl.fasta.gz", "db_nucl_bifm_test.fasta.gz.lba", "bifm", "",
-                   "db_nucl_bifm.fasta.gz.lba");
-}
-
 TEST_F(index_test, nucl_bs_fm)
 {
     run_index_test("mkindexbs", "db_nucl_bs.fasta.gz", "db_nucl_bs_fm_test.fasta.gz.lba", "fm", "",
                    "db_nucl_bs_fm.fasta.gz.lba");
-}
-
-TEST_F(index_test, nucl_bs_bifm)
-{
-    run_index_test("mkindexbs", "db_nucl_bs.fasta.gz", "db_nucl_bs_bifm_test.fasta.gz.lba", "bifm", "",
-                   "db_nucl_bs_bifm.fasta.gz.lba");
 }
 
 TEST_F(index_test, prot_fm)
@@ -159,16 +147,30 @@ TEST_F(index_test, prot_fm)
                    "db_prot_fm.fasta.gz.lba");
 }
 
-TEST_F(index_test, prot_bifm)
-{
-    run_index_test("mkindexp", "db_prot.fasta.gz", "db_prot_bifm_test.fasta.gz.lba", "bifm", "li10",
-                   "db_prot_bifm.fasta.gz.lba");
-}
-
 TEST_F(index_test, trans_fm)
 {
     run_index_test("mkindexp", "db_nucl.fasta.gz", "db_trans_fm_test.fasta.gz.lba", "fm", "li10",
                    "db_trans_fm.fasta.gz.lba");
+}
+
+#if LAMBDA_WITH_BIFM
+
+TEST_F(index_test, nucl_bifm)
+{
+    run_index_test("mkindexn", "db_nucl.fasta.gz", "db_nucl_bifm_test.fasta.gz.lba", "bifm", "",
+                   "db_nucl_bifm.fasta.gz.lba");
+}
+
+TEST_F(index_test, nucl_bs_bifm)
+{
+    run_index_test("mkindexbs", "db_nucl_bs.fasta.gz", "db_nucl_bs_bifm_test.fasta.gz.lba", "bifm", "",
+                   "db_nucl_bs_bifm.fasta.gz.lba");
+}
+
+TEST_F(index_test, prot_bifm)
+{
+    run_index_test("mkindexp", "db_prot.fasta.gz", "db_prot_bifm_test.fasta.gz.lba", "bifm", "li10",
+                   "db_prot_bifm.fasta.gz.lba");
 }
 
 TEST_F(index_test, trans_bifm)
@@ -176,3 +178,5 @@ TEST_F(index_test, trans_bifm)
     run_index_test("mkindexp", "db_nucl.fasta.gz", "db_trans_bifm_test.fasta.gz.lba", "bifm", "li10",
                    "db_trans_bifm.fasta.gz.lba");
 }
+
+#endif
