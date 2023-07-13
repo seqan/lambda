@@ -248,7 +248,12 @@ void argConv0(LambdaOptions & options)
         case DbIndexType::FM_INDEX:
             return argConv1<DbIndexType::FM_INDEX>(options);
         case DbIndexType::BI_FM_INDEX:
+#if LAMBDA_WITH_BIFM
             return argConv1<DbIndexType::BI_FM_INDEX>(options);
+#else
+            throw std::runtime_error{
+              "To open bidirectional indexes, you need to rebuild lambda with LAMBDA_WITH_BIFM=1 ."};
+#endif
         default:
             throw 52;
     }

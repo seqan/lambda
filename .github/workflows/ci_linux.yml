@@ -21,6 +21,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - name: "gcc12 bifm"
+            install: "g++-12"
+            cxx: "g++-12"
+            cmake_flags: "-DLAMBDA_WITH_BIFM=1"
+            cc: "gcc-12"
+            build_type: Release
+
           - name: "gcc12"
             install: "g++-12"
             cxx: "g++-12"
@@ -94,7 +101,7 @@ jobs:
         run: |
           mkdir build
           cd build
-          cmake ../lambda -DLAMBDA_COMPILE_THREADS=2 -DLAMBDA_NATIVE_BUILD=OFF -DCMAKE_CXX_FLAGS="${{ matrix.cxx_flags }}" -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_C_COMPILER_LAUNCHER=ccache
+          cmake ../lambda -DLAMBDA_COMPILE_THREADS=2 -DLAMBDA_NATIVE_BUILD=OFF ${{ matrix.cmake_flags }} -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_C_COMPILER_LAUNCHER=ccache
 
       - name: Build tests
         if: matrix.name != 'clang_format'

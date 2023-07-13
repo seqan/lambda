@@ -30,6 +30,7 @@ message ("\n${ColourBold}Build configuration${ColourReset}")
 message (STATUS "LAMBDA version is: ${SEQAN_APP_VERSION}")
 
 option (LAMBDA_STATIC_BUILD "Include all libraries in the binaries." OFF)
+option (LAMBDA_WITH_BIFM "Include codepaths for bidirectional indexes." OFF)
 
 if (LAMBDA_STATIC_BUILD)
     add_definitions (-DLAMBDA_STATIC_BUILD=1)
@@ -47,9 +48,13 @@ if (LAMBDA_STATIC_BUILD)
     endif (CMAKE_SYSTEM_NAME MATCHES "Linux")
 endif (LAMBDA_STATIC_BUILD)
 
+if (LAMBDA_WITH_BIFM)
+    add_definitions (-DLAMBDA_WITH_BIFM=1)
+endif ()
 
 message(STATUS "The following options are selected for the build:")
 message(   "     LAMBDA_STATIC_BUILD             ${LAMBDA_STATIC_BUILD}")
+message(   "     LAMBDA_WITH_BIFM                ${LAMBDA_WITH_BIFM}")
 message(STATUS "Run 'cmake -LH' to get a comment on each option.")
 message(STATUS "Remove CMakeCache.txt and re-run cmake with -DOPTIONNAME=ON|OFF to change an option.")
 

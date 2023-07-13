@@ -395,6 +395,8 @@ TEST_F(search_test, tblastx_fm_bam)
 
 // Search with bi-directional index
 
+#if LAMBDA_WITH_BIFM
+
 // TEST_F(search_test, blastn_bifm_m8)
 // {
 //     run_search_test("mkindexn", "db_nucl.fasta.gz", "db_nucl_bifm.fasta.gz.lba", "bifm", "", "searchn",
@@ -466,6 +468,8 @@ TEST_F(search_test, tblastx_bifm_sam)
     run_search_test("mkindexp", "db_nucl.fasta.gz", "db_trans_bifm.fasta.gz.lba", "bifm", "li10", "searchp",
                     "queries_nucl.fasta.gz", "none", "output_tblastx_bifm_test.sam", "sam", "output_tblastx_fm.sam");
 }
+
+#endif
 
 // Fast mode
 

@@ -51,6 +51,10 @@
 #include "view_duplicate.hpp"
 #include "view_reduce_to_bisulfite.hpp"
 
+#ifndef LAMBDA_WITH_BIFM
+#    define LAMBDA_WITH_BIFM 0
+#endif
+
 // ==========================================================================
 //  DbIndexType
 // ==========================================================================
