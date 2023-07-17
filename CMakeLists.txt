@@ -62,9 +62,6 @@ if (EXISTS ${CMAKE_SOURCE_DIR}/submodules/cereal)
     add_subdirectory(submodules/cereal)
 endif ()
 
-# SGS FMindex
-add_subdirectory(submodules/fmindex-collection)
-
 # ----------------------------------------------------------------------------
 # Add Lambda targets
 # ----------------------------------------------------------------------------
