@@ -84,6 +84,9 @@ if (NOT EXISTS ${CMAKE_SOURCE_DIR}/submodules/cereal)
     find_package(cereal QUIET REQUIRED)
 endif ()
 
+# SGS FMindex
+add_subdirectory(../submodules/fmindex-collection fmindex-collection)
+
 message(STATUS "These dependencies were found:")
 message(   "     BIOCPP-CORE  ${BIOCPP_CORE_FOUND}      ${BIOCPP_CORE_VERSION}")
 message(   "     BIOCPP-IO    ${BIOCPP_IO_FOUND}      ${BIOCPP_IO_VERSION}")
@@ -98,11 +101,6 @@ message(   "     ZLIB         ${ZLIB_FOUND}      ${ZLIB_VERSION_STRING}")
 if (NOT ZLIB_FOUND)
   message (WARNING "WARNING: Zlib not found. Building lambda without support for gzipped input and output (this includes support for .bam).")
 endif (NOT ZLIB_FOUND)
-
-# Warn if BZip2 was not found.
-if (NOT BZIP2_FOUND)
-  message (WARNING "WARNING: BZip2 not found. Building lambda without support for bzipped input and output.")
-endif (NOT BZIP2_FOUND)
 
 if (SEQAN_VERSION_STRING VERSION_LESS "${MINIMUM_SEQAN_VERSION}")
     message (FATAL_ERROR "The minimum SeqAn version required is ${MINIMUM_SEQAN_VERSION}!")
