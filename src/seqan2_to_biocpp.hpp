@@ -267,7 +267,7 @@ inline bool operator==(char c, alph_t alph)
     return bio::alphabet::to_char(alph) == c;
 }
 
-template <typename TValue, typename TSequenceValue, typename TSpec, bio::alphabet::aminoacid_alphabet alph_t>
+template <typename TValue, typename TSequenceValue, typename TSpec, bio::alphabet::aminoacid alph_t>
 inline auto score(Score<TValue, ScoreMatrix<TSequenceValue, TSpec>> const & scheme,
                   alph_t const                                              a1,
                   alph_t const                                              a2) noexcept

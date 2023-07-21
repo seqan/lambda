@@ -40,10 +40,8 @@
 #include <bio/ranges/views/slice.hpp>
 #include <bio/ranges/views/translate_single.hpp>
 
-using overload_t = decltype(std::declval<std::vector<bio::alphabet::dna5> &>() | bio::views::translate_single | bio::views::slice(0,1));
-
 template <typename t>
-concept overload_c = std::same_as<std::remove_cvref_t<t>, overload_t>;
+concept overload_c = !std::default_initializable<std::remove_cvref_t<t>>;
 
 namespace seqan
 {
