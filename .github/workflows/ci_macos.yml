@@ -22,14 +22,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: "gcc12"
-            cxx: "g++-12"
-            cc: "gcc-12"
+          - name: "gcc13"
+            cxx: "g++-13"
+            cc: "gcc-13"
             build_type: Release
 
-          - name: "gcc10"
-            cxx: "g++-10"
-            cc: "gcc-10"
+          - name: "gcc11"
+            cxx: "g++-11"
+            cc: "gcc-11"
             build_type: Release
 
     steps:
