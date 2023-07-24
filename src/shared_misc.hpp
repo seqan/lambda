@@ -82,8 +82,8 @@ constexpr bool all_valid(TRange && r)
 
 inline AlphabetEnum detectSeqFileAlphabet(std::string const & path)
 {
-    bio::io::seq::record r{.id = std::ignore, .seq = std::string_view{}, .qual = std::ignore};
-    bio::io::seq::reader reader{path, bio::io::seq::reader_options{.record = r}};
+    using rec_t = decltype(bio::io::seq::record{.id = std::ignore, .seq = std::string_view{}, .qual = std::ignore});
+    bio::io::seq::reader reader{path, bio::io::seq::reader_options{.record = rec_t{}}};
 
     auto & seq = reader.begin()->seq;
 

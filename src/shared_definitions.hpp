@@ -259,7 +259,7 @@ constexpr auto qryTransView = []()
 {
     if constexpr (c_redAlph == AlphabetEnum::DNA3BS)
         return bio::views::type_reduce | bio::views::add_reverse_complement | views::duplicate;
-    else if constexpr (bio::alphabet::nucleotide_alphabet<_alphabetEnumToType<c_redAlph>>)
+    else if constexpr (bio::alphabet::nucleotide<_alphabetEnumToType<c_redAlph>>)
         return bio::views::type_reduce | bio::views::add_reverse_complement;
     else if constexpr (c_origQryAlph == c_transAlph)
         return bio::views::type_reduce;

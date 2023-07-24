@@ -33,6 +33,7 @@
 #include <bio/ranges/views/to_rank.hpp>
 #include <bio/ranges/views/translate.hpp>
 #include <bio/ranges/views/translate_join.hpp>
+#include <bio/ranges/views/validate_char_for.hpp>
 
 #include "mkindex_misc.hpp"
 #include "shared_definitions.hpp"
@@ -116,10 +117,10 @@ auto loadSubjSeqsAndIds(LambdaIndexerOptions const & options)
                                               bio::views::char_to<bio::alphabet::dna5>),
                                      bio::ranges::views::char_conversion_view_t<TOrigAlph>>;
 
-    bio::io::seq::record r{.id = std::string_view{}, .seq = seq_t{}, .qual = std::ignore};
+    using rec_t = decltype(bio::io::seq::record{.id = std::string_view{}, .seq = seq_t{}, .qual = std::ignore});
     bio::io::seq::reader reader{
       options.dbFile,
-      bio::io::seq::reader_options{.record = r, .truncate_ids = options.truncateIDs}
+      bio::io::seq::reader_options{.record = rec_t{}, .truncate_ids = options.truncateIDs}
     };
 
     size_t count = 0;

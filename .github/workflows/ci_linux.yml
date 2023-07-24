@@ -28,6 +28,12 @@ jobs:
             cc: "gcc-12"
             build_type: Release
 
+          - name: "gcc13"
+            install: "g++-13"
+            cxx: "g++-13"
+            cc: "gcc-13"
+            build_type: Release
+
           - name: "gcc12"
             install: "g++-12"
             cxx: "g++-12"
@@ -38,12 +44,6 @@ jobs:
             install: "g++-11"
             cxx: "g++-11"
             cc: "gcc-11"
-            build_type: Release
-
-          - name: "gcc10"
-            install: "g++-10"
-            cxx: "g++-10"
-            cc: "gcc-10"
             build_type: Release
 
           - name: "clang_format"

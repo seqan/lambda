@@ -358,7 +358,7 @@ public:
     /* output file */
     // SeqAn2 scoring scheme for local alignment of extended seeds. This can be adapted for bisulfite scoring.
     using TScoreSchemeAlign =
-      std::conditional_t<bio::alphabet::nucleotide_alphabet<TTransAlph>,
+      std::conditional_t<bio::alphabet::nucleotide<TTransAlph>,
                          std::conditional_t<c_redAlph == AlphabetEnum::DNA3BS,
                                             seqan::Score<int, seqan::ScoreMatrix<seqan::Dna5, seqan::BisulfiteMatrix>>,
                                             seqan::Score<int, seqan::Simple>>,
@@ -366,7 +366,7 @@ public:
 
     // SeqAn2 scoring scheme for blast statistics (does not work with bisulfite scoring scheme)
     using TScoreSchemeStats =
-      std::conditional_t<bio::alphabet::nucleotide_alphabet<TTransAlph>,
+      std::conditional_t<bio::alphabet::nucleotide<TTransAlph>,
                          seqan::Score<int, seqan::Simple>,
                          seqan::Score<int, seqan::ScoreMatrix<seqan::AminoAcid, seqan::ScoreSpecSelectable>>>;
 
