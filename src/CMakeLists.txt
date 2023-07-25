@@ -58,11 +58,6 @@ message(   "     LAMBDA_WITH_BIFM                ${LAMBDA_WITH_BIFM}")
 message(STATUS "Run 'cmake -LH' to get a comment on each option.")
 message(STATUS "Remove CMakeCache.txt and re-run cmake with -DOPTIONNAME=ON|OFF to change an option.")
 
-# deactivate the version check on broken seqan releases
-if (SEQAN_VERSION_STRING VERSION_LESS "2.3.2")
-    add_definitions (-DSEQAN_DISABLE_VERSION_CHECK="YES")
-endif ()
-
 # ----------------------------------------------------------------------------
 # Dependencies (continued)
 # ----------------------------------------------------------------------------
@@ -130,18 +125,13 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
         ProcessorCount(LAMBDA_COMPILE_THREADS)
     endif ()
 
-    # This triggers an ICE for some reason
+    # TODO: this should be fixed; currently triggers an ICE for some reason
     # if (LAMBDA_COMPILE_THREADS GREATER 1)
     #     set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -flto=${LAMBDA_COMPILE_THREADS}")
     # endif()
 
     # strip binaries to make them smaller
     set (CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -s")
-endif ()
-
-if (NOT CMAKE_CXX_COMPILER_ID MATCHES "Intel")
-    # -Wextra not met by current SeqAn on intel
-    set (SEQAN_CXX_FLAGS "${SEQAN_CXX_FLAGS} -Wextra")
 endif ()
 
 # ----------------------------------------------------------------------------
@@ -187,6 +177,12 @@ add_custom_command (OUTPUT lambda3-searchn.1
 add_custom_command (OUTPUT lambda3-searchp.1
                     COMMAND lambda3 searchp --export-help man > lambda3-searchp.1
                     DEPENDS lambda3)
+
+# searchbs subcommand
+add_custom_command (OUTPUT lambda3-searchbs.1
+                    COMMAND lambda3 searchbs --export-help man > lambda3-searchbs.1
+                    DEPENDS lambda3)
+
 # mkindexn subcommand
 add_custom_command (OUTPUT lambda3-mkindexn.1
                     COMMAND lambda3 mkindexn --export-help man > lambda3-mkindexn.1
@@ -196,9 +192,14 @@ add_custom_command (OUTPUT lambda3-mkindexp.1
                     COMMAND lambda3 mkindexp --export-help man > lambda3-mkindexp.1
                     DEPENDS lambda3)
 
-add_custom_target (manual
-                   ALL
-                   DEPENDS lambda3.1 lambda3-searchn.1 lambda3-searchp.1 lambda3-mkindexn.1 lambda3-mkindexp.1)
+# mkindexbs subcommand
+add_custom_command (OUTPUT lambda3-mkindexbs.1
+                    COMMAND lambda3 mkindexbs --export-help man > lambda3-mkindexbs.1
+                    DEPENDS lambda3)
+
+add_custom_target (manual ALL DEPENDS lambda3.1
+                                      lambda3-searchn.1 lambda3-searchp.1 lambda3-searchbs.1
+                                      lambda3-mkindexn.1 lambda3-mkindexp.1 lambda3-mkindexbs.1)
 
 # ----------------------------------------------------------------------------
 # Installation
@@ -209,16 +210,7 @@ include (GNUInstallDirs)
 
 # Install lambda binaries into LIBEXECDIR
 install (TARGETS lambda3
-         DESTINATION ${CMAKE_INSTALL_LIBEXECDIR})
-
-# Install dispatcher script into BINDIR
-configure_file(../bin/lambda3.in
-               ${CMAKE_CURRENT_BINARY_DIR}/lambda3-dispatch
-               @ONLY)
-install (FILES ${CMAKE_CURRENT_BINARY_DIR}/lambda3-dispatch
-         DESTINATION ${CMAKE_INSTALL_BINDIR}
-         RENAME lambda3
-         PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+         DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 # Install non-binary files for the package to DOCDIR, usually ${PREFIX}/share/doc/lambda3
 install (FILES ../LICENSE.rst
@@ -231,8 +223,10 @@ install (FILES ../LICENSE.rst
 install (FILES ${CMAKE_CURRENT_BINARY_DIR}/lambda3.1
                ${CMAKE_CURRENT_BINARY_DIR}/lambda3-searchn.1
                ${CMAKE_CURRENT_BINARY_DIR}/lambda3-searchp.1
+               ${CMAKE_CURRENT_BINARY_DIR}/lambda3-searchbs.1
                ${CMAKE_CURRENT_BINARY_DIR}/lambda3-mkindexn.1
                ${CMAKE_CURRENT_BINARY_DIR}/lambda3-mkindexp.1
+               ${CMAKE_CURRENT_BINARY_DIR}/lambda3-mkindexbs.1
          DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
 
 # ----------------------------------------------------------------------------
@@ -244,7 +238,7 @@ set (CPACK_PACKAGE_NAME "lambda3")
 set (CPACK_PACKAGE_DESCRIPTION_SUMMARY "lambda -- the local aligner for massive bioligical data")
 set (CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/../README.rst")
 set (CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/../LICENSE.rst")
-set (CPACK_PACKAGE_VENDOR "Hannes Hauswedell <hannes.hauswedell@decode.is>")
+set (CPACK_PACKAGE_VENDOR "Hannes Hauswedell <h2@fsfe.org>")
 set (CPACK_PACKAGE_CONTACT "${CPACK_PACKAGE_VENDOR}")
 set (CPACK_PACKAGE_VERSION_MAJOR "${SEQAN_APP_VERSION_MAJOR}")
 set (CPACK_PACKAGE_VERSION_MINOR "${SEQAN_APP_VERSION_MINOR}")
