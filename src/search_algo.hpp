@@ -911,26 +911,23 @@ inline void _writeRecord(TBlastRecord & record, TLocalHolder & lH)
 template <typename TBlastMatch, typename TLocalHolder>
 inline void _setupAlignInfix(TBlastMatch & bm, typename TLocalHolder::TMatch const & m, TLocalHolder & lH)
 {
-    int64_t startMod = (int64_t)m.subjStart - (int64_t)m.qryStart;
+    /* create bm coordinates from m coordinates */
 
-    bm.qEnd                = lH.transQrySeqs[m.qryId].size();
-    decltype(bm.qEnd) band = _bandSize(bm.qEnd);
-    if (startMod >= 0)
-    {
-        bm.sStart = startMod;
-        bm.qStart = 0;
-    }
-    else
-    {
-        bm.sStart = 0;
-        bm.qStart = -startMod;
-    }
-    bm.sEnd = std::min<size_t>(bm.sStart + bm.qEnd - bm.qStart + band, lH.gH.transSbjSeqs[m.subjId].size());
+    // move sStart as far left as needed to cover the part of query before qryStart
+    bm.sStart = (m.subjStart < m.qryStart) ? 0 : m.subjStart - m.qryStart;
 
-    if (bm.sStart >= band)
-        bm.sStart -= band;
-    else
-        bm.sStart = 0;
+    /* always align full query independent of hit-region */
+    bm.qStart = 0;
+    bm.qEnd   = lH.transQrySeqs[m.qryId].size();
+
+    // there is no band in computation but this value extends begin and end of Subj to account for gaps
+    decltype(bm.qEnd) band = _bandSize(lH.transQrySeqs[m.qryId].size());
+
+    // end on subject is beginning plus full query length plus band
+    bm.sEnd = std::min<size_t>(bm.sStart + lH.transQrySeqs[m.qryId].size() + band, lH.gH.transSbjSeqs[m.subjId].size());
+
+    // account for band in subj start
+    bm.sStart = (band < bm.sStart) ? bm.sStart - band : 0;
 
     seqan::assignSource(bm.alignRow0, lH.transQrySeqs[m.qryId] | bio::views::slice(bm.qStart, bm.qEnd));
     seqan::assignSource(bm.alignRow1, lH.gH.transSbjSeqs[m.subjId] | bio::views::slice(bm.sStart, bm.sEnd));
