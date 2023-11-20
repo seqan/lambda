@@ -108,10 +108,12 @@ struct StatsHolder
     uint64_t hitsFailedExtendEValueTest;
     uint64_t hitsAbundant;
     uint64_t hitsDuplicate;
+    uint64_t hitsDuplicate2;
 
     // final
     uint64_t hitsFinal;
     uint64_t qrysWithHit;
+    uint64_t pairs;
 
 #ifdef LAMBDA_MICRO_STATS
     // times
@@ -146,9 +148,11 @@ struct StatsHolder
         hitsFailedExtendEValueTest       = 0;
         hitsAbundant                     = 0;
         hitsDuplicate                    = 0;
+        hitsDuplicate2                   = 0;
 
         hitsFinal   = 0;
         qrysWithHit = 0;
+        pairs       = 0;
 
 #ifdef LAMBDA_MICRO_STATS
         seedLengths.clear();
@@ -178,9 +182,11 @@ struct StatsHolder
         hitsFailedExtendEValueTest += rhs.hitsFailedExtendEValueTest;
         hitsAbundant += rhs.hitsAbundant;
         hitsDuplicate += rhs.hitsDuplicate;
+        hitsDuplicate2 += rhs.hitsDuplicate2;
 
         hitsFinal += rhs.hitsFinal;
         qrysWithHit += rhs.qrysWithHit;
+        pairs += rhs.pairs;
 
 #ifdef LAMBDA_MICRO_STATS
         seqan::append(seedLengths, rhs.seedLengths);
@@ -239,6 +245,8 @@ void printStats(StatsHolder const & stats, LambdaOptions const & options)
         std::cout << "\n - failed %-identity test   " << R << stats.hitsFailedExtendPercentIdentTest << RR
                   << (rem -= stats.hitsFailedExtendPercentIdentTest);
         std::cout << "\n - duplicates               " << R << stats.hitsDuplicate << RR << (rem -= stats.hitsDuplicate);
+        std::cout << "\n - late duplicates          " << R << stats.hitsDuplicate2 << RR
+                  << (rem -= stats.hitsDuplicate2);
         std::cout << "\n - abundant                 " << R << stats.hitsAbundant << "\033[1m" << RR
                   << (rem -= stats.hitsAbundant) << "\033[0m\n\n";
 
@@ -280,7 +288,8 @@ void printStats(StatsHolder const & stats, LambdaOptions const & options)
     if (options.verbosity >= 1)
     {
         auto const w = seqan::_numberOfDigits(stats.hitsFinal);
-        std::cout << "Number of valid hits:                           " << std::setw(w) << stats.hitsFinal
+        std::cout << "Number of total hits:                           " << std::setw(w) << stats.hitsFinal
+                  << "\nNumber of Query-Subject pairs:                  " << std::setw(w) << stats.pairs
                   << "\nNumber of Queries with at least one valid hit:  " << std::setw(w) << stats.qrysWithHit << "\n";
     }
 }
@@ -472,7 +481,8 @@ public:
                                             std::vector<std::string>, // not used
                                             std::string_view,
                                             uint32_t>;
-    std::list<TBlastMatch> blastMatches;
+    std::list<TBlastMatch>       blastMatches;
+    std::unordered_set<uint64_t> uniqSubjIds;
 
     // regarding the gathering of stats
     StatsHolder stats{};
