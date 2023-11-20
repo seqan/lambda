@@ -57,16 +57,7 @@ struct Match
     TPos subjStart;
     TPos subjEnd;
 
-    inline bool operator==(Match const & m2) const
-    {
-        return std::tie(qryId, subjId, qryStart, subjStart, qryEnd, subjEnd) ==
-               std::tie(m2.qryId, m2.subjId, m2.qryStart, m2.subjStart, m2.qryEnd, m2.subjEnd);
-    }
-    inline bool operator<(Match const & m2) const
-    {
-        return std::tie(qryId, subjId, qryStart, subjStart, qryEnd, subjEnd) <
-               std::tie(m2.qryId, m2.subjId, m2.qryStart, m2.subjStart, m2.qryEnd, m2.subjEnd);
-    }
+    constexpr friend auto operator<=>(Match const &, Match const &) = default;
 };
 
 // template <typename TAlph>

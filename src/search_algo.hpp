@@ -908,29 +908,24 @@ inline void _writeRecord(TBlastRecord & record, TLocalHolder & lH)
 // Function computeBlastMatch()
 // --------------------------------------------------------------------------
 
-template <typename TBlastMatch, typename TLocalHolder>
-inline void _setupAlignInfix(TBlastMatch & bm, typename TLocalHolder::TMatch const & m, TLocalHolder & lH)
+template <typename TLocalHolder>
+inline void _widenMatch(Match & m, TLocalHolder const & lH)
 {
-    /* create bm coordinates from m coordinates */
-
     // move sStart as far left as needed to cover the part of query before qryStart
-    bm.sStart = (m.subjStart < m.qryStart) ? 0 : m.subjStart - m.qryStart;
+    m.subjStart = (m.subjStart < m.qryStart) ? 0 : m.subjStart - m.qryStart;
 
     /* always align full query independent of hit-region */
-    bm.qStart = 0;
-    bm.qEnd   = lH.transQrySeqs[m.qryId].size();
+    m.qryStart = 0;
+    m.qryEnd   = lH.transQrySeqs[m.qryId].size();
 
     // there is no band in computation but this value extends begin and end of Subj to account for gaps
-    decltype(bm.qEnd) band = _bandSize(lH.transQrySeqs[m.qryId].size());
+    uint64_t band = _bandSize(lH.transQrySeqs[m.qryId].size());
 
     // end on subject is beginning plus full query length plus band
-    bm.sEnd = std::min<size_t>(bm.sStart + lH.transQrySeqs[m.qryId].size() + band, lH.gH.transSbjSeqs[m.subjId].size());
+    m.subjEnd = std::min<size_t>(m.subjStart + lH.transQrySeqs[m.qryId].size() + band, lH.gH.transSbjSeqs[m.subjId].size());
 
     // account for band in subj start
-    bm.sStart = (band < bm.sStart) ? bm.sStart - band : 0;
-
-    seqan::assignSource(bm.alignRow0, lH.transQrySeqs[m.qryId] | bio::views::slice(bm.qStart, bm.qEnd));
-    seqan::assignSource(bm.alignRow1, lH.gH.transSbjSeqs[m.subjId] | bio::views::slice(bm.sStart, bm.sEnd));
+    m.subjStart = (band < m.subjStart) ? m.subjStart - band : 0;
 }
 
 template <typename TBlastMatch, typename TLocalHolder>
@@ -1130,6 +1125,47 @@ inline void _performAlignment(TDepSetH &      depSetH,
 }
 
 template <typename TLocalHolder>
+inline void _widenAndPreprocessMatches(TLocalHolder & lH)
+{
+    auto before = lH.matches.size();
+
+    for (Match & m : lH.matches)
+        _widenMatch<TLocalHolder>(m, lH);
+
+    std::ranges::sort(lH.matches);
+
+    if (lH.matches.size() > 1)
+    {
+        // pairwise merge from left to right
+        for (auto it = lH.matches.begin(); it < lH.matches.end() - 1; ++it)
+        {
+            Match & l = *it;
+            Match & r = *(it + 1);
+            if ((std::tie(l.qryId, l.subjId) == std::tie(r.qryId, r.subjId)) && (l.subjEnd >= r.subjStart))
+            {
+                l.subjEnd   = r.subjEnd;
+                r.subjStart = l.subjStart;
+            }
+        }
+
+        // pairwise "swallow" from right to left
+        for (auto it = lH.matches.rbegin(); it < lH.matches.rend() - 1; ++it)
+        {
+            Match & r = *it;
+            Match & l = *(it + 1);
+            if ((std::tie(r.qryId, r.subjId) == std::tie(l.qryId, l.subjId)) && (r.subjStart < l.subjEnd))
+            {
+                l = r;
+            }
+        }
+
+        auto const ret = std::ranges::unique(lH.matches);
+        lH.matches.erase(ret.begin(), ret.end());
+        lH.stats.hitsDuplicate += (before - lH.matches.size());
+    }
+}
+
+template <typename TLocalHolder>
 inline void iterateMatchesFullSimd(TLocalHolder & lH, bsDirection const dir = bsDirection::fwd)
 {
     using TGlobalHolder = typename TLocalHolder::TGlobalHolder;
@@ -1149,58 +1185,44 @@ inline void iterateMatchesFullSimd(TLocalHolder & lH, bsDirection const dir = bs
     seqan::StringSet<typename seqan::Source<typename TLocalHolder::TAlignRow0>::Type> depSetH;
     seqan::StringSet<typename seqan::Source<typename TLocalHolder::TAlignRow1>::Type> depSetV;
 
-    // create blast matches
+    // pre-sort and filter
+    _widenAndPreprocessMatches(lH);
+
+    // create blast matches from Lambda matches
     std::list<TBlastMatch> blastMatches;
-    for (auto it = lH.matches.begin(), itEnd = lH.matches.end(); it != itEnd; ++it)
+    for (Match const & m : lH.matches)
     {
+        /* TODO we need to externalise this because right now we sort and merge hits that are not need in BS mode */
         // In BS-mode, skip those results that have wrong orientation
         if constexpr (TLocalHolder::TGlobalHolder::c_redAlph == AlphabetEnum::DNA3BS)
         {
-            if ((dir == bsDirection::fwd && (it->subjId % 2)) || (dir == bsDirection::rev && !(it->subjId % 2)))
+            if ((dir == bsDirection::fwd && (m.subjId % 2)) || (dir == bsDirection::rev && !(m.subjId % 2)))
                 continue;
         }
         // create blastmatch in list without copy or move
-        blastMatches.emplace_back(lH.qryIds[it->qryId / TGlobalHolder::qryNumFrames],
-                                  const_gH.indexFile.ids[it->subjId / TGlobalHolder::sbjNumFrames]);
+        blastMatches.emplace_back(lH.qryIds[m.qryId / TGlobalHolder::qryNumFrames],
+                                  const_gH.indexFile.ids[m.subjId / TGlobalHolder::sbjNumFrames]);
 
         TBlastMatch & bm = blastMatches.back();
 
-        bm._n_qId = it->qryId / TGlobalHolder::qryNumFrames;
-        bm._n_sId = it->subjId / TGlobalHolder::sbjNumFrames;
+        bm._n_qId = m.qryId / TGlobalHolder::qryNumFrames;
+        bm._n_sId = m.subjId / TGlobalHolder::sbjNumFrames;
 
-        bm.qLength = //std::ranges::size(lH.transQrySeqs[it->qryId]);
-          std::ranges::size(lH.qrySeqs[bm._n_qId]);
+        bm.qLength = std::ranges::size(lH.qrySeqs[bm._n_qId]);
+        bm.sLength = std::ranges::size(lH.gH.indexFile.seqs[bm._n_sId]);
 
-        bm.sLength = // std::ranges::size(lH.gH.transSbjSeqs[it->subjId]);
-          std::ranges::size(lH.gH.indexFile.seqs[bm._n_sId]);
+        bm.qStart = m.qryStart;
+        bm.qEnd   = m.qryEnd;
+        bm.sStart = m.subjStart;
+        bm.sEnd   = m.subjEnd;
+        seqan::assignSource(bm.alignRow0, lH.transQrySeqs[m.qryId] | bio::views::slice(bm.qStart, bm.qEnd));
+        seqan::assignSource(bm.alignRow1, lH.gH.transSbjSeqs[m.subjId] | bio::views::slice(bm.sStart, bm.sEnd));
 
-        _setupAlignInfix(bm, *it, lH);
-
-        _setFrames(bm, *it, lH);
+        _setFrames(bm, m, lH);
 
         if (lH.options.hasSTaxIds)
             bm.sTaxIds = lH.gH.indexFile.sTaxIds[bm._n_sId];
     }
-#ifdef LAMBDA_MICRO_STATS
-    lH.stats.timeExtend += sysTime() - start;
-
-    // filter out duplicates
-    start = sysTime();
-#endif
-    auto before = seqan::length(blastMatches);
-    blastMatches.sort(
-      [](auto const & l, auto const & r)
-      {
-          return std::tie(l._n_qId, l._n_sId, l.sStart, l.sEnd, l.qStart, l.qEnd, l.qFrameShift, l.sFrameShift) <
-                 std::tie(r._n_qId, r._n_sId, r.sStart, r.sEnd, r.qStart, r.qEnd, r.qFrameShift, r.sFrameShift);
-      });
-    blastMatches.unique(
-      [](auto const & l, auto const & r)
-      {
-          return std::tie(l._n_qId, l._n_sId, l.sStart, l.sEnd, l.qStart, l.qEnd, l.qFrameShift, l.sFrameShift) ==
-                 std::tie(r._n_qId, r._n_sId, r.sStart, r.sEnd, r.qStart, r.qEnd, r.qFrameShift, r.sFrameShift);
-      });
-    lH.stats.hitsDuplicate += (before - seqan::length(blastMatches));
 
     // sort by lengths to minimize padding in SIMD
     blastMatches.sort(
@@ -1214,6 +1236,7 @@ inline void iterateMatchesFullSimd(TLocalHolder & lH, bsDirection const dir = bs
 
     start = sysTime();
 #endif
+
     // fill batches
     _setupDepSets(depSetH, depSetV, blastMatches);
 
