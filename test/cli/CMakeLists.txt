@@ -73,4 +73,28 @@ target_use_datasources (search_test FILES db_nucl.fasta.gz
                                           output_tblastn_fm_sensitive.m8
                                           output_tblastn_fm_sensitive.sam
                                           output_tblastx_fm_sensitive.m8
-                                          output_tblastx_fm_sensitive.sam)
+                                          output_tblastx_fm_sensitive.sam
+                                          output_blastn_bs_fm_pairs_default.m8
+                                          output_blastn_bs_fm_pairs_default.sam
+                                          output_blastn_fm_pairs_default.m8
+                                          output_blastn_fm_pairs_default.sam
+                                          output_blastp_fm_pairs_default.m8
+                                          output_blastp_fm_pairs_default.sam
+                                          output_blastx_fm_pairs_default.m8
+                                          output_blastx_fm_pairs_default.sam
+                                          output_tblastn_fm_pairs_default.m8
+                                          output_tblastn_fm_pairs_default.sam
+                                          output_tblastx_fm_pairs_default.m8
+                                          output_tblastx_fm_pairs_default.sam
+                                          output_blastn_bs_fm_pairs_sensitive.m8
+                                          output_blastn_bs_fm_pairs_sensitive.sam
+                                          output_blastn_fm_pairs_sensitive.m8
+                                          output_blastn_fm_pairs_sensitive.sam
+                                          output_blastp_fm_pairs_sensitive.m8
+                                          output_blastp_fm_pairs_sensitive.sam
+                                          output_blastx_fm_pairs_sensitive.m8
+                                          output_blastx_fm_pairs_sensitive.sam
+                                          output_tblastn_fm_pairs_sensitive.m8
+                                          output_tblastn_fm_pairs_sensitive.sam
+                                          output_tblastx_fm_pairs_sensitive.m8
+                                          output_tblastx_fm_pairs_sensitive.sam)

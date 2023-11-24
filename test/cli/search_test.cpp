@@ -619,6 +619,154 @@ TEST_F(search_test, tblastx_fm_sensitive_sam)
                     "queries_nucl.fasta.gz", "sensitive", "output_tblastx_fm_sensitive.sam", "sam", "output_tblastx_fm_sensitive.sam");
 }
 
+// pairs default mode
+
+TEST_F(search_test, blastn_fm_pairs_default_m8)
+{
+    run_search_test("mkindexn", "db_nucl.fasta.gz", "db_nucl_fm.fasta.gz.lba", "fm", "", "searchn",
+                    "queries_nucl.fasta.gz", "pairs-default", "output_blastn_fm_pairs_default.m8", "m8", "output_blastn_fm_pairs_default.m8");
+}
+
+TEST_F(search_test, blastn_fm_pairs_default_sam)
+{
+    run_search_test("mkindexn", "db_nucl.fasta.gz", "db_nucl_fm.fasta.gz.lba", "fm", "", "searchn",
+                    "queries_nucl.fasta.gz", "pairs-default", "output_blastn_fm_pairs_default.sam", "sam", "output_blastn_fm_pairs_default.sam");
+}
+
+TEST_F(search_test, blastn_bs_fm_pairs_default_m8)
+{
+    run_search_test("mkindexbs", "db_nucl_bs.fasta.gz", "db_nucl_bs_fm.fasta.gz.lba", "fm", "", "searchbs",
+                    "queries_nucl_bs.fasta.gz", "pairs-default", "output_blastn_bs_fm_pairs_default.m8", "m8", "output_blastn_bs_fm_pairs_default.m8");
+}
+
+TEST_F(search_test, blastn_bs_fm_pairs_default_sam)
+{
+    run_search_test("mkindexbs", "db_nucl_bs.fasta.gz", "db_nucl_bs_fm.fasta.gz.lba", "fm", "", "searchbs",
+                    "queries_nucl_bs.fasta.gz", "pairs-default", "output_blastn_bs_fm_pairs_default.sam", "sam", "output_blastn_bs_fm_pairs_default.sam");
+}
+
+TEST_F(search_test, blastp_fm_pairs_default_m8)
+{
+    run_search_test("mkindexp", "db_prot.fasta.gz", "db_prot_fm.fasta.gz.lba", "fm", "li10", "searchp",
+                    "queries_prot.fasta.gz", "pairs-default", "output_blastp_fm_pairs_default.m8", "m8", "output_blastp_fm_pairs_default.m8");
+}
+
+TEST_F(search_test, blastp_fm_pairs_default_sam)
+{
+    run_search_test("mkindexp", "db_prot.fasta.gz", "db_prot_fm.fasta.gz.lba", "fm", "li10", "searchp",
+                    "queries_prot.fasta.gz", "pairs-default", "output_blastp_fm_pairs_default.sam", "sam", "output_blastp_fm_pairs_default.sam");
+}
+
+TEST_F(search_test, blastx_fm_pairs_default_m8)
+{
+    run_search_test("mkindexp", "db_prot.fasta.gz", "db_prot_fm.fasta.gz.lba", "fm", "li10", "searchp",
+                    "queries_nucl.fasta.gz", "pairs-default", "output_blastx_fm_pairs_default.m8", "m8", "output_blastx_fm_pairs_default.m8");
+}
+
+TEST_F(search_test, blastx_fm_pairs_default_sam)
+{
+    run_search_test("mkindexp", "db_prot.fasta.gz", "db_prot_fm.fasta.gz.lba", "fm", "li10", "searchp",
+                    "queries_nucl.fasta.gz", "pairs-default", "output_blastx_fm_pairs_default.sam", "sam", "output_blastx_fm_pairs_default.sam");
+}
+
+TEST_F(search_test, tblastn_fm_pairs_default_m8)
+{
+    run_search_test("mkindexp", "db_nucl.fasta.gz", "db_trans_fm.fasta.gz.lba", "fm", "li10", "searchp",
+                    "queries_prot.fasta.gz", "pairs-default", "output_tblastn_fm_pairs_default.m8", "m8", "output_tblastn_fm_pairs_default.m8");
+}
+
+TEST_F(search_test, tblastn_fm_pairs_default_sam)
+{
+    run_search_test("mkindexp", "db_nucl.fasta.gz", "db_trans_fm.fasta.gz.lba", "fm", "li10", "searchp",
+                    "queries_prot.fasta.gz", "pairs-default", "output_tblastn_fm_pairs_default.sam", "sam", "output_tblastn_fm_pairs_default.sam");
+}
+
+TEST_F(search_test, tblastx_fm_pairs_default_m8)
+{
+    run_search_test("mkindexp", "db_nucl.fasta.gz", "db_trans_fm.fasta.gz.lba", "fm", "li10", "searchp",
+                    "queries_nucl.fasta.gz", "pairs-default", "output_tblastx_fm_pairs_default.m8", "m8", "output_tblastx_fm_pairs_default.m8");
+}
+
+TEST_F(search_test, tblastx_fm_pairs_default_sam)
+{
+    run_search_test("mkindexp", "db_nucl.fasta.gz", "db_trans_fm.fasta.gz.lba", "fm", "li10", "searchp",
+                    "queries_nucl.fasta.gz", "pairs-default", "output_tblastx_fm_pairs_default.sam", "sam", "output_tblastx_fm_pairs_default.sam");
+}
+
+// pairs sensitive mode
+
+TEST_F(search_test, blastn_fm_pairs_sensitive_m8)
+{
+    run_search_test("mkindexn", "db_nucl.fasta.gz", "db_nucl_fm.fasta.gz.lba", "fm", "", "searchn",
+                    "queries_nucl.fasta.gz", "pairs-sensitive", "output_blastn_fm_pairs_sensitive.m8", "m8", "output_blastn_fm_pairs_sensitive.m8");
+}
+
+TEST_F(search_test, blastn_fm_pairs_sensitive_sam)
+{
+    run_search_test("mkindexn", "db_nucl.fasta.gz", "db_nucl_fm.fasta.gz.lba", "fm", "", "searchn",
+                    "queries_nucl.fasta.gz", "pairs-sensitive", "output_blastn_fm_pairs_sensitive.sam", "sam", "output_blastn_fm_pairs_sensitive.sam");
+}
+
+TEST_F(search_test, blastn_bs_fm_pairs_sensitive_m8)
+{
+    run_search_test("mkindexbs", "db_nucl_bs.fasta.gz", "db_nucl_bs_fm.fasta.gz.lba", "fm", "", "searchbs",
+                    "queries_nucl_bs.fasta.gz", "pairs-sensitive", "output_blastn_bs_fm_pairs_sensitive.m8", "m8", "output_blastn_bs_fm_pairs_sensitive.m8");
+}
+
+TEST_F(search_test, blastn_bs_fm_pairs_sensitive_sam)
+{
+    run_search_test("mkindexbs", "db_nucl_bs.fasta.gz", "db_nucl_bs_fm.fasta.gz.lba", "fm", "", "searchbs",
+                    "queries_nucl_bs.fasta.gz", "pairs-sensitive", "output_blastn_bs_fm_pairs_sensitive.sam", "sam", "output_blastn_bs_fm_pairs_sensitive.sam");
+}
+
+TEST_F(search_test, blastp_fm_pairs_sensitive_m8)
+{
+    run_search_test("mkindexp", "db_prot.fasta.gz", "db_prot_fm.fasta.gz.lba", "fm", "li10", "searchp",
+                    "queries_prot.fasta.gz", "pairs-sensitive", "output_blastp_fm_pairs_sensitive.m8", "m8", "output_blastp_fm_pairs_sensitive.m8");
+}
+
+TEST_F(search_test, blastp_fm_pairs_sensitive_sam)
+{
+    run_search_test("mkindexp", "db_prot.fasta.gz", "db_prot_fm.fasta.gz.lba", "fm", "li10", "searchp",
+                    "queries_prot.fasta.gz", "pairs-sensitive", "output_blastp_fm_pairs_sensitive.sam", "sam", "output_blastp_fm_pairs_sensitive.sam");
+}
+
+TEST_F(search_test, blastx_fm_pairs_sensitive_m8)
+{
+    run_search_test("mkindexp", "db_prot.fasta.gz", "db_prot_fm.fasta.gz.lba", "fm", "li10", "searchp",
+                    "queries_nucl.fasta.gz", "pairs-sensitive", "output_blastx_fm_pairs_sensitive.m8", "m8", "output_blastx_fm_pairs_sensitive.m8");
+}
+
+TEST_F(search_test, blastx_fm_pairs_sensitive_sam)
+{
+    run_search_test("mkindexp", "db_prot.fasta.gz", "db_prot_fm.fasta.gz.lba", "fm", "li10", "searchp",
+                    "queries_nucl.fasta.gz", "pairs-sensitive", "output_blastx_fm_pairs_sensitive.sam", "sam", "output_blastx_fm_pairs_sensitive.sam");
+}
+
+TEST_F(search_test, tblastn_fm_pairs_sensitive_m8)
+{
+    run_search_test("mkindexp", "db_nucl.fasta.gz", "db_trans_fm.fasta.gz.lba", "fm", "li10", "searchp",
+                    "queries_prot.fasta.gz", "pairs-sensitive", "output_tblastn_fm_pairs_sensitive.m8", "m8", "output_tblastn_fm_pairs_sensitive.m8");
+}
+
+TEST_F(search_test, tblastn_fm_pairs_sensitive_sam)
+{
+    run_search_test("mkindexp", "db_nucl.fasta.gz", "db_trans_fm.fasta.gz.lba", "fm", "li10", "searchp",
+                    "queries_prot.fasta.gz", "pairs-sensitive", "output_tblastn_fm_pairs_sensitive.sam", "sam", "output_tblastn_fm_pairs_sensitive.sam");
+}
+
+TEST_F(search_test, tblastx_fm_pairs_sensitive_m8)
+{
+    run_search_test("mkindexp", "db_nucl.fasta.gz", "db_trans_fm.fasta.gz.lba", "fm", "li10", "searchp",
+                    "queries_nucl.fasta.gz", "pairs-sensitive", "output_tblastx_fm_pairs_sensitive.m8", "m8", "output_tblastx_fm_pairs_sensitive.m8");
+}
+
+TEST_F(search_test, tblastx_fm_pairs_sensitive_sam)
+{
+    run_search_test("mkindexp", "db_nucl.fasta.gz", "db_trans_fm.fasta.gz.lba", "fm", "li10", "searchp",
+                    "queries_nucl.fasta.gz", "pairs-sensitive", "output_tblastx_fm_pairs_sensitive.sam", "sam", "output_tblastx_fm_pairs_sensitive.sam");
+}
+
 // special options
 
 TEST_F(search_test, lazy_loading)
