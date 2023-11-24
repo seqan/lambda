@@ -170,37 +170,37 @@ TEST_F(search_test, searchbs_no_options)
 TEST_F(search_test, blastn_fm_m0)
 {
     run_search_test("mkindexn", "db_nucl.fasta.gz", "db_nucl_fm.fasta.gz.lba", "fm", "", "searchn",
-                    "queries_nucl.fasta.gz", "none", "output_blastn_fm_test.m0", "m0", "output_blastn_fm.m0");
+                    "queries_nucl.fasta.gz", "none", "output_blastn_fm.m0", "m0", "output_blastn_fm.m0");
 }
 
 TEST_F(search_test, blastn_fm_m8)
 {
     run_search_test("mkindexn", "db_nucl.fasta.gz", "db_nucl_fm.fasta.gz.lba", "fm", "", "searchn",
-                    "queries_nucl.fasta.gz", "none", "output_blastn_fm_test.m8", "m8", "output_blastn_fm.m8");
+                    "queries_nucl.fasta.gz", "none", "output_blastn_fm.m8", "m8", "output_blastn_fm.m8");
 }
 
 TEST_F(search_test, blastn_fm_m9)
 {
     run_search_test("mkindexn", "db_nucl.fasta.gz", "db_nucl_fm.fasta.gz.lba", "fm", "", "searchn",
-                    "queries_nucl.fasta.gz", "none", "output_blastn_fm_test.m9", "m9", "output_blastn_fm.m9");
+                    "queries_nucl.fasta.gz", "none", "output_blastn_fm.m9", "m9", "output_blastn_fm.m9");
 }
 
 TEST_F(search_test, blastn_fm_m9_gz)
 {
     run_search_test("mkindexn", "db_nucl.fasta.gz", "db_nucl_fm.fasta.gz.lba", "fm", "", "searchn",
-                    "queries_nucl.fasta.gz", "none", "output_blastn_fm_test.m9.gz", "m9_gz", "output_blastn_fm.m9");
+                    "queries_nucl.fasta.gz", "none", "output_blastn_fm.m9.gz", "m9_gz", "output_blastn_fm.m9");
 }
 
 TEST_F(search_test, blastn_fm_sam)
 {
     run_search_test("mkindexn", "db_nucl.fasta.gz", "db_nucl_fm.fasta.gz.lba", "fm", "", "searchn",
-                    "queries_nucl.fasta.gz", "none", "output_blastn_fm_test.sam", "sam", "output_blastn_fm.sam");
+                    "queries_nucl.fasta.gz", "none", "output_blastn_fm.sam", "sam", "output_blastn_fm.sam");
 }
 
 TEST_F(search_test, blastn_fm_bam)
 {
     run_search_test("mkindexn", "db_nucl.fasta.gz", "db_nucl_fm.fasta.gz.lba", "fm", "", "searchn",
-                    "queries_nucl.fasta.gz", "none", "output_blastn_fm_test.bam", "bam", "output_blastn_fm.bam");
+                    "queries_nucl.fasta.gz", "none", "output_blastn_fm.bam", "bam", "output_blastn_fm.bam");
 }
 
 // BLASTN bisulfite mode
@@ -208,37 +208,37 @@ TEST_F(search_test, blastn_fm_bam)
 TEST_F(search_test, blastn_bs_fm_m0)
 {
     run_search_test("mkindexbs", "db_nucl_bs.fasta.gz", "db_nucl_bs_fm.fasta.gz.lba", "fm", "", "searchbs",
-                    "queries_nucl_bs.fasta.gz", "none", "output_blastn_bs_fm_test.m0", "m0", "output_blastn_bs_fm.m0");
+                    "queries_nucl_bs.fasta.gz", "none", "output_blastn_bs_fm.m0", "m0", "output_blastn_bs_fm.m0");
 }
 
 TEST_F(search_test, blastn_bs_fm_m8)
 {
     run_search_test("mkindexbs", "db_nucl_bs.fasta.gz", "db_nucl_bs_fm.fasta.gz.lba", "fm", "", "searchbs",
-                    "queries_nucl_bs.fasta.gz", "none", "output_blastn_bs_fm_test.m8", "m8", "output_blastn_bs_fm.m8");
+                    "queries_nucl_bs.fasta.gz", "none", "output_blastn_bs_fm.m8", "m8", "output_blastn_bs_fm.m8");
 }
 
 TEST_F(search_test, blastn_bs_fm_m9)
 {
     run_search_test("mkindexbs", "db_nucl_bs.fasta.gz", "db_nucl_bs_fm.fasta.gz.lba", "fm", "", "searchbs",
-                    "queries_nucl_bs.fasta.gz", "none", "output_blastn_bs_fm_test.m9", "m9", "output_blastn_bs_fm.m9");
+                    "queries_nucl_bs.fasta.gz", "none", "output_blastn_bs_fm.m9", "m9", "output_blastn_bs_fm.m9");
 }
 
 TEST_F(search_test, blastn_bs_fm_m9_gz)
 {
     run_search_test("mkindexbs", "db_nucl_bs.fasta.gz", "db_nucl_bs_fm.fasta.gz.lba", "fm", "", "searchbs",
-                    "queries_nucl_bs.fasta.gz", "none", "output_blastn_bs_fm_test.m9.gz", "m9_gz", "output_blastn_bs_fm.m9");
+                    "queries_nucl_bs.fasta.gz", "none", "output_blastn_bs_fm.m9.gz", "m9_gz", "output_blastn_bs_fm.m9");
 }
 
 TEST_F(search_test, blastn_bs_fm_sam)
 {
     run_search_test("mkindexbs", "db_nucl_bs.fasta.gz", "db_nucl_bs_fm.fasta.gz.lba", "fm", "", "searchbs",
-                    "queries_nucl_bs.fasta.gz", "none", "output_blastn_bs_fm_test.sam", "sam", "output_blastn_bs_fm.sam");
+                    "queries_nucl_bs.fasta.gz", "none", "output_blastn_bs_fm.sam", "sam", "output_blastn_bs_fm.sam");
 }
 
 TEST_F(search_test, blastn_bs_fm_bam)
 {
     run_search_test("mkindexbs", "db_nucl_bs.fasta.gz", "db_nucl_bs_fm.fasta.gz.lba", "fm", "", "searchbs",
-                    "queries_nucl_bs.fasta.gz", "none", "output_blastn_bs_fm_test.bam", "bam", "output_blastn_bs_fm.bam");
+                    "queries_nucl_bs.fasta.gz", "none", "output_blastn_bs_fm.bam", "bam", "output_blastn_bs_fm.bam");
 }
 
 // BLASTP
@@ -246,37 +246,37 @@ TEST_F(search_test, blastn_bs_fm_bam)
 TEST_F(search_test, blastp_fm_m0)
 {
     run_search_test("mkindexp", "db_prot.fasta.gz", "db_prot_fm.fasta.gz.lba", "fm", "li10", "searchp",
-                    "queries_prot.fasta.gz", "none", "output_blastp_fm_test.m0", "m0", "output_blastp_fm.m0");
+                    "queries_prot.fasta.gz", "none", "output_blastp_fm.m0", "m0", "output_blastp_fm.m0");
 }
 
 TEST_F(search_test, blastp_fm_m8)
 {
     run_search_test("mkindexp", "db_prot.fasta.gz", "db_prot_fm.fasta.gz.lba", "fm", "li10", "searchp",
-                    "queries_prot.fasta.gz", "none", "output_blastp_fm_test.m8", "m8", "output_blastp_fm.m8");
+                    "queries_prot.fasta.gz", "none", "output_blastp_fm.m8", "m8", "output_blastp_fm.m8");
 }
 
 TEST_F(search_test, blastp_fm_m9)
 {
     run_search_test("mkindexp", "db_prot.fasta.gz", "db_prot_fm.fasta.gz.lba", "fm", "li10", "searchp",
-                    "queries_prot.fasta.gz", "none", "output_blastp_fm_test.m9", "m9", "output_blastp_fm.m9");
+                    "queries_prot.fasta.gz", "none", "output_blastp_fm.m9", "m9", "output_blastp_fm.m9");
 }
 
 TEST_F(search_test, blastp_fm_m9_gz)
 {
     run_search_test("mkindexp", "db_prot.fasta.gz", "db_prot_fm.fasta.gz.lba", "fm", "li10", "searchp",
-                    "queries_prot.fasta.gz", "none", "output_blastp_fm_test.m9.gz", "m9_gz", "output_blastp_fm.m9");
+                    "queries_prot.fasta.gz", "none", "output_blastp_fm.m9.gz", "m9_gz", "output_blastp_fm.m9");
 }
 
 TEST_F(search_test, blastp_fm_sam)
 {
     run_search_test("mkindexp", "db_prot.fasta.gz", "db_prot_fm.fasta.gz.lba", "fm", "li10", "searchp",
-                    "queries_prot.fasta.gz", "none", "output_blastp_fm_test.sam", "sam", "output_blastp_fm.sam");
+                    "queries_prot.fasta.gz", "none", "output_blastp_fm.sam", "sam", "output_blastp_fm.sam");
 }
 
 TEST_F(search_test, blastp_fm_bam)
 {
     run_search_test("mkindexp", "db_prot.fasta.gz", "db_prot_fm.fasta.gz.lba", "fm", "li10", "searchp",
-                    "queries_prot.fasta.gz", "none", "output_blastp_fm_test.bam", "bam", "output_blastp_fm.bam");
+                    "queries_prot.fasta.gz", "none", "output_blastp_fm.bam", "bam", "output_blastp_fm.bam");
 }
 
 // BLASTX
@@ -284,37 +284,37 @@ TEST_F(search_test, blastp_fm_bam)
 TEST_F(search_test, blastx_fm_m0)
 {
     run_search_test("mkindexp", "db_prot.fasta.gz", "db_prot_fm.fasta.gz.lba", "fm", "li10", "searchp",
-                    "queries_nucl.fasta.gz", "none", "output_blastx_fm_test.m0", "m0", "output_blastx_fm.m0");
+                    "queries_nucl.fasta.gz", "none", "output_blastx_fm.m0", "m0", "output_blastx_fm.m0");
 }
 
 TEST_F(search_test, blastx_fm_m8)
 {
     run_search_test("mkindexp", "db_prot.fasta.gz", "db_prot_fm.fasta.gz.lba", "fm", "li10", "searchp",
-                    "queries_nucl.fasta.gz", "none", "output_blastx_fm_test.m8", "m8", "output_blastx_fm.m8");
+                    "queries_nucl.fasta.gz", "none", "output_blastx_fm.m8", "m8", "output_blastx_fm.m8");
 }
 
 TEST_F(search_test, blastx_fm_m9)
 {
     run_search_test("mkindexp", "db_prot.fasta.gz", "db_prot_fm.fasta.gz.lba", "fm", "li10", "searchp",
-                    "queries_nucl.fasta.gz", "none", "output_blastx_fm_test.m9", "m9", "output_blastx_fm.m9");
+                    "queries_nucl.fasta.gz", "none", "output_blastx_fm.m9", "m9", "output_blastx_fm.m9");
 }
 
 TEST_F(search_test, blastx_fm_m9_gz)
 {
     run_search_test("mkindexp", "db_prot.fasta.gz", "db_prot_fm.fasta.gz.lba", "fm", "li10", "searchp",
-                    "queries_nucl.fasta.gz", "none", "output_blastx_fm_test.m9.gz", "m9_gz", "output_blastx_fm.m9");
+                    "queries_nucl.fasta.gz", "none", "output_blastx_fm.m9.gz", "m9_gz", "output_blastx_fm.m9");
 }
 
 TEST_F(search_test, blastx_fm_sam)
 {
     run_search_test("mkindexp", "db_prot.fasta.gz", "db_prot_fm.fasta.gz.lba", "fm", "li10", "searchp",
-                    "queries_nucl.fasta.gz", "none", "output_blastx_fm_test.sam", "sam", "output_blastx_fm.sam");
+                    "queries_nucl.fasta.gz", "none", "output_blastx_fm.sam", "sam", "output_blastx_fm.sam");
 }
 
 TEST_F(search_test, blastx_fm_bam)
 {
     run_search_test("mkindexp", "db_prot.fasta.gz", "db_prot_fm.fasta.gz.lba", "fm", "li10", "searchp",
-                    "queries_nucl.fasta.gz", "none", "output_blastx_fm_test.bam", "bam", "output_blastx_fm.bam");
+                    "queries_nucl.fasta.gz", "none", "output_blastx_fm.bam", "bam", "output_blastx_fm.bam");
 }
 
 // TBLASTN
@@ -322,37 +322,37 @@ TEST_F(search_test, blastx_fm_bam)
 TEST_F(search_test, tblastn_fm_m0)
 {
     run_search_test("mkindexp", "db_nucl.fasta.gz", "db_trans_fm.fasta.gz.lba", "fm", "li10", "searchp",
-                    "queries_prot.fasta.gz", "none", "output_tblastn_fm_test.m0", "m0", "output_tblastn_fm.m0");
+                    "queries_prot.fasta.gz", "none", "output_tblastn_fm.m0", "m0", "output_tblastn_fm.m0");
 }
 
 TEST_F(search_test, tblastn_fm_m8)
 {
     run_search_test("mkindexp", "db_nucl.fasta.gz", "db_trans_fm.fasta.gz.lba", "fm", "li10", "searchp",
-                    "queries_prot.fasta.gz", "none", "output_tblastn_fm_test.m8", "m8", "output_tblastn_fm.m8");
+                    "queries_prot.fasta.gz", "none", "output_tblastn_fm.m8", "m8", "output_tblastn_fm.m8");
 }
 
 TEST_F(search_test, tblastn_fm_m9)
 {
     run_search_test("mkindexp", "db_nucl.fasta.gz", "db_trans_fm.fasta.gz.lba", "fm", "li10", "searchp",
-                    "queries_prot.fasta.gz", "none", "output_tblastn_fm_test.m9", "m9", "output_tblastn_fm.m9");
+                    "queries_prot.fasta.gz", "none", "output_tblastn_fm.m9", "m9", "output_tblastn_fm.m9");
 }
 
 TEST_F(search_test, tblastn_fm_m9_gz)
 {
     run_search_test("mkindexp", "db_nucl.fasta.gz", "db_trans_fm.fasta.gz.lba", "fm", "li10", "searchp",
-                    "queries_prot.fasta.gz", "none", "output_tblastn_fm_test.m9.gz", "m9_gz", "output_tblastn_fm.m9");
+                    "queries_prot.fasta.gz", "none", "output_tblastn_fm.m9.gz", "m9_gz", "output_tblastn_fm.m9");
 }
 
 TEST_F(search_test, tblastn_fm_sam)
 {
     run_search_test("mkindexp", "db_nucl.fasta.gz", "db_trans_fm.fasta.gz.lba", "fm", "li10", "searchp",
-                    "queries_prot.fasta.gz", "none", "output_tblastn_fm_test.sam", "sam", "output_tblastn_fm.sam");
+                    "queries_prot.fasta.gz", "none", "output_tblastn_fm.sam", "sam", "output_tblastn_fm.sam");
 }
 
 TEST_F(search_test, tblastn_fm_bam)
 {
     run_search_test("mkindexp", "db_nucl.fasta.gz", "db_trans_fm.fasta.gz.lba", "fm", "li10", "searchp",
-                    "queries_prot.fasta.gz", "none", "output_tblastn_fm_test.bam", "bam", "output_tblastn_fm.bam");
+                    "queries_prot.fasta.gz", "none", "output_tblastn_fm.bam", "bam", "output_tblastn_fm.bam");
 }
 
 // TBLASTX
@@ -360,37 +360,37 @@ TEST_F(search_test, tblastn_fm_bam)
 TEST_F(search_test, tblastx_fm_m0)
 {
     run_search_test("mkindexp", "db_nucl.fasta.gz", "db_trans_fm.fasta.gz.lba", "fm", "li10", "searchp",
-                    "queries_nucl.fasta.gz", "none", "output_tblastx_fm_test.m0", "m0", "output_tblastx_fm.m0");
+                    "queries_nucl.fasta.gz", "none", "output_tblastx_fm.m0", "m0", "output_tblastx_fm.m0");
 }
 
 TEST_F(search_test, tblastx_fm_m8)
 {
     run_search_test("mkindexp", "db_nucl.fasta.gz", "db_trans_fm.fasta.gz.lba", "fm", "li10", "searchp",
-                    "queries_nucl.fasta.gz", "none", "output_tblastx_fm_test.m8", "m8", "output_tblastx_fm.m8");
+                    "queries_nucl.fasta.gz", "none", "output_tblastx_fm.m8", "m8", "output_tblastx_fm.m8");
 }
 
 TEST_F(search_test, tblastx_fm_m9)
 {
     run_search_test("mkindexp", "db_nucl.fasta.gz", "db_trans_fm.fasta.gz.lba", "fm", "li10", "searchp",
-                    "queries_nucl.fasta.gz", "none", "output_tblastx_fm_test.m9", "m9", "output_tblastx_fm.m9");
+                    "queries_nucl.fasta.gz", "none", "output_tblastx_fm.m9", "m9", "output_tblastx_fm.m9");
 }
 
 TEST_F(search_test, tblastx_fm_m9_gz)
 {
     run_search_test("mkindexp", "db_nucl.fasta.gz", "db_trans_fm.fasta.gz.lba", "fm", "li10", "searchp",
-                    "queries_nucl.fasta.gz", "none", "output_tblastx_fm_test.m9.gz", "m9_gz", "output_tblastx_fm.m9");
+                    "queries_nucl.fasta.gz", "none", "output_tblastx_fm.m9.gz", "m9_gz", "output_tblastx_fm.m9");
 }
 
 TEST_F(search_test, tblastx_fm_sam)
 {
     run_search_test("mkindexp", "db_nucl.fasta.gz", "db_trans_fm.fasta.gz.lba", "fm", "li10", "searchp",
-                    "queries_nucl.fasta.gz", "none", "output_tblastx_fm_test.sam", "sam", "output_tblastx_fm.sam");
+                    "queries_nucl.fasta.gz", "none", "output_tblastx_fm.sam", "sam", "output_tblastx_fm.sam");
 }
 
 TEST_F(search_test, tblastx_fm_bam)
 {
     run_search_test("mkindexp", "db_nucl.fasta.gz", "db_nucl_fm.fasta.gz.lba", "fm", "li10", "searchp",
-                    "queries_nucl.fasta.gz", "none", "output_tblastx_fm_test.bam", "bam", "output_tblastx_fm.bam");
+                    "queries_nucl.fasta.gz", "none", "output_tblastx_fm.bam", "bam", "output_tblastx_fm.bam");
 }
 
 // Search with bi-directional index
@@ -400,73 +400,73 @@ TEST_F(search_test, tblastx_fm_bam)
 // TEST_F(search_test, blastn_bifm_m8)
 // {
 //     run_search_test("mkindexn", "db_nucl.fasta.gz", "db_nucl_bifm.fasta.gz.lba", "bifm", "", "searchn",
-//                     "queries_nucl.fasta.gz", "none", "output_blastn_bifm_test.m8", "m8", "output_blastn_fm.m8");
+//                     "queries_nucl.fasta.gz", "none", "output_blastn_bifm.m8", "m8", "output_blastn_fm.m8");
 // }
 //
 // TEST_F(search_test, blastn_bifm_sam)
 // {
 //     run_search_test("mkindexn", "db_nucl.fasta.gz", "db_nucl_bifm.fasta.gz.lba", "bifm", "", "searchn",
-//                     "queries_nucl.fasta.gz", "none", "output_blastn_bifm_test.sam", "sam", "output_blastn_fm.sam");
+//                     "queries_nucl.fasta.gz", "none", "output_blastn_bifm.sam", "sam", "output_blastn_fm.sam");
 // }
 
 TEST_F(search_test, blastn_bs_bifm_m8)
 {
     run_search_test("mkindexbs", "db_nucl_bs.fasta.gz", "db_nucl_bs_bifm.fasta.gz.lba", "bifm", "", "searchbs",
-                    "queries_nucl_bs.fasta.gz", "none", "output_blastn_bs_bifm_test.m8", "m8", "output_blastn_bs_fm.m8");
+                    "queries_nucl_bs.fasta.gz", "none", "output_blastn_bs_bifm.m8", "m8", "output_blastn_bs_fm.m8");
 }
 
 TEST_F(search_test, blastn_bs_bifm_sam)
 {
     run_search_test("mkindexbs", "db_nucl_bs.fasta.gz", "db_nucl_bs_bifm.fasta.gz.lba", "bifm", "", "searchbs",
-                    "queries_nucl_bs.fasta.gz", "none", "output_blastn_bs_bifm_test.sam", "sam", "output_blastn_bs_fm.sam");
+                    "queries_nucl_bs.fasta.gz", "none", "output_blastn_bs_bifm.sam", "sam", "output_blastn_bs_fm.sam");
 }
 
 TEST_F(search_test, blastp_bifm_m8)
 {
     run_search_test("mkindexp", "db_prot.fasta.gz", "db_prot_bifm.fasta.gz.lba", "bifm", "li10", "searchp",
-                    "queries_prot.fasta.gz", "none", "output_blastp_bifm_test.m8", "m8", "output_blastp_fm.m8");
+                    "queries_prot.fasta.gz", "none", "output_blastp_bifm.m8", "m8", "output_blastp_fm.m8");
 }
 
 TEST_F(search_test, blastp_bifm_sam)
 {
     run_search_test("mkindexp", "db_prot.fasta.gz", "db_prot_bifm.fasta.gz.lba", "bifm", "li10", "searchp",
-                    "queries_prot.fasta.gz", "none", "output_blastp_bifm_test.sam", "sam", "output_blastp_fm.sam");
+                    "queries_prot.fasta.gz", "none", "output_blastp_bifm.sam", "sam", "output_blastp_fm.sam");
 }
 
 TEST_F(search_test, blastx_bifm_m8)
 {
     run_search_test("mkindexp", "db_prot.fasta.gz", "db_prot_bifm.fasta.gz.lba", "bifm", "li10", "searchp",
-                    "queries_nucl.fasta.gz", "none", "output_blastx_bifm_test.m8", "m8", "output_blastx_fm.m8");
+                    "queries_nucl.fasta.gz", "none", "output_blastx_bifm.m8", "m8", "output_blastx_fm.m8");
 }
 
 TEST_F(search_test, blastx_bifm_sam)
 {
     run_search_test("mkindexp", "db_prot.fasta.gz", "db_prot_bifm.fasta.gz.lba", "bifm", "li10", "searchp",
-                    "queries_nucl.fasta.gz", "none", "output_blastx_bifm_test.sam", "sam", "output_blastx_fm.sam");
+                    "queries_nucl.fasta.gz", "none", "output_blastx_bifm.sam", "sam", "output_blastx_fm.sam");
 }
 
 TEST_F(search_test, tblastn_bifm_m8)
 {
     run_search_test("mkindexp", "db_nucl.fasta.gz", "db_trans_bifm.fasta.gz.lba", "bifm", "li10", "searchp",
-                    "queries_prot.fasta.gz", "none", "output_tblastn_bifm_test.m8", "m8", "output_tblastn_fm.m8");
+                    "queries_prot.fasta.gz", "none", "output_tblastn_bifm.m8", "m8", "output_tblastn_fm.m8");
 }
 
 TEST_F(search_test, tblastn_bifm_sam)
 {
     run_search_test("mkindexp", "db_nucl.fasta.gz", "db_trans_bifm.fasta.gz.lba", "bifm", "li10", "searchp",
-                    "queries_prot.fasta.gz", "none", "output_tblastn_bifm_test.sam", "sam", "output_tblastn_fm.sam");
+                    "queries_prot.fasta.gz", "none", "output_tblastn_bifm.sam", "sam", "output_tblastn_fm.sam");
 }
 
 TEST_F(search_test, tblastx_bifm_m8)
 {
     run_search_test("mkindexp", "db_nucl.fasta.gz", "db_trans_bifm.fasta.gz.lba", "bifm", "li10", "searchp",
-                    "queries_nucl.fasta.gz", "none", "output_tblastx_bifm_test.m8", "m8", "output_tblastx_fm.m8");
+                    "queries_nucl.fasta.gz", "none", "output_tblastx_bifm.m8", "m8", "output_tblastx_fm.m8");
 }
 
 TEST_F(search_test, tblastx_bifm_sam)
 {
     run_search_test("mkindexp", "db_nucl.fasta.gz", "db_trans_bifm.fasta.gz.lba", "bifm", "li10", "searchp",
-                    "queries_nucl.fasta.gz", "none", "output_tblastx_bifm_test.sam", "sam", "output_tblastx_fm.sam");
+                    "queries_nucl.fasta.gz", "none", "output_tblastx_bifm.sam", "sam", "output_tblastx_fm.sam");
 }
 
 #endif
@@ -476,73 +476,73 @@ TEST_F(search_test, tblastx_bifm_sam)
 TEST_F(search_test, blastn_fm_fast_m8)
 {
     run_search_test("mkindexn", "db_nucl.fasta.gz", "db_nucl_fm.fasta.gz.lba", "fm", "", "searchn",
-                    "queries_nucl.fasta.gz", "fast", "output_blastn_fm_fast_test.m8", "m8", "output_blastn_fm_fast.m8");
+                    "queries_nucl.fasta.gz", "fast", "output_blastn_fm_fast.m8", "m8", "output_blastn_fm_fast.m8");
 }
 
 TEST_F(search_test, blastn_fm_fast_sam)
 {
     run_search_test("mkindexn", "db_nucl.fasta.gz", "db_nucl_fm.fasta.gz.lba", "fm", "", "searchn",
-                    "queries_nucl.fasta.gz", "fast", "output_blastn_fm_fast_test.sam", "sam", "output_blastn_fm_fast.sam");
+                    "queries_nucl.fasta.gz", "fast", "output_blastn_fm_fast.sam", "sam", "output_blastn_fm_fast.sam");
 }
 
 TEST_F(search_test, blastn_bs_fm_fast_m8)
 {
     run_search_test("mkindexbs", "db_nucl_bs.fasta.gz", "db_nucl_bs_fm.fasta.gz.lba", "fm", "", "searchbs",
-                    "queries_nucl_bs.fasta.gz", "fast", "output_blastn_bs_fm_fast_test.m8", "m8", "output_blastn_bs_fm_fast.m8");
+                    "queries_nucl_bs.fasta.gz", "fast", "output_blastn_bs_fm_fast.m8", "m8", "output_blastn_bs_fm_fast.m8");
 }
 
 TEST_F(search_test, blastn_bs_fm_fast_sam)
 {
     run_search_test("mkindexbs", "db_nucl_bs.fasta.gz", "db_nucl_bs_fm.fasta.gz.lba", "fm", "", "searchbs",
-                    "queries_nucl_bs.fasta.gz", "fast", "output_blastn_bs_fm_fast_test.sam", "sam", "output_blastn_bs_fm_fast.sam");
+                    "queries_nucl_bs.fasta.gz", "fast", "output_blastn_bs_fm_fast.sam", "sam", "output_blastn_bs_fm_fast.sam");
 }
 
 TEST_F(search_test, blastp_fm_fast_m8)
 {
     run_search_test("mkindexp", "db_prot.fasta.gz", "db_prot_fm.fasta.gz.lba", "fm", "li10", "searchp",
-                    "queries_prot.fasta.gz", "fast", "output_blastp_fm_fast_test.m8", "m8", "output_blastp_fm_fast.m8");
+                    "queries_prot.fasta.gz", "fast", "output_blastp_fm_fast.m8", "m8", "output_blastp_fm_fast.m8");
 }
 
 TEST_F(search_test, blastp_fm_fast_sam)
 {
     run_search_test("mkindexp", "db_prot.fasta.gz", "db_prot_fm.fasta.gz.lba", "fm", "li10", "searchp",
-                    "queries_prot.fasta.gz", "fast", "output_blastp_fm_fast_test.sam", "sam", "output_blastp_fm_fast.sam");
+                    "queries_prot.fasta.gz", "fast", "output_blastp_fm_fast.sam", "sam", "output_blastp_fm_fast.sam");
 }
 
 TEST_F(search_test, blastx_fm_fast_m8)
 {
     run_search_test("mkindexp", "db_prot.fasta.gz", "db_prot_fm.fasta.gz.lba", "fm", "li10", "searchp",
-                    "queries_nucl.fasta.gz", "fast", "output_blastx_fm_fast_test.m8", "m8", "output_blastx_fm_fast.m8");
+                    "queries_nucl.fasta.gz", "fast", "output_blastx_fm_fast.m8", "m8", "output_blastx_fm_fast.m8");
 }
 
 TEST_F(search_test, blastx_fm_fast_sam)
 {
     run_search_test("mkindexp", "db_prot.fasta.gz", "db_prot_fm.fasta.gz.lba", "fm", "li10", "searchp",
-                    "queries_nucl.fasta.gz", "fast", "output_blastx_fm_fast_test.sam", "sam", "output_blastx_fm_fast.sam");
+                    "queries_nucl.fasta.gz", "fast", "output_blastx_fm_fast.sam", "sam", "output_blastx_fm_fast.sam");
 }
 
 TEST_F(search_test, tblastn_fm_fast_m8)
 {
     run_search_test("mkindexp", "db_nucl.fasta.gz", "db_trans_fm.fasta.gz.lba", "fm", "li10", "searchp",
-                    "queries_prot.fasta.gz", "fast", "output_tblastn_fm_fast_test.m8", "m8", "output_tblastn_fm_fast.m8");
+                    "queries_prot.fasta.gz", "fast", "output_tblastn_fm_fast.m8", "m8", "output_tblastn_fm_fast.m8");
 }
 
 TEST_F(search_test, tblastn_fm_fast_sam)
 {
     run_search_test("mkindexp", "db_nucl.fasta.gz", "db_trans_fm.fasta.gz.lba", "fm", "li10", "searchp",
-                    "queries_prot.fasta.gz", "fast", "output_tblastn_fm_fast_test.sam", "sam", "output_tblastn_fm_fast.sam");
+                    "queries_prot.fasta.gz", "fast", "output_tblastn_fm_fast.sam", "sam", "output_tblastn_fm_fast.sam");
 }
 
 TEST_F(search_test, tblastx_fm_fast_m8)
 {
     run_search_test("mkindexp", "db_nucl.fasta.gz", "db_trans_fm.fasta.gz.lba", "fm", "li10", "searchp",
-                    "queries_nucl.fasta.gz", "fast", "output_tblastx_fm_fast_test.m8", "m8", "output_tblastx_fm_fast.m8");
+                    "queries_nucl.fasta.gz", "fast", "output_tblastx_fm_fast.m8", "m8", "output_tblastx_fm_fast.m8");
 }
 
 TEST_F(search_test, tblastx_fm_fast_sam)
 {
     run_search_test("mkindexp", "db_nucl.fasta.gz", "db_trans_fm.fasta.gz.lba", "fm", "li10", "searchp",
-                    "queries_nucl.fasta.gz", "fast", "output_tblastx_fm_fast_test.sam", "sam", "output_tblastx_fm_fast.sam");
+                    "queries_nucl.fasta.gz", "fast", "output_tblastx_fm_fast.sam", "sam", "output_tblastx_fm_fast.sam");
 }
 
 // Sensitive mode
@@ -550,73 +550,73 @@ TEST_F(search_test, tblastx_fm_fast_sam)
 TEST_F(search_test, blastn_fm_sensitive_m8)
 {
     run_search_test("mkindexn", "db_nucl.fasta.gz", "db_nucl_fm.fasta.gz.lba", "fm", "", "searchn",
-                    "queries_nucl.fasta.gz", "sensitive", "output_blastn_fm_sensitive_test.m8", "m8", "output_blastn_fm_sensitive.m8");
+                    "queries_nucl.fasta.gz", "sensitive", "output_blastn_fm_sensitive.m8", "m8", "output_blastn_fm_sensitive.m8");
 }
 
 TEST_F(search_test, blastn_fm_sensitive_sam)
 {
     run_search_test("mkindexn", "db_nucl.fasta.gz", "db_nucl_fm.fasta.gz.lba", "fm", "", "searchn",
-                    "queries_nucl.fasta.gz", "sensitive", "output_blastn_fm_sensitive_test.sam", "sam", "output_blastn_fm_sensitive.sam");
+                    "queries_nucl.fasta.gz", "sensitive", "output_blastn_fm_sensitive.sam", "sam", "output_blastn_fm_sensitive.sam");
 }
 
 TEST_F(search_test, blastn_bs_fm_sensitive_m8)
 {
     run_search_test("mkindexbs", "db_nucl_bs.fasta.gz", "db_nucl_bs_fm.fasta.gz.lba", "fm", "", "searchbs",
-                    "queries_nucl_bs.fasta.gz", "sensitive", "output_blastn_bs_fm_sensitive_test.m8", "m8", "output_blastn_bs_fm_sensitive.m8");
+                    "queries_nucl_bs.fasta.gz", "sensitive", "output_blastn_bs_fm_sensitive.m8", "m8", "output_blastn_bs_fm_sensitive.m8");
 }
 
 TEST_F(search_test, blastn_bs_fm_sensitive_sam)
 {
     run_search_test("mkindexbs", "db_nucl_bs.fasta.gz", "db_nucl_bs_fm.fasta.gz.lba", "fm", "", "searchbs",
-                    "queries_nucl_bs.fasta.gz", "sensitive", "output_blastn_bs_fm_sensitive_test.sam", "sam", "output_blastn_bs_fm_sensitive.sam");
+                    "queries_nucl_bs.fasta.gz", "sensitive", "output_blastn_bs_fm_sensitive.sam", "sam", "output_blastn_bs_fm_sensitive.sam");
 }
 
 TEST_F(search_test, blastp_fm_sensitive_m8)
 {
     run_search_test("mkindexp", "db_prot.fasta.gz", "db_prot_fm.fasta.gz.lba", "fm", "li10", "searchp",
-                    "queries_prot.fasta.gz", "sensitive", "output_blastp_fm_sensitive_test.m8", "m8", "output_blastp_fm_sensitive.m8");
+                    "queries_prot.fasta.gz", "sensitive", "output_blastp_fm_sensitive.m8", "m8", "output_blastp_fm_sensitive.m8");
 }
 
 TEST_F(search_test, blastp_fm_sensitive_sam)
 {
     run_search_test("mkindexp", "db_prot.fasta.gz", "db_prot_fm.fasta.gz.lba", "fm", "li10", "searchp",
-                    "queries_prot.fasta.gz", "sensitive", "output_blastp_fm_sensitive_test.sam", "sam", "output_blastp_fm_sensitive.sam");
+                    "queries_prot.fasta.gz", "sensitive", "output_blastp_fm_sensitive.sam", "sam", "output_blastp_fm_sensitive.sam");
 }
 
 TEST_F(search_test, blastx_fm_sensitive_m8)
 {
     run_search_test("mkindexp", "db_prot.fasta.gz", "db_prot_fm.fasta.gz.lba", "fm", "li10", "searchp",
-                    "queries_nucl.fasta.gz", "sensitive", "output_blastx_fm_sensitive_test.m8", "m8", "output_blastx_fm_sensitive.m8");
+                    "queries_nucl.fasta.gz", "sensitive", "output_blastx_fm_sensitive.m8", "m8", "output_blastx_fm_sensitive.m8");
 }
 
 TEST_F(search_test, blastx_fm_sensitive_sam)
 {
     run_search_test("mkindexp", "db_prot.fasta.gz", "db_prot_fm.fasta.gz.lba", "fm", "li10", "searchp",
-                    "queries_nucl.fasta.gz", "sensitive", "output_blastx_fm_sensitive_test.sam", "sam", "output_blastx_fm_sensitive.sam");
+                    "queries_nucl.fasta.gz", "sensitive", "output_blastx_fm_sensitive.sam", "sam", "output_blastx_fm_sensitive.sam");
 }
 
 TEST_F(search_test, tblastn_fm_sensitive_m8)
 {
     run_search_test("mkindexp", "db_nucl.fasta.gz", "db_trans_fm.fasta.gz.lba", "fm", "li10", "searchp",
-                    "queries_prot.fasta.gz", "sensitive", "output_tblastn_fm_sensitive_test.m8", "m8", "output_tblastn_fm_sensitive.m8");
+                    "queries_prot.fasta.gz", "sensitive", "output_tblastn_fm_sensitive.m8", "m8", "output_tblastn_fm_sensitive.m8");
 }
 
 TEST_F(search_test, tblastn_fm_sensitive_sam)
 {
     run_search_test("mkindexp", "db_nucl.fasta.gz", "db_trans_fm.fasta.gz.lba", "fm", "li10", "searchp",
-                    "queries_prot.fasta.gz", "sensitive", "output_tblastn_fm_sensitive_test.sam", "sam", "output_tblastn_fm_sensitive.sam");
+                    "queries_prot.fasta.gz", "sensitive", "output_tblastn_fm_sensitive.sam", "sam", "output_tblastn_fm_sensitive.sam");
 }
 
 TEST_F(search_test, tblastx_fm_sensitive_m8)
 {
     run_search_test("mkindexp", "db_nucl.fasta.gz", "db_trans_fm.fasta.gz.lba", "fm", "li10", "searchp",
-                    "queries_nucl.fasta.gz", "sensitive", "output_tblastx_fm_sensitive_test.m8", "m8", "output_tblastx_fm_sensitive.m8");
+                    "queries_nucl.fasta.gz", "sensitive", "output_tblastx_fm_sensitive.m8", "m8", "output_tblastx_fm_sensitive.m8");
 }
 
 TEST_F(search_test, tblastx_fm_sensitive_sam)
 {
     run_search_test("mkindexp", "db_nucl.fasta.gz", "db_trans_fm.fasta.gz.lba", "fm", "li10", "searchp",
-                    "queries_nucl.fasta.gz", "sensitive", "output_tblastx_fm_sensitive_test.sam", "sam", "output_tblastx_fm_sensitive.sam");
+                    "queries_nucl.fasta.gz", "sensitive", "output_tblastx_fm_sensitive.sam", "sam", "output_tblastx_fm_sensitive.sam");
 }
 
 // special options
@@ -624,6 +624,6 @@ TEST_F(search_test, tblastx_fm_sensitive_sam)
 TEST_F(search_test, lazy_loading)
 {
     run_search_test("mkindexp", "db_prot.fasta.gz", "db_prot_fm.fasta.gz.lba", "fm", "li10", "searchp",
-                    "queries_nucl.fasta.gz", "none", "output_blastx_fm_lazy_test.m8", "m8", "output_blastx_fm.m8",
+                    "queries_nucl.fasta.gz", "none", "output_blastx_fm_lazy.m8", "m8", "output_blastx_fm.m8",
                     "--lazy-query", "1", "-t", "2");
 }
