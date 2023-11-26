@@ -43,10 +43,10 @@ struct QueryException : public std::runtime_error
 // Alignment-related
 // ============================================================================
 
-inline int _bandSize(uint64_t const seqLength)
+inline int64_t _bandSize(uint64_t const seqLength)
 {
     // Currently only used for padding of the subject sequences
-    return 63ull - std::countl_zero(std::bit_ceil(seqLength));
+    return static_cast<int64_t>(std::sqrt(seqLength)) + 1;
 }
 
 // ----------------------------------------------------------------------------

@@ -397,13 +397,13 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
     });
 #endif
 
-    parser.add_option(options.profile,
-                      sharg::config{
-                        .short_id    = 'p',
-                        .long_id     = "profile",
-                        .description = "Profiles are presets of a group of parameters. See below.",
-
-                        .validator = sharg::value_list_validator{"none", "fast", "sensitive"}
+    parser.add_option(
+      options.profile,
+      sharg::config{
+        .short_id    = 'p',
+        .long_id     = "profile",
+        .description = "Profiles are presets of a group of parameters. See below.",
+        .validator   = sharg::value_list_validator{"none", "fast", "sensitive", "pairs-default", "pairs-sensitive"}
     });
 
     parser.add_section("Seeding / Filtration");
@@ -573,20 +573,41 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
               "--seed-length0 9 --seed-offset0 4 --seed-length 8 --seed-offset 3 --pre-scoring 3 "
               "--pre-scoring-threshold 1.9",
               true);
+            parser.add_line("\"pairs-default\"", false);
+            parser.add_line("--search0 OFF --seed-length 8 --seed-offset 3 --pre-scoring 3 --pre-scoring-threshold 1.9",
+                            true);
+            parser.add_line("\"pairs-sensitive\"", false);
+            parser.add_line("--search0 OFF --seed-length 7 --seed-offset 3 --pre-scoring 3 --pre-scoring-threshold 1.9",
+                            true);
             break;
         case domain_t::nucleotide:
             parser.add_line("\"fast\"", false);
-            parser.add_line("--seed-length 14 --seed-offset 9 --seed-delta 0", true);
+            parser.add_line("--search0 OFF --seed-length 14 --seed-offset 9 --seed-delta 0", true);
             parser.add_line("\"sensitive\"", false);
             parser.add_line("--seed-length0 14 --seed-offset0 3 --seed-length 14 --seed-offset 3", true);
+            parser.add_line("\"pairs-default\"", false);
+            parser.add_line("--search0 OFF --seed-length 14 --seed-offset 3", true);
+            parser.add_line("\"pairs-sensitive\"", false);
+            parser.add_line("--search0 OFF --seed-length 13 --seed-offset 3", true);
             break;
         case domain_t::bisulfite:
             parser.add_line("\"fast\"", false);
-            parser.add_line("--seed-length 17 --seed-offset 10 --seed-delta 0", true);
+            parser.add_line("--search0 OFF --seed-length 17 --seed-offset 10 --seed-delta 0", true);
             parser.add_line("\"sensitive\"", false);
             parser.add_line("--seed-length0 16 --seed-offset0 8 --seed-length 15 --seed-offset 10", true);
+            parser.add_line("\"pairs-default\"", false);
+            parser.add_line("--search0 OFF --seed-length 15 --seed-offset 10", true);
+            parser.add_line("\"pairs-sensitive\"", false);
+            parser.add_line("--search0 OFF --seed-length 14 --seed-offset 10", true);
             break;
     }
+
+    parser.add_line(
+      "The \"pairs\" profiles are for use in combination with higher --num-matches. "
+      "They are based on the sensitive profile but in addition to increasing the number of query-"
+      "sequences-with-one-or-more-hits, they also increase the number of qry-subj-pairs, i.e. the "
+      "number of hits per query.",
+      false);
     parser.add_line("For further information see the wiki: <https://github.com/seqan/lambda/wiki>", false);
 
     // parse command line.
@@ -628,7 +649,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
             options.searchOpts.maxSeedDist = 0;
         }
     }
-    else if (options.profile == "sensitive")
+    else if ((options.profile == "sensitive") || options.profile.starts_with("pairs"))
     {
         switch (options.domain)
         {
@@ -652,6 +673,12 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
                 options.searchOpts.seedOffset  = 10;
                 break;
         }
+
+        if (options.profile.starts_with("pairs"))
+            options.iterativeSearch = false;
+
+        if (options.profile == "pairs-sensitive")
+            --options.searchOpts.seedLength;
     }
 
     // set output file format

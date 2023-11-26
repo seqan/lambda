@@ -73,7 +73,21 @@ void realMain(LambdaOptions const & options);
 int searchMain(int const argc, char const ** argv)
 {
     LambdaOptions options;
+
+#ifdef NDEBUG
+    try
+    {
+        parseCommandLine(options, argc, argv);
+    }
+    catch (sharg::parser_error const & ext) // catch user errors
+    {
+        std::cerr << "\n\nERROR: during command line parsing\n"
+                  << "       \"" << ext.what() << "\"\n";
+        return -1;
+    }
+#else
     parseCommandLine(options, argc, argv);
+#endif
 
 #ifdef _OPENMP
     omp_set_num_threads(options.threads - options.lazyQryFile); // reserve one thread for I/O when lazy-loading
