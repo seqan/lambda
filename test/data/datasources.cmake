@@ -191,9 +191,6 @@ declare_datasource (FILE output_blastx_fm_fast.m8
 declare_datasource (FILE output_blastx_fm_fast.sam
                     URL ${BASEURL}/output_files/output_blastx_fm_fast.sam
                     URL_HASH SHA256=557394a3c75c2da49d3d15c34f10f1eca2e4a934102cfbe92081df0f704b1828)
-declare_datasource (FILE output_blastx_fm_lazy.m8
-                    URL ${BASEURL}/output_files/output_blastx_fm_lazy.m8
-                    URL_HASH SHA256=d3bb3a5f101e9deab0b7605b83d3c2ce03270545923a65d10b0c7afb52c324b7)
 declare_datasource (FILE output_blastx_fm_pairs_default.m8
                     URL ${BASEURL}/output_files/output_blastx_fm_pairs_default.m8
                     URL_HASH SHA256=9479d7bb3ca8e53b1d425b70867f0d4aeecd73026596997724f4b1d3458ea16f)
