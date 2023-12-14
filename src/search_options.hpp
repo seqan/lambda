@@ -154,7 +154,7 @@ void parseCommandLine(LambdaOptions & options, int argc, char const ** argv)
 
     parser.add_section("Input options");
 
-    std::vector<std::string> extensions{"fa", "fq", "fasta", "fastq"};
+    std::vector<std::string> extensions{"fa", "fq", "fasta", "fastq", "fna", "faa"};
 #ifdef SEQAN_HAS_ZLIB
     for (auto const & ext : extensions)
         extensions.push_back(ext + ".gz");
