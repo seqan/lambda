@@ -34,12 +34,12 @@ option (LAMBDA_WITH_BIFM "Include codepaths for bidirectional indexes." OFF)
 
 if (LAMBDA_STATIC_BUILD)
     add_definitions (-DLAMBDA_STATIC_BUILD=1)
-    set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
     # apple does not support fully static builds, but at least libgcc and libstdc++
     if (APPLE)
         set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++")
         message (WARNING "WARNING: Builds on Mac are never fully static.")
     else (APPLE)
+        set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
         set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
     endif (APPLE)
     # on linux cmake adds -rdynamic automatically which clang can't handle in static builds
@@ -65,7 +65,6 @@ message(STATUS "Remove CMakeCache.txt and re-run cmake with -DOPTIONNAME=ON|OFF 
 # Search SeqAn and select dependencies.
 find_package(OpenMP QUIET)
 find_package(ZLIB   QUIET)
-find_package(BZip2  QUIET)
 find_package(SeqAn  QUIET REQUIRED CONFIG)
 
 # BIO
@@ -85,7 +84,6 @@ add_subdirectory(../submodules/fmindex-collection fmindex-collection)
 message(STATUS "These dependencies were found:")
 message(   "     BIOCPP-CORE  ${BIOCPP_CORE_FOUND}      ${BIOCPP_CORE_VERSION}")
 message(   "     BIOCPP-IO    ${BIOCPP_IO_FOUND}      ${BIOCPP_IO_VERSION}")
-message(   "     BZIP2        ${BZIP2_FOUND}      ${BZIP2_VERSION_STRING}")
 message(   "     CEREAL       ${CEREAL_FOUND}      ${CEREAL_VERSION}")
 message(   "     OPENMP       ${OPENMP_FOUND}      ${OpenMP_CXX_FLAGS}")
 message(   "     SEQAN        ${SEQAN_FOUND}      ${SEQAN_VERSION_STRING}")
