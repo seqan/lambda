@@ -580,15 +580,19 @@ auto parseAndStoreTaxTree(std::vector<bool> & taxIdIsPresent, LambdaIndexerOptio
     myPrint(options, 1, "done.\n");
     myPrint(options, 2, "Runtime: ", sysTime() - start, "s\n");
 
-    taxonNames[0] = "invalid";
+    taxonNames[0]               = "invalid";
+    size_t taxaWithoutNameCount = 0;
     for (uint32_t i = 0; i < std::ranges::size(taxonNames); ++i)
     {
         if (taxIdIsPresentOrParent[i] && empty(taxonNames[i]))
         {
             std::cerr << "Warning: Taxon with ID " << i << " has no name associated, defaulting to \"n/a\".\n";
             taxonNames[i] = "n/a";
+            ++taxaWithoutNameCount;
         }
     }
+    if (taxaWithoutNameCount * 10 > taxonNames.size())
+        std::cerr << "Warning: More than 10% of taxa have no valid name entry.\n";
 
     return ret;
 }
