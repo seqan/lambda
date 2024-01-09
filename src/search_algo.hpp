@@ -296,7 +296,7 @@ void loadDbIndexFromDisk(
     myPrint(options, 2, "    size of search space:  ", searchSpaceSize, "\n");
     bool const indexHasSTaxIDs = globalHolder.indexFile.sTaxIds.size() == globalHolder.indexFile.seqs.size();
     myPrint(options, 2, "    has taxonomic IDs:     ", indexHasSTaxIDs, "\n");
-    bool const indexHasTaxTree = globalHolder.indexFile.taxonNames.size() >= globalHolder.indexFile.seqs.size();
+    bool const indexHasTaxTree = !globalHolder.indexFile.taxonNames.empty();
     myPrint(options, 2, "    has taxonomic tree:    ", indexHasTaxTree, "\n");
     myPrint(options, 2, "Runtime: ", finish, "s \n\n");
 
